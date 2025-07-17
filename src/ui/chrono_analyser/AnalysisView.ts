@@ -4,7 +4,7 @@ import { AnalysisController } from './controller';
 import FullCalendarPlugin from '../../main';
 
 // Importing styles for the AnalysisView
-import 'flatpickr/dist/flatpickr.min.css';
+import "flatpickr/dist/themes/dark.css";
 import './chrono_styles.css';
 
 /**

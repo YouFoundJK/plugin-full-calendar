@@ -44,6 +44,31 @@ interface FileMetadata {
   daysOfWeek?: string | string[];
   [key: string]: any; // Allows for other properties not explicitly defined
 }
+const PLOTLY_DARK_LAYOUT: Partial<Plotly.Layout> = {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    // The font color is now handled by the CSS file.
+    // We can still set family and size here if we want a global override.
+    font: {
+        family: 'var(--font-default)', // This might work depending on Plotly version
+        size: 12
+    },
+    xaxis: {
+        // These are fine as they target SVG line colors, not text fills.
+        gridcolor: 'var(--background-modifier-border)',
+        linecolor: 'var(--background-modifier-border)',
+        zerolinecolor: 'var(--background-modifier-accent)'
+    },
+    yaxis: {
+        gridcolor: 'var(--background-modifier-border)',
+        linecolor: 'var(--background-modifier-border)',
+        zerolinecolor: 'var(--background-modifier-accent)'
+    },
+    legend: {
+        bgcolor: 'rgba(0,0,0,0)', // Keep it transparent
+        bordercolor: 'var(--background-modifier-border)'
+    }
+};
 
 // --- Folder Suggest Modal for Obsidian API ---
 class FolderSuggestModal extends SuggestModal<TFolder> {
@@ -92,7 +117,7 @@ export class AnalysisController {
 
   constructor(
     private app: App,
-    private rootEl: HTMLElement
+    private rootEl: HTMLElement,
   ) {}
 
   public async initialize(): Promise<void> {
@@ -1112,12 +1137,15 @@ export class AnalysisController {
         }
       }
     ];
+    const isDarkMode = document.body.classList.contains('theme-dark');
     const layout: Partial<Plotly.Layout> = {
       title: { text: `Time Distribution by ${chartTitleText}` },
       showlegend: true,
       height: 500
     };
-
+    if (isDarkMode) {
+        Object.assign(layout, PLOTLY_DARK_LAYOUT);
+    }
     // FIX: Pass the standard HTMLElement to newPlot.
     Plotly.newPlot(mainChartEl, data, layout, { responsive: true });
 
