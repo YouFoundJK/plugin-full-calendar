@@ -22,6 +22,8 @@ import DailyNoteCalendar from "./calendars/DailyNoteCalendar";
 import ICSCalendar from "./calendars/ICSCalendar";
 import CalDAVCalendar from "./calendars/CalDAVCalendar";
 
+import { AnalysisView, ANALYSIS_VIEW_TYPE } from "./ui/chrono_analyser/AnalysisView";
+
 export default class FullCalendarPlugin extends Plugin {
     settings: FullCalendarSettings = DEFAULT_SETTINGS;
 
@@ -124,6 +126,10 @@ export default class FullCalendarPlugin extends Plugin {
             (leaf) => new CalendarView(leaf, this, true),
         );
 
+        this.registerView(
+            ANALYSIS_VIEW_TYPE,
+            (leaf) => new AnalysisView(leaf)
+        );
         // Register the calendar icon on left-side bar
         this.addRibbonIcon(
             "calendar-glyph",
