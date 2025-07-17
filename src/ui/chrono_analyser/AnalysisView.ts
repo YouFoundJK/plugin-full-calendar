@@ -2,7 +2,10 @@ import { ItemView, TFolder, Notice, App, WorkspaceLeaf } from "obsidian";
 import { createDOMStructure } from "./dom";
 import { AnalysisController } from "./controller";
 import FullCalendarPlugin from "../../main";
-import "./styles.css"; // 2. Import the CSS file
+
+// Importing styles for the AnalysisView
+import "flatpickr/dist/flatpickr.min.css";
+import "./styles.css";
 
 /**
  *
