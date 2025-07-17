@@ -5,7 +5,7 @@
  * @param rootEl The HTML element to populate.
  */
 export function createDOMStructure(rootEl: HTMLElement): void {
-    rootEl.innerHTML = `
+  rootEl.innerHTML = `
       <div id="toastContainer"></div>
       <div class="container">
         <div class="header">
@@ -208,7 +208,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
         </div>
       </div>
     `;
-    // NOTE: To save space, I have omitted the full HTML content.
-    // You must paste the full body content from your HTML file inside the template string.
-    // Make sure the replacement for the folder input is correct as shown above.
+  // NOTE: To save space, I have omitted the full HTML content.
+  // You must paste the full body content from your HTML file inside the template string.
+  // Make sure the replacement for the folder input is correct as shown above.
 }
