@@ -27,6 +27,7 @@
         "@types/co": "^4.6.6",
         "@types/color": "^4.2.0",
         "@types/dav": "^1.7.7",
+        "@types/flatpickr": "^3.0.2",
         "@types/jest": "^30.0.0",
         "@types/js-yaml": "^4.0.9",
         "@types/luxon": "^3.6.2",
