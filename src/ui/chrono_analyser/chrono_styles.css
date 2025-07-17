@@ -106,6 +106,7 @@
     padding: 7px 10px; /* Smaller padding */
     font-size: 0.85rem; /* Smaller font */
     border-radius: 5px;
+    color: #374151;
     background-color: #e9ecef; /* Lighter grey */
     border: 1px solid #ced4da;
     cursor: pointer;
@@ -133,7 +134,7 @@
 }
 
 
-label {
+.chrono-analyser-view label {
     display: block;
     margin-bottom: 6px; /* Consistent with .chrono-analyser-view .control-item label */
     font-weight: 500; /* Slightly less bold */
@@ -141,7 +142,7 @@ label {
     color: #374151; /* Darker for better contrast on light bg */
 }
 
-select, input[type="text"], input#dateRangePicker.chrono-analyser-view .flatpickr-input {
+.chrono-analyser-view select, input[type="text"], input#dateRangePicker.chrono-analyser-view .flatpickr-input {
     width: 100%;
     padding: 10px 14px; /* Adjusted padding */
     border: 1px solid #d1d5db; /* Softer border */
@@ -152,12 +153,12 @@ select, input[type="text"], input#dateRangePicker.chrono-analyser-view .flatpick
     height: 44px; /* Adjusted height */
     color: #1f2937;
 }
-input#dateRangePicker.chrono-analyser-view .flatpickr-input { /* Ensure Flatpickr input matches */
+.chrono-analyser-view input#dateRangePicker.chrono-analyser-view .flatpickr-input { /* Ensure Flatpickr input matches */
      max-width: 320px; /* Prevent date picker from becoming too wide */
 }
 
 
-select:focus, input[type="text"]:focus, input#dateRangePicker.chrono-analyser-view .flatpickr-input:focus {
+.chrono-analyser-view select:focus, input[type="text"]:focus, input#dateRangePicker.chrono-analyser-view .flatpickr-input:focus {
     outline: none;
     border-color: #667eea;
     background-color: white; /* White on focus */
@@ -271,7 +272,7 @@ select:focus, input[type="text"]:focus, input#dateRangePicker.chrono-analyser-vi
     color: #718096;
     margin-left: 10px;
 }
-#customLegend {
+.chrono-analyser-view #customLegend {
     height: 470px; /* Match the chart height for alignment */
 }
 
@@ -404,7 +405,7 @@ select:focus, input[type="text"]:focus, input#dateRangePicker.chrono-analyser-vi
     100% { transform: rotate(360deg); }
 }
 
-#toastContainer {
+.chrono-analyser-view #toastContainer {
     position: fixed; top: 20px; right: 20px; z-index: 2000; 
     display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
 }
@@ -414,11 +415,11 @@ select:focus, input[type="text"]:focus, input#dateRangePicker.chrono-analyser-vi
     transition: opacity 0.4s ease-out, transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     display: flex; align-items: center; min-width: 280px; max-width: 400px; font-size: 0.95rem;
 }
-.chrono-analyser-view .toast .visible { opacity: 1; transform: translateX(0); }
+.chrono-analyser-view .toast.visible { opacity: 1; transform: translateX(0); }
 .chrono-analyser-view .toast .loading { border-top-color: white; border-left-color: rgba(255,255,255,0.3); border-right-color: rgba(255,255,255,0.3); border-bottom-color: rgba(255,255,255,0.3); }
-.chrono-analyser-view .toast .success { background-color: #4CAF50; } .chrono-analyser-view .toast .error { background-color: #f44336; }  
-.chrono-analyser-view .toast .info { background-color: #2196F3; } .chrono-analyser-view .toast .warning { background-color: #ff9800; }
-.chrono-analyser-view .toast .info-persistent { background-color: #555; } 
+.chrono-analyser-view .toast.success { background-color: #4CAF50; } .chrono-analyser-view .toast .error { background-color: #f44336; }  
+.chrono-analyser-view .toast.info { background-color: #2196F3; } .chrono-analyser-view .toast .warning { background-color: #ff9800; }
+.chrono-analyser-view .toast.info-persistent { background-color: #555; } 
 
 .chrono-analyser-view .detail-popup {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95); 
@@ -428,12 +429,12 @@ select:focus, input[type="text"]:focus, input#dateRangePicker.chrono-analyser-vi
     overflow: hidden; display: none; opacity: 0;
     transition: opacity 0.3s ease-out, transform 0.3s ease-out;
 }
-.chrono-analyser-view .detail-popup .visible { display: flex; flex-direction: column; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.chrono-analyser-view .detail-popup.visible { display: flex; flex-direction: column; opacity: 1; transform: translate(-50%, -50%) scale(1); }
 .chrono-analyser-view .popup-header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px 25px; position: relative; border-top-left-radius: 20px; border-top-right-radius: 20px; }
 .chrono-analyser-view .popup-title { font-size: 1.5rem; font-weight: 600; margin: 0; max-width: calc(100% - 50px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chrono-analyser-view .close-btn { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
 .chrono-analyser-view .close-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.1) rotate(90deg); }
-.chrono-analyser-view .popup-body { padding: 25px; flex-grow: 1; overflow-y: auto; background-color: #f8f9fa; }
+.chrono-analyser-view .popup-body { padding: 25px; flex-grow: 1; overflow-y: auto; background-color: #f8f9fa; min-height: 0; }
 .chrono-analyser-view .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-bottom: 25px; padding: 20px; background: linear-gradient(135deg, #f0f2f5, #e6e9ed); border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
 .chrono-analyser-view .summary-stat { text-align: center; padding: 10px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 .chrono-analyser-view .summary-stat-value { font-size: 1.8rem; font-weight: bold; color: #667eea; margin-bottom: 3px; }
@@ -448,7 +449,7 @@ select:focus, input[type="text"]:focus, input#dateRangePicker.chrono-analyser-vi
 .chrono-analyser-view .duration-cell { text-align: right; font-weight: 600; color: #667eea; } .chrono-analyser-view .date-cell { color: #4a5568; font-weight: 500; white-space: nowrap; }
 .chrono-analyser-view .project-cell { font-weight: 500; color: #2d3748; } .chrono-analyser-view .subproject-cell { color: #718096; }
 .chrono-analyser-view .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 999; display: none; opacity: 0; transition: opacity 0.3s ease-out; }
-.chrono-analyser-view .overlay .visible { display: block; opacity: 1; }
+.chrono-analyser-view .overlay.visible { display: block; opacity: 1; }
 
 .chrono-analyser-view .autocomplete-wrapper { position: relative; display: flex; align-items: center; }
 .chrono-analyser-view .autocomplete-wrapper input[type="text"] { flex-grow: 1; padding-right: 30px; }
@@ -490,7 +491,6 @@ select:focus, input[type="text"]:focus, input#dateRangePicker.chrono-analyser-vi
     input#dateRangePicker.chrono-analyser-view .flatpickr-input {
          max-width: none; /* Allow date picker to be full width on small screens */
     }
-    .chrono-analyser-view .date-preset-buttons{justify-content:space-around; flex-wrap: wrap;}
     .chrono-analyser-view .date-preset-buttons .clear-dates-btn { margin-left: 0; flex-basis: 100%; margin-top: 10px;} 
     .chrono-analyser-view .header h1{font-size:2rem}
     .chrono-analyser-view .summary-stats{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}

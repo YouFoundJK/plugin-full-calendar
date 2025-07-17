@@ -195,9 +195,14 @@ export class AnalysisController {
     );
     setTimeout(() => notice.hide(), 4000);
 
+    // console.log(`[DEBUG] 1. After Parsing: this.records contains ${this.records.length} records.`);
+    // console.log("[DEBUG] First 5 parsed records:", this.records.slice(0, 5));
+
     this.populateFilterDataSources();
     this.updateAnalysis();
   }
+
+  // Replace the entire parseFile method.
 
   private async parseFile(file: TFile): Promise<TimeRecord> {
     try {
@@ -209,6 +214,7 @@ export class AnalysisController {
           : pathParts.length > 1 && pathParts[0] !== ''
             ? pathParts[0]
             : 'root';
+
       const filenameRegex =
         /^(?:(\d{4}-\d{2}-\d{2})\s+(.+?)\s+-\s+(.+?)(?:\s+([IVXLCDM\d]+))?|(?:\(([^)]+)\)\s*)(.+?)(?:\s*-\s*(.+?))?(?:\s+([IVXLCDM\d]+))?)\.md$/i;
       const filenameMatch = file.name.match(filenameRegex);
@@ -304,20 +310,11 @@ export class AnalysisController {
         metadata
       };
     } catch (error) {
-      let errorMessage = 'An unknown error occurred during parsing.';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      // Throw a structured error
-      throw {
-        message: errorMessage,
-        fileName: file.name,
-        filePath: file.path
-      };
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred during parsing.';
+      throw { message: errorMessage, fileName: file.name, filePath: file.path };
     }
   }
-
-  // --- All other methods ported from ChronoAnalyzer ---
 
   private setupEventListeners = () => {
     // Folder selection button is now Obsidian native
@@ -501,22 +498,11 @@ export class AnalysisController {
     }
   };
 
-  // --- THE REST OF THE METHODS ARE PORTED BELOW ---
-  // (This includes all aggregation, rendering, and helper functions)
-
-  // ...[The full content of all remaining methods from `calender.js` would be pasted here,
-  // following the porting pattern of replacing `document` with `this.rootEl` and using class properties.]
-
-  // NOTE: This is a representative sample of the full port.
-  // The following methods would be ported in their entirety.
-  // For brevity, only their signatures are shown. The implementation is a direct translation.
-
-  // Replace your entire updateAnalysis method with this corrected version.
-
   private updateAnalysis = () => {
     // We wrap the entire analysis logic in a setTimeout to de-couple it from the
     // event loop and allow the UI to feel more responsive.
     setTimeout(() => {
+      // console.log(`[DEBUG] 2. Entering updateAnalysis: Starting with ${this.records.length} total records.`);
       const statsGrid = this.rootEl.querySelector<HTMLElement>('#statsGrid');
       const mainChartContainer = this.rootEl.querySelector<HTMLElement>('#mainChartContainer');
       const errorLogContainer = this.rootEl.querySelector<HTMLElement>('#errorLogContainer');
@@ -549,6 +535,8 @@ export class AnalysisController {
       const filteredDataResults = this.getFilteredRecords();
       this.filteredRecordsForCharts = filteredDataResults.records;
 
+      // console.log(`[DEBUG] 5. After Filtering: this.filteredRecordsForCharts now has ${this.filteredRecordsForCharts.length} records.`);
+
       notice.hide();
 
       if (this.filteredRecordsForCharts.length === 0 && this.records.length > 0) {
@@ -579,7 +567,54 @@ export class AnalysisController {
       let analysisName = 'Unknown';
 
       if (analysisType === 'sunburst') {
-        // ... sunburst logic ...
+        analysisName = 'Category Breakdown';
+        if (legendEl) legendEl.style.display = ''; // SHOW legend for sunburst charts
+        const levelSelect = document.getElementById('levelSelect') as HTMLSelectElement | null;
+        const patternInput = document.getElementById('patternInput') as HTMLInputElement | null;
+
+        const sunburstLevel = levelSelect?.value ?? '';
+        const pattern = patternInput?.value ?? '';
+
+        let recordsForSunburst = filteredDataResults.records;
+
+        // Apply category filter to the records before aggregation
+        if (pattern?.trim()) {
+          try {
+            const regex = new RegExp(pattern.trim(), 'i');
+            const outerField = sunburstLevel === 'project' ? 'project' : 'subproject';
+            recordsForSunburst = filteredDataResults.records.filter(record => {
+              const outerValue = record[outerField] || '';
+              return regex.test(outerValue);
+            });
+          } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            mainChartEl.innerHTML = `<p class="chart-message error">Invalid Regex: ${errorMessage}</p>`;
+            this.showStatus(`Invalid Category Filter Regex: ${errorMessage}`, 'error');
+            if (legendEl) legendEl.innerHTML = ''; // Clear legend on error
+            return;
+          }
+        }
+
+        this.currentSunburstAggregatedData = this.aggregateForSunburst(
+          recordsForSunburst,
+          sunburstLevel
+        );
+
+        if (
+          this.currentSunburstAggregatedData &&
+          this.currentSunburstAggregatedData.ids.length > 1
+        ) {
+          // more than just the root
+          this.renderSunburstChartDisplay(this.currentSunburstAggregatedData);
+        } else if (pattern?.trim() && recordsForSunburst.length === 0) {
+          mainChartEl.innerHTML =
+            '<p class="chart-message">No data matches the Category Filter.</p>';
+          if (legendEl) legendEl.innerHTML = ''; // Also clear legend content
+        } else {
+          mainChartEl.innerHTML =
+            '<p class="chart-message">No data for Sunburst Chart with current filters.</p>';
+          if (legendEl) legendEl.innerHTML = ''; // Also clear legend content
+        }
       } else {
         if (legendEl) legendEl.style.display = 'none';
 
@@ -661,48 +696,46 @@ export class AnalysisController {
     }
     return null;
   }
-  private calculateDuration(startTime: any, endTime: any, days?: number): number {
-    const parseTime = (timeStr: any) => {
-      if (timeStr == null) throw new Error('Invalid time: null or undefined.');
+
+  private calculateDuration(startTime: any, endTime: any, days = 1): number {
+    const parseTime = (timeStr: any): { hours: number; minutes: number } | null => {
+      if (timeStr == null) return null;
+
       if (typeof timeStr === 'number') {
-        if (isNaN(timeStr) || !isFinite(timeStr))
-          throw new Error(`Invalid numeric time: ${timeStr}`);
+        if (isNaN(timeStr) || !isFinite(timeStr)) return null;
         return {
           hours: Math.floor(timeStr),
           minutes: Math.round((timeStr - Math.floor(timeStr)) * 60)
         };
       }
+
       const sTimeStr = String(timeStr);
-      const timeMatch = sTimeStr.match(/^(\d{1,2}):(\d{2})/); // Only need HH:MM
-      if (timeMatch)
-        return {
-          hours: parseInt(timeMatch[1]),
-          minutes: parseInt(timeMatch[2])
-        };
+      const timeMatch = sTimeStr.match(/^(\d{1,2}):(\d{2})/);
+      if (timeMatch) return { hours: parseInt(timeMatch[1]), minutes: parseInt(timeMatch[2]) };
+
       try {
         const d = new Date(sTimeStr);
-        if (!isNaN(d.getTime()))
-          return {
-            hours: d.getUTCHours(),
-            minutes: d.getUTCMinutes()
-          };
+        if (!isNaN(d.getTime())) return { hours: d.getUTCHours(), minutes: d.getUTCMinutes() };
       } catch (e) {
         /* ignore */
       }
-      throw new Error(`Invalid time format: ${sTimeStr}. Use HH:MM or decimal hours.`);
+
+      return null;
     };
+
     try {
       const start = parseTime(startTime);
       const end = parseTime(endTime);
+      if (!start || !end) return 0;
+
       let startMinutes = start.hours * 60 + start.minutes;
       let endMinutes = end.hours * 60 + end.minutes;
-      if (endMinutes < startMinutes) endMinutes += 24 * 60; // Handles overnight
+      if (endMinutes < startMinutes) endMinutes += 24 * 60; // Handles overnight tasks
 
       const durationForOneDay = (endMinutes - startMinutes) / 60;
       const numDays = Number(days) || 0;
       return durationForOneDay * Math.max(0, numDays);
     } catch (err) {
-      // console.warn(`Duration calculation error for (start:"${startTime}", end:"${endTime}", days:${days}): ${err.message}. Returning 0.`);
       return 0;
     }
   }
@@ -805,6 +838,12 @@ export class AnalysisController {
       endDateStr = this._getISODate(this.flatpickrInstance.selectedDates[1]) || '';
     }
 
+    // console.log("[DEBUG] 3. Inside getFilteredRecords - Current Filters:", {
+    //         hierarchy: hierarchyFilter,
+    //         project: projectFilter,
+    //         startDate: startDateStr,
+    //         endDate: endDateStr
+    // });
     let filterStartDate: Date | null = startDateStr ? new Date(startDateStr) : null;
     let filterEndDate: Date | null = endDateStr ? new Date(endDateStr) : null;
 
@@ -835,7 +874,10 @@ export class AnalysisController {
           if (effectiveDuration > 0) includeRecord = true;
         }
       } else {
-        // THIS IS THE LINE THAT CAUSED THE ERROR
+        // console.log(`[DEBUG] Date Filter REJECTED record:`, {
+        //     fileName: record.file,
+        //     recordDate: record.date // This will likely be null or invalid
+        // });
         if (this.isWithinDateRange(record.date, startDateStr, endDateStr)) {
           effectiveDuration = record.duration;
           includeRecord = true;
@@ -851,6 +893,7 @@ export class AnalysisController {
         uniqueFiles.add(record.path);
       }
     }
+    // console.log(`[DEBUG] 4. Exiting getFilteredRecords: ${filteredRecs.length} records remain after filtering.`);
     return {
       records: filteredRecs,
       totalHours,
@@ -860,42 +903,54 @@ export class AnalysisController {
     };
   }
 
+  // Replace the entire isWithinDateRange method with this one.
+
   private isWithinDateRange(
     recordDateObj: Date | null,
     filterStartDateStr: string,
     filterEndDateStr: string
   ): boolean {
-    if (!recordDateObj || isNaN(recordDateObj.getTime())) return false;
+    // If no date filters are set, the record is always within range.
+    if (!filterStartDateStr && !filterEndDateStr) {
+      return true;
+    }
 
-    let filterStartDate: Date | null = null;
+    // If the record itself has no date, it cannot be in any date range.
+    if (!recordDateObj || isNaN(recordDateObj.getTime())) {
+      return false;
+    }
+
+    // --- FIX: Normalize all dates to UTC midnight to ignore timezones ---
+    const recordTime = new Date(
+      Date.UTC(
+        recordDateObj.getUTCFullYear(),
+        recordDateObj.getUTCMonth(),
+        recordDateObj.getUTCDate()
+      )
+    ).getTime();
+
     if (filterStartDateStr) {
       const [y, m, d] = filterStartDateStr.split('-').map(Number);
-      filterStartDate = new Date(Date.UTC(y, m - 1, d));
-      if (isNaN(filterStartDate.getTime())) filterStartDate = null;
+      const filterStartTime = new Date(Date.UTC(y, m - 1, d)).getTime();
+      if (recordTime < filterStartTime) {
+        return false; // Record is before the start date
+      }
     }
 
-    let filterEndDate: Date | null = null;
     if (filterEndDateStr) {
       const [y, m, d] = filterEndDateStr.split('-').map(Number);
-      filterEndDate = new Date(Date.UTC(y, m - 1, d));
-      if (isNaN(filterEndDate.getTime())) filterEndDate = null;
+      const filterEndTime = new Date(Date.UTC(y, m - 1, d)).getTime();
+      if (recordTime > filterEndTime) {
+        return false; // Record is after the end date
+      }
     }
 
-    if (!filterStartDate && !filterEndDate) return true;
-
-    // Set end of day for the end date to include the full day
-    if (filterEndDate) {
-      filterEndDate.setUTCHours(23, 59, 59, 999);
-    }
-
-    return !(
-      (filterStartDate && recordDateObj < filterStartDate) ||
-      (filterEndDate && recordDateObj > filterEndDate)
-    );
+    // If we passed all checks, the record is within the range.
+    return true;
   }
 
   private aggregateForSunburst(filteredRecords: TimeRecord[], level: string): SunburstData {
-    console.log(`[Chrono Analyser] Aggregating for Sunburst level: "${level}"`);
+    // console.log(`[Chrono Analyser] Aggregating for Sunburst level: "${level}"`);
 
     // FIX: Initialize with explicitly typed empty arrays.
     const data: SunburstData = {
@@ -1048,7 +1103,13 @@ export class AnalysisController {
         textinfo: 'label+percent',
         textposition: 'outside',
         hoverinfo: 'label+value+percent',
-        automargin: true
+        automargin: true,
+        marker: {
+            line: {
+                color: 'white',
+                width: 2
+            }
+        }
       }
     ];
     const layout: Partial<Plotly.Layout> = {
@@ -1602,13 +1663,14 @@ export class AnalysisController {
     const tableBody = this.rootEl.querySelector<HTMLTableSectionElement>('#popupTableBody');
     const detailOverlay = this.rootEl.querySelector<HTMLElement>('#detailOverlay');
     const detailPopup = this.rootEl.querySelector<HTMLElement>('#detailPopup');
+    const popupBodyEl = this.rootEl.querySelector<HTMLElement>('.popup-body'); 
 
     // Ensure all required elements exist before proceeding
-    if (!popupTitleEl || !popupSummaryStatsEl || !tableBody || !detailOverlay || !detailPopup) {
-      console.error('Popup DOM elements not found!');
-      return;
+    if (!popupTitleEl || !popupSummaryStatsEl || !tableBody || !detailOverlay || !detailPopup || !popupBodyEl) {
+        console.error('Popup DOM elements not found!');
+        return;
     }
-
+    popupBodyEl.scrollTop = 0;
     popupTitleEl.textContent = `Details for: ${categoryName}`;
 
     const numSourceFiles = new Set(recordsList.map(r => r.path)).size;

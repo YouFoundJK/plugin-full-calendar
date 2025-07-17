@@ -1,5 +1,3 @@
-console.log('Reloaded Full Calendar at ' + new Date().toISOString());
-
 import { MarkdownView, Notice, Plugin, TFile } from 'obsidian';
 import { CalendarView, FULL_CALENDAR_SIDEBAR_VIEW_TYPE, FULL_CALENDAR_VIEW_TYPE } from './ui/view';
 import { renderCalendar } from './ui/calendar';
