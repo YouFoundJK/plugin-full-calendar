@@ -20,7 +20,7 @@ import { openFileForEvent } from './actions';
 import { launchCreateModal, launchEditModal } from './event_modal';
 import { isTask, toggleTask, unmakeTask } from 'src/ui/tasks';
 import { UpdateViewCallback } from 'src/core/EventCache';
-import { activateAnalysisView } from './chrono_analyser/AnalysisView';
+import { activateAnalysisView } from '../chrono_analyser/AnalysisView';
 
 export const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
 export const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';

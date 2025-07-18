@@ -1,49 +1,12 @@
 import { ItemView, TFolder, Notice, App, WorkspaceLeaf } from 'obsidian';
 import { createDOMStructure } from './dom';
 import { AnalysisController } from './controller';
-import FullCalendarPlugin from '../../main';
+import FullCalendarPlugin from '../main';
 
 // Importing styles for the AnalysisView
-import "flatpickr/dist/themes/dark.css";
+import 'flatpickr/dist/themes/dark.css';
 import './chrono_styles.css';
 
-/**
- *
- * @param app Dummy Obsidian App instance. DELETE later
- * @returns
- */
-export async function revealAnalysisFolder(app: App) {
-  const target = app.vault.getAbstractFileByPath('Calender');
-  if (!target || !(target instanceof TFolder)) {
-    new Notice('Folder “Calender” not found');
-    return;
-  }
-
-  let leaf: WorkspaceLeaf | null = app.workspace.getLeavesOfType('file-explorer')[0] ?? null;
-  if (!leaf) {
-    leaf = app.workspace.getLeftLeaf(false);
-    if (!leaf) {
-      new Notice('Unable to open file explorer.');
-      return;
-    }
-    await leaf.setViewState({ type: 'file-explorer' });
-  }
-
-  app.workspace.revealLeaf(leaf);
-  const view = leaf.view as {
-    revealInFolder?: (folder: TFolder) => void;
-    reveal?: (folder: TFolder) => void;
-  };
-  if (typeof view.revealInFolder === 'function') {
-    view.revealInFolder(target);
-  } else if (typeof view.reveal === 'function') {
-    view.reveal(target);
-  } else {
-    new Notice('Unable to reveal folder in this version of Obsidian.');
-  }
-}
-
-// --- ChronoAnalyser View Type ---
 export const ANALYSIS_VIEW_TYPE = 'full-calendar-analysis-view';
 
 export class AnalysisView extends ItemView {
