@@ -176,7 +176,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
         <div class="log-container" id="errorLogContainer" style="display: none;">
           <h2>📋 Processing Log & Issues</h2>
           <div id="cacheStatusDisplay" class="log-summary"
-            style="margin-bottom: 15px; background-color: #eef2ff; border-color: #c7d2fe; padding: 12px 15px; font-size: 0.95rem;">
+            style="margin-bottom: 15px; background-color: #eef2ff; border-color: #c7d2fe; padding: 12px 15px; font-size: 0.95rem; display: none;">
           </div>
           <div class="log-summary" id="errorLogSummary">No issues found.</div>
           <div id="errorLogEntries"></div>

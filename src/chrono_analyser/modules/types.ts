@@ -1,5 +1,3 @@
-// src/ui/chrono_analyser/modules/types.ts
-
 /**
  * @file Defines all shared data structures, interfaces, and type definitions for the Chrono Analyser.
  * This centralizes the data contracts used across different modules (parsing, aggregation, plotting).
