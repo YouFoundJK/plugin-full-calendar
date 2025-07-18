@@ -189,7 +189,21 @@ export class AnalysisController {
 
       // Check if file is in cache and has not been modified
       if (cachedEntry && cachedEntry.mtime === file.stat.mtime) {
-        this.records.push(cachedEntry.record);
+        const recordFromCache = cachedEntry.record;
+
+        // JSON serialization turns Date objects into strings. We must convert them back.
+        if (recordFromCache.date && typeof recordFromCache.date === 'string') {
+          recordFromCache.date = new Date(recordFromCache.date);
+        }
+        // Also handle recurring dates if they exist in metadata
+        if (recordFromCache.metadata.startRecur && typeof recordFromCache.metadata.startRecur === 'string') {
+            recordFromCache.metadata.startRecur = new Date(recordFromCache.metadata.startRecur);
+        }
+        if (recordFromCache.metadata.endRecur && typeof recordFromCache.metadata.endRecur === 'string') {
+            recordFromCache.metadata.endRecur = new Date(recordFromCache.metadata.endRecur);
+        }
+
+        this.records.push(recordFromCache);
         filesFromCache++;
         continue;
       }
@@ -204,7 +218,7 @@ export class AnalysisController {
         this.processingErrors.push({
           file: error.fileName || 'Unknown',
           path: error.filePath || 'N/A',
-          reason: error.message || 'Unknown error'
+          reason: error.message || 'Unknown error',
         });
       }
     }
