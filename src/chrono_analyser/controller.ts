@@ -52,6 +52,7 @@ export class AnalysisController {
   public async initialize(): Promise<void> {
     await this.loadCache();
     this.setupEventListeners();
+    this.registerVaultEvents();
     this.loadUIState();
     this.handleAnalysisTypeChange();
     await this.loadInitialFolder();
@@ -120,6 +121,63 @@ export class AnalysisController {
     }
   }
 
+  /**
+   * Registers listeners for vault events to keep the cache and view in sync.
+   */
+  private registerVaultEvents(): void {
+      // When a file is modified
+      this.plugin.registerEvent(
+          this.app.vault.on('modify', async (file) => {
+              if (file instanceof TFile && file.extension.toLowerCase() === 'md' && this.cache[file.path]) {
+                  // The file is one we are tracking. Invalidate its cache and re-parse.
+                  console.log(`[Chrono] Re-parsing modified file: ${file.path}`);
+                  try {
+                      const record = await Parser.parseFile(this.app, file);
+                      // Update cache and in-memory records
+                      this.cache[file.path] = { mtime: file.stat.mtime, record };
+                      const recordIndex = this.records.findIndex(r => r.path === file.path);
+                      if (recordIndex > -1) this.records[recordIndex] = record;
+                      await this.saveCache();
+                      this.updateAnalysis(); // Refresh the view
+                  } catch (e) { /* handle parse error if needed */ }
+              }
+          })
+      );
+
+      // When a file is deleted
+      this.plugin.registerEvent(
+          this.app.vault.on('delete', (file) => {
+              if (file.path in this.cache) {
+                  console.log(`[Chrono] Removing deleted file from cache: ${file.path}`);
+                  delete this.cache[file.path];
+                  this.records = this.records.filter(r => r.path !== file.path);
+                  this.saveCache();
+                  this.updateAnalysis(); // Refresh the view
+              }
+          })
+      );
+
+      // When a file is renamed
+      this.plugin.registerEvent(
+          this.app.vault.on('rename', (file, oldPath) => {
+              if (oldPath in this.cache) {
+                  console.log(`[Chrono] Updating renamed file in cache: ${oldPath} -> ${file.path}`);
+                  // The mtime and content are the same, just the path changes
+                  this.cache[file.path] = this.cache[oldPath];
+                  delete this.cache[oldPath];
+
+                  const record = this.records.find(r => r.path === oldPath);
+                  if (record) record.path = file.path; // Update in-memory record path
+
+                  this.saveCache();
+                  this.updateAnalysis(); // Refresh the view
+              }
+          })
+      );
+      // Note: You could also add `app.vault.on('create', ...)` but it's less critical,
+      // as it will be picked up on the next folder scan anyway. `modify` and `delete` are key for data integrity.
+  }
+
   private async processFiles(files: TFile[], notice: Notice): Promise<void> {
     this.records = [];
     this.processingErrors = [];
@@ -163,10 +221,21 @@ export class AnalysisController {
     this.updateAnalysis();
   }
 
-  // --- (The rest of the file remains largely the same) ---
-  // Paste the entire rest of the controller.ts file from the previous correct version here.
-  // No other logic changes are needed in the other methods for the caching system to work.
-  // I will include it in full below for completeness.
+  /**
+   * Handles the "Clear Cache" button click.
+   * This clears the persistent cache and triggers a full re-scan of the current folder.
+   */
+  private handleClearCache = async () => {
+      new Notice('Clearing Chrono Analyser cache...', 2000);
+      this.cache = {}; // Clear in-memory cache
+      await this.saveCache(); // Persist the empty cache
+
+      // Find the currently selected folder to re-process it
+      // A more robust way would be to store the current folder path in a private property
+      // For now, we assume a folder has been loaded and re-run the initial load logic.
+      new Notice('Cache cleared. Re-scanning folder...', 3000);
+      await this.loadInitialFolder(); // Or re-process the currently active folder
+  };
 
   private showStatus(
     message: string,
@@ -213,9 +282,7 @@ export class AnalysisController {
         onChange: () => this.updateAnalysis()
       });
     }
-    this.rootEl
-      .querySelector('#clearCacheBtn')
-      ?.addEventListener('click', () => new Notice('Cache clearing will be implemented later.'));
+    this.rootEl.querySelector('#clearCacheBtn')?.addEventListener('click', this.handleClearCache);
     this.rootEl.querySelector('#clearDatesBtn')?.addEventListener('click', this.clearDateFilters);
     this.rootEl
       .querySelector('#setTodayBtn')
