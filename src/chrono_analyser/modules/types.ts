@@ -1,3 +1,5 @@
+// src/ui/chrono_analyser/modules/types.ts
+
 /**
  * @file Defines all shared data structures, interfaces, and type definitions for the Chrono Analyser.
  * This centralizes the data contracts used across different modules (parsing, aggregation, plotting).
@@ -5,10 +7,8 @@
 
 import Plotly from '../plotly-custom';
 
-/**
- * Represents a single time-logged event parsed from a file.
- * This is the core data object used throughout the analysis pipeline.
- */
+// ... (keep all existing interfaces like TimeRecord, ProcessingError, etc.)
+
 export interface TimeRecord {
   path: string;
   hierarchy: string;
@@ -19,14 +19,6 @@ export interface TimeRecord {
   file: string;
   date: Date | null;
   metadata: FileMetadata;
-
-  /**
-   * The calculated duration for the event within the currently filtered date period.
-   * For non-recurring events, this is the same as `duration`.
-   * For recurring events, this is `duration * numberOfInstancesInPeriod`.
-   * This property is added during the filtering stage.
-   * @private
-   */
   _effectiveDurationInPeriod?: number;
 }
 
@@ -84,3 +76,19 @@ export const PLOTLY_DARK_LAYOUT: Partial<Plotly.Layout> = {
     bordercolor: 'var(--background-modifier-border)'
   }
 };
+
+// --- NEW CACHE TYPES ---
+
+/**
+ * Defines the structure for a single cached entry.
+ * It stores the parsed record and the file's modification time to validate the cache.
+ */
+export interface CacheEntry {
+  mtime: number;
+  record: TimeRecord;
+}
+
+/**
+ * Defines the entire cache object, which maps file paths to their CacheEntry.
+ */
+export type ChronoCache = Record<string, CacheEntry>;

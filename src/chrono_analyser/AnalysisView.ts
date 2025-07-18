@@ -1,4 +1,4 @@
-import { ItemView, TFolder, Notice, App, WorkspaceLeaf } from 'obsidian';
+import { ItemView, App, WorkspaceLeaf } from 'obsidian';
 import { createDOMStructure } from './dom';
 import { AnalysisController } from './controller';
 import FullCalendarPlugin from '../main';
@@ -13,9 +13,11 @@ export class AnalysisView extends ItemView {
   private controller: AnalysisController | null = null;
 
   // The constructor now requires the `app` instance.
-  constructor(leaf: WorkspaceLeaf, plugin: FullCalendarPlugin) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    private plugin: FullCalendarPlugin
+  ) {
     super(leaf);
-    plugin: FullCalendarPlugin;
   }
 
   getViewType(): string {
@@ -42,7 +44,7 @@ export class AnalysisView extends ItemView {
     createDOMStructure(container as HTMLElement);
 
     // 5. Initialize the controller to bring the view to life
-    this.controller = new AnalysisController(this.app, container as HTMLElement);
+    this.controller = new AnalysisController(this.app, container as HTMLElement, this.plugin);
     this.controller.initialize();
   }
 

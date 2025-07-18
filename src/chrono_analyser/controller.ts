@@ -1,3 +1,5 @@
+// src/ui/chrono_analyser/controller.ts
+
 /**
  * @file The main orchestrator for the Chrono Analyser.
  * The AnalysisController class manages the application's state, handles user interactions,
@@ -8,6 +10,7 @@ import { App, Notice, TFile, TFolder, debounce } from 'obsidian';
 import flatpickr from 'flatpickr';
 import { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import Plotly from './plotly-custom';
+import FullCalendarPlugin from 'src/main'; // Adjust path if necessary
 
 // Import from our new modules
 import * as Parser from './modules/parser';
@@ -15,7 +18,9 @@ import * as Aggregator from './modules/aggregator';
 import * as Plotter from './modules/plotter';
 import * as Utils from './modules/utils';
 import * as UI from './modules/ui';
-import { TimeRecord, ProcessingError, SunburstData, PieData } from './modules/types';
+import { TimeRecord, ProcessingError, SunburstData, PieData, ChronoCache } from './modules/types';
+
+const CACHE_NAMESPACE = 'chronoAnalyserCache';
 
 /**
  * Manages the entire lifecycle and state of the Chrono Analyser view.
@@ -23,6 +28,8 @@ import { TimeRecord, ProcessingError, SunburstData, PieData } from './modules/ty
 export class AnalysisController {
   private records: TimeRecord[] = [];
   private processingErrors: ProcessingError[] = [];
+  private cache: ChronoCache = {};
+
   private currentSunburstAggregatedData: SunburstData | null = null;
   private currentPieAggregatedData: PieData | null = null;
   private filteredRecordsForCharts: TimeRecord[] = [];
@@ -33,15 +40,17 @@ export class AnalysisController {
 
   constructor(
     private app: App,
-    private rootEl: HTMLElement
+    private rootEl: HTMLElement,
+    private plugin: FullCalendarPlugin // The plugin instance for data persistence
   ) {}
 
   /**
-   * Initializes the controller, setting up event listeners, loading UI state,
-   * and triggering the initial data load and analysis.
+   * Initializes the controller, loading the cache and UI state,
+   * setting up event listeners, and triggering the initial data load.
    * @async
    */
   public async initialize(): Promise<void> {
+    await this.loadCache();
     this.setupEventListeners();
     this.loadUIState();
     this.handleAnalysisTypeChange();
@@ -51,6 +60,113 @@ export class AnalysisController {
   public destroy(): void {
     this.flatpickrInstance?.destroy();
   }
+
+  // --- CACHE MANAGEMENT ---
+
+  private async loadCache(): Promise<void> {
+    const allData = await this.plugin.loadData();
+    this.cache = allData?.[CACHE_NAMESPACE] || {};
+    // console.log(`[Chrono] Cache loaded with ${Object.keys(this.cache).length} entries.`);
+  }
+
+  private async saveCache(): Promise<void> {
+    const allData = (await this.plugin.loadData()) || {};
+    allData[CACHE_NAMESPACE] = this.cache;
+    await this.plugin.saveData(allData);
+    // console.log(`[Chrono] Cache saved with ${Object.keys(this.cache).length} entries.`);
+  }
+
+  // --- DATA LOADING & PROCESSING ---
+
+  private async loadAndProcessFolder(folder: TFolder): Promise<void> {
+    this.clearAllFilters();
+    const notice = new Notice(`Scanning folder: "${folder.path}"...`, 0);
+    const filesToProcess: TFile[] = [];
+
+    const findFilesRecursively = (currentFolder: TFolder) => {
+      for (const child of currentFolder.children) {
+        if (child instanceof TFolder) {
+          findFilesRecursively(child);
+        } else if (child instanceof TFile && child.extension.toLowerCase() === 'md') {
+          filesToProcess.push(child);
+        }
+      }
+    };
+    findFilesRecursively(folder);
+
+    if (filesToProcess.length === 0) {
+      notice.setMessage('No .md files found in the selected folder.');
+      setTimeout(() => notice.hide(), 3000);
+      this.records = [];
+      this.processingErrors = [];
+      this.updateAnalysis();
+      return;
+    }
+
+    await this.processFiles(filesToProcess, notice);
+
+    // Prune cache: Remove entries for files that no longer exist in this folder
+    const seenPaths = new Set(filesToProcess.map(f => f.path));
+    let cacheWasModified = false;
+    for (const path in this.cache) {
+      if (path.startsWith(folder.path) && !seenPaths.has(path)) {
+        delete this.cache[path];
+        cacheWasModified = true;
+      }
+    }
+
+    if (cacheWasModified) {
+      await this.saveCache();
+    }
+  }
+
+  private async processFiles(files: TFile[], notice: Notice): Promise<void> {
+    this.records = [];
+    this.processingErrors = [];
+    let filesParsed = 0;
+    let filesFromCache = 0;
+
+    for (const file of files) {
+      const cachedEntry = this.cache[file.path];
+
+      // Check if file is in cache and has not been modified
+      if (cachedEntry && cachedEntry.mtime === file.stat.mtime) {
+        this.records.push(cachedEntry.record);
+        filesFromCache++;
+        continue;
+      }
+
+      // If not in cache or modified, parse the file
+      try {
+        const record = await Parser.parseFile(this.app, file);
+        this.records.push(record);
+        this.cache[file.path] = { mtime: file.stat.mtime, record: record };
+        filesParsed++;
+      } catch (error: any) {
+        this.processingErrors.push({
+          file: error.fileName || 'Unknown',
+          path: error.filePath || 'N/A',
+          reason: error.message || 'Unknown error'
+        });
+      }
+    }
+
+    notice.setMessage(`Analysis complete. Parsed: ${filesParsed}, From cache: ${filesFromCache}.`);
+    setTimeout(() => notice.hide(), 4000);
+
+    // Save any new or updated cache entries
+    if (filesParsed > 0) {
+      await this.saveCache();
+    }
+
+    this.populateFilterDataSources();
+    this.updateAnalysis();
+  }
+
+  // --- (The rest of the file remains largely the same) ---
+  // Paste the entire rest of the controller.ts file from the previous correct version here.
+  // No other logic changes are needed in the other methods for the caching system to work.
+  // I will include it in full below for completeness.
 
   private showStatus(
     message: string,
@@ -82,64 +198,6 @@ export class AnalysisController {
       this.loadAndProcessFolder(folder);
     }).open();
   };
-
-  private async loadAndProcessFolder(folder: TFolder): Promise<void> {
-    this.clearAllFilters();
-    const notice = new Notice(`Scanning folder: "${folder.path}"...`, 2000);
-    const filesToProcess: TFile[] = [];
-
-    const findFilesRecursively = (currentFolder: TFolder) => {
-      for (const child of currentFolder.children) {
-        if (child instanceof TFolder) {
-          findFilesRecursively(child);
-        } else if (child instanceof TFile && child.extension.toLowerCase() === 'md') {
-          filesToProcess.push(child);
-        }
-      }
-    };
-
-    findFilesRecursively(folder);
-    notice.hide();
-
-    if (filesToProcess.length === 0) {
-      this.showStatus('No .md files found in the selected folder.', 'info', 3000);
-      this.records = [];
-      this.processingErrors = [];
-      this.updateAnalysis();
-      return;
-    }
-
-    await this.processFiles(filesToProcess);
-  }
-
-  private async processFiles(files: TFile[]): Promise<void> {
-    const notice = new Notice(`Parsing ${files.length} files...`, 10000);
-    this.records = [];
-    this.processingErrors = [];
-
-    const promises = files.map(file => Parser.parseFile(this.app, file));
-    const results = await Promise.allSettled(promises);
-
-    results.forEach(result => {
-      if (result.status === 'fulfilled' && result.value) {
-        this.records.push(result.value);
-      } else if (result.status === 'rejected') {
-        this.processingErrors.push({
-          file: result.reason.fileName || 'Unknown',
-          path: result.reason.filePath || 'N/A',
-          reason: result.reason.message || 'Unknown error'
-        });
-      }
-    });
-
-    notice.setMessage(
-      `Processed: ${this.records.length} valid files. Issues: ${this.processingErrors.length}.`
-    );
-    setTimeout(() => notice.hide(), 4000);
-
-    this.populateFilterDataSources();
-    this.updateAnalysis();
-  }
 
   private setupEventListeners = () => {
     this.rootEl
@@ -314,12 +372,6 @@ export class AnalysisController {
     }
   };
 
-  /**
-   * The core analysis and rendering pipeline, triggered by any change in filters or data.
-   * This function is debounced to prevent rapid-fire updates. It orchestrates filtering,
-   * aggregating, and calling the appropriate plotting function from the plotter module.
-   * It is the central hub for refreshing the view's content.
-   */
   private updateAnalysis = () => {
     setTimeout(() => {
       const statsGrid = this.rootEl.querySelector<HTMLElement>('#statsGrid');
@@ -348,13 +400,9 @@ export class AnalysisController {
         return;
       }
 
-      const notice = new Notice(`Updating analysis...`, 2000);
-
       Plotter.renderErrorLog(this.rootEl, this.processingErrors, this.records.length);
       const filteredDataResults = this.getFilteredRecords();
       this.filteredRecordsForCharts = filteredDataResults.records;
-
-      notice.hide();
 
       if (this.filteredRecordsForCharts.length === 0 && this.records.length > 0) {
         new Notice('No data matches current filters.', 3000);
@@ -479,13 +527,6 @@ export class AnalysisController {
     }, 50);
   };
 
-  /**
-   * Filters the master list of `records` based on the current UI filter settings
-   * (date range, hierarchy, project). It also calculates the effective duration
-   * for recurring events within the selected period.
-   *
-   * @returns An object containing the filtered records, total hours, file count, and the date range used.
-   */
   private getFilteredRecords(): {
     records: TimeRecord[];
     totalHours: number;
