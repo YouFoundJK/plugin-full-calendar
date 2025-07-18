@@ -125,57 +125,63 @@ export class AnalysisController {
    * Registers listeners for vault events to keep the cache and view in sync.
    */
   private registerVaultEvents(): void {
-      // When a file is modified
-      this.plugin.registerEvent(
-          this.app.vault.on('modify', async (file) => {
-              if (file instanceof TFile && file.extension.toLowerCase() === 'md' && this.cache[file.path]) {
-                  // The file is one we are tracking. Invalidate its cache and re-parse.
-                  console.log(`[Chrono] Re-parsing modified file: ${file.path}`);
-                  try {
-                      const record = await Parser.parseFile(this.app, file);
-                      // Update cache and in-memory records
-                      this.cache[file.path] = { mtime: file.stat.mtime, record };
-                      const recordIndex = this.records.findIndex(r => r.path === file.path);
-                      if (recordIndex > -1) this.records[recordIndex] = record;
-                      await this.saveCache();
-                      this.updateAnalysis(); // Refresh the view
-                  } catch (e) { /* handle parse error if needed */ }
-              }
-          })
-      );
+    // When a file is modified
+    this.plugin.registerEvent(
+      this.app.vault.on('modify', async file => {
+        if (
+          file instanceof TFile &&
+          file.extension.toLowerCase() === 'md' &&
+          this.cache[file.path]
+        ) {
+          // The file is one we are tracking. Invalidate its cache and re-parse.
+          console.log(`[Chrono] Re-parsing modified file: ${file.path}`);
+          try {
+            const record = await Parser.parseFile(this.app, file);
+            // Update cache and in-memory records
+            this.cache[file.path] = { mtime: file.stat.mtime, record };
+            const recordIndex = this.records.findIndex(r => r.path === file.path);
+            if (recordIndex > -1) this.records[recordIndex] = record;
+            await this.saveCache();
+            this.updateAnalysis(); // Refresh the view
+          } catch (e) {
+            /* handle parse error if needed */
+          }
+        }
+      })
+    );
 
-      // When a file is deleted
-      this.plugin.registerEvent(
-          this.app.vault.on('delete', (file) => {
-              if (file.path in this.cache) {
-                  console.log(`[Chrono] Removing deleted file from cache: ${file.path}`);
-                  delete this.cache[file.path];
-                  this.records = this.records.filter(r => r.path !== file.path);
-                  this.saveCache();
-                  this.updateAnalysis(); // Refresh the view
-              }
-          })
-      );
+    // When a file is deleted
+    this.plugin.registerEvent(
+      this.app.vault.on('delete', file => {
+        if (file.path in this.cache) {
+          console.log(`[Chrono] Removing deleted file from cache: ${file.path}`);
+          delete this.cache[file.path];
+          this.records = this.records.filter(r => r.path !== file.path);
+          this.saveCache();
+          this.updateAnalysis(); // Refresh the view
+        }
+      })
+    );
 
-      // When a file is renamed
-      this.plugin.registerEvent(
-          this.app.vault.on('rename', (file, oldPath) => {
-              if (oldPath in this.cache) {
-                  console.log(`[Chrono] Updating renamed file in cache: ${oldPath} -> ${file.path}`);
-                  // The mtime and content are the same, just the path changes
-                  this.cache[file.path] = this.cache[oldPath];
-                  delete this.cache[oldPath];
+    // When a file is renamed
+    this.plugin.registerEvent(
+      this.app.vault.on('rename', (file, oldPath) => {
+        if (oldPath in this.cache) {
+          console.log(`[Chrono] Updating renamed file in cache: ${oldPath} -> ${file.path}`);
+          // The mtime and content are the same, just the path changes
+          this.cache[file.path] = this.cache[oldPath];
+          delete this.cache[oldPath];
 
-                  const record = this.records.find(r => r.path === oldPath);
-                  if (record) record.path = file.path; // Update in-memory record path
+          const record = this.records.find(r => r.path === oldPath);
+          if (record) record.path = file.path; // Update in-memory record path
 
-                  this.saveCache();
-                  this.updateAnalysis(); // Refresh the view
-              }
-          })
-      );
-      // Note: You could also add `app.vault.on('create', ...)` but it's less critical,
-      // as it will be picked up on the next folder scan anyway. `modify` and `delete` are key for data integrity.
+          this.saveCache();
+          this.updateAnalysis(); // Refresh the view
+        }
+      })
+    );
+    // Note: You could also add `app.vault.on('create', ...)` but it's less critical,
+    // as it will be picked up on the next folder scan anyway. `modify` and `delete` are key for data integrity.
   }
 
   private async processFiles(files: TFile[], notice: Notice): Promise<void> {
@@ -196,11 +202,17 @@ export class AnalysisController {
           recordFromCache.date = new Date(recordFromCache.date);
         }
         // Also handle recurring dates if they exist in metadata
-        if (recordFromCache.metadata.startRecur && typeof recordFromCache.metadata.startRecur === 'string') {
-            recordFromCache.metadata.startRecur = new Date(recordFromCache.metadata.startRecur);
+        if (
+          recordFromCache.metadata.startRecur &&
+          typeof recordFromCache.metadata.startRecur === 'string'
+        ) {
+          recordFromCache.metadata.startRecur = new Date(recordFromCache.metadata.startRecur);
         }
-        if (recordFromCache.metadata.endRecur && typeof recordFromCache.metadata.endRecur === 'string') {
-            recordFromCache.metadata.endRecur = new Date(recordFromCache.metadata.endRecur);
+        if (
+          recordFromCache.metadata.endRecur &&
+          typeof recordFromCache.metadata.endRecur === 'string'
+        ) {
+          recordFromCache.metadata.endRecur = new Date(recordFromCache.metadata.endRecur);
         }
 
         this.records.push(recordFromCache);
@@ -218,7 +230,7 @@ export class AnalysisController {
         this.processingErrors.push({
           file: error.fileName || 'Unknown',
           path: error.filePath || 'N/A',
-          reason: error.message || 'Unknown error',
+          reason: error.message || 'Unknown error'
         });
       }
     }
@@ -240,15 +252,15 @@ export class AnalysisController {
    * This clears the persistent cache and triggers a full re-scan of the current folder.
    */
   private handleClearCache = async () => {
-      new Notice('Clearing Chrono Analyser cache...', 2000);
-      this.cache = {}; // Clear in-memory cache
-      await this.saveCache(); // Persist the empty cache
+    new Notice('Clearing Chrono Analyser cache...', 2000);
+    this.cache = {}; // Clear in-memory cache
+    await this.saveCache(); // Persist the empty cache
 
-      // Find the currently selected folder to re-process it
-      // A more robust way would be to store the current folder path in a private property
-      // For now, we assume a folder has been loaded and re-run the initial load logic.
-      new Notice('Cache cleared. Re-scanning folder...', 3000);
-      await this.loadInitialFolder(); // Or re-process the currently active folder
+    // Find the currently selected folder to re-process it
+    // A more robust way would be to store the current folder path in a private property
+    // For now, we assume a folder has been loaded and re-run the initial load logic.
+    new Notice('Cache cleared. Re-scanning folder...', 3000);
+    await this.loadInitialFolder(); // Or re-process the currently active folder
   };
 
   private showStatus(
