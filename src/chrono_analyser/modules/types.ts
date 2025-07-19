@@ -90,3 +90,12 @@ export interface CacheEntry {
  * Defines the entire cache object, which maps file paths to their CacheEntry.
  */
 export type ChronoCache = Record<string, CacheEntry>;
+
+/**
+ * Defines the top-level structure for all data persisted by the Chrono Analyser.
+ * This includes the file cache and user settings like the last used folder path.
+ */
+export interface ChronoAnalyserData {
+  cache: ChronoCache;
+  lastFolderPath?: string;
+}

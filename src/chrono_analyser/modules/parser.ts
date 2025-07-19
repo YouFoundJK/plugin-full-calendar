@@ -1,3 +1,5 @@
+// src/ui/chrono_analyser/modules/parser.ts
+
 /**
  * @file Contains the logic for parsing a single markdown file into a structured TimeRecord object.
  * It handles both filename and YAML frontmatter parsing to extract all relevant event data.
@@ -14,19 +16,31 @@ import { calculateDuration } from './utils';
  * @async
  * @param app - The Obsidian App instance, used for reading file content.
  * @param file - The TFile object to be parsed.
+ * @param baseFolderPath - The path of the root folder selected for analysis. This is crucial for calculating the correct relative hierarchy.
  * @returns A promise that resolves to a structured TimeRecord object.
  * @throws An error object with `message`, `fileName`, and `filePath` if parsing fails at any step.
  */
-export async function parseFile(app: App, file: TFile): Promise<TimeRecord> {
+export async function parseFile(
+  app: App,
+  file: TFile,
+  baseFolderPath: string
+): Promise<TimeRecord> {
   try {
     const fileContent = await app.vault.read(file);
-    const pathParts = file.path.split('/');
-    const hierarchy =
-      pathParts.length > 2
-        ? pathParts[1]
-        : pathParts.length > 1 && pathParts[0] !== ''
-          ? pathParts[0]
-          : 'root';
+
+    // --- FIX: Calculate hierarchy relative to the selected base folder ---
+    // Normalize base path to ensure it has a trailing slash for clean slicing (unless it's the root).
+    const normalizedBasePath = baseFolderPath === '/' ? '' : `${baseFolderPath}/`;
+    const relativePath = file.path.startsWith(normalizedBasePath)
+      ? file.path.substring(normalizedBasePath.length)
+      : file.path;
+
+    const relativePathParts = relativePath.split('/');
+
+    // The hierarchy is the first directory in the relative path.
+    // If the file is directly inside the base folder, its length will be 1 (just the filename).
+    const hierarchy = relativePathParts.length > 1 ? relativePathParts[0] : '(root)';
+    // --- END OF FIX ---
 
     const filenameRegex =
       /^(?:(\d{4}-\d{2}-\d{2})\s+(.+?)\s+-\s+(.+?)(?:\s+([IVXLCDM\d]+))?|(?:\(([^)]+)\)\s*)(.+?)(?:\s*-\s*(.+?))?(?:\s+([IVXLCDM\d]+))?)\.md$/i;

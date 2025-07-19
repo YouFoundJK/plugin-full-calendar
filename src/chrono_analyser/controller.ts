@@ -17,7 +17,14 @@ import * as Plotter from './modules/plotter';
 import * as Utils from './modules/utils';
 import * as UI from './modules/ui';
 import { DataManager, AnalysisFilters } from './modules/DataManager';
-import { TimeRecord, ProcessingError, SunburstData, PieData, ChronoCache } from './modules/types';
+import {
+  TimeRecord,
+  ProcessingError,
+  SunburstData,
+  PieData,
+  ChronoCache,
+  ChronoAnalyserData
+} from './modules/types';
 
 const CACHE_NAMESPACE = 'chronoAnalyserCache';
 
@@ -28,6 +35,7 @@ export class AnalysisController {
   private dataManager: DataManager;
   private processingErrors: ProcessingError[] = [];
   private cache: ChronoCache = {};
+  private lastFolderPath: string | null = null;
 
   private currentSunburstAggregatedData: SunburstData | null = null;
   private currentPieAggregatedData: PieData | null = null;
@@ -49,7 +57,7 @@ export class AnalysisController {
    * @async
    */
   public async initialize(): Promise<void> {
-    await this.loadCache();
+    await this.loadCacheAndSettings();
     this.setupEventListeners();
     this.registerVaultEvents();
     this.loadUIState();
@@ -63,18 +71,81 @@ export class AnalysisController {
 
   // --- CACHE & DATA LOADING ---
 
-  private async loadCache(): Promise<void> {
-    const allData = await this.plugin.loadData();
-    this.cache = allData?.[CACHE_NAMESPACE] || {};
+  private async loadCacheAndSettings(): Promise<void> {
+    const allData = (await this.plugin.loadData()) || {};
+    const analyserData: Partial<ChronoAnalyserData> = allData[CACHE_NAMESPACE] || {};
+
+    // Use default values to safely extract properties.
+    this.cache = analyserData.cache ?? {};
+    // This line ensures that if `lastFolderPath` is undefined or null, `this.lastFolderPath` becomes null.
+    // This perfectly matches the type `string | null`.
+    this.lastFolderPath = analyserData.lastFolderPath ?? null;
   }
 
-  private async saveCache(): Promise<void> {
+  private async saveCacheAndSettings(): Promise<void> {
     const allData = (await this.plugin.loadData()) || {};
-    allData[CACHE_NAMESPACE] = this.cache;
+    const analyserData: ChronoAnalyserData = {
+      cache: this.cache,
+      lastFolderPath: this.lastFolderPath ?? undefined
+    };
+    allData[CACHE_NAMESPACE] = analyserData;
     await this.plugin.saveData(allData);
   }
 
-  private async processFiles(files: TFile[], notice: Notice): Promise<void> {
+  private async loadAndProcessFolder(folder: TFolder): Promise<void> {
+    this.clearAllFilters();
+    const notice = new Notice(`Scanning folder: "${folder.path}"...`, 0);
+
+    try {
+      const allMarkdownFiles = this.app.vault.getMarkdownFiles();
+      const folderPathWithSlash = folder.isRoot()
+        ? ''
+        : folder.path.endsWith('/')
+          ? folder.path
+          : `${folder.path}/`;
+      const filesToProcess = folder.isRoot()
+        ? allMarkdownFiles
+        : allMarkdownFiles.filter(file => file.path.startsWith(folderPathWithSlash));
+
+      if (filesToProcess.length === 0) {
+        notice.setMessage('No .md files found in the selected folder.');
+        this.dataManager.clear();
+        this.processingErrors = [];
+        this.updateAnalysis();
+        return;
+      }
+
+      // Pass the folder's path as the base for parsing
+      await this.processFiles(filesToProcess, folder.path, notice);
+
+      this.lastFolderPath = folder.path;
+      await this.saveCacheAndSettings();
+
+      const seenPaths = new Set(filesToProcess.map(f => f.path));
+      let cacheWasModified = false;
+      for (const path in this.cache) {
+        if (path.startsWith(folderPathWithSlash) && !seenPaths.has(path)) {
+          delete this.cache[path];
+          this.dataManager.removeRecord(path);
+          cacheWasModified = true;
+        }
+      }
+      if (cacheWasModified) {
+        await this.saveCacheAndSettings();
+      }
+    } catch (error) {
+      console.error('Chrono Analyser: Failed to process folder.', error);
+      notice.setMessage('An error occurred during processing. Check console for details.');
+    } finally {
+      setTimeout(() => notice.hide(), 4000);
+    }
+  }
+
+  private async processFiles(
+    files: TFile[],
+    baseFolderPath: string,
+    notice: Notice
+  ): Promise<void> {
     this.dataManager.clear();
     this.processingErrors = [];
     let filesParsed = 0;
@@ -84,7 +155,6 @@ export class AnalysisController {
       const cachedEntry = this.cache[file.path];
       if (cachedEntry && cachedEntry.mtime === file.stat.mtime) {
         const recordFromCache = cachedEntry.record;
-        // Revive dates...
         if (recordFromCache.date && typeof recordFromCache.date === 'string')
           recordFromCache.date = new Date(recordFromCache.date);
         if (
@@ -97,14 +167,14 @@ export class AnalysisController {
           typeof recordFromCache.metadata.endRecur === 'string'
         )
           recordFromCache.metadata.endRecur = new Date(recordFromCache.metadata.endRecur);
-
         this.dataManager.addRecord(recordFromCache);
         filesFromCache++;
       } else {
         try {
-          const record = await Parser.parseFile(this.app, file);
+          // Pass the baseFolderPath to the parser
+          const record = await Parser.parseFile(this.app, file, baseFolderPath);
           this.dataManager.addRecord(record);
-          this.cache[file.path] = { mtime: file.stat.mtime, record: record };
+          this.cache[file.path] = { mtime: file.stat.mtime, record };
           filesParsed++;
         } catch (error: any) {
           this.processingErrors.push({
@@ -116,13 +186,10 @@ export class AnalysisController {
       }
     }
 
-    // --- NEW: Finalize DataManager after all records are added ---
     this.dataManager.finalize();
-
     notice.setMessage(`Analysis complete. Parsed: ${filesParsed}, From cache: ${filesFromCache}.`);
-    setTimeout(() => notice.hide(), 4000);
 
-    if (filesParsed > 0) await this.saveCache();
+    if (filesParsed > 0) await this.saveCacheAndSettings();
 
     this.populateFilterDataSources();
     this.updateAnalysis();
@@ -131,56 +198,56 @@ export class AnalysisController {
   private registerVaultEvents(): void {
     this.plugin.registerEvent(
       this.app.vault.on('modify', async file => {
+        // Only process if we have a folder context and the file is inside it.
         if (
+          this.lastFolderPath &&
           file instanceof TFile &&
-          file.extension.toLowerCase() === 'md' &&
-          this.cache[file.path]
+          file.path.startsWith(this.lastFolderPath)
         ) {
           try {
-            const record = await Parser.parseFile(this.app, file);
-            this.dataManager.addRecord(record); // Add/Update in DataManager
+            const record = await Parser.parseFile(this.app, file, this.lastFolderPath);
+            this.dataManager.addRecord(record);
+            this.dataManager.finalize();
             this.cache[file.path] = { mtime: file.stat.mtime, record };
-            await this.saveCache();
+            await this.saveCacheAndSettings();
             this.populateFilterDataSources();
             this.updateAnalysis();
-          } catch (e) {
-            /* silent fail on background parse */
-          }
+          } catch (e) {}
         }
       })
     );
-
     this.plugin.registerEvent(
       this.app.vault.on('delete', file => {
-        if (file.path in this.cache) {
+        if (this.lastFolderPath && file.path in this.cache) {
           delete this.cache[file.path];
           this.dataManager.removeRecord(file.path);
-          this.saveCache();
+          this.dataManager.finalize();
+          this.saveCacheAndSettings();
           this.populateFilterDataSources();
           this.updateAnalysis();
         }
       })
     );
-
     this.plugin.registerEvent(
       this.app.vault.on('rename', async (file, oldPath) => {
-        // --- THIS IS THE FIX ---
-        // We only care about renamed files, not folders.
-        if (file instanceof TFile && oldPath in this.cache) {
+        // Handle both the old path being tracked, and the new path being in the current folder.
+        if (
+          this.lastFolderPath &&
+          file instanceof TFile &&
+          file.path.startsWith(this.lastFolderPath) &&
+          oldPath in this.cache
+        ) {
           try {
-            // Re-parse to get new path in record object and ensure metadata is correct
-            const newRecord = await Parser.parseFile(this.app, file);
+            const newRecord = await Parser.parseFile(this.app, file, this.lastFolderPath);
             this.dataManager.removeRecord(oldPath);
             this.dataManager.addRecord(newRecord);
-            // Use the .stat property now that TypeScript knows it's a TFile
+            this.dataManager.finalize();
             this.cache[file.path] = { mtime: file.stat.mtime, record: newRecord };
             delete this.cache[oldPath];
-            await this.saveCache();
+            await this.saveCacheAndSettings();
             this.populateFilterDataSources();
             this.updateAnalysis();
-          } catch (e) {
-            /* silent fail on background parse */
-          }
+          } catch (e) {}
         }
       })
     );
@@ -205,7 +272,6 @@ export class AnalysisController {
       const dates = this.flatpickrInstance?.selectedDates;
       const filterStartDate = dates && dates.length === 2 ? dates[0] : null;
       const filterEndDate = dates && dates.length === 2 ? dates[1] : null;
-
       const filters: AnalysisFilters = {
         hierarchy: hierarchyFilter,
         project: projectFilter,
@@ -254,7 +320,6 @@ export class AnalysisController {
       this.dataManager.getTotalRecordCount()
     );
 
-    // --- Handle "No Data" Case ---
     if (this.filteredRecordsForCharts.length === 0) {
       if (statsGrid) statsGrid.style.display = 'none';
       if (mainChartContainer) mainChartContainer.style.display = 'none';
@@ -286,19 +351,25 @@ export class AnalysisController {
       // A future refactor could move this into the DataManager too.
       let recordsForSunburst = this.filteredRecordsForCharts;
       if (pattern.trim()) {
-        // apply regex pattern...
+        try {
+          const regex = new RegExp(pattern.trim(), 'i');
+          const outerField = level === 'project' ? 'project' : 'subproject';
+          recordsForSunburst = this.filteredRecordsForCharts.filter(record =>
+            regex.test(record[outerField] || '')
+          );
+        } catch (e) {
+          /* handle error */
+        }
       }
       const sunburstData = Aggregator.aggregateForSunburst(recordsForSunburst, level);
 
       if (sunburstData && sunburstData.ids.length > 1) {
         Plotter.renderSunburstChartDisplay(this.rootEl, sunburstData, this.showDetailPopup);
       } else {
-        mainChartEl.innerHTML =
-          '<p class="chart-message">No data for Sunburst Chart with current filters.</p>';
+        mainChartEl.innerHTML = '<p class="chart-message">No data for Sunburst Chart.</p>';
       }
     } else {
       if (legendEl) legendEl.style.display = 'none';
-
       if (analysisType === 'time-series') {
         analysisName = 'Time-Series Trend';
         Plotter.renderTimeSeriesChart(this.rootEl, this.filteredRecordsForCharts, {
@@ -315,22 +386,16 @@ export class AnalysisController {
         );
       } else if (analysisType === 'pie') {
         analysisName = 'Category Breakdown';
-
-        // We now use the pre-aggregated pieData passed into this method
         if (!pieData.error && pieData.hours.size > 0) {
           Plotter.renderPieChartDisplay(this.rootEl, pieData, this.showDetailPopup);
         } else {
-          mainChartEl.innerHTML =
-            '<p class="chart-message">No data for Pie Chart with current filters.</p>';
+          mainChartEl.innerHTML = '<p class="chart-message">No data for Pie Chart.</p>';
         }
       }
     }
-
     if (analysisTypeStatEl) analysisTypeStatEl.textContent = analysisName;
   }
-
   // --- UI & Event Handlers ---
-
   private showStatus(
     message: string,
     type: 'info' | 'error' | 'success' | 'warning' = 'info',
@@ -346,57 +411,31 @@ export class AnalysisController {
 
   private async loadInitialFolder(): Promise<void> {
     const defaultPath = 'Calender';
-    const abstractFile = this.app.vault.getAbstractFileByPath(defaultPath);
+    let folderToLoad: TFolder | null = null;
+    let noticeMessage = '';
 
-    if (abstractFile instanceof TFolder) {
-      await this.loadAndProcessFolder(abstractFile);
+    if (this.lastFolderPath) {
+      const abstractFile = this.app.vault.getAbstractFileByPath(this.lastFolderPath);
+      if (abstractFile instanceof TFolder) {
+        folderToLoad = abstractFile;
+        noticeMessage = `Loading last used folder: "${this.lastFolderPath}"`;
+      }
+    }
+
+    if (!folderToLoad) {
+      const abstractFile = this.app.vault.getAbstractFileByPath(defaultPath);
+      if (abstractFile instanceof TFolder) {
+        folderToLoad = abstractFile;
+        noticeMessage = `Loading default folder: "${defaultPath}"`;
+      }
+    }
+
+    if (folderToLoad) {
+      this.showStatus(noticeMessage, 'info', 2000);
+      await this.loadAndProcessFolder(folderToLoad);
     } else {
-      this.showStatus(
-        `Default folder "${defaultPath}" not found. Please select a folder.`,
-        'warning',
-        5000
-      );
+      this.showStatus(`Please select a folder to analyze.`, 'info', 5000);
       this.promptForFolder();
-    }
-  }
-
-  private async loadAndProcessFolder(folder: TFolder): Promise<void> {
-    this.clearAllFilters();
-    const notice = new Notice(`Scanning folder: "${folder.path}"...`, 0);
-    const filesToProcess: TFile[] = [];
-
-    const findFilesRecursively = (currentFolder: TFolder) => {
-      for (const child of currentFolder.children) {
-        if (child instanceof TFolder) findFilesRecursively(child);
-        else if (child instanceof TFile && child.extension.toLowerCase() === 'md')
-          filesToProcess.push(child);
-      }
-    };
-    findFilesRecursively(folder);
-
-    if (filesToProcess.length === 0) {
-      notice.setMessage('No .md files found in the selected folder.');
-      setTimeout(() => notice.hide(), 3000);
-      this.dataManager.clear();
-      this.processingErrors = [];
-      this.updateAnalysis();
-      return;
-    }
-
-    await this.processFiles(filesToProcess, notice);
-
-    const seenPaths = new Set(filesToProcess.map(f => f.path));
-    let cacheWasModified = false;
-    for (const path in this.cache) {
-      if (path.startsWith(folder.path) && !seenPaths.has(path)) {
-        delete this.cache[path];
-        this.dataManager.removeRecord(path);
-        cacheWasModified = true;
-      }
-    }
-
-    if (cacheWasModified) {
-      await this.saveCache();
     }
   }
 
@@ -456,9 +495,12 @@ export class AnalysisController {
   private handleClearCache = async () => {
     new Notice('Clearing Chrono Analyser cache...', 2000);
     this.cache = {};
-    await this.saveCache();
-    new Notice('Cache cleared. Re-scanning folder...', 3000);
-    await this.loadInitialFolder();
+    this.lastFolderPath = null;
+    await this.saveCacheAndSettings();
+    this.dataManager.clear();
+    this.updateAnalysis();
+    new Notice('Cache cleared. Please select a folder.', 3000);
+    this.promptForFolder();
   };
 
   private handleAnalysisTypeChange = () => {
@@ -661,9 +703,11 @@ export class AnalysisController {
     if (this.flatpickrInstance) this.flatpickrInstance.clear(true, false);
     new Notice('Filters have been cleared for new folder selection.', 2000);
   };
+
   private clearDateFilters = () => {
     if (this.flatpickrInstance) this.flatpickrInstance.clear(true, true);
   };
+
   private populateFilterDataSources() {
     UI.setupAutocomplete(
       this.rootEl,
