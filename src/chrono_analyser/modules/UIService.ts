@@ -79,20 +79,35 @@ export class UIService {
    * @returns A record of chart-specific filter values.
    */
   public getChartSpecificFilter(type: string | null): Record<string, any> {
-    if (type === 'sunburst') {
-      return {
-        level: this.rootEl.querySelector<HTMLSelectElement>('#levelSelect')?.value ?? '',
-        pattern: this.rootEl.querySelector<HTMLInputElement>('#patternInput')?.value ?? ''
-      };
+    switch (type) {
+      case 'pie':
+        return {
+          breakdownBy: (this.rootEl.querySelector<HTMLSelectElement>('#levelSelect_pie')?.value ||
+            'hierarchy') as keyof TimeRecord,
+          pattern: this.rootEl.querySelector<HTMLInputElement>('#patternInput')?.value ?? ''
+        };
+      case 'sunburst':
+        return {
+          level: this.rootEl.querySelector<HTMLSelectElement>('#levelSelect')?.value ?? '',
+          pattern: this.rootEl.querySelector<HTMLInputElement>('#patternInput')?.value ?? ''
+        };
+      case 'time-series':
+        return {
+          granularity:
+            this.rootEl.querySelector<HTMLSelectElement>('#timeSeriesGranularitySelect')?.value ??
+            'daily',
+          type:
+            this.rootEl.querySelector<HTMLSelectElement>('#timeSeriesTypeSelect')?.value ?? 'line'
+        };
+      case 'activity':
+        return {
+          patternType:
+            this.rootEl.querySelector<HTMLSelectElement>('#activityPatternTypeSelect')?.value ??
+            'dayOfWeek'
+        };
+      default:
+        return {};
     }
-    if (type === 'pie') {
-      return {
-        breakdownBy: (this.rootEl.querySelector<HTMLSelectElement>('#levelSelect_pie')?.value ||
-          'hierarchy') as keyof TimeRecord,
-        pattern: this.rootEl.querySelector<HTMLInputElement>('#patternInput')?.value ?? ''
-      };
-    }
-    return {};
   }
 
   /**

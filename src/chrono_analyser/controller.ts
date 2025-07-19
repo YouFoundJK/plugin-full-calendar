@@ -22,9 +22,12 @@ import { PieData, TimeRecord } from './modules/types';
  */
 interface IChartStrategy {
   analysisName: string;
+  // The render method's signature now includes the `filteredRecords` parameter,
+  // making it match the implementation in the strategies.
   render(
     controller: AnalysisController, // Provide context
-    useReact: boolean
+    useReact: boolean,
+    filteredRecords: TimeRecord[] // The pre-filtered data
   ): void;
 }
 
@@ -38,7 +41,13 @@ export class AnalysisController {
   // Internal state
   private activeChartType: string | null = null;
   private isChartRendered = false;
-  private chartStrategies: Map<string, IChartStrategy>;
+
+  // --- NEW: State to track breakdown levels for redraw logic ---
+  private activePieBreakdown: string | null = null;
+  private activeSunburstLevel: string | null = null;
+  private activeTimeSeriesGranularity: string | null = null;
+  private activeTimeSeriesType: string | null = null;
+  private activeActivityPattern: string | null = null;
 
   constructor(
     private app: App,
@@ -55,7 +64,6 @@ export class AnalysisController {
       () => this.handleClearCache()
     );
     this.dataService = new DataService(app, plugin, this.dataManager, () => this.handleDataReady());
-    this.chartStrategies = this.createChartStrategies();
   }
 
   /**
@@ -78,6 +86,10 @@ export class AnalysisController {
   private handleDataReady(): void {
     this.activeChartType = null;
     this.isChartRendered = false;
+    this.activePieBreakdown = null;
+    this.activeSunburstLevel = null;
+    this.activeTimeSeriesGranularity = null;
+    this.activeTimeSeriesType = null;
     this.uiService.populateFilterDataSources(
       () => this.dataManager.getKnownHierarchies(),
       () => this.dataManager.getKnownProjects()
@@ -101,6 +113,11 @@ export class AnalysisController {
     await this.dataService.clearCache();
     this.activeChartType = null;
     this.isChartRendered = false;
+    this.activePieBreakdown = null;
+    this.activeSunburstLevel = null;
+    this.activeTimeSeriesGranularity = null;
+    this.activeTimeSeriesType = null;
+    this.activeActivityPattern = null;
     this.updateAnalysis(); // Re-render the empty state
     this.uiService.promptForFolder();
   }
@@ -110,11 +127,33 @@ export class AnalysisController {
    */
   private updateAnalysis(): void {
     const { filters, newChartType } = this.uiService.getFilterState();
-    const useReact = this.activeChartType === newChartType && this.isChartRendered;
-
-    // Always get the generic filtered records
     const chartSpecificFilters = this.uiService.getChartSpecificFilter(newChartType);
-    filters.pattern = chartSpecificFilters.pattern;
+
+    // --- FIX: The logic to determine a full redraw is now more intelligent ---
+    let useReact = this.activeChartType === newChartType && this.isChartRendered;
+
+    if (useReact) {
+      switch (newChartType) {
+        case 'pie':
+          if (this.activePieBreakdown !== chartSpecificFilters.breakdownBy) useReact = false;
+          break;
+        case 'sunburst':
+          if (this.activeSunburstLevel !== chartSpecificFilters.level) useReact = false;
+          break;
+        case 'time-series':
+          if (
+            this.activeTimeSeriesGranularity !== chartSpecificFilters.granularity ||
+            this.activeTimeSeriesType !== chartSpecificFilters.type
+          )
+            useReact = false;
+          break;
+        case 'activity':
+          if (this.activeActivityPattern !== chartSpecificFilters.patternType) useReact = false;
+          break;
+      }
+    }
+
+    filters.pattern = chartSpecificFilters.pattern; // Add regex pattern for DataManager
     const { records, totalHours, fileCount, error } = this.dataManager.getAnalyzedData(
       filters,
       null
@@ -122,12 +161,26 @@ export class AnalysisController {
 
     this.renderUI(records, totalHours, fileCount, useReact);
 
+    // Update active state *after* rendering
     this.activeChartType = newChartType;
+    this.activePieBreakdown = newChartType === 'pie' ? chartSpecificFilters.breakdownBy : null;
+    this.activeSunburstLevel = newChartType === 'sunburst' ? chartSpecificFilters.level : null;
+    this.activeTimeSeriesGranularity =
+      newChartType === 'time-series' ? chartSpecificFilters.granularity : null;
+    this.activeTimeSeriesType = newChartType === 'time-series' ? chartSpecificFilters.type : null;
+    this.activeActivityPattern =
+      newChartType === 'activity' ? chartSpecificFilters.patternType : null;
+
     this.uiService.saveFilterState();
   }
 
   /**
    * Manages the overall UI state (stats, messages) and calls the specific chart strategy.
+   * This is the final step in the rendering pipeline.
+   * @param filteredRecords - The records that have passed all filters.
+   * @param totalHours - The sum of hours for the filtered records.
+   * @param fileCount - The number of unique files in the filtered set.
+   * @param useReact - A boolean flag indicating whether to use Plotly.react (for fast updates) or Plotly.newPlot (for full redraws).
    */
   private renderUI(
     filteredRecords: TimeRecord[],
@@ -135,42 +188,50 @@ export class AnalysisController {
     fileCount: number,
     useReact: boolean
   ) {
+    // Always render the error log with the latest information.
     Plotter.renderErrorLog(
       this.rootEl,
       this.dataService.processingErrors,
       this.dataManager.getTotalRecordCount()
     );
 
+    // Case 1: No data has been loaded at all (e.g., first launch, empty folder).
     if (this.dataManager.getTotalRecordCount() === 0) {
       this.uiService.hideMainContainers();
       Plotter.renderChartMessage(
         this.rootEl,
         'No time-tracking files found. Please select a folder.'
       );
-      this.isChartRendered = false;
+      this.isChartRendered = false; // No chart is on the screen.
       return;
     }
 
+    // If we have data, ensure the main layout containers are visible.
     this.uiService.showMainContainers();
 
+    // Case 2: Data exists, but the current filters yield no results.
     if (filteredRecords.length === 0) {
-      this.uiService.renderStats('-', '-');
+      this.uiService.renderStats('-', '-'); // Show placeholder stats.
       this.uiService.updateActiveAnalysisStat('N/A');
       Plotter.renderChartMessage(this.rootEl, 'No data matches the current filters.');
-      this.isChartRendered = false;
+      this.isChartRendered = false; // The chart was destroyed to show the message.
       return;
     }
 
+    // Case 3: We have data that matches the filters. Render the stats and the chart.
     this.uiService.renderStats(totalHours, fileCount);
 
     const { newChartType } = this.uiService.getFilterState();
-    const strategy = this.chartStrategies.get(newChartType!);
+    const chartStrategies = this.createChartStrategies();
+    const strategy = chartStrategies.get(newChartType!);
 
     if (strategy) {
       this.uiService.updateActiveAnalysisStat(strategy.analysisName);
-      strategy.render(this, useReact);
-      this.isChartRendered = true;
+      // Delegate the actual chart rendering to the appropriate strategy.
+      strategy.render(this, useReact, filteredRecords);
+      this.isChartRendered = true; // A chart has been successfully rendered.
     } else {
+      // Fallback case if an unknown chart type is selected.
       Plotter.renderChartMessage(this.rootEl, `Unknown chart type: ${newChartType}`);
       this.isChartRendered = false;
     }
@@ -183,15 +244,13 @@ export class AnalysisController {
   private createChartStrategies(): Map<string, IChartStrategy> {
     const strategies = new Map<string, IChartStrategy>();
 
-    // --- Pie Chart Strategy ---
     strategies.set('pie', {
       analysisName: 'Category Breakdown',
-      render(controller: AnalysisController, useReact: boolean) {
-        const { filters } = controller.uiService.getFilterState();
+      render(controller: AnalysisController, useReact: boolean, filteredRecords: TimeRecord[]) {
         const pieFilters = controller.uiService.getChartSpecificFilter('pie');
-        filters.pattern = pieFilters.pattern;
+        // We now need to re-aggregate here, as the breakdown level is dynamic
         const { aggregation, recordsByCategory, error } = controller.dataManager.getAnalyzedData(
-          filters,
+          { ...controller.uiService.getFilterState().filters, pattern: pieFilters.pattern },
           pieFilters.breakdownBy
         );
 
@@ -210,16 +269,14 @@ export class AnalysisController {
       }
     });
 
-    // --- Sunburst Chart Strategy ---
     strategies.set('sunburst', {
       analysisName: 'Category Breakdown',
-      render(controller: AnalysisController, useReact: boolean) {
-        const { filters } = controller.uiService.getFilterState();
+      render(controller: AnalysisController, useReact: boolean, filteredRecords: TimeRecord[]) {
         const sunburstFilters = controller.uiService.getChartSpecificFilter('sunburst');
-        filters.pattern = sunburstFilters.pattern;
-        const { records } = controller.dataManager.getAnalyzedData(filters, null);
-
-        const sunburstData = Aggregator.aggregateForSunburst(records, sunburstFilters.level);
+        const sunburstData = Aggregator.aggregateForSunburst(
+          filteredRecords,
+          sunburstFilters.level
+        );
         Plotter.renderSunburstChartDisplay(
           controller.rootEl,
           sunburstData,
@@ -229,33 +286,29 @@ export class AnalysisController {
       }
     });
 
-    // --- Time-Series Strategy ---
     strategies.set('time-series', {
       analysisName: 'Time-Series Trend',
-      render(controller: AnalysisController, useReact: boolean) {
+      render(controller: AnalysisController, useReact: boolean, filteredRecords: TimeRecord[]) {
         const { filters } = controller.uiService.getFilterState();
-        const { records } = controller.dataManager.getAnalyzedData(filters, null);
         const filterDates = {
           filterStartDate: filters.filterStartDate ?? null,
           filterEndDate: filters.filterEndDate ?? null
         };
-        Plotter.renderTimeSeriesChart(controller.rootEl, records, filterDates, useReact);
+        Plotter.renderTimeSeriesChart(controller.rootEl, filteredRecords, filterDates, useReact);
       }
     });
 
-    // --- Activity Patterns Strategy ---
     strategies.set('activity', {
       analysisName: 'Activity Patterns',
-      render(controller: AnalysisController, useReact: boolean) {
+      render(controller: AnalysisController, useReact: boolean, filteredRecords: TimeRecord[]) {
         const { filters } = controller.uiService.getFilterState();
-        const { records } = controller.dataManager.getAnalyzedData(filters, null);
         const filterDates = {
           filterStartDate: filters.filterStartDate ?? null,
           filterEndDate: filters.filterEndDate ?? null
         };
         Plotter.renderActivityPatternChart(
           controller.rootEl,
-          records,
+          filteredRecords,
           filterDates,
           controller.uiService.showDetailPopup,
           useReact

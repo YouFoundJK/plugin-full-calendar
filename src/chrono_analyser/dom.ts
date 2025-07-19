@@ -163,12 +163,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
           </div>
 
           <div class="main-chart-container" id="mainChartContainer" style="display: none; padding: 15px;">
-            <div id="sunburst-wrapper" style="display: flex; flex-direction: row; gap: 15px; width: 100%; height: 100%;">
-              <div id="mainChart" style="flex-grow: 1; min-width: 0;"></div>
-              <div id="customLegend"
-                style="flex-basis: 250px; flex-shrink: 0; overflow-y: auto; padding-left: 10px; border-left: 1px solid #e2e8f0;">
-              </div>
-            </div>
+            <div id="mainChart" style="flex-grow: 1; min-width: 0;"></div>
           </div>
 
         </div>

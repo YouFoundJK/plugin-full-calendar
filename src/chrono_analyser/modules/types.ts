@@ -52,13 +52,47 @@ export interface FileMetadata {
   [key: string]: any;
 }
 
-export const PLOTLY_DARK_LAYOUT: Partial<Plotly.Layout> = {
+// --- NEW: A COMPLETE THEME SYSTEM FOR PLOTLY ---
+
+/**
+ * Defines base layout properties common to both light and dark themes.
+ * This ensures consistency and transparency.
+ */
+export const PLOTLY_BASE_LAYOUT: Partial<Plotly.Layout> = {
   paper_bgcolor: 'rgba(0,0,0,0)',
   plot_bgcolor: 'rgba(0,0,0,0)',
   font: {
     family: 'var(--font-default)',
     size: 12
   },
+  showlegend: true
+};
+
+/**
+ * Defines layout properties specific to Obsidian's light theme.
+ */
+export const PLOTLY_LIGHT_THEME: Partial<Plotly.Layout> = {
+  font: { color: 'var(--text-normal)' },
+  xaxis: {
+    gridcolor: 'var(--background-modifier-border)',
+    linecolor: 'var(--background-modifier-border)',
+    zerolinecolor: 'var(--background-modifier-accent-hover)'
+  },
+  yaxis: {
+    gridcolor: 'var(--background-modifier-border)',
+    linecolor: 'var(--background-modifier-border)',
+    zerolinecolor: 'var(--background-modifier-accent-hover)'
+  },
+  legend: {
+    bordercolor: 'var(--background-modifier-border)'
+  }
+};
+
+/**
+ * Defines layout properties specific to Obsidian's dark theme.
+ */
+export const PLOTLY_DARK_THEME: Partial<Plotly.Layout> = {
+  font: { color: 'var(--text-normal)' },
   xaxis: {
     gridcolor: 'var(--background-modifier-border)',
     linecolor: 'var(--background-modifier-border)',
@@ -70,7 +104,6 @@ export const PLOTLY_DARK_LAYOUT: Partial<Plotly.Layout> = {
     zerolinecolor: 'var(--background-modifier-accent)'
   },
   legend: {
-    bgcolor: 'rgba(0,0,0,0)',
     bordercolor: 'var(--background-modifier-border)'
   }
 };

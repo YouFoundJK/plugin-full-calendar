@@ -4,7 +4,15 @@
  */
 
 import Plotly from '../plotly-custom';
-import { TimeRecord, SunburstData, PieData, PLOTLY_DARK_LAYOUT, ProcessingError } from './types';
+import {
+  TimeRecord,
+  SunburstData,
+  PieData,
+  PLOTLY_BASE_LAYOUT,
+  PLOTLY_LIGHT_THEME,
+  PLOTLY_DARK_THEME,
+  ProcessingError
+} from './types';
 import * as Utils from './utils';
 
 type ShowDetailPopupFn = (categoryName: string, recordsList: TimeRecord[], context?: any) => void;
@@ -28,6 +36,19 @@ function triggerResize(chartEl: HTMLElement) {
   }, 0);
 }
 
+// --- NEW: A helper function to create a theme-aware layout ---
+/**
+ * Merges a chart-specific layout with the base dark theme layout if dark mode is active.
+ * @param chartLayout - The layout object specific to the chart being rendered.
+ * @returns The final, themed layout object.
+ */
+function getThemedLayout(chartLayout: Partial<Plotly.Layout>): Partial<Plotly.Layout> {
+  const isDarkMode = document.body.classList.contains('theme-dark');
+  const theme = isDarkMode ? PLOTLY_DARK_THEME : PLOTLY_LIGHT_THEME;
+  // Merge all three: base provides transparency, theme provides colors, and chartLayout provides specifics.
+  return { ...PLOTLY_BASE_LAYOUT, ...theme, ...chartLayout };
+}
+
 // A generic function to handle the plotting logic
 function plotChart(
   mainChartEl: HTMLElement,
@@ -35,11 +56,11 @@ function plotChart(
   layout: Partial<Plotly.Layout>,
   useReact: boolean
 ) {
+  const finalLayout = getThemedLayout(layout);
   if (useReact) {
-    Plotly.react(mainChartEl, data, layout, { responsive: true });
+    Plotly.react(mainChartEl, data, finalLayout, { responsive: true });
   } else {
-    Plotly.newPlot(mainChartEl, data, layout, { responsive: true });
-    // Only trigger the resize fix on the initial plot
+    Plotly.newPlot(mainChartEl, data, finalLayout, { responsive: true });
     triggerResize(mainChartEl);
   }
 }
@@ -59,6 +80,8 @@ export function renderPieChartDisplay(
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
+  // This chart uses the simple layout, so we ensure no wrappers exist.
+  mainChartEl.innerHTML = '';
 
   const levelSelect = rootEl.querySelector<HTMLSelectElement>('#levelSelect_pie');
   const chartTitleText = levelSelect
@@ -72,34 +95,19 @@ export function renderPieChartDisplay(
       textinfo: 'label+percent',
       textposition: 'outside',
       hoverinfo: 'label+value+percent',
-      // automargin: true,
-      marker: {
-        line: {
-          color: 'white',
-          width: 2
-        }
-      }
+      marker: { line: { color: 'white', width: 2 } }
     }
   ];
-  const isDarkMode = document.body.classList.contains('theme-dark');
+
+  // --- FIX: Removed the manual dark mode check. It's now handled centrally. ---
   const layout: Partial<Plotly.Layout> = {
     title: { text: `Time Distribution by ${chartTitleText}` },
     showlegend: true,
-    // height: 500,
-    margin: {
-      l: 40, // left
-      r: 40, // right
-      t: 60, // top (for the title)
-      b: 80 // bottom (for the legend and any bottom labels)
-    }
+    margin: { l: 40, r: 40, t: 60, b: 80 }
   };
-  if (isDarkMode) {
-    Object.assign(layout, PLOTLY_DARK_LAYOUT);
-  }
 
   plotChart(mainChartEl, data, layout, useReact);
 
-  // Event listeners need to be re-attached on every render to ensure they point to the correct data context
   const plotlyChart = mainChartEl as any;
   plotlyChart.removeAllListeners('plotly_click');
   plotlyChart.on('plotly_click', (eventData: any) => {
@@ -129,8 +137,22 @@ export function renderSunburstChartDisplay(
   showDetailPopup: ShowDetailPopupFn,
   useReact: boolean
 ) {
-  const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
-  if (!mainChartEl) return;
+  const mainContainerEl = rootEl.querySelector<HTMLElement>('#mainChart');
+  if (!mainContainerEl) return;
+
+  // --- FIX: Dynamically create the specific layout needed for Sunburst ---
+  if (!useReact) {
+    // Only manipulate the DOM on the initial render
+    mainContainerEl.innerHTML = `
+      <div id="sunburst-wrapper" style="display: flex; flex-direction: row; gap: 15px; width: 100%; height: 100%;">
+        <div id="sunburst-chart-div" style="flex-grow: 1; min-width: 0;"></div>
+        <div id="customLegend" style="flex-basis: 250px; flex-shrink: 0; overflow-y: auto; padding-left: 10px; border-left: 1px solid var(--background-modifier-border);"></div>
+      </div>
+    `;
+  }
+  const chartEl = mainContainerEl.querySelector<HTMLElement>('#sunburst-chart-div');
+  const legendEl = mainContainerEl.querySelector<HTMLElement>('#customLegend');
+  if (!chartEl || !legendEl) return;
 
   const data: Plotly.Data[] = [
     {
@@ -147,12 +169,16 @@ export function renderSunburstChartDisplay(
 
   const layout: Partial<Plotly.Layout> = {
     title: { text: 'Time Breakdown' },
-    margin: { l: 0, r: 0, b: 0, t: 40 }
+    margin: { l: 0, r: 0, b: 0, t: 40 },
+    showlegend: false // The legend is now custom
   };
 
-  plotChart(mainChartEl, data, layout, useReact);
+  plotChart(chartEl, data, layout, useReact);
 
-  const plotlyChart = mainChartEl as any;
+  // You would add your custom legend rendering logic here. For now, it's empty.
+  legendEl.innerHTML = ''; // Clear previous legend
+
+  const plotlyChart = chartEl as any;
   plotlyChart.removeAllListeners('plotly_sunburstclick');
   plotlyChart.on('plotly_sunburstclick', (eventData: any) => {
     if (eventData.points && eventData.points.length > 0) {
@@ -165,7 +191,7 @@ export function renderSunburstChartDisplay(
       }
     }
   });
-  triggerResize(mainChartEl);
+  triggerResize(chartEl);
 }
 
 export function renderTimeSeriesChart(
@@ -176,6 +202,7 @@ export function renderTimeSeriesChart(
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
+  mainChartEl.innerHTML = ''; // Ensure no wrappers exist
 
   if (!filteredRecords || filteredRecords.length === 0) {
     mainChartEl.innerHTML = '<p class="chart-message">No data available for Time-Series chart.</p>';
@@ -316,7 +343,6 @@ export function renderTimeSeriesChart(
     },
     xaxis: { title: { text: 'Period' }, type: 'date' },
     yaxis: { title: { text: 'Hours' } },
-    // height: 500,
     margin: { t: 50, b: 80, l: 60, r: 30 },
     hovermode: 'x unified'
   };
@@ -332,6 +358,7 @@ export function renderActivityPatternChart(
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
+  mainChartEl.innerHTML = ''; // Ensure no wrappers exist
 
   if (!filteredRecords || filteredRecords.length === 0) {
     mainChartEl.innerHTML = '<p class="chart-message">No data available for Activity Patterns.</p>';

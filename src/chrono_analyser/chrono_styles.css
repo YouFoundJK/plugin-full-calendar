@@ -396,12 +396,22 @@
 }
 
 .chrono-analyser-view .main-chart-container .plotly .slicetext {
-    fill: var(--text-on-accent) !important;
     font-weight: 600 !important;
     font-size: 13px !important;
-    stroke: var(--background-primary) !important;
-    stroke-width: 2px !important;
+    stroke-width: 1.5px !important; /* Slightly thicker stroke for better readability */
     paint-order: stroke !important;
+}
+
+/* Light Theme: Dark text with a light outline */
+body.theme-light .chrono-analyser-view .main-chart-container .plotly .slicetext {
+    fill: var(--text-normal) !important;         /* e.g., a dark grey */
+    stroke: var(--background-primary) !important; /* e.g., white */
+}
+
+/* Dark Theme: Light text with a dark outline */
+body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
+    fill: var(--text-on-accent) !important;     /* e.g., a light grey or white */
+    stroke: var(--background-primary) !important; /* e.g., a dark grey */
 }
 
 .chrono-analyser-view .main-chart-container .plotly .g-gtitle .titletext {
