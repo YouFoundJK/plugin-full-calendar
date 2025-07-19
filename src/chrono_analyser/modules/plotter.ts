@@ -9,6 +9,12 @@ import * as Utils from './utils';
 
 type ShowDetailPopupFn = (categoryName: string, recordsList: TimeRecord[], context?: any) => void;
 
+function triggerResize(chartEl: HTMLElement) {
+  setTimeout(() => {
+    Plotly.Plots.resize(chartEl);
+  }, 0);
+}
+
 /**
  * Renders a Pie chart to the main chart container.
  *
@@ -37,7 +43,7 @@ export function renderPieChartDisplay(
       textinfo: 'label+percent',
       textposition: 'outside',
       hoverinfo: 'label+value+percent',
-      automargin: true,
+      // automargin: true,
       marker: {
         line: {
           color: 'white',
@@ -50,7 +56,13 @@ export function renderPieChartDisplay(
   const layout: Partial<Plotly.Layout> = {
     title: { text: `Time Distribution by ${chartTitleText}` },
     showlegend: true,
-    height: 500
+    // height: 500,
+    margin: {
+      l: 40, // left
+      r: 40, // right
+      t: 60, // top (for the title)
+      b: 80 // bottom (for the legend and any bottom labels)
+    }
   };
   if (isDarkMode) {
     Object.assign(layout, PLOTLY_DARK_LAYOUT);
@@ -72,6 +84,7 @@ export function renderPieChartDisplay(
       }
     }
   });
+  triggerResize(mainChartEl);
 }
 
 /**
@@ -104,8 +117,7 @@ export function renderSunburstChartDisplay(
 
   const layout: Partial<Plotly.Layout> = {
     title: { text: 'Time Breakdown' },
-    margin: { l: 0, r: 0, b: 0, t: 40 },
-    height: 500
+    margin: { l: 0, r: 0, b: 0, t: 40 }
   };
 
   Plotly.newPlot(mainChartEl, data, layout, { responsive: true });
@@ -123,6 +135,7 @@ export function renderSunburstChartDisplay(
       }
     }
   });
+  triggerResize(mainChartEl);
 }
 
 export function renderTimeSeriesChart(
@@ -264,6 +277,7 @@ export function renderTimeSeriesChart(
           hoverinfo: 'x+y+name'
         });
       });
+    triggerResize(mainChartEl);
   }
 
   const layout: Partial<Plotly.Layout> = {
@@ -272,7 +286,7 @@ export function renderTimeSeriesChart(
     },
     xaxis: { title: { text: 'Period' }, type: 'date' },
     yaxis: { title: { text: 'Hours' } },
-    height: 500,
+    // height: 500,
     margin: { t: 50, b: 80, l: 60, r: 30 },
     hovermode: 'x unified'
   };
@@ -314,6 +328,9 @@ export function renderActivityPatternChart(
     'Saturday'
   ];
   const hourLabels = Array.from({ length: 24 }, (_, i) => `${i}`);
+
+  // --- Define a consistent margin for all activity charts ---
+  const activityLayoutMargin = { t: 50, b: 60, l: 70, r: 30 };
 
   if (patternType === 'dayOfWeek') {
     const hoursByDay = Array(7).fill(0);
@@ -367,7 +384,7 @@ export function renderActivityPatternChart(
     layout = {
       title: { text: 'Total Hours by Day of Week' },
       yaxis: { title: { text: 'Hours' } },
-      height: 500
+      margin: activityLayoutMargin
     };
   } else if (patternType === 'hourOfDay') {
     const hoursByHour = Array(24).fill(0);
@@ -384,7 +401,7 @@ export function renderActivityPatternChart(
       title: { text: 'Total Hours by Task Start Hour' },
       xaxis: { title: { text: 'Hour of Day (0-23)' } },
       yaxis: { title: { text: 'Hours' } },
-      height: 500
+      margin: activityLayoutMargin
     };
   } else if (patternType === 'heatmapDOWvsHOD') {
     plotType = 'heatmap';
@@ -455,7 +472,7 @@ export function renderActivityPatternChart(
     layout = {
       title: { text: 'Activity Heatmap (Day vs Task Start Hour)' },
       xaxis: { title: { text: 'Hour of Day (0-23)' } },
-      height: 500
+      margin: activityLayoutMargin
     };
   }
 
@@ -526,6 +543,7 @@ export function renderActivityPatternChart(
       showDetailPopup(categoryNameForPopup, recordsForPopup, { value: clickedValue });
     }
   });
+  triggerResize(mainChartEl);
 }
 
 /**

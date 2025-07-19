@@ -313,28 +313,46 @@ export class AnalysisController {
     const analysisTypeStatEl = this.rootEl.querySelector('#currentAnalysisTypeStat') as HTMLElement;
     const analysisType = this.rootEl.querySelector<HTMLSelectElement>('#analysisTypeSelect')?.value;
 
-    // --- Render Error Log ---
+    // Always render the error log
     Plotter.renderErrorLog(
       this.rootEl,
       this.processingErrors,
       this.dataManager.getTotalRecordCount()
     );
 
-    if (this.filteredRecordsForCharts.length === 0) {
+    // If there are no records loaded at all (e.g., empty folder), hide everything and return.
+    if (this.dataManager.getTotalRecordCount() === 0) {
       if (statsGrid) statsGrid.style.display = 'none';
       if (mainChartContainer) mainChartContainer.style.display = 'none';
-      mainChartEl.innerHTML = '<p class="chart-message">No data matches the current filters.</p>';
-      if (analysisTypeStatEl) analysisTypeStatEl.textContent = 'N/A';
+      mainChartEl.innerHTML =
+        '<p class="chart-message">No time-tracking files found in the selected folder.</p>';
       return;
     }
 
-    // --- Render Stats and Show Containers ---
+    // From this point on, we assume there is data, so we keep the layout stable.
     if (statsGrid) statsGrid.style.display = '';
     if (mainChartContainer) mainChartContainer.style.display = '';
+
+    // --- FIX: Handle the "No Data for Filter" case gracefully ---
+    if (this.filteredRecordsForCharts.length === 0) {
+      // Set stats to placeholder values
+      (this.rootEl.querySelector('#totalHours') as HTMLElement).textContent = '-';
+      (this.rootEl.querySelector('#totalFiles') as HTMLElement).textContent = '-';
+      if (analysisTypeStatEl) analysisTypeStatEl.textContent = 'N/A';
+
+      // Display a clear message in the chart area
+      mainChartEl.innerHTML = '<p class="chart-message">No data matches the current filters.</p>';
+
+      // Hide the sunburst legend if it was visible
+      if (legendEl) legendEl.style.display = 'none';
+
+      return; // Stop further rendering
+    }
+
+    // --- Render Stats and Chart for the "Data Found" Case ---
     (this.rootEl.querySelector('#totalHours') as HTMLElement).textContent = totalHours.toFixed(2);
     (this.rootEl.querySelector('#totalFiles') as HTMLElement).textContent = String(fileCount);
 
-    // --- Logic for Rendering the Correct Chart (formerly renderSelectedChart) ---
     let analysisName = 'Unknown';
     const dates = this.flatpickrInstance?.selectedDates;
     const filterStartDate = dates && dates.length === 2 ? dates[0] : null;
@@ -343,12 +361,8 @@ export class AnalysisController {
     if (analysisType === 'sunburst') {
       analysisName = 'Category Breakdown';
       if (legendEl) legendEl.style.display = '';
-
-      // Sunburst requires its own specific aggregation, so we call it here.
       const level = this.rootEl.querySelector<HTMLSelectElement>('#levelSelect')?.value ?? '';
       const pattern = this.rootEl.querySelector<HTMLInputElement>('#patternInput')?.value ?? '';
-      // This part is less efficient, but we'll accept it for now as sunburst is complex.
-      // A future refactor could move this into the DataManager too.
       let recordsForSunburst = this.filteredRecordsForCharts;
       if (pattern.trim()) {
         try {
