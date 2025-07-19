@@ -1,4 +1,4 @@
-// src/ui/chrono_analyser/modules/DataManager.ts
+// src/chrono_analyser/modules/DataManager.ts
 
 /**
  * @file Manages the state of all parsed TimeRecords, providing indexed lookups and efficient filtering.
@@ -13,6 +13,7 @@ export interface AnalysisFilters {
   project?: string;
   filterStartDate?: Date | null;
   filterEndDate?: Date | null;
+  pattern?: string;
 }
 
 /**
@@ -26,6 +27,7 @@ export interface AnalysisResult {
   aggregation: Map<string, number>;
   // A map of category names to the list of records belonging to that category.
   recordsByCategory: Map<string, TimeRecord[]>;
+  error: string | null;
 }
 
 /**
@@ -89,7 +91,6 @@ export class DataManager {
     const record = this.#records.get(filePath);
     if (!record) return;
 
-    // ... (removal logic is the same as before)
     const hierarchyKey = record.hierarchy.toLowerCase();
     const projectKey = record.project.toLowerCase();
     const hierarchyPaths = this.#hierarchyIndex.get(hierarchyKey);
@@ -133,6 +134,26 @@ export class DataManager {
     filters: AnalysisFilters,
     breakdownBy: keyof TimeRecord | null
   ): AnalysisResult {
+    // --- FIX: Declare the result object ONCE at the top ---
+    const result: AnalysisResult = {
+      records: [],
+      totalHours: 0,
+      fileCount: 0,
+      aggregation: new Map(),
+      recordsByCategory: new Map(),
+      error: null
+    };
+    let regex: RegExp | null = null;
+
+    if (filters.pattern) {
+      try {
+        regex = new RegExp(filters.pattern, 'i');
+      } catch (e) {
+        result.error = e instanceof Error ? e.message : String(e);
+        return result; // Return early with the error
+      }
+    }
+
     let candidatePaths: Set<string> | null = null;
 
     // --- OPTIMIZATION 1: Use Date Index if it's the most restrictive filter ---
@@ -173,14 +194,6 @@ export class DataManager {
           .filter(Boolean)
       : this.#records.values();
 
-    // --- OPTIMIZATION 3: Single-Pass Aggregation ---
-    const result: AnalysisResult = {
-      records: [],
-      totalHours: 0,
-      fileCount: 0,
-      aggregation: new Map(),
-      recordsByCategory: new Map()
-    };
     const uniqueFiles = new Set<string>();
 
     for (const record of recordsToScan) {
@@ -198,13 +211,10 @@ export class DataManager {
         effectiveDuration = (record.duration || 0) * numInstances;
         if (effectiveDuration > 0) includeRecord = true;
       } else {
-        // Non-recurring records were already date-filtered if a range was provided.
-        // If no date range, we need to check them now.
         if (!startDate && !endDate) {
           effectiveDuration = record.duration;
           includeRecord = true;
         } else if (candidatePaths?.has(record.path)) {
-          // Check if it passed the date index filter
           effectiveDuration = record.duration;
           includeRecord = true;
         }
@@ -212,20 +222,52 @@ export class DataManager {
 
       if (includeRecord && effectiveDuration > 0) {
         const finalRecord = { ...record, _effectiveDurationInPeriod: effectiveDuration };
-        result.records.push(finalRecord);
-        result.totalHours += effectiveDuration;
-        uniqueFiles.add(record.path);
 
         if (breakdownBy) {
           const key = String(record[breakdownBy] || `(No ${breakdownBy})`);
+          if (regex && !regex.test(key)) {
+            continue;
+          }
           result.aggregation.set(key, (result.aggregation.get(key) || 0) + effectiveDuration);
           if (!result.recordsByCategory.has(key)) result.recordsByCategory.set(key, []);
           result.recordsByCategory.get(key)!.push(finalRecord);
         }
+
+        result.records.push(finalRecord);
+        result.totalHours += effectiveDuration;
+        uniqueFiles.add(record.path);
       }
     }
 
     result.fileCount = uniqueFiles.size;
     return result;
+  }
+
+  // --- FIX: Provide the full, correct implementation for this method ---
+  private isWithinDateRange(
+    recordDate: Date | null,
+    startDate: Date | null,
+    endDate: Date | null
+  ): boolean {
+    if (!startDate && !endDate) return true;
+    if (!recordDate || isNaN(recordDate.getTime())) return false;
+
+    const recordTime = new Date(
+      Date.UTC(recordDate.getUTCFullYear(), recordDate.getUTCMonth(), recordDate.getUTCDate())
+    ).getTime();
+
+    if (startDate) {
+      const startTime = new Date(
+        Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate())
+      ).getTime();
+      if (recordTime < startTime) return false;
+    }
+    if (endDate) {
+      const endTime = new Date(
+        Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate())
+      ).getTime();
+      if (recordTime > endTime) return false;
+    }
+    return true;
   }
 }
