@@ -17,14 +17,13 @@ import * as Utils from './utils';
  */
 export class UIService {
   private flatpickrInstance: FlatpickrInstance | null = null;
-  private uiStateKey = 'ChronoAnalyzerUIState_v3';
+  private uiStateKey = 'ChronoAnalyzerUIState_v5'; // Incremented version
 
+  // CORRECTED CONSTRUCTOR: Removed obsolete parameters
   constructor(
     private app: App,
     private rootEl: HTMLElement,
-    private onFilterChange: () => void, // Callback to trigger analysis
-    private onFolderSelect: (folder: TFolder) => void,
-    private onClearCache: () => void
+    private onFilterChange: () => void // Callback to trigger analysis
   ) {}
 
   /**
@@ -144,9 +143,7 @@ export class UIService {
    * Sets up all event listeners for the view's interactive elements.
    */
   private setupEventListeners = () => {
-    this.rootEl
-      .querySelector('#folderInputButton')
-      ?.addEventListener('click', () => this.promptForFolder());
+    // CORRECTED: Removed listeners for non-existent buttons
     const datePickerEl = this.rootEl.querySelector<HTMLInputElement>('#dateRangePicker');
     if (datePickerEl) {
       this.flatpickrInstance = flatpickr(datePickerEl, {
@@ -157,7 +154,7 @@ export class UIService {
         onChange: this.onFilterChange
       });
     }
-    this.rootEl.querySelector('#clearCacheBtn')?.addEventListener('click', this.onClearCache);
+
     this.rootEl.querySelector('#clearDatesBtn')?.addEventListener('click', this.clearDateFilters);
     this.rootEl
       .querySelector('#setTodayBtn')
@@ -173,7 +170,7 @@ export class UIService {
       ?.addEventListener('click', () => this.setPresetDateRange('thisMonth'));
     this.rootEl
       .querySelector('#analysisTypeSelect')
-      ?.addEventListener('change', this.handleAnalysisTypeChange);
+      ?.addEventListener('change', () => this.handleAnalysisTypeChange());
     this.rootEl.querySelector('#levelSelect_pie')?.addEventListener('change', this.onFilterChange);
     this.rootEl.querySelector('#levelSelect')?.addEventListener('change', this.onFilterChange);
     this.rootEl
@@ -194,10 +191,6 @@ export class UIService {
       ?.addEventListener('change', this.onFilterChange);
     this.rootEl.querySelector('#popupCloseBtn')?.addEventListener('click', this.hideDetailPopup);
     this.rootEl.querySelector('#detailOverlay')?.addEventListener('click', this.hideDetailPopup);
-  };
-
-  public promptForFolder = () => {
-    new UI.FolderSuggestModal(this.app, this.onFolderSelect).open();
   };
 
   public showDetailPopup = (categoryName: string, recordsList: TimeRecord[], context: any = {}) => {
@@ -251,10 +244,11 @@ export class UIService {
     this.app.workspace.containerEl.ownerDocument.body.style.overflow = '';
   };
 
-  public saveFilterState = () => {
+  public saveState = (lastFolderPath: string | null) => {
     const getElValue = (id: string) =>
       this.rootEl.querySelector<HTMLInputElement | HTMLSelectElement>(`#${id}`)?.value;
     const state: any = {
+      // lastFolderPath is no longer needed
       analysisTypeSelect: getElValue('analysisTypeSelect'),
       hierarchyFilter: getElValue('hierarchyFilterInput'),
       projectFilter: getElValue('projectFilterInput'),
@@ -304,7 +298,7 @@ export class UIService {
         setVal('timeSeriesTypeSelect', state.timeSeriesType);
         setVal('timeSeriesStackingLevelSelect', state.timeSeriesStackingLevel);
         setVal('activityPatternTypeSelect', state.activityPatternType);
-        this.handleAnalysisTypeChange(); // Ensure correct controls are visible on load
+        this.handleAnalysisTypeChange(false);
       } catch (error) {
         console.error('[ChronoAnalyzer] Error loading UI state:', error);
         localStorage.removeItem(this.uiStateKey);
@@ -312,7 +306,7 @@ export class UIService {
     }
   };
 
-  private handleAnalysisTypeChange = () => {
+  private handleAnalysisTypeChange = (triggerAnalysis = true) => {
     const analysisType = this.rootEl.querySelector<HTMLSelectElement>('#analysisTypeSelect')?.value;
     const specificControlContainers = [
       'sunburstBreakdownLevelContainer',
@@ -345,7 +339,9 @@ export class UIService {
         .querySelector('#activityPatternTypeContainer')
         ?.classList.remove('hidden-controls');
     }
-    this.onFilterChange();
+    if (triggerAnalysis) {
+      this.onFilterChange();
+    }
   };
 
   private handleTimeSeriesTypeVis = () => {

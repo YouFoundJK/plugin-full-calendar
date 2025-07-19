@@ -1,139 +1,148 @@
 # Chrono Analyser Subproject
 [![License](https://img.shields.io/badge/License-MIT-green)](https://github.com/YouFoundJK/plugin-full-calendar/blob/main/LICENSE)
-[![Version](https://img.shields.io/badge/Version-v_0.10.11-blue)](https://youfoundjk.github.io/Time-Analyser-Full-Calender/)
+[![Version](https://img.shields.io/badge/Version-v_0.10.12-blue)](https://youfoundjk.github.io/Time-Analyser-Full-Calender/)
 
 
 ## 1. Overview
 
-The Chrono Analyser is a feature within the Full Calendar plugin that provides users with powerful data visualization tools to analyze their time-tracking notes. It scans a designated folder of markdown files, parses time and project data from filenames and YAML frontmatter, and renders interactive charts to give users insights into how they spend their time.
+ChronoAnalyser is the interactive data visualization component for the Full Calendar plugin. Its primary purpose is to parse time-tracking data from "Full Note" calendars, aggregate it, and render interactive charts and statistics for analysis.
 
-This document details the architecture, data flow, and development guidelines for this subproject, which has been designed for high performance, modularity, and extensibility.
+This document details the internal architecture and data flow, intended for developers working on or extending this module.
 
-## 2. Core Features
+## 2. Core Architectural Principles
 
--   **Multi-Chart Analysis**: Supports various chart types including Pie, Sunburst, Time-Series Trends, and Activity Heatmaps.
--   **Interactive Visualizations**: Charts are fully interactive, with tooltips and clickable segments that open a detailed popup view of the underlying data records.
--   **High-Performance Caching**: Implements a robust, persistent caching system using file modification times (`mtime`) to avoid re-parsing unchanged files, resulting in near-instantaneous load times after the initial scan.
--   **Real-time Synchronization**: The analyser listens to vault events (`modify`, `delete`, `rename`) to keep the data fresh and the view updated in real-time without requiring a manual refresh.
--   **Efficient In-Memory Filtering**: Utilizes in-memory indices for projects, hierarchies, and dates to provide a lag-free filtering experience, even with thousands of data points.
--   **Extensible Architecture**: Built using a service-oriented approach and a Chart Strategy pattern, allowing new charts and filters to be added with minimal changes to core files.
+The ChronoAnalyser has been refactored to follow modern development principles, ensuring it is efficient, robust, and easy to maintain.
 
-## 3. Architectural Overview
+### Principle 1: Single Source of Truth
 
-The Chrono Analyser is built on a modular, decoupled architecture that strictly adheres to the **Single Responsibility Principle**. The system is broken down into three main layers: a **Data Service**, a **UI Service**, and a central **Controller** that orchestrates the communication between them.
+The ChronoAnalyser is a **data consumer**, not a data source. It does **not** perform any file I/O or maintain its own separate cache.
 
-### High-Level Architecture Diagram
+-   **Upstream Data:** All event data is sourced directly from the main plugin's `EventCache`. This eliminates data duplication, parsing inconsistencies, and race conditions.
+-   **Real-Time Updates:** It subscribes to the `EventCache` and receives real-time updates whenever an event is created, modified, or deleted anywhere in the vault, ensuring the analysis is always up-to-date.
 
-```ascii
-+----------------------+      +--------------------+      +-----------------------+
-|     UIService.ts     |----->|   Controller.ts    |----->|     DataService.ts    |
-| (Handles DOM, Events)|      |   (Orchestrator)   |      | (Handles Cache, Files)|
-|                      |<-----| (Applies Strategy) |<-----|                       |
-+----------------------+      +--------------------+      +-----------------------+
-       |         ^                  |                             |
-(Renders)    (Updates)              | (Queries)                   | (Manages)
-       |         |                  |                             |
-       v         |                  v                             v
-+-------------+  |           +------------------+          +----------------+
-| plotter.ts  +--+           |  DataManager.ts  |          |   parser.ts    |
-+-------------+              | (The Query Engine) |          | (File->Record) |
-                             +------------------+          +----------------+
+### Principle 2: Decoupled & Modular Design
+
+The system is broken down into distinct, single-responsibility modules, following a pattern similar to Model-View-Controller (MVC):
+
+-   **Data Layer (`DataService`, `DataManager`, `translator`):** Responsible for fetching, translating, and indexing data for analysis.
+-   **Controller Layer (`controller.ts`):** The central orchestrator that manages application state and connects the data layer to the UI.
+-   **View/UI Layer (`UIService`, `plotter.ts`, `dom.ts`):** Manages all DOM rendering, user interactions, and event handling.
+
+### Principle 3: Extensible Charting via Strategy Pattern
+
+Adding new chart types is designed to be a straightforward process. The `AnalysisController` uses a **Strategy Pattern**, where each chart type is a self-contained "strategy" that defines how to process data and render itself. This keeps the core controller logic clean and makes the system highly extensible.
+
+## 3. Data Flow
+
+The flow of data from the main plugin to a rendered chart is unidirectional and clear:
+
+```mermaid
+graph TD
+    A[Obsidian Vault Events] --> B{EventCache (Main Plugin)};
+    B --> C[DataService];
+    subgraph ChronoAnalyser
+        C -- StoredEvent[] --> D[translator.ts];
+        D -- TimeRecord[] --> E[DataManager];
+        E -- Filtered TimeRecords --> F[AnalysisController];
+        F -- Data & Config --> G[Chart Strategy];
+        G -- Formatted Data --> H[plotter.ts / aggregator.ts];
+        H -- Rendered Chart --> I[DOM];
+    end
 ```
 
-### Component Breakdown
+1.  **EventCache:** The main plugin's cache holds all `StoredEvent` objects from configured calendar sources.
+2.  **DataService:** Subscribes to `EventCache`. On update, it retrieves all events from relevant calendar sources (currently `FullNoteCalendar` types).
+3.  **translator.ts:** For each `StoredEvent`, it runs a translation function to convert it into a `TimeRecord`, enriching it with analyser-specific data like `hierarchy`, `project`, and `subproject`.
+4.  **DataManager:** Receives all `TimeRecord`s and builds in-memory indexes (`hierarchy`, `project`) for high-performance filtering.
+5.  **AnalysisController:** When a user changes a filter, it queries the `DataManager` to get a filtered list of `TimeRecord`s.
+6.  **Chart Strategy:** The controller passes the filtered data to the currently active chart strategy.
+7.  **plotter.ts / aggregator.ts:** The strategy uses helper modules to perform final aggregations (if needed) and calls the appropriate `Plotter` function to render the chart using Plotly.js.
 
--   **`AnalysisView.ts`**: The main Obsidian `ItemView`. Its only job is to create the DOM skeleton and instantiate the `AnalysisController`.
+## 4. Module Breakdown
 
--   **`controller.ts`**: The central **Orchestrator**. It is the leanest and most important class. It contains no complex logic itself. Its responsibilities are:
-    1.  Initialize the `DataService` and `UIService`.
-    2.  Receive events (callbacks) from the services (e.g., "filters changed" or "data is ready").
-    3.  Apply the appropriate **Chart Strategy** to process the data and render the UI.
+### Core Logic
+-   **`controller.ts` (The Orchestrator):**
+    -   Initializes all services.
+    -   Triggers the initial population of the main `EventCache` if necessary.
+    -   Holds the map of chart strategies (`createChartStrategies`).
+    -   Listens for UI filter changes (via `UIService`) and orchestrates the analysis pipeline.
+    -   Manages the overall rendering state (`isChartRendered`, `useReact`).
 
--   **`modules/DataService.ts`**: The **Data Layer**. This service is responsible for everything related to data sourcing.
-    -   Manages the persistent cache (`load/saveCacheAndSettings`).
-    -   Scans vault folders and orchestrates file parsing.
-    -   Listens for vault events and keeps the data up-to-date.
-    -   Populates the `DataManager` with fresh data.
+-   **`AnalysisView.ts` (The Entry Point):**
+    -   The `ItemView` class registered with Obsidian.
+    -   Responsible for creating the base DOM structure and initializing the `AnalysisController` when the view is opened.
 
--   **`modules/UIService.ts`**: The **View Layer**. This service is responsible for all DOM interaction.
-    -   Sets up all event listeners (buttons, dropdowns, etc.).
-    -   Reads the current state of UI filters.
-    -   Shows, hides, and updates DOM elements (stats, chart containers, popups).
-    -   Saves and loads the filter state to `localStorage`.
+### Data Layer
+-   **`DataService.ts` (The Bridge):**
+    -   Subscribes to the main `EventCache`.
+    -   Its primary role is to trigger a repopulation of the `DataManager` whenever the source data changes.
+    -   It iterates through the main plugin's configured calendars to find relevant events.
 
--   **`modules/DataManager.ts`**: The **Query Engine**. This is a powerful, stateful class that holds all `TimeRecord` objects.
-    -   Maintains high-performance in-memory indices for hierarchies, projects, and dates.
-    -   Provides a single, optimized query method (`getAnalyzedData`) that performs filtering and aggregation in one efficient pass.
+-   **`translator.ts` (The Interpreter):**
+    -   Contains the critical business logic for converting a generic `StoredEvent` into a meaningful `TimeRecord`.
+    -   **Hierarchy:** Defined as the path of the calendar source folder (e.g., `Calender/Work`).
+    -   **Project/Subproject:** Parsed from the event's filename/title. **This is the file to modify if parsing rules need to change.**
 
--   **`modules/plotter.ts`**: A stateless rendering module. It receives fully prepared data and uses `Plotly.js` to draw the charts.
+-   **`DataManager.ts` (The In-Memory DB):**
+    -   Stores all translated `TimeRecord`s in a map.
+    -   Maintains indexes on `hierarchy` and `project` for fast filtering.
+    -   The `getAnalyzedData()` method is the primary query engine, applying all user-selected filters.
 
--   **`modules/aggregator.ts`**: A stateless helper for complex, multi-level aggregations (like Sunburst) that don't fit the generic single-pass model.
+-   **`aggregator.ts` (The Specialist):**
+    -   Handles complex, multi-level aggregations that don't fit the single-pass model of `DataManager`.
+    -   Currently only used for preparing data for Sunburst charts.
 
-## 4. The Chart Strategy Pattern
+### UI & View Layer
+-   **`UIService.ts` (The DOM Manager):**
+    -   Manages all DOM event listeners (e.g., dropdown changes, button clicks).
+    -   Reads the state of all filter inputs (`getFilterState`).
+    -   Handles showing/hiding UI elements and the details popup.
+    -   Persists the UI filter state to `localStorage`.
 
-To avoid a monolithic `if/else if` block in the controller for handling different charts, we use the **Strategy Pattern**. This makes the system highly extensible.
+-   **`plotter.ts` (The Renderer):**
+    -   A collection of functions that take prepared data and render a specific chart using Plotly.js.
+    -   Handles theme integration (dark/light mode) and chart-specific interactions (like click events).
 
--   **The Contract (`IChartStrategy`)**: An interface in `controller.ts` defines what every chart strategy must provide: an `analysisName` and a `render` method.
--   **The Implementation**: In the controller's `createChartStrategies` method, we create a `Map` where each key is a chart type (e.g., `'pie'`) and the value is a strategy object that fulfills the contract.
--   **The Execution**: The controller's `renderUI` method simply gets the current chart type from the UI, looks up the corresponding strategy in the map, and executes its `render` method.
+-   **`dom.ts` (The Blueprint):**
+    -   A single function that injects the entire static HTML structure of the view into the DOM.
 
-This means adding a new chart type **does not require modifying the core `renderUI` logic at all**.
+-   **`ui.ts` (UI Components):**
+    -   Contains reusable UI components like the `FolderSuggestModal` (currently unused but kept for potential future use) and the `setupAutocomplete` helper.
 
-## 5. Developer Guide & Extension Hooks
+### Shared
+-   **`types.ts`:** Defines shared data structures, most importantly the `TimeRecord` interface.
+-   **`utils.ts`:** A collection of pure, stateless helper functions for date manipulation and duration calculation.
 
-This system is designed to be easily extended. Follow these recipes for common development tasks.
+## 5. Future Development & Extension Hooks
 
-### How to Add a New Chart Type
+### Hook 1: Adding a New Chart Type
 
-Let's add a "Bar Chart by Project".
+This is the most common extension point. Follow these steps:
 
-1.  **Update UI (`dom.ts`)**: Add a new `<option>` to the `#analysisTypeSelect` dropdown.
-    ```html
-    <option value="bar-project">Bar Chart by Project</option>
-    ```
-2.  **Create Plotter Function (`plotter.ts`)**: Create a new function `renderProjectBarChart(rootEl, pieData, useReact)`. It can reuse the `PieData` structure, as it's a simple categorical aggregation. This function will use Plotly to draw the bar chart.
-3.  **Update Controller (`controller.ts`)**: Add a new entry to the `chartStrategies` map inside the `createChartStrategies` method.
-    ```typescript
-    // In controller.ts -> createChartStrategies()
+1.  **Add UI Controls (`dom.ts` & `UIService.ts`):**
+    -   Add a new `<option>` to the `#analysisTypeSelect` dropdown in `dom.ts`.
+    -   If your chart needs specific controls (like a new dropdown), add the HTML for it in `dom.ts` and ensure `UIService.handleAnalysisTypeChange` shows/hides it correctly.
+    -   Add logic to `UIService.getChartSpecificFilter` to read the values from your new controls.
 
-    strategies.set('bar-project', {
-      analysisName: 'Bar Chart by Project',
-      render(controller: AnalysisController, useReact: boolean) {
-        const { filters } = controller.uiService.getFilterState();
-        // The DataManager can aggregate by project for us.
-        const { aggregation, recordsByCategory, error } = controller.dataManager.getAnalyzedData(filters, 'project');
-        
-        if (error) { /* handle error */ return; }
+2.  **Create Renderer (`plotter.ts` or `aggregator.ts`):**
+    -   If the data aggregation is simple, create a new `renderMyNewChart(...)` function in `plotter.ts`.
+    -   If the aggregation is complex and hierarchical, add a new function to `aggregator.ts`.
 
-        const chartData: PieData = { hours: aggregation, recordsByCategory, error: false };
-        Plotter.renderProjectBarChart(controller.rootEl, chartData, useReact);
-      }
-    });
-    ```
-    That's it. The new chart is now fully integrated.
+3.  **Implement the Strategy (`controller.ts`):**
+    -   In `AnalysisController.createChartStrategies()`, add a new entry to the `strategies` map.
+    -   The key should match the `value` of the `<option>` you added in `dom.ts`.
+    -   The `render` function will call your new aggregation/plotting functions. It receives the `controller`, `filteredRecords`, `useReact`, and `isNewChartType` as arguments.
 
-### How to Add a New Filter
+### Hook 2: Modifying Data Parsing Logic
 
-Let's add a filter for `subproject`.
+If you need to change how `project` or `subproject` are determined (e.g., to read from YAML frontmatter instead of the filename), all the logic is centralized in one place:
 
-1.  **Update UI (`dom.ts`)**: Add a new text input and suggestion container for the subproject filter in the HTML structure.
-2.  **Update Types (`types.ts`)**: Add the optional property to the `AnalysisFilters` interface.
-    ```typescript
-    export interface AnalysisFilters {
-      // ... existing filters
-      subproject?: string;
-    }
-    ```
-3.  **Update DataManager (`DataManager.ts`)**:
-    a. Add a new index: `#subprojectIndex: Map<string, Set<string>> = new Map()`.
-    b. Update `addRecord` and `removeRecord` to populate this new index (using a lowercase key).
-    c. In `getAnalyzedData`, add a new filtering stage that uses the `#subprojectIndex` to intersect with the `candidatePaths`.
-4.  **Update UIService (`UIService.ts`)**:
-    a. In `getFilterState`, read the value from the new subproject input and add it to the `filters` object.
-    b. In `populateFilterDataSources`, add a call to `UI.setupAutocomplete` for the new subproject input, providing a new `getKnownSubprojects` method from the `DataManager`.
+-   **Modify `src/chrono_analyser/modules/translator.ts`**.
+-   The `storedEventToTimeRecord` function gives you access to the full `StoredEvent`, including the event's frontmatter via `storedEvent.event`. You can add any custom parsing logic here.
 
-## 6. Future Work & Potential Improvements
+### Hook 3: Improving Filter Performance
 
--   **Generic Aggregation for Sunburst**: The Sunburst chart still uses its own aggregator. A future improvement would be to enhance the `DataManager`'s `getAnalyzedData` method to handle multi-level `breakdownBy` keys (e.g., `['hierarchy', 'project']`) to make it a true single-pass query engine for all chart types.
--   **Binary Search for Date Index**: The date index is sorted, but the current implementation loops through it. Replacing this with a true binary search algorithm would provide a logarithmic performance boost for date filtering.
--   **UI State Persistence**: The filter state (`localStorage`) and data cache (`plugin.saveData`) are separate. Consolidating all persistent state into `plugin.saveData` under the `ChronoAnalyserData` object would be cleaner.
+If the dataset grows very large and filtering becomes slow, the place to add new optimizations is:
+
+-   **Modify `src/chrono_analyser/modules/DataManager.ts`**.
+-   You can add new indexes (e.g., by subproject, by date) and update the `getAnalyzedData` method to use them to reduce the number of records it needs to loop through.

@@ -12,7 +12,6 @@ export const ANALYSIS_VIEW_TYPE = 'full-calendar-analysis-view';
 export class AnalysisView extends ItemView {
   private controller: AnalysisController | null = null;
 
-  // The constructor now requires the `app` instance.
   constructor(
     leaf: WorkspaceLeaf,
     private plugin: FullCalendarPlugin
@@ -33,23 +32,17 @@ export class AnalysisView extends ItemView {
   }
 
   protected async onOpen() {
-    // Get the view's content container
     const container = this.containerEl.children[1];
     container.empty();
-
-    // 3. Add our unique scoping class to the root element
     container.addClass('chrono-analyser-view');
-
-    // 4. Build the HTML structure
     createDOMStructure(container as HTMLElement);
 
-    // 5. Initialize the controller to bring the view to life
     this.controller = new AnalysisController(this.app, container as HTMLElement, this.plugin);
-    this.controller.initialize();
+    // CORRECTED: Await the async initialize method.
+    await this.controller.initialize();
   }
 
   protected async onClose() {
-    // 6. Clean up when the view is closed to prevent memory leaks
     this.controller?.destroy();
     this.controller = null;
   }

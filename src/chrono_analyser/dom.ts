@@ -1,7 +1,5 @@
 /**
  * Injects the HTML structure of the analysis dashboard into a given root element.
- * Note: The original file input has been replaced with a standard button
- * as `<input type="file" webkitdirectory>` does not work for vault folder selection.
  * @param rootEl The HTML element to populate.
  */
 export function createDOMStructure(rootEl: HTMLElement): void {
@@ -9,40 +7,24 @@ export function createDOMStructure(rootEl: HTMLElement): void {
       <div id="toastContainer"></div>
       <div class="container">
         <div class="header">
-          <button id="clearCacheBtn" class="header-action-button" style="background-color: #e57373;"
-            title="Clear all cached file data from local storage">
-            🧹 Cache
-          </button>
           <h1>📊 ChronoAnalyser</h1>
           <p>Interactive analysis of your time tracking data</p>
         </div>
 
         <div class="controls">
-          <!-- Row 1: Data Source & Global Filters -->
+          <!-- Row 1: Global Filters -->
           <div class="control-group">
             <div class="control-item">
-              <label for="folderInputButton">📁 Select Folder</label>
-              <!-- REPLACEMENT for the original file input for Obsidian compatibility -->
-              <div class="file-input-wrapper">
-                <button id="folderInputButton" class="file-input-button">
-                  <span>🗂️</span>
-                  <span>Choose Vault Folder</span>
-                </button>
-              </div>
-            </div>
-            <div class="control-item">
-              <label for="hierarchyFilterInput">📂 Filter by Hierarchy (Overall)</label>
+              <label for="hierarchyFilterInput">📂 Filter by Hierarchy (Calendar Source)</label>
               <div class="autocomplete-wrapper">
                 <input type="text" id="hierarchyFilterInput" placeholder="All Hierarchies (type to filter...)">
-                <span class="clear-input-btn" id="clearHierarchyFilterBtn" style="display: none;">×</span>
                 <div class="autocomplete-suggestions" id="hierarchySuggestions"></div>
               </div>
             </div>
             <div class="control-item">
-              <label for="projectFilterInput">📋 Filter by Project (Overall)</label>
+              <label for="projectFilterInput">📋 Filter by Project</label>
               <div class="autocomplete-wrapper">
                 <input type="text" id="projectFilterInput" placeholder="All Projects (type to filter...)">
-                <span class="clear-input-btn" id="clearProjectFilterBtn" style="display: none;">×</span>
                 <div class="autocomplete-suggestions" id="projectSuggestions"></div>
               </div>
             </div>
@@ -70,16 +52,12 @@ export function createDOMStructure(rootEl: HTMLElement): void {
             <div class="control-item">
               <label for="analysisTypeSelect">🎯 Analysis Type</label>
               <select id="analysisTypeSelect">
-                <option value="pie" title="Visualize how time is distributed across different categories.">Categorywise (Pie)
-                </option>
-                <option value="sunburst" title="Visualize how time is distributed across different categories.">Categorywise
-                  (Sunburst)</option>
+                <option value="pie" title="Visualize how time is distributed across different categories.">Categorywise (Pie)</option>
+                <option value="sunburst" title="Visualize how time is distributed across different categories.">Categorywise (Sunburst)</option>
                 <option value="time-series" title="Visualize how time spent changes over a period.">Time-Series Trend</option>
-                <option value="activity" title="Identify patterns in when tasks are typically performed.">Activity Patterns
-                </option>
+                <option value="activity" title="Identify patterns in when tasks are typically performed.">Activity Patterns</option>
               </select>
             </div>
-
 
             <!-- Pie Chart Specific -->
             <div class="control-item hidden-controls" id="pieBreakdownLevelContainer">
@@ -133,20 +111,16 @@ export function createDOMStructure(rootEl: HTMLElement): void {
             <div class="control-item hidden-controls" id="activityPatternTypeContainer">
               <label for="activityPatternTypeSelect">📅 Analyze by</label>
               <select id="activityPatternTypeSelect">
-                <option value="dayOfWeek" title="Displays a bar chart showing the total hours spent on each day of the week.">
-                  Day of Week</option>
-                <option value="hourOfDay"
-                  title="Displays a bar chart showing the total hours associated with tasks that start in each hour of the day.">
-                  Hour of Day (Task Start)</option>
-                <option value="heatmapDOWvsHOD"
-                  title="Displays a heatmap where rows are days of the week, columns are hours of the day, and the color intensity of each cell represents the total hours for tasks starting at that specific day/hour combination.">
-                  Heatmap (Day vs Hour)</option>
+                <option value="dayOfWeek" title="Displays a bar chart showing the total hours spent on each day of the week.">Day of Week</option>
+                <option value="hourOfDay" title="Displays a bar chart showing the total hours associated with tasks that start in each hour of the day.">Hour of Day (Task Start)</option>
+                <option value="heatmapDOWvsHOD" title="Displays a heatmap where rows are days of the week, columns are hours of the day, and the color intensity of each cell represents the total hours for tasks starting at that specific day/hour combination.">Heatmap (Day vs Hour)</option>
               </select>
             </div>
           </div>
         </div>
 
         <div class="dashboard-layout-container">
+          <!-- THIS IS THE MISSING PART -->
           <div class="stats-grid" id="statsGrid" style="display: none;">
             <div class="stat-card">
               <div class="stat-value" id="totalHours">0</div>
@@ -165,13 +139,12 @@ export function createDOMStructure(rootEl: HTMLElement): void {
           <div class="main-chart-container" id="mainChartContainer" style="display: none; padding: 15px;">
             <div id="mainChart" style="flex-grow: 1; min-width: 0;"></div>
           </div>
-
+          <!-- END OF MISSING PART -->
         </div>
 
         <div class="log-container" id="errorLogContainer" style="display: none;">
           <h2>📋 Processing Log & Issues</h2>
-          <div id="cacheStatusDisplay" class="log-summary"
-            style="margin-bottom: 15px; background-color: #eef2ff; border-color: #c7d2fe; padding: 12px 15px; font-size: 0.95rem; display: none;">
+          <div id="cacheStatusDisplay" class="log-summary" style="margin-bottom: 15px; background-color: #eef2ff; border-color: #c7d2fe; padding: 12px 15px; font-size: 0.95rem; display: none;">
           </div>
           <div class="log-summary" id="errorLogSummary">No issues found.</div>
           <div id="errorLogEntries"></div>
@@ -203,7 +176,4 @@ export function createDOMStructure(rootEl: HTMLElement): void {
         </div>
       </div>
     `;
-  // NOTE: To save space, I have omitted the full HTML content.
-  // You must paste the full body content from your HTML file inside the template string.
-  // Make sure the replacement for the folder input is correct as shown above.
 }

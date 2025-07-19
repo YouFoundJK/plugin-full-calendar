@@ -4,8 +4,7 @@
  */
 
 import Plotly from '../plotly-custom';
-
-// ... (keep all existing interfaces like TimeRecord, ProcessingError, etc.)
+import { OFCEvent } from 'src/types';
 
 export interface TimeRecord {
   path: string;
@@ -16,7 +15,7 @@ export interface TimeRecord {
   duration: number;
   file: string;
   date: Date | null;
-  metadata: FileMetadata;
+  metadata: OFCEvent; // Changed from FileMetadata to the more specific OFCEvent
   _effectiveDurationInPeriod?: number;
 }
 
@@ -40,19 +39,10 @@ export interface PieData {
   error: boolean;
 }
 
-export interface FileMetadata {
-  type?: 'recurring' | string;
-  startTime?: string | number;
-  endTime?: string | number;
-  days?: number;
-  date?: string | Date;
-  startRecur?: string | Date;
-  endRecur?: string | Date;
-  daysOfWeek?: string | string[];
-  [key: string]: any;
-}
+// FileMetadata is no longer needed as we now use OFCEvent directly.
+// export interface FileMetadata { ... }
 
-// --- NEW: A COMPLETE THEME SYSTEM FOR PLOTLY ---
+// --- PLOTLY THEME SYSTEM (Unchanged) ---
 
 /**
  * Defines base layout properties common to both light and dark themes.
@@ -108,27 +98,9 @@ export const PLOTLY_DARK_THEME: Partial<Plotly.Layout> = {
   }
 };
 
-// --- NEW CACHE TYPES ---
-
-/**
- * Defines the structure for a single cached entry.
- * It stores the parsed record and the file's modification time to validate the cache.
- */
-export interface CacheEntry {
-  mtime: number;
-  record: TimeRecord;
-}
-
-/**
- * Defines the entire cache object, which maps file paths to their CacheEntry.
- */
-export type ChronoCache = Record<string, CacheEntry>;
-
-/**
- * Defines the top-level structure for all data persisted by the Chrono Analyser.
- * This includes the file cache and user settings like the last used folder path.
- */
-export interface ChronoAnalyserData {
-  cache: ChronoCache;
-  lastFolderPath?: string;
-}
+// --- REMOVED CACHE TYPES ---
+// The following interfaces are no longer needed as we are using the main plugin's cache.
+//
+// export interface CacheEntry { ... }
+// export type ChronoCache = Record<string, CacheEntry>;
+// export interface ChronoAnalyserData { ... }

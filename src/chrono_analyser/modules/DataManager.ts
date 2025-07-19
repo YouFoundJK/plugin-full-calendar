@@ -39,9 +39,6 @@ export class DataManager {
   #hierarchyIndex: Map<string, Set<string>> = new Map();
   #projectIndex: Map<string, Set<string>> = new Map();
 
-  // --- NEW: A sorted array for high-speed date range lookups ---
-  #dateIndex: { date: number; path: string }[] = [];
-
   #originalHierarchyCasing: Map<string, string> = new Map();
   #originalProjectCasing: Map<string, string> = new Map();
 
@@ -49,7 +46,6 @@ export class DataManager {
     this.#records.clear();
     this.#hierarchyIndex.clear();
     this.#projectIndex.clear();
-    this.#dateIndex = [];
     this.#originalHierarchyCasing.clear();
     this.#originalProjectCasing.clear();
   }
@@ -73,18 +69,14 @@ export class DataManager {
       this.#originalProjectCasing.set(projectKey, record.project);
     }
     this.#projectIndex.get(projectKey)!.add(record.path);
-
-    // Add to the date index if the record has a date
-    if (record.date) {
-      this.#dateIndex.push({ date: record.date.getTime(), path: record.path });
-    }
   }
 
   /**
-   * Must be called after all records are added to sort the date index for binary search.
+   * Must be called after all records are added.
+   * (Currently empty, but kept for future optimizations like sorting indexes).
    */
   public finalize(): void {
-    this.#dateIndex.sort((a, b) => a.date - b.date);
+    // No-op for now. Date index has been removed in favor of a more robust filter logic.
   }
 
   public removeRecord(filePath: string): void {
@@ -110,12 +102,6 @@ export class DataManager {
       }
     }
     this.#records.delete(filePath);
-
-    // Remove from date index
-    const dateIndexPos = this.#dateIndex.findIndex(d => d.path === filePath);
-    if (dateIndexPos > -1) {
-      this.#dateIndex.splice(dateIndexPos, 1);
-    }
   }
 
   public getKnownHierarchies = (): string[] =>
@@ -134,7 +120,6 @@ export class DataManager {
     filters: AnalysisFilters,
     breakdownBy: keyof TimeRecord | null
   ): AnalysisResult {
-    // --- FIX: Declare the result object ONCE at the top ---
     const result: AnalysisResult = {
       records: [],
       totalHours: 0,
@@ -150,44 +135,29 @@ export class DataManager {
         regex = new RegExp(filters.pattern, 'i');
       } catch (e) {
         result.error = e instanceof Error ? e.message : String(e);
-        return result; // Return early with the error
+        return result;
       }
     }
 
+    // --- NEW FILTERING LOGIC ---
+    // 1. Get a set of candidate paths using the fastest non-date indexes first.
     let candidatePaths: Set<string> | null = null;
 
-    // --- OPTIMIZATION 1: Use Date Index if it's the most restrictive filter ---
-    const startDate = filters.filterStartDate ?? null;
-    const endDate = filters.filterEndDate ?? null;
-
-    if (startDate || endDate) {
-      candidatePaths = new Set();
-      // Use binary search (or a simple find, depending on what's faster to implement)
-      // For simplicity, we'll loop, but a binary search would go here.
-      const startTime = startDate?.getTime() ?? -Infinity;
-      const endTime = endDate?.getTime() ?? Infinity;
-      for (const item of this.#dateIndex) {
-        if (item.date >= startTime && item.date <= endTime) {
-          candidatePaths.add(item.path);
-        }
-      }
-    }
-
-    // --- OPTIMIZATION 2: Intersect with category indices ---
     if (filters.hierarchy) {
-      const hierarchyPaths = this.#hierarchyIndex.get(filters.hierarchy) || new Set();
-      candidatePaths = candidatePaths
-        ? new Set([...candidatePaths].filter(path => hierarchyPaths.has(path)))
-        : hierarchyPaths;
+      const hierarchyKey = filters.hierarchy.toLowerCase();
+      candidatePaths = this.#hierarchyIndex.get(hierarchyKey) || new Set();
     }
 
     if (filters.project) {
-      const projectPaths = this.#projectIndex.get(filters.project) || new Set();
+      const projectKey = filters.project.toLowerCase();
+      const projectPaths = this.#projectIndex.get(projectKey) || new Set();
+      // Intersect with existing candidates or use as the primary filter
       candidatePaths = candidatePaths
         ? new Set([...candidatePaths].filter(path => projectPaths.has(path)))
         : projectPaths;
     }
 
+    // 2. Determine which records to scan. If we have candidates, use them. Otherwise, scan all.
     const recordsToScan: Iterable<TimeRecord> = candidatePaths
       ? Array.from(candidatePaths)
           .map(path => this.#records.get(path)!)
@@ -195,26 +165,43 @@ export class DataManager {
       : this.#records.values();
 
     const uniqueFiles = new Set<string>();
+    const startDate = filters.filterStartDate ?? null;
+    const endDate = filters.filterEndDate ?? null;
+    const hasDateFilter = !!(startDate || endDate);
 
+    // 3. Loop through the candidates and apply the date filter logic.
     for (const record of recordsToScan) {
       let effectiveDuration = 0;
       let includeRecord = false;
 
-      // Note: Recurring events are not in the date index, so we handle them separately.
-      // A full implementation might also index recurring events by their start date.
-      if (record.metadata?.type === 'recurring') {
-        const numInstances = Utils.calculateRecurringInstancesInDateRange(
-          record.metadata,
-          startDate,
-          endDate
-        );
-        effectiveDuration = (record.duration || 0) * numInstances;
-        if (effectiveDuration > 0) includeRecord = true;
-      } else {
-        if (!startDate && !endDate) {
+      if (record.metadata.type === 'recurring') {
+        if (hasDateFilter) {
+          const numInstances = Utils.calculateRecurringInstancesInDateRange(
+            record.metadata,
+            startDate,
+            endDate
+          );
+          if (numInstances > 0) {
+            effectiveDuration = record.duration * numInstances;
+            includeRecord = true;
+          }
+        } else {
+          // If no date filter, recurring events are conceptually "infinite"
+          // We can't sum them, so we exclude them from totals unless a date range is specified.
+          // For charts, we use their base duration. Here we choose to exclude from totals.
+          // Let's decide to include them with a single instance duration for non-date-filtered views.
           effectiveDuration = record.duration;
           includeRecord = true;
-        } else if (candidatePaths?.has(record.path)) {
+        }
+      } else {
+        // It's a single, dated event
+        if (hasDateFilter) {
+          if (this.isWithinDateRange(record.date, startDate, endDate)) {
+            effectiveDuration = record.duration;
+            includeRecord = true;
+          }
+        } else {
+          // No date filter, so include all single events
           effectiveDuration = record.duration;
           includeRecord = true;
         }
@@ -243,31 +230,33 @@ export class DataManager {
     return result;
   }
 
-  // --- FIX: Provide the full, correct implementation for this method ---
+  /**
+   * Simple, robust check if a record's date falls within a range.
+   * Handles inclusive start/end dates.
+   */
   private isWithinDateRange(
     recordDate: Date | null,
     startDate: Date | null,
     endDate: Date | null
   ): boolean {
-    if (!startDate && !endDate) return true;
     if (!recordDate || isNaN(recordDate.getTime())) return false;
 
-    const recordTime = new Date(
-      Date.UTC(recordDate.getUTCFullYear(), recordDate.getUTCMonth(), recordDate.getUTCDate())
-    ).getTime();
+    // Use a date-only comparison by zeroing out time parts.
+    const recordTime = new Date(recordDate.valueOf());
+    recordTime.setUTCHours(0, 0, 0, 0);
+    const recordTimestamp = recordTime.getTime();
 
     if (startDate) {
-      const startTime = new Date(
-        Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate())
-      ).getTime();
-      if (recordTime < startTime) return false;
+      const startTime = new Date(startDate.valueOf());
+      startTime.setUTCHours(0, 0, 0, 0);
+      if (recordTimestamp < startTime.getTime()) return false;
     }
     if (endDate) {
-      const endTime = new Date(
-        Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate())
-      ).getTime();
-      if (recordTime > endTime) return false;
+      const endTime = new Date(endDate.valueOf());
+      endTime.setUTCHours(0, 0, 0, 0);
+      if (recordTimestamp > endTime.getTime()) return false;
     }
+
     return true;
   }
 }

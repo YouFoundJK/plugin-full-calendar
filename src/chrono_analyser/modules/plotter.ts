@@ -1,3 +1,5 @@
+// src/chrono_analyser/modules/plotter.ts
+
 /**
  * @file Handles all chart rendering logic using the Plotly.js library.
  * Each function in this module takes prepared data and renders a specific type of chart to the DOM.
@@ -14,6 +16,7 @@ import {
   ProcessingError
 } from './types';
 import * as Utils from './utils';
+import { OFCEvent } from 'src/types';
 
 type ShowDetailPopupFn = (categoryName: string, recordsList: TimeRecord[], context?: any) => void;
 
@@ -36,7 +39,6 @@ function triggerResize(chartEl: HTMLElement) {
   }, 0);
 }
 
-// --- NEW: A helper function to create a theme-aware layout ---
 /**
  * Merges a chart-specific layout with the base dark theme layout if dark mode is active.
  * @param chartLayout - The layout object specific to the chart being rendered.
@@ -45,7 +47,6 @@ function triggerResize(chartEl: HTMLElement) {
 function getThemedLayout(chartLayout: Partial<Plotly.Layout>): Partial<Plotly.Layout> {
   const isDarkMode = document.body.classList.contains('theme-dark');
   const theme = isDarkMode ? PLOTLY_DARK_THEME : PLOTLY_LIGHT_THEME;
-  // Merge all three: base provides transparency, theme provides colors, and chartLayout provides specifics.
   return { ...PLOTLY_BASE_LAYOUT, ...theme, ...chartLayout };
 }
 
@@ -61,27 +62,26 @@ function plotChart(
     Plotly.react(mainChartEl, data, finalLayout, { responsive: true });
   } else {
     Plotly.newPlot(mainChartEl, data, finalLayout, { responsive: true });
-    triggerResize(mainChartEl);
   }
 }
 
 /**
  * Renders a Pie chart to the main chart container.
- *
- * @param rootEl - The root HTML element of the view.
- * @param pieData - The aggregated data prepared for the pie chart.
- * @param showDetailPopup - A callback function to open the details popup when a pie slice is clicked.
  */
 export function renderPieChartDisplay(
   rootEl: HTMLElement,
   pieData: PieData,
   showDetailPopup: ShowDetailPopupFn,
-  useReact: boolean
+  useReact: boolean,
+  isNewChartType: boolean
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
-  // This chart uses the simple layout, so we ensure no wrappers exist.
-  mainChartEl.innerHTML = '';
+
+  if (isNewChartType) {
+    Plotly.purge(mainChartEl);
+    mainChartEl.innerHTML = '';
+  }
 
   const levelSelect = rootEl.querySelector<HTMLSelectElement>('#levelSelect_pie');
   const chartTitleText = levelSelect
@@ -99,7 +99,6 @@ export function renderPieChartDisplay(
     }
   ];
 
-  // --- FIX: Removed the manual dark mode check. It's now handled centrally. ---
   const layout: Partial<Plotly.Layout> = {
     title: { text: `Time Distribution by ${chartTitleText}` },
     showlegend: true,
@@ -122,27 +121,27 @@ export function renderPieChartDisplay(
       }
     }
   });
-  triggerResize(mainChartEl);
+
+  if (!useReact) {
+    triggerResize(mainChartEl);
+  }
 }
+
 /**
  * Renders a Sunburst chart to the main chart container.
- *
- * @param rootEl - The root HTML element of the view.
- * @param sunburstData - The hierarchically aggregated data for the sunburst chart.
- * @param showDetailPopup - A callback function to open the details popup when a sunburst segment is clicked.
  */
 export function renderSunburstChartDisplay(
   rootEl: HTMLElement,
   sunburstData: SunburstData,
   showDetailPopup: ShowDetailPopupFn,
-  useReact: boolean
+  useReact: boolean,
+  isNewChartType: boolean
 ) {
   const mainContainerEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainContainerEl) return;
 
-  // --- FIX: Dynamically create the specific layout needed for Sunburst ---
-  if (!useReact) {
-    // Only manipulate the DOM on the initial render
+  if (isNewChartType) {
+    Plotly.purge(mainContainerEl);
     mainContainerEl.innerHTML = `
       <div id="sunburst-wrapper" style="display: flex; flex-direction: row; gap: 15px; width: 100%; height: 100%;">
         <div id="sunburst-chart-div" style="flex-grow: 1; min-width: 0;"></div>
@@ -170,13 +169,11 @@ export function renderSunburstChartDisplay(
   const layout: Partial<Plotly.Layout> = {
     title: { text: 'Time Breakdown' },
     margin: { l: 0, r: 0, b: 0, t: 40 },
-    showlegend: false // The legend is now custom
+    showlegend: false
   };
 
   plotChart(chartEl, data, layout, useReact);
-
-  // You would add your custom legend rendering logic here. For now, it's empty.
-  legendEl.innerHTML = ''; // Clear previous legend
+  legendEl.innerHTML = ''; // Clear custom legend on each render
 
   const plotlyChart = chartEl as any;
   plotlyChart.removeAllListeners('plotly_sunburstclick');
@@ -191,21 +188,27 @@ export function renderSunburstChartDisplay(
       }
     }
   });
-  triggerResize(chartEl);
+  if (!useReact) {
+    triggerResize(chartEl);
+  }
 }
 
 export function renderTimeSeriesChart(
   rootEl: HTMLElement,
   filteredRecords: TimeRecord[],
   filterDates: { filterStartDate: Date | null; filterEndDate: Date | null },
-  useReact: boolean
+  useReact: boolean,
+  isNewChartType: boolean
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
-  mainChartEl.innerHTML = ''; // Ensure no wrappers exist
+  if (isNewChartType) {
+    Plotly.purge(mainChartEl);
+    mainChartEl.innerHTML = '';
+  }
 
   if (!filteredRecords || filteredRecords.length === 0) {
-    mainChartEl.innerHTML = '<p class="chart-message">No data available for Time-Series chart.</p>';
+    renderChartMessage(rootEl, 'No data available for Time-Series chart.');
     return;
   }
 
@@ -222,18 +225,17 @@ export function renderTimeSeriesChart(
 
   filteredRecords.forEach(record => {
     if (record.metadata?.type === 'recurring') {
-      const { startRecur, endRecur, daysOfWeek, duration } = record.metadata;
+      const { startRecur, endRecur, daysOfWeek } = record.metadata as {
+        startRecur?: Date;
+        endRecur?: Date;
+        daysOfWeek: string[];
+      };
+      const duration = record.duration;
+
       if (!startRecur || !daysOfWeek || !duration) return;
 
-      const startRecurStr = Utils.getISODate(new Date(startRecur));
-      if (!startRecurStr) return;
-      let recStart = new Date(startRecurStr);
-
-      let recEnd = new Date(Date.UTC(9999, 0, 1));
-      if (endRecur) {
-        const endRecurStr = Utils.getISODate(new Date(endRecur));
-        if (endRecurStr) recEnd = new Date(endRecurStr);
-      }
+      let recStart = startRecur;
+      let recEnd = endRecur || new Date(Date.UTC(9999, 0, 1));
 
       const actualDays = (
         Array.isArray(daysOfWeek)
@@ -303,7 +305,7 @@ export function renderTimeSeriesChart(
   const traces: Partial<Plotly.PlotData>[] = [];
 
   if (sortedPeriods.length === 0) {
-    mainChartEl.innerHTML = '<p class="chart-message">No data points to plot for Time-Series.</p>';
+    renderChartMessage(rootEl, 'No data points to plot for Time-Series.');
     return;
   }
 
@@ -334,12 +336,13 @@ export function renderTimeSeriesChart(
           hoverinfo: 'x+y+name'
         });
       });
-    triggerResize(mainChartEl);
   }
 
   const layout: Partial<Plotly.Layout> = {
     title: {
-      text: `Time Spent (${granularity}) - ${chartType === 'line' ? 'Overall Trend' : `Stacked by ${stackingLevel}`}`
+      text: `Time Spent (${granularity}) - ${
+        chartType === 'line' ? 'Overall Trend' : `Stacked by ${stackingLevel}`
+      }`
     },
     xaxis: { title: { text: 'Period' }, type: 'date' },
     yaxis: { title: { text: 'Hours' } },
@@ -347,6 +350,9 @@ export function renderTimeSeriesChart(
     hovermode: 'x unified'
   };
   plotChart(mainChartEl, traces as Plotly.Data[], layout, useReact);
+  if (!useReact) {
+    triggerResize(mainChartEl);
+  }
 }
 
 export function renderActivityPatternChart(
@@ -354,14 +360,18 @@ export function renderActivityPatternChart(
   filteredRecords: TimeRecord[],
   filterDates: { filterStartDate: Date | null; filterEndDate: Date | null },
   showDetailPopup: ShowDetailPopupFn,
-  useReact: boolean
+  useReact: boolean,
+  isNewChartType: boolean
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
-  mainChartEl.innerHTML = ''; // Ensure no wrappers exist
+  if (isNewChartType) {
+    Plotly.purge(mainChartEl);
+    mainChartEl.innerHTML = '';
+  }
 
   if (!filteredRecords || filteredRecords.length === 0) {
-    mainChartEl.innerHTML = '<p class="chart-message">No data available for Activity Patterns.</p>';
+    renderChartMessage(rootEl, 'No data available for Activity Patterns.');
     return;
   }
 
@@ -384,26 +394,23 @@ export function renderActivityPatternChart(
     'Saturday'
   ];
   const hourLabels = Array.from({ length: 24 }, (_, i) => `${i}`);
-
-  // --- Define a consistent margin for all activity charts ---
   const activityLayoutMargin = { t: 50, b: 60, l: 70, r: 30 };
 
   if (patternType === 'dayOfWeek') {
     const hoursByDay = Array(7).fill(0);
     filteredRecords.forEach(record => {
       if (record.metadata?.type === 'recurring') {
-        const { startRecur, endRecur, daysOfWeek, duration } = record.metadata;
+        const { startRecur, endRecur, daysOfWeek } = record.metadata as {
+          startRecur?: Date;
+          endRecur?: Date;
+          daysOfWeek: string[];
+        };
+        const duration = record.duration;
+
         if (!startRecur || !daysOfWeek || !duration) return;
 
-        const startRecurStr = Utils.getISODate(new Date(startRecur));
-        if (!startRecurStr) return;
-        let recStart = new Date(startRecurStr);
-
-        let recEnd = new Date(Date.UTC(9999, 0, 1));
-        if (endRecur) {
-          const endRecurStr = Utils.getISODate(new Date(endRecur));
-          if (endRecurStr) recEnd = new Date(endRecurStr);
-        }
+        let recStart = startRecur;
+        let recEnd = endRecur || new Date(Date.UTC(9999, 0, 1));
 
         const actualDays = (
           Array.isArray(daysOfWeek)
@@ -445,9 +452,8 @@ export function renderActivityPatternChart(
   } else if (patternType === 'hourOfDay') {
     const hoursByHour = Array(24).fill(0);
     filteredRecords.forEach(record => {
-      const startHour = record.metadata?.startTime
-        ? Utils.getHourFromTimeStr(record.metadata.startTime)
-        : null;
+      const startTime = 'startTime' in record.metadata ? record.metadata.startTime : null;
+      const startHour = startTime ? Utils.getHourFromTimeStr(startTime) : null;
       if (startHour !== null) {
         hoursByHour[startHour] += record._effectiveDurationInPeriod || 0;
       }
@@ -465,24 +471,22 @@ export function renderActivityPatternChart(
       .fill(null)
       .map(() => Array(24).fill(0));
     filteredRecords.forEach(record => {
-      const startHour = record.metadata?.startTime
-        ? Utils.getHourFromTimeStr(record.metadata.startTime)
-        : null;
+      const startTime = 'startTime' in record.metadata ? record.metadata.startTime : null;
+      const startHour = startTime ? Utils.getHourFromTimeStr(startTime) : null;
       if (startHour === null) return;
 
       if (record.metadata?.type === 'recurring') {
-        const { startRecur, endRecur, daysOfWeek, duration } = record.metadata;
+        const { startRecur, endRecur, daysOfWeek } = record.metadata as {
+          startRecur?: Date;
+          endRecur?: Date;
+          daysOfWeek: string[];
+        };
+        const duration = record.duration;
+
         if (!startRecur || !daysOfWeek || !duration) return;
 
-        const startRecurStr = Utils.getISODate(new Date(startRecur));
-        if (!startRecurStr) return;
-        let recStart = new Date(startRecurStr);
-
-        let recEnd = new Date(Date.UTC(9999, 0, 1));
-        if (endRecur) {
-          const endRecurStr = Utils.getISODate(new Date(endRecur));
-          if (endRecurStr) recEnd = new Date(endRecurStr);
-        }
+        let recStart = startRecur;
+        let recEnd = endRecur || new Date(Date.UTC(9999, 0, 1));
 
         const actualDays = (
           Array.isArray(daysOfWeek)
@@ -538,7 +542,7 @@ export function renderActivityPatternChart(
     (plotType === 'heatmap' &&
       (data[0] as any).z.flat().every((val: string | null) => val === null))
   ) {
-    mainChartEl.innerHTML = `<p class="chart-message">No data to plot for ${analysisTypeName}.</p>`;
+    renderChartMessage(rootEl, `No data to plot for ${analysisTypeName}.`);
     return;
   }
   plotChart(mainChartEl, data as Plotly.Data[], layout, useReact);
@@ -569,10 +573,10 @@ export function renderActivityPatternChart(
         const hourClicked = parseInt(categoryClicked, 10);
         if (isNaN(hourClicked)) return;
         categoryNameForPopup = `${categoryClicked}:00 (Start Hour)`;
-        recordsForPopup = filteredRecords.filter(
-          r =>
-            r.metadata?.startTime && Utils.getHourFromTimeStr(r.metadata.startTime) === hourClicked
-        );
+        recordsForPopup = filteredRecords.filter(r => {
+          const startTime = 'startTime' in r.metadata ? r.metadata.startTime : null;
+          return startTime && Utils.getHourFromTimeStr(startTime) === hourClicked;
+        });
       }
     } else if (plotType === 'heatmap') {
       const clickedHour = parseInt(point.x, 10);
@@ -585,28 +589,29 @@ export function renderActivityPatternChart(
       categoryNameForPopup = `Activity: ${point.y}, ${String(clickedHour).padStart(2, '0')}:00 - ${String(
         nextHour
       ).padStart(2, '0')}:00`;
-      recordsForPopup = filteredRecords.filter(
-        r =>
-          r.metadata?.startTime &&
-          Utils.getHourFromTimeStr(r.metadata.startTime) === clickedHour &&
+      recordsForPopup = filteredRecords.filter(r => {
+        const startTime = 'startTime' in r.metadata ? r.metadata.startTime : null;
+        return (
+          startTime &&
+          Utils.getHourFromTimeStr(startTime) === clickedHour &&
           r.date &&
           r.date.getUTCDay() === clickedDayIndex
-      );
+        );
+      });
     }
 
     if (recordsForPopup.length > 0) {
       showDetailPopup(categoryNameForPopup, recordsForPopup, { value: clickedValue });
     }
   });
-  triggerResize(mainChartEl);
+
+  if (!useReact) {
+    triggerResize(mainChartEl);
+  }
 }
 
 /**
  * Renders the log of file processing errors into its dedicated container.
- *
- * @param rootEl - The root HTML element of the view.
- * @param processingErrors - An array of errors encountered during file parsing.
- * @param recordsCount - The total number of successfully parsed records.
  */
 export function renderErrorLog(
   rootEl: HTMLElement,
@@ -621,13 +626,13 @@ export function renderErrorLog(
   errorLogEntries.innerHTML = '';
 
   if (processingErrors.length === 0) {
-    errorLogSummary.textContent = 'No processing issues found for the last selected folder.';
-    errorLogContainer.style.display =
-      recordsCount > 0 || processingErrors.length > 0 ? 'block' : 'none';
+    errorLogSummary.textContent =
+      'No processing issues found. All data is sourced from the main Full Calendar cache.';
+    errorLogContainer.style.display = 'none';
     return;
   }
 
-  errorLogSummary.textContent = `Found ${processingErrors.length} issue(s) during file processing:`;
+  errorLogSummary.textContent = `Found ${processingErrors.length} issue(s) during data translation:`;
 
   processingErrors.forEach(err => {
     const details = document.createElement('details');

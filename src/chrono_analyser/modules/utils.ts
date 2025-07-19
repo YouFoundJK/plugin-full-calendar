@@ -3,7 +3,7 @@
  * These helpers are used for date manipulation, duration calculation, and other reusable logic.
  */
 
-import { FileMetadata } from './types';
+import { OFCEvent } from 'src/types'; // No other imports from './types'
 
 export function getISODate(date: Date | null): string | null {
   if (!date || isNaN(date.getTime())) return null;
@@ -62,7 +62,11 @@ export function getDayOfWeekNumber(dayChar: string): number | undefined {
  * @param days - The number of days the event spans. Defaults to 1.
  * @returns The total duration in hours.
  */
-export function calculateDuration(startTime: any, endTime: any, days = 1): number {
+export function calculateDuration(
+  startTime: any,
+  endTime: any,
+  days: number | undefined = 1
+): number {
   const parseTime = (timeStr: any): { hours: number; minutes: number } | null => {
     if (timeStr == null) return null;
     if (typeof timeStr === 'number') {
@@ -108,10 +112,12 @@ export function calculateDuration(startTime: any, endTime: any, days = 1): numbe
  * @returns The total number of occurrences within the range.
  */
 export function calculateRecurringInstancesInDateRange(
-  metadata: FileMetadata,
+  metadata: OFCEvent,
   filterStartDate: Date | null,
   filterEndDate: Date | null
 ): number {
+  if (metadata.type !== 'recurring') return 0;
+
   const {
     startRecur: metaStartRecurStr,
     endRecur: metaEndRecurStr,
@@ -120,7 +126,7 @@ export function calculateRecurringInstancesInDateRange(
   if (!metaStartRecurStr || !metaDaysOfWeek) return 0;
 
   let recurrenceStart: Date | null = null;
-  const tempStartDate = new Date(String(metaStartRecurStr));
+  const tempStartDate = new Date(metaStartRecurStr);
   if (!isNaN(tempStartDate.getTime())) {
     recurrenceStart = new Date(
       Date.UTC(tempStartDate.getFullYear(), tempStartDate.getMonth(), tempStartDate.getDate())
@@ -130,7 +136,7 @@ export function calculateRecurringInstancesInDateRange(
 
   let recurrenceEnd: Date = new Date(Date.UTC(9999, 11, 31));
   if (metaEndRecurStr) {
-    const tempEndDate = new Date(String(metaEndRecurStr));
+    const tempEndDate = new Date(metaEndRecurStr);
     if (!isNaN(tempEndDate.getTime())) {
       recurrenceEnd = new Date(
         Date.UTC(tempEndDate.getFullYear(), tempEndDate.getMonth(), tempEndDate.getDate())
