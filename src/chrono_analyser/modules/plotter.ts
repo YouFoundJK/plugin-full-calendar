@@ -9,10 +9,39 @@ import * as Utils from './utils';
 
 type ShowDetailPopupFn = (categoryName: string, recordsList: TimeRecord[], context?: any) => void;
 
+/**
+ * Displays a simple message in the main chart area, used for "no data" states.
+ * @param rootEl - The root HTML element of the view.
+ * @param message - The message string to display.
+ */
+export function renderChartMessage(rootEl: HTMLElement, message: string) {
+  const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
+  if (!mainChartEl) return;
+  // Purge any existing chart before showing the message
+  Plotly.purge(mainChartEl);
+  mainChartEl.innerHTML = `<p class="chart-message">${message}</p>`;
+}
+
 function triggerResize(chartEl: HTMLElement) {
   setTimeout(() => {
     Plotly.Plots.resize(chartEl);
   }, 0);
+}
+
+// A generic function to handle the plotting logic
+function plotChart(
+  mainChartEl: HTMLElement,
+  data: Plotly.Data[],
+  layout: Partial<Plotly.Layout>,
+  useReact: boolean
+) {
+  if (useReact) {
+    Plotly.react(mainChartEl, data, layout, { responsive: true });
+  } else {
+    Plotly.newPlot(mainChartEl, data, layout, { responsive: true });
+    // Only trigger the resize fix on the initial plot
+    triggerResize(mainChartEl);
+  }
 }
 
 /**
@@ -25,7 +54,8 @@ function triggerResize(chartEl: HTMLElement) {
 export function renderPieChartDisplay(
   rootEl: HTMLElement,
   pieData: PieData,
-  showDetailPopup: ShowDetailPopupFn
+  showDetailPopup: ShowDetailPopupFn,
+  useReact: boolean
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
@@ -34,7 +64,6 @@ export function renderPieChartDisplay(
   const chartTitleText = levelSelect
     ? levelSelect.selectedOptions[0].text.split('(')[0].trim()
     : 'Category';
-
   const data: Plotly.Data[] = [
     {
       type: 'pie',
@@ -68,8 +97,9 @@ export function renderPieChartDisplay(
     Object.assign(layout, PLOTLY_DARK_LAYOUT);
   }
 
-  Plotly.newPlot(mainChartEl, data, layout, { responsive: true });
+  plotChart(mainChartEl, data, layout, useReact);
 
+  // Event listeners need to be re-attached on every render to ensure they point to the correct data context
   const plotlyChart = mainChartEl as any;
   plotlyChart.removeAllListeners('plotly_click');
   plotlyChart.on('plotly_click', (eventData: any) => {
@@ -86,7 +116,6 @@ export function renderPieChartDisplay(
   });
   triggerResize(mainChartEl);
 }
-
 /**
  * Renders a Sunburst chart to the main chart container.
  *
@@ -97,7 +126,8 @@ export function renderPieChartDisplay(
 export function renderSunburstChartDisplay(
   rootEl: HTMLElement,
   sunburstData: SunburstData,
-  showDetailPopup: ShowDetailPopupFn
+  showDetailPopup: ShowDetailPopupFn,
+  useReact: boolean
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
@@ -120,7 +150,7 @@ export function renderSunburstChartDisplay(
     margin: { l: 0, r: 0, b: 0, t: 40 }
   };
 
-  Plotly.newPlot(mainChartEl, data, layout, { responsive: true });
+  plotChart(mainChartEl, data, layout, useReact);
 
   const plotlyChart = mainChartEl as any;
   plotlyChart.removeAllListeners('plotly_sunburstclick');
@@ -141,11 +171,11 @@ export function renderSunburstChartDisplay(
 export function renderTimeSeriesChart(
   rootEl: HTMLElement,
   filteredRecords: TimeRecord[],
-  filterDates: { filterStartDate: Date | null; filterEndDate: Date | null }
+  filterDates: { filterStartDate: Date | null; filterEndDate: Date | null },
+  useReact: boolean
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
-  Plotly.purge(mainChartEl);
 
   if (!filteredRecords || filteredRecords.length === 0) {
     mainChartEl.innerHTML = '<p class="chart-message">No data available for Time-Series chart.</p>';
@@ -290,19 +320,18 @@ export function renderTimeSeriesChart(
     margin: { t: 50, b: 80, l: 60, r: 30 },
     hovermode: 'x unified'
   };
-
-  Plotly.newPlot(mainChartEl, traces as Plotly.Data[], layout, { responsive: true });
+  plotChart(mainChartEl, traces as Plotly.Data[], layout, useReact);
 }
 
 export function renderActivityPatternChart(
   rootEl: HTMLElement,
   filteredRecords: TimeRecord[],
   filterDates: { filterStartDate: Date | null; filterEndDate: Date | null },
-  showDetailPopup: ShowDetailPopupFn
+  showDetailPopup: ShowDetailPopupFn,
+  useReact: boolean
 ) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
-  Plotly.purge(mainChartEl);
 
   if (!filteredRecords || filteredRecords.length === 0) {
     mainChartEl.innerHTML = '<p class="chart-message">No data available for Activity Patterns.</p>';
@@ -485,8 +514,7 @@ export function renderActivityPatternChart(
     mainChartEl.innerHTML = `<p class="chart-message">No data to plot for ${analysisTypeName}.</p>`;
     return;
   }
-
-  Plotly.newPlot(mainChartEl, data as Plotly.Data[], layout, { responsive: true });
+  plotChart(mainChartEl, data as Plotly.Data[], layout, useReact);
 
   const plotlyChart = mainChartEl as any;
   plotlyChart.removeAllListeners('plotly_click');

@@ -43,6 +43,10 @@ export class AnalysisController {
   private flatpickrInstance: FlatpickrInstance | null = null;
   private uiStateKey = 'ChronoAnalyzerUIState_v3';
 
+  private activeChartType: string | null = null;
+  // --- NEW: State to track if a chart is currently rendered in the DOM ---
+  private isChartRendered = false;
+
   constructor(
     private app: App,
     private rootEl: HTMLElement,
@@ -61,7 +65,8 @@ export class AnalysisController {
     this.setupEventListeners();
     this.registerVaultEvents();
     this.loadUIState();
-    this.handleAnalysisTypeChange();
+    // Do not call handleAnalysisTypeChange here, as it triggers a premature render.
+    // The initial folder load will handle the first render.
     await this.loadInitialFolder();
   }
 
@@ -93,6 +98,9 @@ export class AnalysisController {
   }
 
   private async loadAndProcessFolder(folder: TFolder): Promise<void> {
+    // --- NEW: Reset the active chart type on new folder load ---
+    this.activeChartType = null;
+    this.isChartRendered = false;
     this.clearAllFilters();
     const notice = new Notice(`Scanning folder: "${folder.path}"...`, 0);
 
@@ -278,12 +286,11 @@ export class AnalysisController {
         filterStartDate,
         filterEndDate
       };
-
       // 2. Determine aggregation level from UI
-      const analysisType =
-        this.rootEl.querySelector<HTMLSelectElement>('#analysisTypeSelect')?.value;
+      const newChartType =
+        this.rootEl.querySelector<HTMLSelectElement>('#analysisTypeSelect')?.value ?? null;
       let breakdownBy: keyof TimeRecord | null = null;
-      if (analysisType === 'pie') {
+      if (newChartType === 'pie') {
         breakdownBy = (this.rootEl.querySelector<HTMLSelectElement>('#levelSelect_pie')?.value ||
           'hierarchy') as keyof TimeRecord;
       }
@@ -296,17 +303,30 @@ export class AnalysisController {
       this.filteredRecordsForCharts = records;
 
       // 4. Render the UI with the results
-      this.renderUI(totalHours, fileCount, { hours: aggregation, recordsByCategory, error: false });
+      const useReact = this.activeChartType === newChartType && this.isChartRendered;
+
+      this.renderUI(
+        totalHours,
+        fileCount,
+        { hours: aggregation, recordsByCategory, error: false },
+        useReact
+      );
+
+      // Update the active chart type *after* rendering
+      this.activeChartType = newChartType;
       this.saveUIState();
     }, 50);
   };
 
-  private renderUI(totalHours: number, fileCount: number, pieData: PieData) {
+  private renderUI(totalHours: number, fileCount: number, pieData: PieData, useReact: boolean) {
     // --- Initial Setup and Element Caching ---
     const mainChartEl = this.rootEl.querySelector<HTMLElement>('#mainChart');
     if (!mainChartEl) return;
-    Plotly.purge(mainChartEl);
 
+    // --- NEW: Only purge the chart container if we are switching chart types ---
+    if (!useReact) {
+      Plotly.purge(mainChartEl);
+    }
     const statsGrid = this.rootEl.querySelector<HTMLElement>('#statsGrid');
     const mainChartContainer = this.rootEl.querySelector<HTMLElement>('#mainChartContainer');
     const legendEl = this.rootEl.querySelector<HTMLElement>('#customLegend');
@@ -320,12 +340,12 @@ export class AnalysisController {
       this.dataManager.getTotalRecordCount()
     );
 
-    // If there are no records loaded at all (e.g., empty folder), hide everything and return.
     if (this.dataManager.getTotalRecordCount() === 0) {
       if (statsGrid) statsGrid.style.display = 'none';
       if (mainChartContainer) mainChartContainer.style.display = 'none';
       mainChartEl.innerHTML =
         '<p class="chart-message">No time-tracking files found in the selected folder.</p>';
+      this.isChartRendered = false; // <-- UPDATE STATE
       return;
     }
 
@@ -335,7 +355,6 @@ export class AnalysisController {
 
     // --- FIX: Handle the "No Data for Filter" case gracefully ---
     if (this.filteredRecordsForCharts.length === 0) {
-      // Set stats to placeholder values
       (this.rootEl.querySelector('#totalHours') as HTMLElement).textContent = '-';
       (this.rootEl.querySelector('#totalFiles') as HTMLElement).textContent = '-';
       if (analysisTypeStatEl) analysisTypeStatEl.textContent = 'N/A';
@@ -346,10 +365,10 @@ export class AnalysisController {
       // Hide the sunburst legend if it was visible
       if (legendEl) legendEl.style.display = 'none';
 
-      return; // Stop further rendering
+      this.isChartRendered = false; // <-- UPDATE STATE
+      return;
     }
 
-    // --- Render Stats and Chart for the "Data Found" Case ---
     (this.rootEl.querySelector('#totalHours') as HTMLElement).textContent = totalHours.toFixed(2);
     (this.rootEl.querySelector('#totalFiles') as HTMLElement).textContent = String(fileCount);
 
@@ -376,9 +395,13 @@ export class AnalysisController {
         }
       }
       const sunburstData = Aggregator.aggregateForSunburst(recordsForSunburst, level);
-
       if (sunburstData && sunburstData.ids.length > 1) {
-        Plotter.renderSunburstChartDisplay(this.rootEl, sunburstData, this.showDetailPopup);
+        Plotter.renderSunburstChartDisplay(
+          this.rootEl,
+          sunburstData,
+          this.showDetailPopup,
+          useReact
+        );
       } else {
         mainChartEl.innerHTML = '<p class="chart-message">No data for Sunburst Chart.</p>';
       }
@@ -386,28 +409,33 @@ export class AnalysisController {
       if (legendEl) legendEl.style.display = 'none';
       if (analysisType === 'time-series') {
         analysisName = 'Time-Series Trend';
-        Plotter.renderTimeSeriesChart(this.rootEl, this.filteredRecordsForCharts, {
-          filterStartDate,
-          filterEndDate
-        });
+        Plotter.renderTimeSeriesChart(
+          this.rootEl,
+          this.filteredRecordsForCharts,
+          { filterStartDate, filterEndDate },
+          useReact
+        );
       } else if (analysisType === 'activity') {
         analysisName = 'Activity Patterns';
         Plotter.renderActivityPatternChart(
           this.rootEl,
           this.filteredRecordsForCharts,
           { filterStartDate, filterEndDate },
-          this.showDetailPopup
+          this.showDetailPopup,
+          useReact
         );
       } else if (analysisType === 'pie') {
         analysisName = 'Category Breakdown';
         if (!pieData.error && pieData.hours.size > 0) {
-          Plotter.renderPieChartDisplay(this.rootEl, pieData, this.showDetailPopup);
+          Plotter.renderPieChartDisplay(this.rootEl, pieData, this.showDetailPopup, useReact);
         } else {
           mainChartEl.innerHTML = '<p class="chart-message">No data for Pie Chart.</p>';
         }
       }
     }
+
     if (analysisTypeStatEl) analysisTypeStatEl.textContent = analysisName;
+    this.isChartRendered = true; // <-- UPDATE STATE
   }
   // --- UI & Event Handlers ---
   private showStatus(
@@ -507,6 +535,9 @@ export class AnalysisController {
   };
 
   private handleClearCache = async () => {
+    // --- NEW: Reset active chart type on cache clear ---
+    this.activeChartType = null;
+    this.isChartRendered = false; // <-- RESET STATE
     new Notice('Clearing Chrono Analyser cache...', 2000);
     this.cache = {};
     this.lastFolderPath = null;
@@ -518,6 +549,8 @@ export class AnalysisController {
   };
 
   private handleAnalysisTypeChange = () => {
+    // This now simply triggers the update pipeline. The logic inside updateAnalysis
+    // will detect the type change and handle the full re-render.
     const analysisType = this.rootEl.querySelector<HTMLSelectElement>('#analysisTypeSelect')?.value;
     const specificControlContainers = [
       'sunburstBreakdownLevelContainer',
