@@ -45,6 +45,7 @@ export interface FullCalendarSettings {
     mobile: string;
   };
   timeFormat24h: boolean;
+  dailyNotesTimezone: 'local' | 'strict';
   clickToCreateEventFromMonthView: boolean;
   displayTimezone: string | null;
   lastSystemTimezone: string | null;
@@ -59,6 +60,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     mobile: 'timeGrid3Days'
   },
   timeFormat24h: false,
+  dailyNotesTimezone: 'local',
   clickToCreateEventFromMonthView: true,
   displayTimezone: null,
   lastSystemTimezone: null
@@ -217,6 +219,24 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         dropdown.setValue(this.plugin.settings.firstDay.toString());
         dropdown.onChange(async codeAsString => {
           this.plugin.settings.firstDay = Number(codeAsString);
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Daily Note Timezone')
+      .setDesc(
+        'Choose how time in `Daily Note`s are handled. "Local" means times are relative to your current timezone. "Strict" will anchor events to the display timezone.'
+      )
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('local', 'Local (Flexible)')
+          .addOption('strict', 'Strict (Anchored to Display Timezone)');
+
+        dropdown.setValue(this.plugin.settings.dailyNotesTimezone);
+
+        dropdown.onChange(async value => {
+          this.plugin.settings.dailyNotesTimezone = value as 'local' | 'strict';
           await this.plugin.saveSettings();
         });
       });
