@@ -1,4 +1,18 @@
-// src/calendars/frontmatter.ts
+/**
+ * @file frontmatter.ts
+ * @brief A utility for parsing and manipulating YAML frontmatter in notes.
+ *
+ * @description
+ * This file provides a set of pure functions for working with Obsidian's
+ * YAML frontmatter. It centralizes the logic for creating, reading, and
+ * modifying frontmatter, ensuring consistent behavior across the plugin.
+ * This utility is primarily used by the `FullNoteCalendar` to manage event
+ * data stored in note files.
+ *
+ * @see FullNoteCalendar.ts
+ *
+ * @license See LICENSE.md
+ */
 
 import { OFCEvent } from '../types';
 import { parseYaml } from 'obsidian';
