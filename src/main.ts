@@ -91,7 +91,7 @@ export default class FullCalendarPlugin extends Plugin {
       await this.saveData(this.settings);
 
       new Notice(
-        `System timezone changed from ${oldDisplayZone} to ${systemTimezone}. Full Calendar view updated.`,
+        `System timezone changed from ${this.settings.lastSystemTimezone} to ${systemTimezone}. Full Calendar view updated to match.`,
         10000 // 10-second notice
       );
     }

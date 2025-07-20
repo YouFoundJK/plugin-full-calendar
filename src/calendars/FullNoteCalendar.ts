@@ -13,7 +13,7 @@
  * @license See LICENSE.md
  */
 
-import { TFile, TFolder } from 'obsidian';
+import { TFile, TFolder, Notice } from 'obsidian';
 import { rrulestr } from 'rrule';
 import { EventPathLocation } from '../core/EventStore';
 import { ObsidianInterface } from '../ObsidianAdapter';
@@ -138,10 +138,21 @@ export default class FullNoteCalendar extends EditableCalendar {
       throw new Error(`Event at ${path} already exists.`);
     }
 
+    const displayTimezone =
+      this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // Notify the user if they are creating an event in a timezone different from their system's current zone.
+    if (displayTimezone !== systemTimezone) {
+      new Notice(
+        `Event created in ${displayTimezone}.\nYour system is currently in ${systemTimezone}.`
+      );
+    }
+
     // Add the current display timezone to the event before creating it.
     const eventToCreate = {
       ...event,
-      timezone: this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+      timezone: displayTimezone
     };
 
     const newPage = replaceFrontmatter('', newFrontmatter(eventToCreate));

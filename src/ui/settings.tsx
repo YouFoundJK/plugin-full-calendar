@@ -224,7 +224,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Display Timezone')
       .setDesc(
-        'Choose the timezone for displaying events. Defaults to your system timezone. Changing this will reload the calendar.'
+        'Choose the timezone for managing and displaying events. Default is your system timezone.'
       )
       .addDropdown(dropdown => {
         const timezones = Intl.supportedValuesOf('timeZone');
