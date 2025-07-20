@@ -20,6 +20,7 @@ import { EventResponse } from './Calendar';
 import { getEventsFromICS } from './parsing/ics';
 import RemoteCalendar from './RemoteCalendar';
 import { FullCalendarSettings } from '../ui/settings';
+import { convertEvent } from '../core/Timezone';
 
 const WEBCAL = 'webcal';
 
@@ -57,6 +58,19 @@ export default class ICSCalendar extends RemoteCalendar {
     if (!this.response) {
       return [];
     }
-    return getEventsFromICS(this.response).map(e => [e, null]);
+
+    const displayTimezone = this.settings.displayTimezone;
+    if (!displayTimezone) {
+      return []; // Cannot process without a target timezone.
+    }
+
+    return getEventsFromICS(this.response).map(event => {
+      let translatedEvent = event;
+      // If the event has its own timezone, convert it to the display timezone.
+      if (event.timezone && event.timezone !== displayTimezone) {
+        translatedEvent = convertEvent(event, event.timezone, displayTimezone);
+      }
+      return [translatedEvent, null];
+    });
   }
 }

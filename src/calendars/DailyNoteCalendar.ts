@@ -30,6 +30,7 @@ import { OFCEvent, EventLocation, CalendarInfo, validateEvent } from '../types';
 import { EventResponse } from './Calendar';
 import { EditableCalendar, EditableEventResponse } from './EditableCalendar';
 import { FullCalendarSettings } from '../ui/settings';
+import { convertEvent } from '../core/Timezone';
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 
@@ -257,7 +258,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
 
   async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
     // @ts-ignore
-    const date = getDateFromFile(file, 'day')?.format(DATE_FORMAT);
+    const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
     if (!date) {
       return [];
     }
@@ -269,7 +270,24 @@ export default class DailyNoteCalendar extends EditableCalendar {
     const inlineEvents = await this.app.process(file, text =>
       getAllInlineEventsFromFile(text, listItems, { date })
     );
-    return inlineEvents.map(({ event, lineNumber }) => [event, { file, lineNumber }]);
+
+    const displayTimezone = this.settings.displayTimezone;
+    if (!displayTimezone) {
+      // If no display timezone is set, return events as is.
+      return inlineEvents.map(({ event, lineNumber }) => [event, { file, lineNumber }]);
+    }
+
+    // Daily notes are always considered to be in the current system's timezone at time of creation.
+    // We don't write a timezone to the note, but we must translate them if the display timezone is different.
+    const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    return inlineEvents.map(({ event, lineNumber }) => {
+      let translatedEvent = event;
+      if (systemTimezone !== displayTimezone) {
+        translatedEvent = convertEvent(event, systemTimezone, displayTimezone);
+      }
+      return [translatedEvent, { file, lineNumber }];
+    });
   }
 
   async getEvents(): Promise<EventResponse[]> {

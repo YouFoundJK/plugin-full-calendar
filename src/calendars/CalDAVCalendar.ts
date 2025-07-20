@@ -21,6 +21,7 @@ import { EventResponse } from './Calendar';
 import RemoteCalendar from './RemoteCalendar';
 import { getEventsFromICS } from '../calendars/parsing/ics';
 import { FullCalendarSettings } from '../ui/settings';
+import { convertEvent } from '../core/Timezone';
 
 export default class CalDAVCalendar extends RemoteCalendar {
   _name: string;
@@ -79,6 +80,18 @@ export default class CalDAVCalendar extends RemoteCalendar {
   }
 
   async getEvents(): Promise<EventResponse[]> {
-    return this.events.map(e => [e, null]);
+    const displayTimezone = this.settings.displayTimezone;
+    if (!displayTimezone) {
+      return []; // Cannot process without a target timezone.
+    }
+
+    return this.events.map(event => {
+      let translatedEvent = event;
+      // If the event has its own timezone, convert it to the display timezone.
+      if (event.timezone && event.timezone !== displayTimezone) {
+        translatedEvent = convertEvent(event, event.timezone, displayTimezone);
+      }
+      return [translatedEvent, null];
+    });
   }
 }
