@@ -19,6 +19,7 @@ import { EventPathLocation } from '../core/EventStore';
 import { ObsidianInterface } from '../ObsidianAdapter';
 import { OFCEvent, EventLocation, validateEvent } from '../types';
 import { EditableCalendar, EditableEventResponse } from './EditableCalendar';
+import { FullCalendarSettings } from '../ui/settings';
 
 const basenameFromEvent = (event: OFCEvent): string => {
   switch (event.type) {
@@ -153,8 +154,13 @@ export default class FullNoteCalendar extends EditableCalendar {
   app: ObsidianInterface;
   private _directory: string;
 
-  constructor(app: ObsidianInterface, color: string, directory: string) {
-    super(color);
+  constructor(
+    app: ObsidianInterface,
+    color: string,
+    directory: string,
+    settings: FullCalendarSettings
+  ) {
+    super(color, settings);
     this.app = app;
     this._directory = directory;
   }

@@ -15,10 +15,11 @@
  */
 
 import { request } from 'obsidian';
-import { CalendarInfo } from 'src/types';
+import { CalendarInfo } from '../types';
 import { EventResponse } from './Calendar';
 import { getEventsFromICS } from './parsing/ics';
 import RemoteCalendar from './RemoteCalendar';
+import { FullCalendarSettings } from '../ui/settings';
 
 const WEBCAL = 'webcal';
 
@@ -26,14 +27,13 @@ export default class ICSCalendar extends RemoteCalendar {
   private url: string;
   private response: string | null = null;
 
-  constructor(color: string, url: string) {
-    super(color);
+  constructor(color: string, url: string, settings: FullCalendarSettings) {
+    super(color, settings);
     if (url.startsWith(WEBCAL)) {
       url = 'https' + url.slice(WEBCAL.length);
     }
     this.url = url;
   }
-
   get type(): CalendarInfo['type'] {
     return 'ical';
   }

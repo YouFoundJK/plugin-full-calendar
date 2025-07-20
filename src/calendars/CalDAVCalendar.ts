@@ -16,10 +16,11 @@
 
 import dav from 'dav';
 import * as transport from './parsing/caldav/transport';
-import { Authentication, CalendarInfo, OFCEvent } from 'src/types';
+import { Authentication, CalendarInfo, OFCEvent } from '../types';
 import { EventResponse } from './Calendar';
 import RemoteCalendar from './RemoteCalendar';
-import { getEventsFromICS } from 'src/calendars/parsing/ics';
+import { getEventsFromICS } from '../calendars/parsing/ics';
+import { FullCalendarSettings } from '../ui/settings';
 
 export default class CalDAVCalendar extends RemoteCalendar {
   _name: string;
@@ -34,9 +35,10 @@ export default class CalDAVCalendar extends RemoteCalendar {
     name: string,
     credentials: Authentication,
     serverUrl: string,
-    calendarUrl: string
+    calendarUrl: string,
+    settings: FullCalendarSettings
   ) {
-    super(color);
+    super(color, settings);
     this._name = name;
     this.credentials = credentials;
     this.serverUrl = serverUrl;

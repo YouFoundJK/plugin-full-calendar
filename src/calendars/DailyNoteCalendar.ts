@@ -29,6 +29,7 @@ import { ObsidianInterface } from '../ObsidianAdapter';
 import { OFCEvent, EventLocation, CalendarInfo, validateEvent } from '../types';
 import { EventResponse } from './Calendar';
 import { EditableCalendar, EditableEventResponse } from './EditableCalendar';
+import { FullCalendarSettings } from '../ui/settings';
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 
@@ -225,8 +226,13 @@ export default class DailyNoteCalendar extends EditableCalendar {
   app: ObsidianInterface;
   heading: string;
 
-  constructor(app: ObsidianInterface, color: string, heading: string) {
-    super(color);
+  constructor(
+    app: ObsidianInterface,
+    color: string,
+    heading: string,
+    settings: FullCalendarSettings
+  ) {
+    super(color, settings);
     appHasDailyNotesPluginLoaded();
     this.app = app;
     this.heading = heading;
