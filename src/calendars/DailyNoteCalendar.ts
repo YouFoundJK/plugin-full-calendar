@@ -359,15 +359,29 @@ export default class DailyNoteCalendar extends EditableCalendar {
       throw new Error('Multi-day events are not supported in daily notes.');
     }
     const { file, lineNumber } = this.getConcreteLocation(loc);
-    const oldDate = getDateFromFile(file as any, 'day')?.format(DATE_FORMAT);
+    const oldDate = getDateFromFile(file as any, 'day')?.format('YYYY-MM-DD');
     if (!oldDate) {
       throw new Error(`Could not get date from file at path ${file.path}`);
     }
-    if (newEvent.date !== oldDate) {
+
+    // The `newEvent` object's times are in the `displayTimezone`.
+    // We need to convert them back to the local system time before writing, as daily notes are implicitly local.
+    const displayTimezone = this.settings.displayTimezone;
+    const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    let eventToWrite = newEvent;
+    if (displayTimezone && displayTimezone !== systemTimezone) {
+      // Only process single-type events, which is all Daily Notes support.
+      if (newEvent.type === 'single') {
+        // Explicitly cast the result to ensure TypeScript knows it's still a single event.
+        eventToWrite = convertEvent(newEvent, displayTimezone, systemTimezone) as typeof newEvent;
+      }
+    }
+
+    if (eventToWrite.date !== oldDate) {
       // Event needs to be moved to a new file.
       console.debug('daily note event moving to a new file.');
-      // TODO: Factor this out with the createFile path.
-      const m = moment(newEvent.date);
+      const m = moment(eventToWrite.date);
       let newFile = getDailyNote(m, getAllDailyNotes()) as TFile;
       if (!newFile) {
         newFile = (await createDailyNote(m)) as TFile;
@@ -384,19 +398,15 @@ export default class DailyNoteCalendar extends EditableCalendar {
       }
 
       await this.app.rewrite(file, async oldFileContents => {
-        // Open the old file and remove the event.
         let lines = oldFileContents.split('\n');
         lines.splice(lineNumber, 1);
         await this.app.rewrite(newFile, newFileContents => {
-          // Before writing that change back to disk, open the new file and add the event.
-          const { page, lineNumber } = addToHeading(newFileContents, {
+          const { page, lineNumber: newLn } = addToHeading(newFileContents, {
             heading: headingInfo,
-            item: newEvent,
+            item: eventToWrite, // Use the translated event
             headingText: this.heading
           });
-          // Before any file changes are committed, call the updateCacheWithLocation callback to ensure
-          // the cache is properly updated with the new location.
-          updateCacheWithLocation({ file: newFile, lineNumber });
+          updateCacheWithLocation({ file: newFile, lineNumber: newLn });
           return page;
         });
         return lines.join('\n');
@@ -406,7 +416,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
       updateCacheWithLocation({ file, lineNumber });
       await this.app.rewrite(file, contents => {
         const lines = contents.split('\n');
-        const newLine = modifyListItem(lines[lineNumber], newEvent);
+        const newLine = modifyListItem(lines[lineNumber], eventToWrite); // Use the translated event
         if (!newLine) {
           throw new Error('Did not successfully update line.');
         }

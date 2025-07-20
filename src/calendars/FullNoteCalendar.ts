@@ -137,7 +137,14 @@ export default class FullNoteCalendar extends EditableCalendar {
     if (this.app.getAbstractFileByPath(path)) {
       throw new Error(`Event at ${path} already exists.`);
     }
-    const file = await this.app.create(path, newFrontmatter(event));
+
+    // Add the current display timezone to the event before creating it.
+    const eventToCreate = {
+      ...event,
+      timezone: this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+    };
+
+    const file = await this.app.create(path, newFrontmatter(eventToCreate));
     return { file, lineNumber: undefined };
   }
 
@@ -166,14 +173,35 @@ export default class FullNoteCalendar extends EditableCalendar {
     if (!file) {
       throw new Error(`File ${path} either doesn't exist or is a folder.`);
     }
-    const newLocation = this.getNewLocation(location, event);
+
+    // The incoming `event` object has its times in the `displayTimezone`.
+    // We need to convert it back to the file's native timezone before writing.
+    const fileMetadata = this.app.getMetadata(file);
+    const fileEvent = validateEvent(fileMetadata?.frontmatter);
+
+    // Determine the file's native timezone. Fallback to displayTimezone if not present (for safety).
+    const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const displayTimezone = this.settings.displayTimezone || systemTimezone;
+    const fileTimezone = fileEvent?.timezone || displayTimezone;
+
+    let eventToWrite = event;
+    // Only perform conversion if the file's zone and the display zone are different.
+    if (fileTimezone !== displayTimezone) {
+      eventToWrite = convertEvent(event, displayTimezone, fileTimezone);
+    }
+
+    // Ensure the timezone property of the event being written matches the file's native timezone.
+    eventToWrite.timezone = fileTimezone;
+
+    // The rest of the logic determines if the file needs to be renamed.
+    const newLocation = this.getNewLocation(location, eventToWrite);
 
     updateCacheWithLocation(newLocation);
 
     if (file.path !== newLocation.file.path) {
       await this.app.rename(file, newLocation.file.path);
     }
-    await this.app.rewrite(file, page => modifyFrontmatterString(page, event));
+    await this.app.rewrite(file, page => modifyFrontmatterString(page, eventToWrite));
 
     return;
   }
