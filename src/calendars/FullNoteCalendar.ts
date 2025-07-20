@@ -21,7 +21,7 @@ import { OFCEvent, EventLocation, validateEvent } from '../types';
 import { EditableCalendar, EditableEventResponse } from './EditableCalendar';
 import { FullCalendarSettings } from '../ui/settings';
 import { convertEvent } from '../core/Timezone';
-import { newFrontmatter, modifyFrontmatterString } from './frontmatter';
+import { newFrontmatter, modifyFrontmatterString, replaceFrontmatter } from './frontmatter';
 
 const basenameFromEvent = (event: OFCEvent): string => {
   switch (event.type) {
@@ -144,7 +144,8 @@ export default class FullNoteCalendar extends EditableCalendar {
       timezone: this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone
     };
 
-    const file = await this.app.create(path, newFrontmatter(eventToCreate));
+    const newPage = replaceFrontmatter('', newFrontmatter(eventToCreate));
+    const file = await this.app.create(path, newPage);
     return { file, lineNumber: undefined };
   }
 

@@ -39,8 +39,12 @@ function extractPageContents(page: string): string {
   return page;
 }
 
-function replaceFrontmatter(page: string, newFrontmatter: string): string {
+export function replaceFrontmatter(page: string, newFrontmatter: string): string {
   const contents = extractPageContents(page);
+  // If the new frontmatter is empty, don't write any separators.
+  if (!newFrontmatter || newFrontmatter.trim() === '') {
+    return contents;
+  }
   return `---\n${newFrontmatter.trim()}\n---${contents}`;
 }
 
