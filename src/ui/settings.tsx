@@ -26,14 +26,15 @@ import {
   TFile,
   TFolder
 } from 'obsidian';
-import { makeDefaultPartialCalendarSource, CalendarInfo } from '../types';
-import { CalendarSettings, CalendarSettingsRef } from './components/CalendarSetting';
-import { AddCalendarSource } from './components/AddCalendarSource';
 import * as ReactDOM from 'react-dom/client';
 import { createElement, createRef } from 'react';
-import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
+
 import ReactModal from './ReactModal';
-import { importCalendars } from 'src/calendars/parsing/caldav/import';
+import { AddCalendarSource } from './components/AddCalendarSource';
+import { importCalendars } from '../calendars/parsing/caldav/import';
+import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
+import { makeDefaultPartialCalendarSource, CalendarInfo } from '../types';
+import { CalendarSettings, CalendarSettingsRef } from './components/CalendarSetting';
 
 export interface FullCalendarSettings {
   calendarSources: CalendarInfo[];
@@ -45,6 +46,8 @@ export interface FullCalendarSettings {
   };
   timeFormat24h: boolean;
   clickToCreateEventFromMonthView: boolean;
+  displayTimezone: string | null;
+  lastSystemTimezone: string | null;
 }
 
 export const DEFAULT_SETTINGS: FullCalendarSettings = {
@@ -56,7 +59,9 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     mobile: 'timeGrid3Days'
   },
   timeFormat24h: false,
-  clickToCreateEventFromMonthView: true
+  clickToCreateEventFromMonthView: true,
+  displayTimezone: null,
+  lastSystemTimezone: null
 };
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -212,6 +217,26 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         dropdown.setValue(this.plugin.settings.firstDay.toString());
         dropdown.onChange(async codeAsString => {
           this.plugin.settings.firstDay = Number(codeAsString);
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Display Timezone')
+      .setDesc(
+        'Choose the timezone for displaying events. Defaults to your system timezone. Changing this will reload the calendar.'
+      )
+      .addDropdown(dropdown => {
+        const timezones = Intl.supportedValuesOf('timeZone');
+        timezones.forEach(tz => {
+          dropdown.addOption(tz, tz);
+        });
+        // Ensure displayTimezone is not null before setting the value
+        dropdown.setValue(
+          this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+        );
+        dropdown.onChange(async newTimezone => {
+          this.plugin.settings.displayTimezone = newTimezone;
           await this.plugin.saveSettings();
         });
       });

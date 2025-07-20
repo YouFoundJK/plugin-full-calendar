@@ -63,6 +63,41 @@ export default class FullCalendarPlugin extends Plugin {
   processFrontmatter = toEventInput;
 
   /**
+   * Checks the user's system timezone and updates the plugin's displayTimezone setting
+   * if it has changed since the last run. This ensures the calendar view is always
+   * consistent with the user's current environment. It also handles the initial
+   * setup of timezone settings on first run.
+   */
+  private async manageTimezone(): Promise<void> {
+    const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    if (!this.settings.lastSystemTimezone || this.settings.displayTimezone === null) {
+      // Case 1: First run, or settings are in a pre-timezone-feature state.
+      // Initialize everything to the current system's timezone.
+      this.settings.lastSystemTimezone = systemTimezone;
+      this.settings.displayTimezone = systemTimezone;
+      // Use saveData to persist without triggering a full cache reset, as this happens
+      // before the cache is even fully initialized.
+      await this.saveData(this.settings);
+      console.log(`Full Calendar: Initialized timezone to ${systemTimezone}`);
+    } else if (this.settings.lastSystemTimezone !== systemTimezone) {
+      // Case 2: The system timezone has changed since the last time Obsidian was run.
+      // This is a critical change. We must update the user's view.
+      const oldDisplayZone = this.settings.displayTimezone;
+      this.settings.displayTimezone = systemTimezone; // Force reset the display timezone.
+      this.settings.lastSystemTimezone = systemTimezone;
+      await this.saveData(this.settings);
+
+      new Notice(
+        `System timezone changed from ${oldDisplayZone} to ${systemTimezone}. Full Calendar view updated.`,
+        10000 // 10-second notice
+      );
+    }
+    // Case 3: System timezone is unchanged. We do nothing, respecting the user's
+    // potentially custom `displayTimezone` setting from the settings tab.
+  }
+
+  /**
    * Activates the Full Calendar view.
    * If a calendar view is already open in a main tab, it focuses that view.
    * Otherwise, it opens a new calendar view in a new tab.
@@ -94,6 +129,7 @@ export default class FullCalendarPlugin extends Plugin {
    */
   async onload() {
     await this.loadSettings();
+    await this.manageTimezone();
 
     this.cache.reset(this.settings.calendarSources);
 
