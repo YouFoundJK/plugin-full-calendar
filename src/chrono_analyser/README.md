@@ -1,7 +1,9 @@
-# Chrono Analyser Subproject
-[![License](https://img.shields.io/badge/License-MIT-green)](https://github.com/YouFoundJK/plugin-full-calendar/blob/main/LICENSE)
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Version](https://img.shields.io/badge/Version-v_0.10.12-blue)](https://youfoundjk.github.io/Time-Analyser-Full-Calender/)
 
+# Chrono Analyser Subproject
+
+> Note that `chrono_analyser` subproject is licensed under [CC-by-nc-sa-4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) and not under MIT as the main plugin!
 
 ## 1. Overview
 
