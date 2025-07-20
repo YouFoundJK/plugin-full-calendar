@@ -46,6 +46,16 @@ export function convertEvent(event: OFCEvent, sourceZone: string, targetZone: st
     return { ...event };
   }
 
+  // For debugging specific events from your ICS feed.
+  // if (event.title.includes('PDE II exam')) {
+  //   console.log('--- STAGE 3: Conversion Inputs ---');
+  //   console.log('Event Title:', event.title);
+  //   console.log('Source Zone:', sourceZone);
+  //   console.log('Target Zone:', targetZone);
+  //   console.log('Input Start Time:', event.startTime);
+  //   console.log('----------------------------------');
+  // }
+
   const newEvent = { ...event };
 
   // Only proceed if the event has a time component.

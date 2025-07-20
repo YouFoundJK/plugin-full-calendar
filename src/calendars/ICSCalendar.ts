@@ -65,6 +65,16 @@ export default class ICSCalendar extends RemoteCalendar {
     }
 
     return getEventsFromICS(this.response).map(event => {
+      // For debugging specific events from your ICS feed.
+      // if (event.title.includes('PDE II exam')) {
+      //   console.log('--- STAGE 2: OFCEvent before conversion ---');
+      //   console.log('Event Title:', event.title);
+      //   console.log('Event Timezone:', event.timezone);
+      //   console.log('Event Start Time (as parsed):', event.startTime);
+      //   console.log('Display Timezone (target):', displayTimezone);
+      //   console.log('-----------------------------------------');
+      // }
+
       let translatedEvent = event;
       // If the event has its own timezone, convert it to the display timezone.
       if (event.timezone && event.timezone !== displayTimezone) {
