@@ -51,6 +51,8 @@ export interface FullCalendarSettings {
   clickToCreateEventFromMonthView: boolean;
   displayTimezone: string | null;
   lastSystemTimezone: string | null;
+  enableCategoryColoring: boolean;
+  categorySettings: { name: string; color: string }[];
 }
 
 export const DEFAULT_SETTINGS: FullCalendarSettings = {
@@ -65,7 +67,9 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   dailyNotesTimezone: 'local',
   clickToCreateEventFromMonthView: true,
   displayTimezone: null,
-  lastSystemTimezone: null
+  lastSystemTimezone: null,
+  enableCategoryColoring: false,
+  categorySettings: []
 };
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

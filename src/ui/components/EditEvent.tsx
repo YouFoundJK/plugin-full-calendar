@@ -15,6 +15,7 @@ import { DateTime } from 'luxon';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { CalendarInfo, OFCEvent } from '../../types';
+import { AutocompleteInput } from './AutocompleteInput'; // <-- ADD THIS IMPORT
 
 function makeChangeListener<T>(
   setState: React.Dispatch<React.SetStateAction<T>>,
@@ -93,6 +94,7 @@ interface EditEventProps {
   }[];
   defaultCalendarIndex: number;
   initialEvent?: Partial<OFCEvent>;
+  availableCategories?: string[];
   open?: () => Promise<void>;
   deleteEvent?: () => Promise<void>;
 }
@@ -103,7 +105,8 @@ export const EditEvent = ({
   open,
   deleteEvent,
   calendars,
-  defaultCalendarIndex
+  defaultCalendarIndex,
+  availableCategories = []
 }: EditEventProps) => {
   const [date, setDate] = useState(
     initialEvent
@@ -131,7 +134,11 @@ export const EditEvent = ({
 
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
+
+  // MODIFICATION: Separate title and category state
   const [title, setTitle] = useState(initialEvent?.title || '');
+  const [category, setCategory] = useState(initialEvent?.category || '');
+
   const [isRecurring, setIsRecurring] = useState(initialEvent?.type === 'recurring' || false);
   const [endRecur, setEndRecur] = useState('');
 
@@ -168,7 +175,7 @@ export const EditEvent = ({
     e.preventDefault();
     await submit(
       {
-        ...{ title },
+        ...{ title, category: category || undefined }, // Pass clean title and category
         ...(allDay ? { allDay: true } : { allDay: false, startTime: startTime || '', endTime }),
         ...(isRecurring
           ? {
@@ -195,6 +202,17 @@ export const EditEvent = ({
       </div>
 
       <form onSubmit={handleSubmit}>
+        {/* MODIFICATION: New Category Input */}
+        <p>
+          <AutocompleteInput
+            id="category-autocomplete"
+            value={category}
+            onChange={setCategory}
+            suggestions={availableCategories}
+            placeholder="Category (optional)"
+          />
+        </p>
+
         <p>
           <input
             ref={titleRef}

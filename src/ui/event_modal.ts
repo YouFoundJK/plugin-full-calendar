@@ -20,12 +20,13 @@
 
 import { Notice } from 'obsidian';
 import * as React from 'react';
-import { EditableCalendar } from 'src/calendars/EditableCalendar';
-import FullCalendarPlugin from 'src/main';
-import { OFCEvent } from 'src/types';
+import { EditableCalendar } from '../calendars/EditableCalendar';
+import FullCalendarPlugin from '../main';
+import { OFCEvent } from '../types';
 import { openFileForEvent } from './actions';
 import { EditEvent } from './components/EditEvent';
 import ReactModal from './ReactModal';
+import { constructTitle } from '../core/categoryParser';
 
 export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
   const calendars = [...plugin.cache.calendars.entries()]
@@ -37,14 +38,21 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
         name: cal.name
       };
     });
+
+  // MODIFICATION: Get available categories
+  const availableCategories = plugin.cache.getAllCategories();
+
   new ReactModal(plugin.app, async closeModal =>
     React.createElement(EditEvent, {
       initialEvent: partialEvent,
       calendars,
+      availableCategories, // Pass categories to the component
       defaultCalendarIndex: 0,
       submit: async (data, calendarIndex) => {
         const calendarId = calendars[calendarIndex].id;
         try {
+          // Note: The data source layer is now responsible for constructing the full title.
+          // The `data` object here has a clean title and category.
           await plugin.cache.addEvent(calendarId, data);
         } catch (e) {
           if (e instanceof Error) {
@@ -77,10 +85,14 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
 
   const calIdx = calendars.findIndex(({ id }) => id === calId);
 
+  // MODIFICATION: Get available categories
+  const availableCategories = plugin.cache.getAllCategories();
+
   new ReactModal(plugin.app, async closeModal =>
     React.createElement(EditEvent, {
       initialEvent: eventToEdit,
       calendars,
+      availableCategories, // Pass categories to the component
       defaultCalendarIndex: calIdx,
       submit: async (data, calendarIndex) => {
         try {

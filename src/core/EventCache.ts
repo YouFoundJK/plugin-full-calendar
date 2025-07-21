@@ -190,6 +190,22 @@ export default class EventCache {
   }
 
   /**
+   * Scans the event store and returns a list of all unique category names.
+   * This is used to populate autocomplete suggestions in the UI.
+   */
+  getAllCategories(): string[] {
+    const categories = new Set<string>();
+    // Note: We need a way to iterate all events in the store.
+    // Let's add a simple iterator to EventStore for this.
+    for (const storedEvent of this.store.getAllEvents()) {
+      if (storedEvent.event.category) {
+        categories.add(storedEvent.event.category);
+      }
+    }
+    return Array.from(categories).sort();
+  }
+
+  /**
    * Get all events from the cache in a FullCalendar-friendly format.
    * @returns EventSourceInputs for FullCalendar.
    */
