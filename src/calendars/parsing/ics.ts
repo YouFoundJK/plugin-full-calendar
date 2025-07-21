@@ -16,6 +16,7 @@ import ical from 'ical.js';
 import { OFCEvent, validateEvent } from '../../types';
 import { DateTime } from 'luxon';
 import { rrulestr } from 'rrule';
+import { parseTitle } from '../../core/categoryParser'; // <-- ADD THIS IMPORT
 
 // In src/calendars/parsing/ics.ts
 
@@ -66,6 +67,7 @@ function specifiesEnd(iCalEvent: ical.Event) {
   );
 }
 
+// MODIFICATION: Update parsing function
 function icsToOFC(input: ical.Event): OFCEvent {
   // For debugging specific events from your ICS feed.
   // if (input.summary.includes('YOUR_EVENT_TITLE_HERE')) {
@@ -78,6 +80,8 @@ function icsToOFC(input: ical.Event): OFCEvent {
   // }
 
   const summary = input.summary || '';
+  const { category, title } = parseTitle(summary); // Parse the title here
+
   const startDate = icalTimeToLuxon(input.startDate);
   const endDate = input.endDate ? icalTimeToLuxon(input.endDate) : startDate;
   const uid = input.uid;
@@ -101,7 +105,8 @@ function icsToOFC(input: ical.Event): OFCEvent {
 
     return {
       type: 'rrule',
-      title: summary,
+      title, // Use clean title
+      category, // Use parsed category
       id: `ics::${uid}::${getLuxonDate(startDate)}::recurring`,
       rrule: rrule.toString(),
       skipDates: exdates.flatMap(d => (d ? [d] : [])),
@@ -122,7 +127,8 @@ function icsToOFC(input: ical.Event): OFCEvent {
     return {
       type: 'single',
       id: `ics::${uid}::${date}::single`,
-      title: summary,
+      title, // Use clean title
+      category, // Use parsed category
       date: date!,
       endDate: date !== finalEndDate ? finalEndDate || null : null,
       timezone,

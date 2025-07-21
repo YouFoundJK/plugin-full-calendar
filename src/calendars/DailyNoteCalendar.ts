@@ -31,6 +31,7 @@ import { EventResponse } from './Calendar';
 import { EditableCalendar, EditableEventResponse } from './EditableCalendar';
 import { FullCalendarSettings } from '../ui/settings';
 import { convertEvent } from '../core/Timezone';
+import { constructTitle, parseTitle } from '../core/categoryParser'; // <-- ADD THIS IMPORT
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 
@@ -108,16 +109,21 @@ const checkboxTodo = (s: string) => {
   return match[1] === ' ' ? false : match[1];
 };
 
+// MODIFICATION: Update parsing function
 const getInlineEventFromLine = (text: string, globalAttrs: Partial<OFCEvent>): OFCEvent | null => {
   const attrs = getInlineAttributes(text);
 
   // Shortcut validation if there are no inline attributes.
-  if (Object.keys(attrs).length === 0) {
+  if (Object.keys(attrs).length === 0 && !text.includes(' - ')) {
     return null;
   }
 
+  const rawTitle = text.replace(listRegex, '').replace(fieldRegex, '').trim();
+  const { category, title } = parseTitle(rawTitle);
+
   return validateEvent({
-    title: text.replace(listRegex, '').replace(fieldRegex, '').trim(),
+    title,
+    category,
     completed: checkboxTodo(text),
     ...globalAttrs,
     ...attrs
@@ -153,11 +159,12 @@ const generateInlineAttributes = (attrs: Record<string, any>): string => {
     .join('  ');
 };
 
+// MODIFICATION: Update serialization function
 const makeListItem = (data: OFCEvent, whitespacePrefix: string = ''): string => {
   if (data.type !== 'single') {
     throw new Error('Can only pass in single event.');
   }
-  const { completed, title } = data;
+  const { completed, title, category } = data;
   const checkbox = (() => {
     if (completed !== null && completed !== undefined) {
       return `[${completed ? 'x' : ' '}]`;
@@ -165,11 +172,14 @@ const makeListItem = (data: OFCEvent, whitespacePrefix: string = ''): string => 
     return null;
   })();
 
+  const fullTitle = constructTitle(category, title);
+
   const attrs: Partial<OFCEvent> = { ...data };
   delete attrs['completed'];
   delete attrs['title'];
   delete attrs['type'];
   delete attrs['date'];
+  delete attrs['category']; // Don't write category as an inline field
 
   for (const key of <(keyof OFCEvent)[]>Object.keys(attrs)) {
     if (attrs[key] === undefined || attrs[key] === null) {
@@ -181,7 +191,7 @@ const makeListItem = (data: OFCEvent, whitespacePrefix: string = ''): string => 
     delete attrs['allDay'];
   }
 
-  return `${whitespacePrefix}- ${checkbox || ''} ${title} ${generateInlineAttributes(attrs)}`;
+  return `${whitespacePrefix}- ${checkbox || ''} ${fullTitle} ${generateInlineAttributes(attrs)}`;
 };
 
 const modifyListItem = (line: string, data: OFCEvent): string | null => {
