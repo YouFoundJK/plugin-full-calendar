@@ -30,7 +30,7 @@ END:VCALENDAR`;
     expect(events).toMatchSnapshot(ics);
   });
 
-  it('parses gcal ics file', () => {
+  it('parses gcal ics file and categories', () => {
     const ics = `BEGIN:VCALENDAR
 PRODID:-//Google Inc//Google Calendar 70.9054//EN
 VERSION:2.0
@@ -82,7 +82,7 @@ LAST-MODIFIED:20220226T214627Z
 LOCATION:
 SEQUENCE:1
 STATUS:CONFIRMED
-SUMMARY:Recurring event
+SUMMARY:Work - Recurring event
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
@@ -101,7 +101,7 @@ LAST-MODIFIED:20220226T214608Z
 LOCATION:
 SEQUENCE:1
 STATUS:CONFIRMED
-SUMMARY:Hello\, iCal!
+SUMMARY:Work - Project Alpha - Hello\\, iCal!
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
