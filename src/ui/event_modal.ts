@@ -26,7 +26,6 @@ import { OFCEvent } from '../types';
 import { openFileForEvent } from './actions';
 import { EditEvent } from './components/EditEvent';
 import ReactModal from './ReactModal';
-import { constructTitle } from '../core/categoryParser';
 
 export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
   const calendars = [...plugin.cache.calendars.entries()]
@@ -46,8 +45,9 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
     React.createElement(EditEvent, {
       initialEvent: partialEvent,
       calendars,
-      availableCategories, // Pass categories to the component
       defaultCalendarIndex: 0,
+      availableCategories,
+      enableCategory: plugin.settings.enableCategoryColoring,
       submit: async (data, calendarIndex) => {
         const calendarId = calendars[calendarIndex].id;
         try {
@@ -92,8 +92,9 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
     React.createElement(EditEvent, {
       initialEvent: eventToEdit,
       calendars,
-      availableCategories, // Pass categories to the component
-      defaultCalendarIndex: calIdx,
+      defaultCalendarIndex: calIdx, // <-- RESTORED THIS PROP
+      availableCategories,
+      enableCategory: plugin.settings.enableCategoryColoring,
       submit: async (data, calendarIndex) => {
         try {
           if (calendarIndex !== calIdx) {
@@ -110,6 +111,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
       },
       open: async () => {
         openFileForEvent(plugin.cache, plugin.app, eventId);
+        closeModal();
       },
       deleteEvent: async () => {
         try {
