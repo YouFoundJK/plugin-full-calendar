@@ -1,4 +1,5 @@
 import { getInlineAttributes, getInlineEventFromLine } from './DailyNoteCalendar';
+import { DEFAULT_SETTINGS } from '../ui/settings'; // <-- IMPORT DEFAULTS
 
 describe('DailyNoteCalendar', () => {
   describe('getInlineAttributes', () => {
@@ -12,41 +13,49 @@ describe('DailyNoteCalendar', () => {
   });
 
   describe('getInlineEventFromLine', () => {
+    // Create settings objects for testing
+    const settingsWithCategory = { ...DEFAULT_SETTINGS, enableCategoryColoring: true };
+    const settingsWithoutCategory = { ...DEFAULT_SETTINGS, enableCategoryColoring: false };
+
     const MOCK_GLOBALS = { date: '2023-01-01', type: 'single' as const };
 
-    it('should return null if no inline fields and no category', () => {
-      const line = '- [ ] Simple task';
-      expect(getInlineEventFromLine(line, MOCK_GLOBALS)).toBeNull();
+    it('should return null if feature is off and no inline fields', () => {
+      const line = '- [ ] Work - Review PR';
+      expect(getInlineEventFromLine(line, MOCK_GLOBALS, settingsWithoutCategory)).toBeNull();
     });
 
-    it('should parse an event with only a category', () => {
+    it('should parse title literally if feature is off', () => {
+      const line = '- [ ] Work - Review PR [startTime:: 09:00]';
+      const result = getInlineEventFromLine(line, MOCK_GLOBALS, settingsWithoutCategory);
+      expect(result?.title).toBe('Work - Review PR');
+      expect(result?.category).toBeUndefined();
+    });
+
+    it('should parse an event with a category when feature is on', () => {
       const line = '- [ ] Work - Review PR';
-      const result = getInlineEventFromLine(line, MOCK_GLOBALS);
+      const result = getInlineEventFromLine(line, MOCK_GLOBALS, settingsWithCategory);
       expect(result).not.toBeNull();
       expect(result?.title).toBe('Review PR');
       expect(result?.category).toBe('Work');
     });
 
-    it('should parse an event with a category and inline fields', () => {
+    it('should parse an event with a category and inline fields when feature is on', () => {
       const line = '- [x] Life - Pay bills [startTime:: 14:00]';
-      const result = getInlineEventFromLine(line, MOCK_GLOBALS);
+      const result = getInlineEventFromLine(line, MOCK_GLOBALS, settingsWithCategory);
       expect(result).not.toBeNull();
-      expect(result?.title).toBe('Pay bills');
-      expect(result?.category).toBe('Life');
-
-      // TYPE GUARD: Ensure the event is not allDay and is a single event
       if (result && !result.allDay && result.type === 'single') {
+        expect(result.title).toBe('Pay bills');
+        expect(result.category).toBe('Life');
         expect(result.startTime).toBe('14:00');
         expect(result.completed).not.toBe(false);
       } else {
-        // Fail the test if the type is wrong
         fail('Parsed event was allDay or not a single event type');
       }
     });
 
     it('should parse an event with a multi-level category', () => {
       const line = '- [ ] Chores - Home - Clean garage';
-      const result = getInlineEventFromLine(line, MOCK_GLOBALS);
+      const result = getInlineEventFromLine(line, MOCK_GLOBALS, settingsWithCategory);
       expect(result).not.toBeNull();
       expect(result?.title).toBe('Clean garage');
       expect(result?.category).toBe('Chores - Home');
@@ -54,7 +63,7 @@ describe('DailyNoteCalendar', () => {
 
     it('should parse an event with only inline fields and no category', () => {
       const line = '- [ ] A task with a time [startTime:: 09:00]';
-      const result = getInlineEventFromLine(line, MOCK_GLOBALS);
+      const result = getInlineEventFromLine(line, MOCK_GLOBALS, settingsWithCategory);
       expect(result).not.toBeNull();
       expect(result?.title).toBe('A task with a time');
       expect(result?.category).toBeUndefined();
@@ -69,7 +78,7 @@ describe('DailyNoteCalendar', () => {
 
     it('should handle extra whitespace gracefully', () => {
       const line = '  - [ ]   Work   -   Deploy to production  ';
-      const result = getInlineEventFromLine(line, MOCK_GLOBALS);
+      const result = getInlineEventFromLine(line, MOCK_GLOBALS, settingsWithCategory);
       expect(result).not.toBeNull();
       expect(result?.title).toBe('Deploy to production');
       expect(result?.category).toBe('Work');

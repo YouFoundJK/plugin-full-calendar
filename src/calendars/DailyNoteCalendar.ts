@@ -31,7 +31,7 @@ import { EventResponse } from './Calendar';
 import { EditableCalendar, EditableEventResponse } from './EditableCalendar';
 import { FullCalendarSettings } from '../ui/settings';
 import { convertEvent } from '../core/Timezone';
-import { constructTitle, parseTitle } from '../core/categoryParser'; // <-- ADD THIS IMPORT
+import { constructTitle, parseTitle } from '../core/categoryParser';
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 
@@ -55,14 +55,10 @@ const getHeadingPosition = (
   metadata: CachedMetadata,
   endOfDoc: Loc
 ): Pos | null => {
-  if (!metadata.headings) {
-    return null;
-  }
-
+  if (!metadata.headings) return null;
   let level: number | null = null;
   let startingPos: Pos | null = null;
   let endingPos: Pos | null = null;
-
   for (const heading of metadata.headings) {
     if (!level && heading.heading === headingText) {
       level = heading.level;
@@ -72,26 +68,16 @@ const getHeadingPosition = (
       break;
     }
   }
-
-  if (!level || !startingPos) {
-    return null;
-  }
-
+  if (!level || !startingPos) return null;
   return { start: startingPos.end, end: endingPos?.start || endOfDoc };
 };
 
 const getListsUnderHeading = (headingText: string, metadata: CachedMetadata): ListItemCache[] => {
-  if (!metadata.listItems) {
-    return [];
-  }
+  if (!metadata.listItems) return [];
   const endOfDoc = metadata.sections?.last()?.position.end;
-  if (!endOfDoc) {
-    return [];
-  }
+  if (!endOfDoc) return [];
   const headingPos = getHeadingPosition(headingText, metadata, endOfDoc);
-  if (!headingPos) {
-    return [];
-  }
+  if (!headingPos) return [];
   return metadata.listItems?.filter(
     l =>
       headingPos.start.offset < l.position.start.offset &&
@@ -103,30 +89,35 @@ const listRegex = /^(\s*)\-\s+(\[(.)\]\s+)?/;
 const checkboxRegex = /^\s*\-\s+\[(.)\]\s+/;
 const checkboxTodo = (s: string) => {
   const match = s.match(checkboxRegex);
-  if (!match || !match[1]) {
-    return null;
-  }
+  if (!match || !match[1]) return null;
   return match[1] === ' ' ? false : match[1];
 };
 
-// MODIFICATION: Update parsing function
+// ADD EXPORT HERE
 export const getInlineEventFromLine = (
   text: string,
-  globalAttrs: Partial<OFCEvent>
+  globalAttrs: Partial<OFCEvent>,
+  settings: FullCalendarSettings
 ): OFCEvent | null => {
   const attrs = getInlineAttributes(text);
+  const rawTitle = text.replace(listRegex, '').replace(fieldRegex, '').trim();
 
-  // Shortcut validation if there are no inline attributes.
-  if (Object.keys(attrs).length === 0 && !text.includes(' - ')) {
+  let eventData: any = {};
+  if (settings.enableCategoryColoring) {
+    const { category, title } = parseTitle(rawTitle);
+    eventData.title = title;
+    eventData.category = category;
+  } else {
+    eventData.title = rawTitle;
+  }
+
+  // Do a cheap check for an event before validating
+  if (Object.keys(attrs).length === 0 && !settings.enableCategoryColoring) {
     return null;
   }
 
-  const rawTitle = text.replace(listRegex, '').replace(fieldRegex, '').trim();
-  const { category, title } = parseTitle(rawTitle);
-
   return validateEvent({
-    title,
-    category,
+    ...eventData,
     completed: checkboxTodo(text),
     ...globalAttrs,
     ...attrs
@@ -136,7 +127,8 @@ export const getInlineEventFromLine = (
 function getAllInlineEventsFromFile(
   fileText: string,
   listItems: ListItemCache[],
-  fileGlobalAttrs: Partial<OFCEvent>
+  fileGlobalAttrs: Partial<OFCEvent>,
+  settings: FullCalendarSettings
 ): { lineNumber: number; event: OFCEvent }[] {
   const lines = fileText.split('\n');
   const listItemText: Line[] = listItems
@@ -146,10 +138,7 @@ function getAllInlineEventsFromFile(
   return listItemText
     .map(l => ({
       lineNumber: l.lineNumber,
-      event: getInlineEventFromLine(l.text, {
-        ...fileGlobalAttrs,
-        type: 'single'
-      })
+      event: getInlineEventFromLine(l.text, { ...fileGlobalAttrs, type: 'single' }, settings)
     }))
     .flatMap(({ event, lineNumber }) => (event ? [{ event, lineNumber }] : []));
 }
@@ -161,12 +150,13 @@ const generateInlineAttributes = (attrs: Record<string, any>): string => {
     .map(([k, v]) => `[${k}:: ${v}]`)
     .join('  ');
 };
-
-// MODIFICATION: Update serialization function
-const makeListItem = (data: OFCEvent, whitespacePrefix: string = ''): string => {
-  if (data.type !== 'single') {
-    throw new Error('Can only pass in single event.');
-  }
+// MODIFICATION: Pass settings to serialization functions
+const makeListItem = (
+  data: OFCEvent,
+  whitespacePrefix: string = '',
+  settings: FullCalendarSettings
+): string => {
+  if (data.type !== 'single') throw new Error('Can only pass in single event.');
   const { completed, title, category } = data;
   const checkbox = (() => {
     if (completed !== null && completed !== undefined) {
@@ -175,7 +165,7 @@ const makeListItem = (data: OFCEvent, whitespacePrefix: string = ''): string => 
     return null;
   })();
 
-  const fullTitle = constructTitle(category, title);
+  const titleToWrite = settings.enableCategoryColoring ? constructTitle(category, title) : title;
 
   const attrs: Partial<OFCEvent> = { ...data };
   delete attrs['completed'];
@@ -190,21 +180,22 @@ const makeListItem = (data: OFCEvent, whitespacePrefix: string = ''): string => 
     }
   }
 
-  if (!attrs['allDay']) {
-    delete attrs['allDay'];
-  }
+  if (!attrs['allDay']) delete attrs['allDay'];
 
-  return `${whitespacePrefix}- ${checkbox || ''} ${fullTitle} ${generateInlineAttributes(attrs)}`;
+  return `${whitespacePrefix}- ${checkbox || ''} ${titleToWrite} ${generateInlineAttributes(attrs)}`;
 };
 
-const modifyListItem = (line: string, data: OFCEvent): string | null => {
+const modifyListItem = (
+  line: string,
+  data: OFCEvent,
+  settings: FullCalendarSettings
+): string | null => {
   const listMatch = line.match(listRegex);
   if (!listMatch) {
     console.warn("Tried modifying a list item with a position that wasn't a list item", { line });
     return null;
   }
-
-  return makeListItem(data, listMatch[1]);
+  return makeListItem(data, listMatch[1], settings);
 };
 
 /**
@@ -219,11 +210,11 @@ type AddToHeadingProps = {
 };
 const addToHeading = (
   page: string,
-  { heading, item, headingText }: AddToHeadingProps
+  { heading, item, headingText }: AddToHeadingProps,
+  settings: FullCalendarSettings
 ): { page: string; lineNumber: number } => {
   let lines = page.split('\n');
-
-  const listItem = makeListItem(item);
+  const listItem = makeListItem(item, '', settings);
   if (heading) {
     const headingLine = heading.position.start.line;
     const lineNumber = headingLine + 1;
@@ -263,28 +254,21 @@ export default class DailyNoteCalendar extends EditableCalendar {
   }
   get directory(): string {
     const { folder } = getDailyNoteSettings();
-    if (!folder) {
-      throw new Error('Could not load daily note settings.');
-    }
+    if (!folder) throw new Error('Could not load daily note settings.');
     return folder;
   }
 
   async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
-    // @ts-ignore
-    const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
+    const date = getDateFromFile(file as any, 'day')?.format('YYYY-MM-DD');
     if (!date) return [];
-
     const cache = this.app.getMetadata(file);
     if (!cache) return [];
-
     const listItems = getListsUnderHeading(this.heading, cache);
     const inlineEvents = await this.app.process(file, text =>
-      getAllInlineEventsFromFile(text, listItems, { date })
+      getAllInlineEventsFromFile(text, listItems, { date }, this.settings)
     );
-
     const displayTimezone =
       this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-
     return inlineEvents.map(({ event, lineNumber }) => {
       let sourceTimezone: string;
 
@@ -296,7 +280,6 @@ export default class DailyNoteCalendar extends EditableCalendar {
       else {
         sourceTimezone = event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
       }
-
       let translatedEvent = event;
       if (sourceTimezone !== displayTimezone) {
         translatedEvent = convertEvent(event, sourceTimezone, displayTimezone);
@@ -310,31 +293,22 @@ export default class DailyNoteCalendar extends EditableCalendar {
     newEvent: OFCEvent,
     updateCacheWithLocation: (loc: EventLocation) => void
   ): Promise<void> {
-    if (newEvent.type !== 'single' && newEvent.type !== undefined) {
+    if (newEvent.type !== 'single' && newEvent.type !== undefined)
       throw new Error('Recurring events in daily notes are not supported.');
-    }
-    if (newEvent.endDate) {
-      throw new Error('Multi-day events are not supported in daily notes.');
-    }
-
+    if (newEvent.endDate) throw new Error('Multi-day events are not supported in daily notes.');
     const displayTimezone =
       this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     let eventToWrite = newEvent;
-
     let targetTimezone: string;
-    // In 'local' mode, the target is always the current system time.
     if (this.settings.dailyNotesTimezone === 'local') {
       targetTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    }
-    // In 'strict' mode, the target is whatever the original event's timezone was.
-    else {
+    } else {
       const { file, lineNumber } = this.getConcreteLocation(loc);
       const contents = await this.app.read(file);
       const line = contents.split('\n')[lineNumber];
-      const sourceEvent = getInlineEventFromLine(line, {});
+      const sourceEvent = getInlineEventFromLine(line, {}, this.settings);
       targetTimezone = sourceEvent?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     }
-
     if (displayTimezone !== targetTimezone && newEvent.type === 'single') {
       eventToWrite = convertEvent(newEvent, displayTimezone, targetTimezone) as typeof newEvent;
     }
@@ -352,34 +326,30 @@ export default class DailyNoteCalendar extends EditableCalendar {
       let newFile = getDailyNote(m, getAllDailyNotes()) as TFile;
       if (!newFile) newFile = (await createDailyNote(m)) as TFile;
       await this.app.read(newFile);
-
       const metadata = this.app.getMetadata(newFile);
       if (!metadata) throw new Error('No metadata for file ' + newFile.path);
-
       const headingInfo = metadata.headings?.find(h => h.heading == this.heading);
       if (!headingInfo)
         throw new Error(`Could not find heading ${this.heading} in daily note ${newFile.path}.`);
-
       await this.app.rewrite(file, async oldFileContents => {
         let lines = oldFileContents.split('\n');
         lines.splice(lineNumber, 1);
         await this.app.rewrite(newFile, newFileContents => {
-          const { page, lineNumber: newLn } = addToHeading(newFileContents, {
-            heading: headingInfo,
-            item: eventToWrite,
-            headingText: this.heading
-          });
+          const { page, lineNumber: newLn } = addToHeading(
+            newFileContents,
+            { heading: headingInfo, item: eventToWrite, headingText: this.heading },
+            this.settings
+          );
           updateCacheWithLocation({ file: newFile, lineNumber: newLn });
           return page;
         });
         return lines.join('\n');
       });
     } else {
-      // ... Logic to modify in place
       updateCacheWithLocation({ file, lineNumber });
       await this.app.rewrite(file, contents => {
         const lines = contents.split('\n');
-        const newLine = modifyListItem(lines[lineNumber], eventToWrite);
+        const newLine = modifyListItem(lines[lineNumber], eventToWrite, this.settings);
         if (!newLine) throw new Error('Did not successfully update line.');
         lines[lineNumber] = newLine;
         return lines.join('\n');
@@ -387,6 +357,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
     }
   }
 
+  // RESTORED getEvents
   async getEvents(): Promise<EventResponse[]> {
     const notes = getAllDailyNotes();
     const files = Object.values(notes) as TFile[];
@@ -394,11 +365,8 @@ export default class DailyNoteCalendar extends EditableCalendar {
   }
 
   async createEvent(event: OFCEvent): Promise<EventLocation> {
-    if (event.type !== 'single' && event.type !== undefined) {
-      console.debug('tried creating a recurring event in a daily note', event);
+    if (event.type !== 'single' && event.type !== undefined)
       throw new Error('Cannot create a recurring event in a daily note.');
-    }
-
     const eventToCreate = {
       ...event,
       // The native timezone of a new daily note event is always the current system time.
@@ -406,29 +374,21 @@ export default class DailyNoteCalendar extends EditableCalendar {
     };
     const displayTimezone =
       this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-
     // If in strict mode, stamp the event with the display timezone.
-    if (this.settings.dailyNotesTimezone === 'strict') {
-      eventToCreate.timezone = displayTimezone;
-    }
-
+    if (this.settings.dailyNotesTimezone === 'strict') eventToCreate.timezone = displayTimezone;
     const m = moment(eventToCreate.date);
     let file = getDailyNote(m, getAllDailyNotes()) as TFile;
-    if (!file) {
-      file = (await createDailyNote(m)) as TFile;
-    }
+    if (!file) file = (await createDailyNote(m)) as TFile;
     const metadata = await this.app.waitForMetadata(file);
-
     const headingInfo = metadata.headings?.find(h => h.heading == this.heading);
-    if (!headingInfo) {
+    if (!headingInfo)
       throw new Error(`Could not find heading ${this.heading} in daily note ${file.path}.`);
-    }
     let lineNumber = await this.app.rewrite(file, contents => {
-      const { page, lineNumber } = addToHeading(contents, {
-        heading: headingInfo,
-        item: eventToCreate, // Use the potentially modified event
-        headingText: this.heading
-      });
+      const { page, lineNumber } = addToHeading(
+        contents,
+        { heading: headingInfo, item: eventToCreate, headingText: this.heading },
+        this.settings
+      );
       return [page, lineNumber] as [string, number];
     });
     return { file, lineNumber };
@@ -439,12 +399,8 @@ export default class DailyNoteCalendar extends EditableCalendar {
     lineNumber: number;
   } {
     const file = this.app.getFileByPath(path);
-    if (!file) {
-      throw new Error(`File not found at path: ${path}`);
-    }
-    if (!lineNumber) {
-      throw new Error(`Daily note events must have a line number.`);
-    }
+    if (!file) throw new Error(`File not found at path: ${path}`);
+    if (!lineNumber) throw new Error(`Daily note events must have a line number.`);
     return { file, lineNumber };
   }
 

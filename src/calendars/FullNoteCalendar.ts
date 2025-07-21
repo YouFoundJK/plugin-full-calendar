@@ -24,9 +24,11 @@ import { convertEvent } from '../core/Timezone';
 import { newFrontmatter, modifyFrontmatterString, replaceFrontmatter } from './frontmatter';
 import { constructTitle, parseTitle } from '../core/categoryParser';
 
-const basenameFromEvent = (event: OFCEvent): string => {
-  // Use the full, constructed title for the filename
-  const fullTitle = constructTitle(event.category, event.title);
+const basenameFromEvent = (event: OFCEvent, settings: FullCalendarSettings): string => {
+  // Use the full, constructed title for the filename IF the feature is enabled.
+  const fullTitle = settings.enableCategoryColoring
+    ? constructTitle(event.category, event.title)
+    : event.title;
   switch (event.type) {
     case undefined:
     case 'single':
@@ -38,7 +40,8 @@ const basenameFromEvent = (event: OFCEvent): string => {
   }
 };
 
-const filenameForEvent = (event: OFCEvent) => `${basenameFromEvent(event)}.md`;
+const filenameForEvent = (event: OFCEvent, settings: FullCalendarSettings) =>
+  `${basenameFromEvent(event, settings)}.md`;
 
 export default class FullNoteCalendar extends EditableCalendar {
   app: ObsidianInterface;
@@ -77,23 +80,24 @@ export default class FullNoteCalendar extends EditableCalendar {
       return [];
     }
 
-    // Correctly initialize parsedTitle and parse the title from frontmatter
-    let parsedTitle: { category: string | undefined; title: string };
-    if (frontmatter.title) {
-      parsedTitle = parseTitle(frontmatter.title);
+    // MODIFICATION: Conditional Parsing
+    let eventData: any = { ...frontmatter };
+    const rawTitle = frontmatter.title || file.basename;
+
+    if (this.settings.enableCategoryColoring) {
+      const { category, title } = parseTitle(rawTitle);
+      eventData.title = title;
+      eventData.category = category;
     } else {
-      // If no title in frontmatter, parse the filename instead.
-      parsedTitle = parseTitle(file.basename);
+      eventData.title = rawTitle;
     }
 
-    let event = validateEvent({
-      ...frontmatter,
-      ...parsedTitle // Add parsed category and clean title to the event object
-    });
+    let event = validateEvent(eventData);
 
     if (!event) {
       return [];
     }
+    // END MODIFICATION
 
     let eventTimezone = event.timezone;
     const displayTimezone = this.settings.displayTimezone;
@@ -153,26 +157,22 @@ export default class FullNoteCalendar extends EditableCalendar {
   }
 
   async createEvent(event: OFCEvent): Promise<EventLocation> {
-    const path = `${this.directory}/${filenameForEvent(event)}`;
+    const path = `${this.directory}/${filenameForEvent(event, this.settings)}`;
     if (this.app.getAbstractFileByPath(path)) {
       throw new Error(`Event at ${path} already exists.`);
     }
 
     const displayTimezone =
       this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    if (displayTimezone !== systemTimezone) {
-      new Notice(
-        `Event created in ${displayTimezone}.\nYour system is currently in ${systemTimezone}.`
-      );
-    }
-
-    const fullTitle = constructTitle(event.category, event.title);
+    // MODIFICATION: Conditional Title Construction
+    const titleToWrite = this.settings.enableCategoryColoring
+      ? constructTitle(event.category, event.title)
+      : event.title;
 
     const eventToCreate = {
       ...event,
-      title: fullTitle,
+      title: titleToWrite,
       timezone: displayTimezone
     };
     delete (eventToCreate as Partial<OFCEvent>).category;
@@ -183,6 +183,7 @@ export default class FullNoteCalendar extends EditableCalendar {
   }
 
   getNewLocation(location: EventPathLocation, event: OFCEvent): EventLocation {
+    // ... (This logic needs to pass settings to filenameForEvent)
     const { path, lineNumber } = location;
     if (lineNumber !== undefined) {
       throw new Error('Note calendar cannot handle inline events.');
@@ -193,7 +194,7 @@ export default class FullNoteCalendar extends EditableCalendar {
     }
 
     const parentPath = file.parent?.path ?? '';
-    const updatedPath = `${parentPath}/${filenameForEvent(event)}`;
+    const updatedPath = `${parentPath}/${filenameForEvent(event, this.settings)}`;
     return { file: { path: updatedPath }, lineNumber: undefined };
   }
 
@@ -208,25 +209,26 @@ export default class FullNoteCalendar extends EditableCalendar {
       throw new Error(`File ${path} either doesn't exist or is a folder.`);
     }
 
+    // Timezone logic remains the same...
     const fileMetadata = this.app.getMetadata(file);
     const fileEvent = validateEvent(fileMetadata?.frontmatter);
-
-    const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const displayTimezone = this.settings.displayTimezone || systemTimezone;
+    const displayTimezone =
+      this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     const fileTimezone = fileEvent?.timezone || displayTimezone;
-
     let eventToWrite = event;
     if (fileTimezone !== displayTimezone) {
       eventToWrite = convertEvent(event, displayTimezone, fileTimezone);
     }
-
     eventToWrite.timezone = fileTimezone;
 
-    const fullTitle = constructTitle(eventToWrite.category, eventToWrite.title);
+    // MODIFICATION: Conditional Title Construction
+    const titleToWrite = this.settings.enableCategoryColoring
+      ? constructTitle(eventToWrite.category, eventToWrite.title)
+      : eventToWrite.title;
 
     const eventWithFullTitle = {
       ...eventToWrite,
-      title: fullTitle
+      title: titleToWrite
     };
     delete (eventWithFullTitle as Partial<OFCEvent>).category;
 

@@ -1,4 +1,5 @@
 import { getEventsFromICS } from './ics';
+import { DEFAULT_SETTINGS } from '../../ui/settings'; // <-- IMPORT DEFAULTS
 
 describe('ics tests', () => {
   it('parses all day event', () => {
@@ -26,7 +27,7 @@ SUMMARY:EVENT TITLE
 TRANSP:TRANSPARENT
 END:VEVENT
 END:VCALENDAR`;
-    const events = getEventsFromICS(ics);
+    const events = getEventsFromICS(ics, DEFAULT_SETTINGS);
     expect(events).toMatchSnapshot(ics);
   });
 
@@ -134,7 +135,7 @@ TRANSP:TRANSPARENT
 END:VEVENT
 END:VCALENDAR
         `;
-    const events = getEventsFromICS(ics);
+    const events = getEventsFromICS(ics, { ...DEFAULT_SETTINGS, enableCategoryColoring: true });
     expect(events).toMatchSnapshot(ics);
   });
 });
