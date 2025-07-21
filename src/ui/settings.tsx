@@ -36,6 +36,8 @@ import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
 import { makeDefaultPartialCalendarSource, CalendarInfo } from '../types';
 import { CalendarSettings, CalendarSettingsRef } from './components/CalendarSetting';
 import { changelogData } from './changelogData';
+import { CategorySettingsManager } from './components/CategorySetting';
+import { Modal } from 'obsidian';
 import './changelog.css';
 
 export interface FullCalendarSettings {
@@ -350,6 +352,68 @@ export class FullCalendarSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
         });
+
+      // ====================================================================
+      // NEW: Category Coloring Section
+      // ====================================================================
+      containerEl.createEl('h2', { text: 'Category Coloring' });
+
+      new Setting(containerEl)
+        .setName('Enable Category Coloring')
+        .setDesc('Color events based on a category in their title (e.g., "Work - My Event").')
+        .addToggle(toggle => {
+          toggle.setValue(this.plugin.settings.enableCategoryColoring).onChange(async value => {
+            const warningMessage = value
+              ? 'This will permanently modify event notes in your vault by prepending their folder name to the event title. This action cannot be undone. Are you sure you want to proceed?'
+              : 'This will permanently modify event notes by removing known category prefixes from titles. This action cannot be undone. Are you sure you want to proceed?';
+
+            const modal = new Modal(this.app);
+            modal.contentEl.createEl('h2', { text: 'Warning: Bulk File Modification' });
+            modal.contentEl.createEl('p', { text: warningMessage });
+            modal.contentEl.createEl('p', {
+              text: 'It is highly recommended to back up your vault before continuing.'
+            });
+
+            new Setting(modal.contentEl)
+              .addButton(btn =>
+                btn
+                  .setButtonText('Proceed')
+                  .setWarning()
+                  .onClick(async () => {
+                    this.plugin.settings.enableCategoryColoring = value;
+                    await this.plugin.saveData(this.plugin.settings); // Save setting before running bulk op
+                    if (value) {
+                      await this.plugin.bulkAddCategoriesToTitles();
+                    } else {
+                      await this.plugin.bulkRemoveCategoriesFromTitles();
+                    }
+                    modal.close();
+                    render(); // Re-render settings to show/hide category manager
+                  })
+              )
+              .addButton(btn =>
+                btn.setButtonText('Cancel').onClick(() => {
+                  toggle.setValue(!value); // Revert toggle state
+                  modal.close();
+                })
+              );
+            modal.open();
+          });
+        });
+
+      if (this.plugin.settings.enableCategoryColoring) {
+        const categoryDiv = containerEl.createDiv();
+        const categoryRoot = ReactDOM.createRoot(categoryDiv);
+        categoryRoot.render(
+          <CategorySettingsManager
+            settings={this.plugin.settings.categorySettings}
+            onSave={async newSettings => {
+              this.plugin.settings.categorySettings = newSettings;
+              await this.plugin.saveSettings();
+            }}
+          />
+        );
+      }
 
       // ====================================================================
       // "What's New" Section

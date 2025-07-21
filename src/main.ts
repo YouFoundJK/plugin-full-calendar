@@ -12,7 +12,7 @@
  * @license See LICENSE.md
  */
 
-import { MarkdownView, Notice, Plugin, TFile } from 'obsidian';
+import { Notice, Plugin, TFile, TFolder, TAbstractFile } from 'obsidian';
 import { CalendarView, FULL_CALENDAR_SIDEBAR_VIEW_TYPE, FULL_CALENDAR_VIEW_TYPE } from './ui/view';
 import { renderCalendar } from './ui/calendar';
 import { toEventInput } from './ui/interop';
@@ -26,7 +26,7 @@ import DailyNoteCalendar from './calendars/DailyNoteCalendar';
 import ICSCalendar from './calendars/ICSCalendar';
 import CalDAVCalendar from './calendars/CalDAVCalendar';
 import { manageTimezone } from './core/Timezone';
-
+import { constructTitle, parseTitle } from './core/categoryParser';
 import { AnalysisView, ANALYSIS_VIEW_TYPE } from './chrono_analyser/AnalysisView';
 
 export default class FullCalendarPlugin extends Plugin {
@@ -225,5 +225,135 @@ export default class FullCalendarPlugin extends Plugin {
     this.cache.reset(this.settings.calendarSources);
     await this.cache.populate();
     this.cache.resync();
+  }
+
+  /**
+   * Performs a non-blocking iteration over a list of files to apply a processor function.
+   * Shows a progress notice to the user.
+   * @param files The array of TFile objects to process.
+   * @param processor The async function to apply to each file.
+   * @param description A description of the operation for the notice.
+   */
+  async nonBlockingProcess(
+    files: TFile[],
+    processor: (file: TFile) => Promise<void>,
+    description: string
+  ) {
+    const BATCH_SIZE = 10;
+    let index = 0;
+    const notice = new Notice('', 0); // Indefinite notice
+
+    const processBatch = () => {
+      // End condition
+      if (index >= files.length) {
+        notice.hide();
+        new Notice('Bulk update complete!');
+        // After a bulk update, it's safest to reset the cache.
+        this.cache.reset(this.settings.calendarSources);
+        return;
+      }
+
+      notice.setMessage(`${description}: ${index}/${files.length}`);
+      const batch = files.slice(index, index + BATCH_SIZE);
+
+      Promise.all(batch.map(processor))
+        .then(() => {
+          index += BATCH_SIZE;
+          // Yield to the main thread before processing the next batch
+          setTimeout(processBatch, 0);
+        })
+        .catch(err => {
+          console.error('Error during bulk processing batch', err);
+          notice.hide();
+          new Notice('Error during bulk update. Check console for details.');
+        });
+    };
+
+    processBatch();
+  }
+
+  /**
+   * Iterates through all local event files and prepends their parent folder name
+   * to the event title in the frontmatter.
+   */
+  async bulkAddCategoriesToTitles() {
+    const localCalendars = [...this.cache.calendars.values()].flatMap(c =>
+      c instanceof FullNoteCalendar ? c : []
+    );
+
+    let allFiles: TFile[] = [];
+    for (const calendar of localCalendars) {
+      const folder = this.app.vault.getAbstractFileByPath(calendar.directory);
+      // CORRECTED TYPE GUARD: Check if it's a TFolder
+      if (folder instanceof TFolder) {
+        // Now it's safe to access .children
+        allFiles.push(
+          ...folder.children.flatMap((f: TAbstractFile) => (f instanceof TFile ? [f] : []))
+        );
+      }
+    }
+
+    const processor = async (file: TFile) => {
+      const parentName = file.parent?.name;
+      if (!parentName || parentName === '/' || parentName === this.app.vault.getRoot().name) {
+        return; // Don't add category for root-level calendars
+      }
+
+      await this.app.fileManager.processFrontMatter(file, frontmatter => {
+        if (!frontmatter.title) return; // Only modify files with an existing title
+
+        // Use the parser to avoid double-prepending
+        const { category, title } = parseTitle(frontmatter.title);
+        if (category) return; // Already has a category, skip.
+
+        frontmatter.title = constructTitle(parentName, title);
+      });
+    };
+
+    this.nonBlockingProcess(allFiles, processor, 'Adding categories to titles');
+  }
+
+  /**
+   * Iterates through all local event files and removes known category prefixes
+   * from the event title in the frontmatter.
+   */
+  async bulkRemoveCategoriesFromTitles() {
+    const localCalendars = [...this.cache.calendars.values()].flatMap(c =>
+      c instanceof FullNoteCalendar ? c : []
+    );
+    // Get all possible category names: from settings and from folder names.
+    const definedCategories = new Set(this.settings.categorySettings.map(s => s.name));
+    localCalendars.forEach(c => {
+      const dir = c.directory.split('/').pop();
+      if (dir) {
+        definedCategories.add(dir);
+      }
+    });
+
+    let allFiles: TFile[] = [];
+    for (const calendar of localCalendars) {
+      const folder = this.app.vault.getAbstractFileByPath(calendar.directory);
+      // CORRECTED TYPE GUARD: Check if it's a TFolder
+      if (folder instanceof TFolder) {
+        // Now it's safe to access .children
+        allFiles.push(
+          ...folder.children.flatMap((f: TAbstractFile) => (f instanceof TFile ? [f] : []))
+        );
+      }
+    }
+
+    const processor = async (file: TFile) => {
+      await this.app.fileManager.processFrontMatter(file, frontmatter => {
+        if (!frontmatter.title) return;
+
+        const { category, title } = parseTitle(frontmatter.title);
+        if (category && definedCategories.has(category)) {
+          // If the parsed category is one we know about, strip it.
+          frontmatter.title = title;
+        }
+      });
+    };
+
+    this.nonBlockingProcess(allFiles, processor, 'Removing categories from titles');
   }
 }

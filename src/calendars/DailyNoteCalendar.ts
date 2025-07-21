@@ -110,7 +110,10 @@ const checkboxTodo = (s: string) => {
 };
 
 // MODIFICATION: Update parsing function
-const getInlineEventFromLine = (text: string, globalAttrs: Partial<OFCEvent>): OFCEvent | null => {
+export const getInlineEventFromLine = (
+  text: string,
+  globalAttrs: Partial<OFCEvent>
+): OFCEvent | null => {
   const attrs = getInlineAttributes(text);
 
   // Shortcut validation if there are no inline attributes.
