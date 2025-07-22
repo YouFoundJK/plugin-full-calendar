@@ -272,83 +272,100 @@ export default class FullCalendarPlugin extends Plugin {
     processBatch();
   }
 
-  /**
-   * Iterates through all local event files and prepends their parent folder name
-   * to the event title in the frontmatter.
-   */
-  async bulkAddCategoriesToTitles() {
+  // Helper function to get all TFiles from local calendars
+  private async getAllLocalEventFiles(): Promise<TFile[]> {
     const localCalendars = [...this.cache.calendars.values()].flatMap(c =>
       c instanceof FullNoteCalendar ? c : []
     );
-
     let allFiles: TFile[] = [];
     for (const calendar of localCalendars) {
       const folder = this.app.vault.getAbstractFileByPath(calendar.directory);
-      // CORRECTED TYPE GUARD: Check if it's a TFolder
       if (folder instanceof TFolder) {
-        // Now it's safe to access .children
         allFiles.push(
           ...folder.children.flatMap((f: TAbstractFile) => (f instanceof TFile ? [f] : []))
         );
       }
     }
-
-    const processor = async (file: TFile) => {
-      const parentName = file.parent?.name;
-      if (!parentName || parentName === '/' || parentName === this.app.vault.getRoot().name) {
-        return; // Don't add category for root-level calendars
-      }
-
-      await this.app.fileManager.processFrontMatter(file, frontmatter => {
-        if (!frontmatter.title) return; // Only modify files with an existing title
-
-        // Use the parser to avoid double-prepending
-        const { category, title } = parseTitle(frontmatter.title);
-        if (category) return; // Already has a category, skip.
-
-        frontmatter.title = constructTitle(parentName, title);
-      });
-    };
-
-    this.nonBlockingProcess(allFiles, processor, 'Adding categories to titles');
+    return allFiles;
   }
 
   /**
-   * Iterates through all local event files and removes known category prefixes
-   * from the event title in the frontmatter.
+   * OPTION 1: Smartly prepends parent folder names to uncategorized event titles.
    */
-  async bulkRemoveCategoriesFromTitles() {
-    const localCalendars = [...this.cache.calendars.values()].flatMap(c =>
-      c instanceof FullNoteCalendar ? c : []
-    );
-    // Get all possible category names: from settings and from folder names.
-    const definedCategories = new Set(this.settings.categorySettings.map(s => s.name));
-    localCalendars.forEach(c => {
-      const dir = c.directory.split('/').pop();
-      if (dir) {
-        definedCategories.add(dir);
-      }
-    });
+  async bulkSmartUpdateFromFolders() {
+    const allFiles = await this.getAllLocalEventFiles();
+    const processor = async (file: TFile) => {
+      const parentName = file.parent?.name;
+      if (!parentName || parentName === '/' || parentName === this.app.vault.getRoot().name) return;
+      await this.app.fileManager.processFrontMatter(file, frontmatter => {
+        if (!frontmatter.title) return;
+        const { category, title } = parseTitle(frontmatter.title);
+        if (category) return; // The "smart" part: skip if category exists.
+        frontmatter.title = constructTitle(parentName, title);
+      });
+    };
+    this.nonBlockingProcess(allFiles, processor, 'Smart-updating titles from folders');
+  }
 
-    let allFiles: TFile[] = [];
-    for (const calendar of localCalendars) {
-      const folder = this.app.vault.getAbstractFileByPath(calendar.directory);
-      // CORRECTED TYPE GUARD: Check if it's a TFolder
-      if (folder instanceof TFolder) {
-        // Now it's safe to access .children
-        allFiles.push(
-          ...folder.children.flatMap((f: TAbstractFile) => (f instanceof TFile ? [f] : []))
-        );
-      }
+  /**
+   * OPTION 2: Forcibly prepends parent folder names to ALL event titles.
+   */
+  async bulkForceUpdateFromFolders() {
+    const allFiles = await this.getAllLocalEventFiles();
+    const processor = async (file: TFile) => {
+      const parentName = file.parent?.name;
+      if (!parentName || parentName === '/' || parentName === this.app.vault.getRoot().name) return;
+      await this.app.fileManager.processFrontMatter(file, frontmatter => {
+        if (!frontmatter.title) return;
+        // The "forced" part: parse to get the clean title, then reconstruct with the folder name.
+        const { title: cleanTitle } = parseTitle(frontmatter.title);
+        frontmatter.title = constructTitle(parentName, cleanTitle);
+      });
+    };
+    this.nonBlockingProcess(allFiles, processor, 'Forcing folder categories on titles');
+  }
+
+  /**
+   * OPTION 3: Forcibly prepends a default category name to ALL event titles.
+   */
+  async bulkForceUpdateWithDefault(defaultCategory: string) {
+    if (!defaultCategory || defaultCategory.trim() === '') {
+      new Notice('Cannot add an empty category.');
+      return;
     }
-
+    const allFiles = await this.getAllLocalEventFiles();
     const processor = async (file: TFile) => {
       await this.app.fileManager.processFrontMatter(file, frontmatter => {
         if (!frontmatter.title) return;
+        // The "forced" part: parse to get the clean title, then reconstruct with the default category.
+        const { title: cleanTitle } = parseTitle(frontmatter.title);
+        frontmatter.title = constructTitle(defaultCategory, cleanTitle);
+      });
+    };
+    this.nonBlockingProcess(allFiles, processor, `Forcing "${defaultCategory}" category on titles`);
+  }
 
+  /**
+   * BULK ACTION - REMOVE: Iterates through all local event files and removes known
+   * category prefixes from their titles.
+   */
+  async bulkRemoveCategoriesFromTitles() {
+    // Get all possible category names: from settings and from folder names.
+    const definedCategories = new Set(this.settings.categorySettings.map(s => s.name));
+    [...this.cache.calendars.values()].forEach(c => {
+      if (c instanceof FullNoteCalendar) {
+        const dir = c.directory.split('/').pop();
+        if (dir) definedCategories.add(dir);
+      }
+    });
+
+    const allFiles = await this.getAllLocalEventFiles();
+    const processor = async (file: TFile) => {
+      await this.app.fileManager.processFrontMatter(file, frontmatter => {
+        if (!frontmatter.title) return;
         const { category, title } = parseTitle(frontmatter.title);
         if (category && definedCategories.has(category)) {
-          // If the parsed category is one we know about, strip it.
+          // If the parsed category is a known one, strip it.
           frontmatter.title = title;
         }
       });

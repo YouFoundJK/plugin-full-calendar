@@ -24,7 +24,9 @@ import {
   PluginSettingTab,
   Setting,
   TFile,
-  TFolder
+  TFolder,
+  Modal, // Import Modal
+  TextComponent // Import TextComponent
 } from 'obsidian';
 import * as ReactDOM from 'react-dom/client';
 import { createElement, createRef } from 'react';
@@ -36,9 +38,8 @@ import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
 import { makeDefaultPartialCalendarSource, CalendarInfo } from '../types';
 import { CalendarSettings, CalendarSettingsRef } from './components/CalendarSetting';
 import { changelogData } from './changelogData';
-import { CategorySettingsManager } from './components/CategorySetting';
-import { Modal } from 'obsidian';
 import './changelog.css';
+import { CategorySettingsManager } from './components/CategorySetting';
 
 export interface FullCalendarSettings {
   calendarSources: CalendarInfo[];
@@ -89,6 +90,85 @@ const INITIAL_VIEW_OPTIONS = {
     listWeek: 'List'
   }
 };
+
+// This modal presents the 3 bulk-update choices to the user.
+class BulkCategorizeModal extends Modal {
+  onSubmit: (choice: 'smart' | 'force_folder' | 'force_default', defaultCategory?: string) => void;
+
+  constructor(
+    app: App,
+    onSubmit: (choice: 'smart' | 'force_folder' | 'force_default', defaultCategory?: string) => void
+  ) {
+    super(app);
+    this.onSubmit = onSubmit;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl('h2', { text: 'Choose a Bulk-Update Method' });
+    contentEl.createEl('p', {
+      text: 'How would you like to automatically categorize existing events in your local calendars?'
+    });
+
+    // Option 1: Smart Folder Update
+    new Setting(contentEl)
+      .setName('Smart Update')
+      .setDesc(
+        "Use parent folder names as the category for UN-categorized events. Events that already look like 'Category - Title' will be skipped."
+      )
+      .addButton(button =>
+        button
+          .setButtonText('Run Smart Update')
+          .setCta()
+          .onClick(() => {
+            this.onSubmit('smart');
+            this.close();
+          })
+      );
+
+    // Option 2: Forced Folder Update
+    new Setting(contentEl)
+      .setName('Forced Folder Update')
+      .setDesc(
+        'Re-categorize ALL events using their parent folder name. This will OVERWRITE any existing categories in event titles. This is the only guarenteed reversible option if you wish to toggle it off later!'
+      )
+      .addButton(button =>
+        button
+          .setButtonText('Run Forced Update')
+          .setWarning()
+          .onClick(() => {
+            this.onSubmit('force_folder');
+            this.close();
+          })
+      );
+
+    // Option 3: Forced Default Update
+    let textInput: TextComponent;
+    new Setting(contentEl)
+      .setName('Forced Default Update')
+      .setDesc(
+        'Re-categorize ALL events with a single category you provide below. This will OVERWRITE existing categories.'
+      )
+      .addText(text => {
+        textInput = text;
+        text.setPlaceholder('Enter default category');
+      })
+      .addButton(button =>
+        button
+          .setButtonText('Run Forced Update')
+          .setWarning()
+          .onClick(() => {
+            this.onSubmit('force_default', textInput.getValue());
+            this.close();
+          })
+      );
+  }
+
+  onClose() {
+    this.contentEl.empty();
+  }
+}
 
 export function addCalendarButton(
   app: App,
@@ -354,7 +434,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         });
 
       // ====================================================================
-      // NEW: Category Coloring Section
+      // CATEGORY COLORING SECTION
       // ====================================================================
       containerEl.createEl('h2', { text: 'Category Coloring' });
 
@@ -363,41 +443,57 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         .setDesc('Color events based on a category in their title (e.g., "Work - My Event").')
         .addToggle(toggle => {
           toggle.setValue(this.plugin.settings.enableCategoryColoring).onChange(async value => {
-            const warningMessage = value
-              ? 'This will permanently modify event notes in your vault by prepending their folder name to the event title. This action cannot be undone. Are you sure you want to proceed?'
-              : 'This will permanently modify event notes by removing known category prefixes from titles. This action cannot be undone. Are you sure you want to proceed?';
+            const isTogglingOn = value;
+            const warningMessage = isTogglingOn
+              ? 'This will permanently modify event notes in your vault by prepending a category to the event title. This action cannot be undone.'
+              : 'This will permanently modify event notes by removing known category prefixes from titles. This action cannot be undone.';
 
-            const modal = new Modal(this.app);
-            modal.contentEl.createEl('h2', { text: 'Warning: Bulk File Modification' });
-            modal.contentEl.createEl('p', { text: warningMessage });
-            modal.contentEl.createEl('p', {
+            const confirmModal = new Modal(this.app);
+            confirmModal.contentEl.createEl('h2', { text: 'Warning: Bulk File Modification' });
+            confirmModal.contentEl.createEl('p', { text: warningMessage });
+            confirmModal.contentEl.createEl('p', {
               text: 'It is highly recommended to back up your vault before continuing.'
             });
 
-            new Setting(modal.contentEl)
+            new Setting(confirmModal.contentEl)
               .addButton(btn =>
                 btn
                   .setButtonText('Proceed')
                   .setWarning()
+                  // ADD `async` HERE
                   .onClick(async () => {
-                    this.plugin.settings.enableCategoryColoring = value;
-                    await this.plugin.saveData(this.plugin.settings); // Save setting before running bulk op
-                    if (value) {
-                      await this.plugin.bulkAddCategoriesToTitles();
+                    confirmModal.close();
+
+                    if (isTogglingOn) {
+                      new BulkCategorizeModal(this.app, async (choice, defaultCategory) => {
+                        this.plugin.settings.enableCategoryColoring = true;
+                        await this.plugin.saveData(this.plugin.settings);
+
+                        if (choice === 'smart') {
+                          await this.plugin.bulkSmartUpdateFromFolders();
+                        } else if (choice === 'force_folder') {
+                          await this.plugin.bulkForceUpdateFromFolders();
+                        } else if (choice === 'force_default' && defaultCategory) {
+                          await this.plugin.bulkForceUpdateWithDefault(defaultCategory);
+                        }
+                        this.display();
+                      }).open();
                     } else {
+                      // Toggling OFF
+                      this.plugin.settings.enableCategoryColoring = false;
+                      await this.plugin.saveData(this.plugin.settings);
                       await this.plugin.bulkRemoveCategoriesFromTitles();
+                      this.display();
                     }
-                    modal.close();
-                    render(); // Re-render settings to show/hide category manager
                   })
               )
               .addButton(btn =>
                 btn.setButtonText('Cancel').onClick(() => {
-                  toggle.setValue(!value); // Revert toggle state
-                  modal.close();
+                  toggle.setValue(!value);
+                  confirmModal.close();
                 })
               );
-            modal.open();
+            confirmModal.open();
           });
         });
 
@@ -405,13 +501,13 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         const categoryDiv = containerEl.createDiv();
         const categoryRoot = ReactDOM.createRoot(categoryDiv);
         categoryRoot.render(
-          <CategorySettingsManager
-            settings={this.plugin.settings.categorySettings}
-            onSave={async newSettings => {
+          createElement(CategorySettingsManager, {
+            settings: this.plugin.settings.categorySettings,
+            onSave: async newSettings => {
               this.plugin.settings.categorySettings = newSettings;
               await this.plugin.saveSettings();
-            }}
-          />
+            }
+          })
         );
       }
 
