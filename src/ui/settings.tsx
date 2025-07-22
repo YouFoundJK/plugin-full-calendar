@@ -475,9 +475,8 @@ export class FullCalendarSettingTab extends PluginSettingTab {
                     .setButtonText('Proceed')
                     .setWarning()
                     .onClick(() => {
-                      confirmModal.close(); // Close this modal first
+                      confirmModal.close();
 
-                      // Then open the choice modal
                       new BulkCategorizeModal(this.app, async (choice, defaultCategory) => {
                         this.plugin.settings.enableCategoryColoring = true;
                         await this.plugin.saveData(this.plugin.settings);
@@ -487,7 +486,6 @@ export class FullCalendarSettingTab extends PluginSettingTab {
                         else if (choice === 'force_default' && defaultCategory)
                           await this.plugin.bulkForceUpdateWithDefault(defaultCategory);
 
-                        // On success, re-render the whole settings tab. This correctly shows the new UI.
                         this.display();
                       }).open();
                     })
@@ -519,8 +517,6 @@ export class FullCalendarSettingTab extends PluginSettingTab {
                       await this.plugin.saveData(this.plugin.settings);
                       await this.plugin.bulkRemoveCategoriesFromTitles();
                       confirmModal.close();
-
-                      // On success, re-render to hide the category manager.
                       this.display();
                     })
                 )

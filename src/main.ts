@@ -248,8 +248,6 @@ export default class FullCalendarPlugin extends Plugin {
       if (index >= files.length) {
         notice.hide();
         new Notice('Bulk update complete!');
-        // After a bulk update, it's safest to reset the cache.
-        this.cache.reset(this.settings.calendarSources);
         return;
       }
 
