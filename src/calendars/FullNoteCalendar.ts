@@ -18,11 +18,12 @@ import { rrulestr } from 'rrule';
 import { EventPathLocation } from '../core/EventStore';
 import { ObsidianInterface } from '../ObsidianAdapter';
 import { OFCEvent, EventLocation, validateEvent } from '../types';
-import { EditableCalendar, EditableEventResponse } from './EditableCalendar';
+import { EditableCalendar, EditableEventResponse, CategoryProvider } from './EditableCalendar';
 import { FullCalendarSettings } from '../ui/settings';
 import { convertEvent } from '../core/Timezone';
 import { newFrontmatter, modifyFrontmatterString, replaceFrontmatter } from './frontmatter';
 import { constructTitle, parseTitle } from '../core/categoryParser';
+import FullCalendarPlugin from '../main';
 
 const basenameFromEvent = (event: OFCEvent, settings: FullCalendarSettings): string => {
   // Use the full, constructed title for the filename IF the feature is enabled.
@@ -45,16 +46,19 @@ const filenameForEvent = (event: OFCEvent, settings: FullCalendarSettings) =>
 
 export default class FullNoteCalendar extends EditableCalendar {
   app: ObsidianInterface;
+  plugin: FullCalendarPlugin;
   private _directory: string;
 
   constructor(
     app: ObsidianInterface,
+    plugin: FullCalendarPlugin,
     color: string,
     directory: string,
     settings: FullCalendarSettings
   ) {
     super(color, settings);
     this.app = app;
+    this.plugin = plugin;
     this._directory = directory;
   }
   get directory(): string {
@@ -280,5 +284,76 @@ export default class FullNoteCalendar extends EditableCalendar {
       throw new Error(`File ${path} not found.`);
     }
     return this.app.delete(file);
+  }
+
+  private async getAllFiles(): Promise<TFile[]> {
+    const eventFolder = this.app.getAbstractFileByPath(this.directory);
+    if (!(eventFolder instanceof TFolder)) return [];
+
+    const files: TFile[] = [];
+    const walk = async (folder: TFolder) => {
+      for (const child of folder.children) {
+        if (child instanceof TFile) {
+          files.push(child);
+        } else if (child instanceof TFolder) {
+          await walk(child);
+        }
+      }
+    };
+    await walk(eventFolder);
+    return files;
+  }
+
+  async bulkAddCategories(getCategory: CategoryProvider, force: boolean): Promise<void> {
+    const allFiles = await this.getAllFiles();
+    const processor = async (file: TFile) => {
+      await this.plugin.app.fileManager.processFrontMatter(file, frontmatter => {
+        const event = validateEvent(frontmatter);
+        if (!event || !event.title) return;
+
+        const { category: existingCategory, title: cleanTitle } = parseTitle(event.title);
+
+        if (existingCategory && !force) {
+          return; // Smart mode: skip if category exists.
+        }
+
+        const newCategory = getCategory(event, { file, lineNumber: undefined });
+        if (!newCategory) {
+          return;
+        }
+
+        // CORRECTED LOGIC:
+        // If forcing, we use the FULL existing title (e.g., "OldCat - Event").
+        // If not forcing (smart mode), we use the clean title.
+        const titleToCategorize = force ? event.title : cleanTitle;
+        frontmatter.title = constructTitle(newCategory, titleToCategorize);
+      });
+    };
+
+    await this.plugin.nonBlockingProcess(
+      allFiles,
+      processor,
+      `Categorizing notes in ${this.directory}`
+    );
+  }
+
+  async bulkRemoveCategories(knownCategories: Set<string>): Promise<void> {
+    const allFiles = await this.getAllFiles();
+    const processor = async (file: TFile) => {
+      // Use `processFrontMatter` for safety and efficiency.
+      await this.plugin.app.fileManager.processFrontMatter(file, frontmatter => {
+        if (!frontmatter.title) return;
+
+        const { category, title: cleanTitle } = parseTitle(frontmatter.title);
+        if (category && knownCategories.has(category)) {
+          frontmatter.title = cleanTitle;
+        }
+      });
+    };
+    await this.plugin.nonBlockingProcess(
+      allFiles,
+      processor,
+      `De-categorizing notes in ${this.directory}`
+    );
   }
 }

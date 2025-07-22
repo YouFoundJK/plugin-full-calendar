@@ -28,10 +28,11 @@ import { EventPathLocation } from '../core/EventStore';
 import { ObsidianInterface } from '../ObsidianAdapter';
 import { OFCEvent, EventLocation, CalendarInfo, validateEvent } from '../types';
 import { EventResponse } from './Calendar';
-import { EditableCalendar, EditableEventResponse } from './EditableCalendar';
+import { EditableCalendar, EditableEventResponse, CategoryProvider } from './EditableCalendar';
 import { FullCalendarSettings } from '../ui/settings';
 import { convertEvent } from '../core/Timezone';
 import { constructTitle, parseTitle } from '../core/categoryParser';
+import FullCalendarPlugin from '../main';
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 
@@ -229,10 +230,12 @@ const addToHeading = (
 
 export default class DailyNoteCalendar extends EditableCalendar {
   app: ObsidianInterface;
+  plugin: FullCalendarPlugin;
   heading: string;
 
   constructor(
     app: ObsidianInterface,
+    plugin: FullCalendarPlugin,
     color: string,
     heading: string,
     settings: FullCalendarSettings
@@ -240,6 +243,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
     super(color, settings);
     appHasDailyNotesPluginLoaded();
     this.app = app;
+    this.plugin = plugin;
     this.heading = heading;
   }
 
@@ -415,5 +419,105 @@ export default class DailyNoteCalendar extends EditableCalendar {
 
   move(from: EventPathLocation, to: EditableCalendar): Promise<EventLocation> {
     throw new Error('Method not implemented.');
+  }
+
+  async bulkAddCategories(getCategory: CategoryProvider, force: boolean): Promise<void> {
+    const allNotes = Object.values(getAllDailyNotes()) as TFile[];
+
+    const processor = async (file: TFile) => {
+      await this.app.rewrite(file, content => {
+        const metadata = this.app.getMetadata(file);
+        if (!metadata) return content;
+
+        const listItems = getListsUnderHeading(this.heading, metadata);
+        if (listItems.length === 0) return content;
+
+        const lines = content.split('\n');
+        let modified = false;
+
+        for (const item of listItems) {
+          const lineNumber = item.position.start.line;
+          const line = lines[lineNumber];
+
+          // For the "smart" check, we still need to parse to see if a category exists.
+          const existingEvent = getInlineEventFromLine(line, {}, this.settings);
+          if (!existingEvent) continue;
+
+          if (existingEvent.category && !force) {
+            continue; // Smart mode: skip.
+          }
+
+          const newCategory = getCategory(existingEvent, { file, lineNumber });
+          if (!newCategory) {
+            continue;
+          }
+
+          // **THE CRITICAL FIX IS HERE:**
+          // Get the RAW title string from the line, without parsing for categories.
+          const rawTitle = line.replace(listRegex, '').replace(fieldRegex, '').trim();
+
+          // If forcing, we use this raw, un-parsed title. This is the key.
+          // In your example, `rawTitle` is "Sleep - Night".
+          // If not forcing (smart), we use the clean title from our parsed event.
+          const titleToCategorize = force ? rawTitle : existingEvent.title;
+
+          const newFullTitle = constructTitle(newCategory, titleToCategorize);
+
+          // Now parse the final result to get the components for the new event object.
+          const { category: finalCategory, title: finalTitle } = parseTitle(newFullTitle);
+
+          const eventWithNewCategory: OFCEvent = {
+            ...existingEvent,
+            title: finalTitle,
+            category: finalCategory
+          };
+
+          const newLine = modifyListItem(line, eventWithNewCategory, this.settings);
+          if (newLine) {
+            lines[lineNumber] = newLine;
+            modified = true;
+          }
+        }
+
+        return modified ? lines.join('\n') : content;
+      });
+    };
+
+    await this.plugin.nonBlockingProcess(allNotes, processor, 'Categorizing daily notes');
+  }
+
+  async bulkRemoveCategories(knownCategories: Set<string>): Promise<void> {
+    const allNotes = Object.values(getAllDailyNotes()) as TFile[];
+
+    const processor = async (file: TFile) => {
+      await this.app.rewrite(file, content => {
+        const metadata = this.app.getMetadata(file);
+        if (!metadata) return content;
+
+        const listItems = getListsUnderHeading(this.heading, metadata);
+        if (listItems.length === 0) return content;
+
+        const lines = content.split('\n');
+        let modified = false;
+
+        for (const item of listItems) {
+          const lineNumber = item.position.start.line;
+          const line = lines[lineNumber];
+
+          const event = getInlineEventFromLine(line, {}, this.settings);
+          if (!event?.category || !knownCategories.has(event.category)) continue;
+
+          const eventWithoutCategory: OFCEvent = { ...event, category: undefined };
+          const newLine = modifyListItem(line, eventWithoutCategory, this.settings);
+          if (newLine) {
+            lines[lineNumber] = newLine;
+            modified = true;
+          }
+        }
+        return modified ? lines.join('\n') : content;
+      });
+    };
+
+    await this.plugin.nonBlockingProcess(allNotes, processor, 'De-categorizing daily notes');
   }
 }

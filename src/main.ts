@@ -26,21 +26,34 @@ import DailyNoteCalendar from './calendars/DailyNoteCalendar';
 import ICSCalendar from './calendars/ICSCalendar';
 import CalDAVCalendar from './calendars/CalDAVCalendar';
 import { manageTimezone } from './core/Timezone';
-import { constructTitle, parseTitle } from './core/categoryParser';
 import { AnalysisView, ANALYSIS_VIEW_TYPE } from './chrono_analyser/AnalysisView';
+import { CategorizationManager } from './core/CategorizationManager';
 
 export default class FullCalendarPlugin extends Plugin {
   settings: FullCalendarSettings = DEFAULT_SETTINGS;
+  categorizationManager!: CategorizationManager;
 
   // To parse `data.json` file.`
   cache: EventCache = new EventCache(this, {
     local: (info, settings) =>
       info.type === 'local'
-        ? new FullNoteCalendar(new ObsidianIO(this.app), info.color, info.directory, settings)
+        ? new FullNoteCalendar(
+            new ObsidianIO(this.app),
+            this, // Pass plugin instance
+            info.color,
+            info.directory,
+            settings
+          )
         : null,
     dailynote: (info, settings) =>
       info.type === 'dailynote'
-        ? new DailyNoteCalendar(new ObsidianIO(this.app), info.color, info.heading, settings)
+        ? new DailyNoteCalendar(
+            new ObsidianIO(this.app),
+            this, // Pass plugin instance
+            info.color,
+            info.heading,
+            settings
+          )
         : null,
     ical: (info, settings) =>
       info.type === 'ical' ? new ICSCalendar(info.color, info.url, settings) : null,
@@ -96,6 +109,7 @@ export default class FullCalendarPlugin extends Plugin {
    * listeners for Vault file changes (create, rename, delete).
    */
   async onload() {
+    this.categorizationManager = new CategorizationManager(this);
     await this.loadSettings();
     await manageTimezone(this);
 
@@ -220,7 +234,6 @@ export default class FullCalendarPlugin extends Plugin {
    * to ensure all calendars are using the new settings.
    */
   async saveSettings() {
-    new Notice('Resetting the event cache with new settings...');
     await this.saveData(this.settings);
     this.cache.reset(this.settings.calendarSources);
     await this.cache.populate();
@@ -247,7 +260,7 @@ export default class FullCalendarPlugin extends Plugin {
       // End condition
       if (index >= files.length) {
         notice.hide();
-        new Notice('Bulk update complete!');
+        // The calling function will show the final completion notice.
         return;
       }
 
@@ -258,7 +271,7 @@ export default class FullCalendarPlugin extends Plugin {
         .then(() => {
           index += BATCH_SIZE;
           // Yield to the main thread before processing the next batch
-          setTimeout(processBatch, 0);
+          setTimeout(processBatch, 20);
         })
         .catch(err => {
           console.error('Error during bulk processing batch', err);
@@ -268,112 +281,5 @@ export default class FullCalendarPlugin extends Plugin {
     };
 
     processBatch();
-  }
-
-  // Helper function to get all TFiles from local calendars
-  private async getAllLocalEventFiles(): Promise<TFile[]> {
-    const localCalendars = [...this.cache.calendars.values()].flatMap(c =>
-      c instanceof FullNoteCalendar ? c : []
-    );
-    let allFiles: TFile[] = [];
-    for (const calendar of localCalendars) {
-      const folder = this.app.vault.getAbstractFileByPath(calendar.directory);
-      if (folder instanceof TFolder) {
-        allFiles.push(
-          ...folder.children.flatMap((f: TAbstractFile) => (f instanceof TFile ? [f] : []))
-        );
-      }
-    }
-    return allFiles;
-  }
-
-  /**
-   * OPTION 1: Smartly prepends parent folder names to uncategorized event titles.
-   */
-  async bulkSmartUpdateFromFolders() {
-    const allFiles = await this.getAllLocalEventFiles();
-    const processor = async (file: TFile) => {
-      const parentName = file.parent?.name;
-      if (!parentName || parentName === '/' || parentName === this.app.vault.getRoot().name) return;
-      await this.app.fileManager.processFrontMatter(file, frontmatter => {
-        if (!frontmatter.title) return;
-        const { category, title } = parseTitle(frontmatter.title);
-        if (category) return; // The "smart" part: skip if category exists.
-        frontmatter.title = constructTitle(parentName, title);
-      });
-    };
-    this.nonBlockingProcess(allFiles, processor, 'Smart-updating titles from folders');
-  }
-
-  /**
-   * OPTION 2: Forcibly prepends parent folder names to ALL event titles.
-   * This will create nested categories if a category already exists.
-   */
-  async bulkForceUpdateFromFolders() {
-    const allFiles = await this.getAllLocalEventFiles();
-    const processor = async (file: TFile) => {
-      const parentName = file.parent?.name;
-      if (!parentName || parentName === '/' || parentName === this.app.vault.getRoot().name) return;
-      await this.app.fileManager.processFrontMatter(file, frontmatter => {
-        if (!frontmatter.title) return;
-
-        // CORRECTED LOGIC: Prepend to the FULL existing title.
-        // `constructTitle` will correctly create "Parent - Old Category - Title".
-        frontmatter.title = constructTitle(parentName, frontmatter.title);
-      });
-    };
-    this.nonBlockingProcess(allFiles, processor, 'Forcing folder categories on titles');
-  }
-
-  /**
-   * OPTION 3: Forcibly prepends a default category name to ALL event titles.
-   * This will create nested categories if a category already exists.
-   */
-  async bulkForceUpdateWithDefault(defaultCategory: string) {
-    // The check for empty category will now be handled in the UI,
-    // but keeping it here is a good defensive measure.
-    if (!defaultCategory || defaultCategory.trim() === '') {
-      new Notice('Cannot add an empty category.');
-      return;
-    }
-    const allFiles = await this.getAllLocalEventFiles();
-    const processor = async (file: TFile) => {
-      await this.app.fileManager.processFrontMatter(file, frontmatter => {
-        if (!frontmatter.title) return;
-
-        // CORRECTED LOGIC: Prepend to the FULL existing title.
-        frontmatter.title = constructTitle(defaultCategory, frontmatter.title);
-      });
-    };
-    this.nonBlockingProcess(allFiles, processor, `Forcing "${defaultCategory}" category on titles`);
-  }
-
-  /**
-   * BULK ACTION - REMOVE: Iterates through all local event files and removes known
-   * category prefixes from their titles.
-   */
-  async bulkRemoveCategoriesFromTitles() {
-    // Get all possible category names: from settings and from folder names.
-    const definedCategories = new Set(this.settings.categorySettings.map(s => s.name));
-    [...this.cache.calendars.values()].forEach(c => {
-      if (c instanceof FullNoteCalendar) {
-        const dir = c.directory.split('/').pop();
-        if (dir) definedCategories.add(dir);
-      }
-    });
-
-    const allFiles = await this.getAllLocalEventFiles();
-    const processor = async (file: TFile) => {
-      await this.app.fileManager.processFrontMatter(file, frontmatter => {
-        if (!frontmatter.title) return;
-        const { category, title } = parseTitle(frontmatter.title);
-        if (category && definedCategories.has(category)) {
-          // If the parsed category is a known one, strip it.
-          frontmatter.title = title;
-        }
-      });
-    };
-
-    this.nonBlockingProcess(allFiles, processor, 'Removing categories from titles');
   }
 }

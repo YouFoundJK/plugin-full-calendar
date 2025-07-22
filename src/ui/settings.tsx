@@ -25,8 +25,8 @@ import {
   Setting,
   TFile,
   TFolder,
-  Modal, // Import Modal
-  TextComponent // Import TextComponent
+  Modal,
+  TextComponent
 } from 'obsidian';
 import * as ReactDOM from 'react-dom/client';
 import { createElement, createRef } from 'react';
@@ -111,9 +111,9 @@ class BulkCategorizeModal extends Modal {
       text: 'How would you like to automatically categorize existing events in your local calendars?'
     });
 
-    // Option 1: Smart Folder Update (unchanged)
+    // Option 1: Smart Folder Update
     new Setting(contentEl)
-      .setName('Smart Update')
+      .setName('Use Parent Folder (Smart)')
       .setDesc(
         "Use parent folder names as the category for UN-categorized events. Events that already look like 'Category - Title' will be skipped."
       )
@@ -127,11 +127,11 @@ class BulkCategorizeModal extends Modal {
           })
       );
 
-    // Option 2: Forced Folder Update (unchanged)
+    // Option 2: Forced Folder Update
     new Setting(contentEl)
-      .setName('Forced Folder Update')
+      .setName('Use Parent Folder (Forced)')
       .setDesc(
-        'Re-categorize ALL events using their parent folder name. This will OVERWRITE any existing categories in event titles.'
+        'PREPENDS the parent folder name to ALL event titles, even if they already have a category. Warning: This creates nested categories.'
       )
       .addButton(button =>
         button
@@ -143,12 +143,12 @@ class BulkCategorizeModal extends Modal {
           })
       );
 
-    // Option 3: Forced Default Update (with validation)
+    // Option 3: Forced Default Update
     let textInput: TextComponent;
     new Setting(contentEl)
       .setName('Forced Default Update')
       .setDesc(
-        'Re-categorize ALL events with a single category you provide below. This will OVERWRITE existing categories.'
+        'Prepends a category you provide to ALL event titles. If a category already exists, the new one will be added in front (e.g., New - Old - Title).'
       )
       .addText(text => {
         textInput = text;
@@ -157,13 +157,12 @@ class BulkCategorizeModal extends Modal {
       .addButton(button =>
         button
           .setButtonText('Set Default')
-          .setWarning() // Also set to warning as it's a forced update
+          .setWarning()
           .onClick(() => {
             const categoryValue = textInput.getValue().trim();
-            // CORRECTED LOGIC: Add validation here
             if (categoryValue === '') {
               new Notice('Please enter a category name.');
-              return; // Stop execution
+              return;
             }
             this.onSubmit('force_default', categoryValue);
             this.close();
@@ -229,11 +228,9 @@ export function addCalendarButton(
             }
           }
 
-          // ADD THIS: Get the list of colors already in use by calendars.
           const existingCalendarColors = plugin.settings.calendarSources.map(s => s.color);
 
           return createElement(AddCalendarSource, {
-            // PASS existing colors to the factory function
             source: makeDefaultPartialCalendarSource(
               dropdown.getValue() as CalendarInfo['type'],
               existingCalendarColors
@@ -277,7 +274,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  async display(): Promise<void> {
+  display(): void {
     const { containerEl } = this;
     let showFullChangelog = false;
 
@@ -459,14 +456,13 @@ export class FullCalendarSettingTab extends PluginSettingTab {
             const isTogglingOn = value;
 
             if (isTogglingOn) {
-              // --- LOGIC FOR TURNING THE FEATURE ON ---
               const confirmModal = new Modal(this.app);
               confirmModal.contentEl.createEl('h2', { text: 'Warning: Bulk File Modification' });
               confirmModal.contentEl.createEl('p', {
-                text: 'This will permanently modify event notes in your vault by prepending a category to the event title. This action cannot be undone.'
+                text: 'This will PERMANENTLY modify event notes in your vault by prepending a category to the event title. Undoing this might have consequences.'
               });
               confirmModal.contentEl.createEl('p', {
-                text: 'It is highly recommended to back up your vault before continuing.'
+                text: 'It is highly recommended to BACKUP your vault before continuing.'
               });
 
               new Setting(confirmModal.contentEl)
@@ -474,19 +470,16 @@ export class FullCalendarSettingTab extends PluginSettingTab {
                   btn
                     .setButtonText('Proceed')
                     .setWarning()
-                    .onClick(() => {
+                    .onClick(async () => {
                       confirmModal.close();
-
                       new BulkCategorizeModal(this.app, async (choice, defaultCategory) => {
                         this.plugin.settings.enableCategoryColoring = true;
                         await this.plugin.saveData(this.plugin.settings);
-                        if (choice === 'smart') await this.plugin.bulkSmartUpdateFromFolders();
-                        else if (choice === 'force_folder')
-                          await this.plugin.bulkForceUpdateFromFolders();
-                        else if (choice === 'force_default' && defaultCategory)
-                          await this.plugin.bulkForceUpdateWithDefault(defaultCategory);
-
-                        this.display();
+                        await this.plugin.categorizationManager.bulkUpdateCategories(
+                          choice,
+                          defaultCategory
+                        );
+                        this.display(); // Re-render the settings tab with the toggle on.
                       }).open();
                     })
                 )
@@ -499,11 +492,11 @@ export class FullCalendarSettingTab extends PluginSettingTab {
 
               confirmModal.open();
             } else {
-              // --- LOGIC FOR TURNING THE FEATURE OFF ---
+              // Logic for turning the feature OFF
               const confirmModal = new Modal(this.app);
               confirmModal.contentEl.createEl('h2', { text: 'Warning: Bulk File Modification' });
               confirmModal.contentEl.createEl('p', {
-                text: 'This will permanently modify event notes by removing known category prefixes from titles AND will erase all saved category colors. This action cannot be undone.'
+                text: 'This will PERMANENTLY modify event notes by removing known category prefixes from titles AND will erase all saved category colors. This action cannot be undone.'
               });
 
               new Setting(confirmModal.contentEl)
@@ -515,9 +508,9 @@ export class FullCalendarSettingTab extends PluginSettingTab {
                       this.plugin.settings.enableCategoryColoring = false;
                       this.plugin.settings.categorySettings = [];
                       await this.plugin.saveData(this.plugin.settings);
-                      await this.plugin.bulkRemoveCategoriesFromTitles();
+                      await this.plugin.categorizationManager.bulkRemoveCategories();
                       confirmModal.close();
-                      this.display();
+                      this.display(); // Re-render the settings tab with the toggle off.
                     })
                 )
                 .addButton(btn =>
@@ -532,12 +525,10 @@ export class FullCalendarSettingTab extends PluginSettingTab {
           });
         });
 
-      // Find this block:
       if (this.plugin.settings.enableCategoryColoring) {
         const categoryDiv = containerEl.createDiv();
         const categoryRoot = ReactDOM.createRoot(categoryDiv);
 
-        // ADD THIS LOGIC
         const allCategoriesInVault = this.plugin.cache.getAllCategories();
         const configuredCategoryNames = new Set(
           this.plugin.settings.categorySettings.map(s => s.name)
@@ -549,7 +540,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         categoryRoot.render(
           createElement(CategorySettingsManager, {
             settings: this.plugin.settings.categorySettings,
-            suggestions: availableSuggestions, // PASS THE SUGGESTIONS
+            suggestions: availableSuggestions,
             onSave: async newSettings => {
               this.plugin.settings.categorySettings = newSettings;
               await this.plugin.saveSettings();

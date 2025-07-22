@@ -122,6 +122,7 @@ export default class EventCache {
   private pkCounter = 0;
 
   private revalidating = false;
+  public isBulkUpdating = false;
 
   generateId(): string {
     return `${this.pkCounter++}`;
@@ -485,6 +486,11 @@ export default class EventCache {
    * a file is updated multiple times in quick succession.
    */
   async fileUpdated(file: TFile): Promise<void> {
+    if (this.isBulkUpdating) {
+      // <-- ADD THIS CHECK
+      console.debug('Bulk update in progress, ignoring file update for', file.path);
+      return;
+    }
     console.debug('fileUpdated() called for file', file.path);
 
     // Get all calendars that contain events stored in this file.

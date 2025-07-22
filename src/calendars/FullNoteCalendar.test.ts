@@ -8,6 +8,7 @@ import { OFCEvent } from '../types';
 import FullNoteCalendar from './FullNoteCalendar';
 import { parseEvent } from '../types/schema';
 import { DEFAULT_SETTINGS } from '../ui/settings';
+import FullCalendarPlugin from '../main';
 
 async function assertFailed(func: () => Promise<any>, message: RegExp) {
   try {
@@ -37,6 +38,17 @@ const makeApp = (app: MockApp): ObsidianInterface => ({
 
 const dirName = 'events';
 const color = '#BADA55';
+
+// Create a mock plugin instance to satisfy the constructor
+const mockPlugin = {
+  app: {}, // Mock app if needed, though not used by constructor directly
+  settings: DEFAULT_SETTINGS,
+  nonBlockingProcess: jest.fn(async (files, processor) => {
+    for (const file of files) {
+      await processor(file);
+    }
+  })
+} as unknown as FullCalendarPlugin;
 
 describe('FullNoteCalendar Tests', () => {
   it.each([
@@ -110,7 +122,11 @@ describe('FullNoteCalendar Tests', () => {
           )
           .done()
       );
-      const calendar = new FullNoteCalendar(obsidian, color, dirName, DEFAULT_SETTINGS);
+      // CORRECTED CONSTRUCTOR CALL
+      const calendar = new FullNoteCalendar(obsidian, mockPlugin, color, dirName, {
+        ...DEFAULT_SETTINGS,
+        enableCategoryColoring: true
+      });
       const res = await calendar.getEvents();
       expect(res.length).toBe(inputs.length);
 
@@ -126,7 +142,11 @@ describe('FullNoteCalendar Tests', () => {
 
   it('creates an event with a category', async () => {
     const obsidian = makeApp(MockAppBuilder.make().done());
-    const calendar = new FullNoteCalendar(obsidian, color, dirName, DEFAULT_SETTINGS);
+    // CORRECTED CONSTRUCTOR CALL
+    const calendar = new FullNoteCalendar(obsidian, mockPlugin, color, dirName, {
+      ...DEFAULT_SETTINGS,
+      enableCategoryColoring: true
+    });
     const event = {
       title: 'Test Event',
       category: 'Work',
@@ -166,7 +186,11 @@ describe('FullNoteCalendar Tests', () => {
         )
         .done()
     );
-    const calendar = new FullNoteCalendar(obsidian, color, dirName, DEFAULT_SETTINGS);
+    // CORRECTED CONSTRUCTOR CALL
+    const calendar = new FullNoteCalendar(obsidian, mockPlugin, color, dirName, {
+      ...DEFAULT_SETTINGS,
+      enableCategoryColoring: true
+    });
 
     const firstFile = obsidian.getAbstractFileByPath(join('events', filename)) as TFile;
 
