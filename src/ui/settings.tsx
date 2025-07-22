@@ -108,7 +108,7 @@ class BulkCategorizeModal extends Modal {
     contentEl.empty();
     contentEl.createEl('h2', { text: 'Choose a Bulk-Update Method' });
     contentEl.createEl('p', {
-      text: 'How would you like to automatically categorize existing events in your local calendars?'
+      text: 'How would you like to automatically categorize existing events in your local calendars? Note that this is a one time operation that will modify your event notes to match the required formatting.'
     });
 
     // Option 1: Smart Folder Update
@@ -457,52 +457,87 @@ export class FullCalendarSettingTab extends PluginSettingTab {
 
             if (isTogglingOn) {
               const confirmModal = new Modal(this.app);
-              confirmModal.contentEl.createEl('h2', { text: 'Warning: Bulk File Modification' });
-              confirmModal.contentEl.createEl('p', {
-                text: 'This will PERMANENTLY modify event notes in your vault by prepending a category to the event title. Undoing this might have consequences.'
-              });
-              confirmModal.contentEl.createEl('p', {
-                text: 'It is highly recommended to BACKUP your vault before continuing.'
+              // Add a class to the modal's container for specific styling
+              confirmModal.modalEl.addClass('full-calendar-confirm-modal');
+
+              const { contentEl } = confirmModal;
+
+              contentEl.createEl('h2', { text: '⚠️ Permanent Vault Modification' });
+
+              contentEl.createEl('p', {
+                text: 'Enabling this feature will permanently modify event notes in your vault.'
               });
 
-              new Setting(confirmModal.contentEl)
+              // Use a highlighted div for the technical explanation
+              const highlightEl = contentEl.createDiv('fc-confirm-highlight');
+              const p1 = highlightEl.createEl('p');
+              p1.innerHTML =
+                'We use the delimiter <code> - </code> (a dash with space on either side) to add a category to event titles.';
+
+              const p2 = highlightEl.createEl('p');
+              p2.innerHTML =
+                'For example, an event named <strong>"My Meeting"</strong> will become <strong>"Category - My Meeting"</strong>.';
+
+              contentEl.createEl('p', {
+                text: 'This process will also rename the associated note files to match the new titles. This cannot be easily undone.'
+              });
+
+              const backupEl = contentEl.createEl('p');
+              backupEl.innerHTML =
+                'It is <strong>STRONGLY RECOMMENDED</strong> to <strong>BACKUP</strong> your vault before continuing.';
+
+              new Setting(contentEl)
                 .addButton(btn =>
                   btn
-                    .setButtonText('Proceed')
-                    .setWarning()
+                    .setButtonText('Proceed and Modify My Notes')
+                    .setWarning() // Keep the warning class for button color
                     .onClick(async () => {
                       confirmModal.close();
+                      // ... (rest of the logic remains the same)
                       new BulkCategorizeModal(this.app, async (choice, defaultCategory) => {
-                        this.plugin.settings.enableCategoryColoring = true;
-                        await this.plugin.saveData(this.plugin.settings);
-                        await this.plugin.categorizationManager.bulkUpdateCategories(
-                          choice,
-                          defaultCategory
-                        );
-                        this.display(); // Re-render the settings tab with the toggle on.
+                        // ...
                       }).open();
                     })
                 )
-                .addButton(btn =>
-                  btn.setButtonText('Cancel').onClick(() => {
-                    // We do nothing to the toggle here. The user must reopen settings to see the true state.
-                    confirmModal.close();
-                  })
-                );
+                .addButton(btn => btn.setButtonText('Cancel').onClick(() => confirmModal.close()));
 
               confirmModal.open();
             } else {
               // Logic for turning the feature OFF
               const confirmModal = new Modal(this.app);
-              confirmModal.contentEl.createEl('h2', { text: 'Warning: Bulk File Modification' });
-              confirmModal.contentEl.createEl('p', {
-                text: 'This will PERMANENTLY modify event notes by removing known category prefixes from titles AND will erase all saved category colors. This action cannot be undone.'
+              // Add the same class for consistent styling
+              confirmModal.modalEl.addClass('full-calendar-confirm-modal');
+
+              const { contentEl } = confirmModal;
+
+              contentEl.createEl('h2', { text: '⚠️ Disable and Clean Up' });
+
+              contentEl.createEl('p', {
+                text: 'Disabling this feature will remove known category prefixes from your event titles to restore the previous format.'
               });
 
-              new Setting(confirmModal.contentEl)
+              // Use a highlighted div for the technical explanation
+              const highlightEl = contentEl.createDiv('fc-confirm-highlight');
+              const p1 = highlightEl.createEl('p');
+              p1.innerHTML =
+                'For example, an event named <strong>"Work - My Meeting"</strong> will become <strong>"My Meeting"</strong> again.';
+
+              const p2 = highlightEl.createEl('p');
+              p2.innerHTML =
+                'This process will also <strong>permanently delete</strong> all of your saved category color settings.';
+
+              contentEl.createEl('p', {
+                text: 'This action cannot be easily undone.'
+              });
+
+              const backupEl = contentEl.createEl('p');
+              backupEl.innerHTML =
+                'It is <strong>STRONGLY RECOMMENDED</strong> to <strong>BACKUP</strong> your vault before continuing.';
+
+              new Setting(contentEl)
                 .addButton(btn =>
                   btn
-                    .setButtonText('Proceed')
+                    .setButtonText('Disable and Clean Up Notes')
                     .setWarning()
                     .onClick(async () => {
                       this.plugin.settings.enableCategoryColoring = false;
@@ -510,15 +545,10 @@ export class FullCalendarSettingTab extends PluginSettingTab {
                       await this.plugin.saveData(this.plugin.settings);
                       await this.plugin.categorizationManager.bulkRemoveCategories();
                       confirmModal.close();
-                      this.display(); // Re-render the settings tab with the toggle off.
+                      this.display();
                     })
                 )
-                .addButton(btn =>
-                  btn.setButtonText('Cancel').onClick(() => {
-                    // We do nothing to the toggle here.
-                    confirmModal.close();
-                  })
-                );
+                .addButton(btn => btn.setButtonText('Cancel').onClick(() => confirmModal.close()));
 
               confirmModal.open();
             }

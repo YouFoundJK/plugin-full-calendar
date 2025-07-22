@@ -93,6 +93,15 @@ export abstract class EditableCalendar extends Calendar {
   ): Promise<void>;
 
   /**
+   * Optional: Returns a list of category names that are derived from this
+   * calendar's configuration, such as its folder path.
+   * This is used during de-categorization to identify all possible categories to remove.
+   */
+  public getFolderCategoryNames(): string[] {
+    return []; // Default implementation returns no names.
+  }
+
+  /**
    * Performs a bulk operation to add categories to events in this calendar.
    * @param getCategory A function that returns the desired category for a given event.
    * @param force If true, overwrites existing categories. If false, skips events that already have a category.

@@ -94,7 +94,6 @@ const checkboxTodo = (s: string) => {
   return match[1] === ' ' ? false : match[1];
 };
 
-// ADD EXPORT HERE
 export const getInlineEventFromLine = (
   text: string,
   globalAttrs: Partial<OFCEvent>,
@@ -102,6 +101,11 @@ export const getInlineEventFromLine = (
 ): OFCEvent | null => {
   const attrs = getInlineAttributes(text);
   const rawTitle = text.replace(listRegex, '').replace(fieldRegex, '').trim();
+
+  // If the line has no title and no inline fields, it's definitely not an event.
+  if (!rawTitle && Object.keys(attrs).length === 0) {
+    return null;
+  }
 
   let eventData: any = {};
   if (settings.enableCategoryColoring) {
@@ -112,15 +116,20 @@ export const getInlineEventFromLine = (
     eventData.title = rawTitle;
   }
 
-  // Do a cheap check for an event before validating
-  if (Object.keys(attrs).length === 0 && !settings.enableCategoryColoring) {
-    return null;
+  // THE FIX IS HERE: We cast globalAttrs to a type that can hold `date`.
+  // This is safe because this function is only ever used for single events from daily notes.
+  const attrsForValidation = globalAttrs as Partial<{ date: string; [key: string]: any }>;
+
+  // Pass a dummy date if one isn't provided.
+  // This satisfies the schema for validation.
+  if (!attrsForValidation.date) {
+    attrsForValidation.date = '1970-01-01'; // A placeholder date.
   }
 
   return validateEvent({
     ...eventData,
     completed: checkboxTodo(text),
-    ...globalAttrs,
+    ...attrsForValidation,
     ...attrs
   });
 };
@@ -417,6 +426,15 @@ export default class DailyNoteCalendar extends EditableCalendar {
     });
   }
 
+  public getFolderCategoryNames(): string[] {
+    const dailyNoteDir = this.directory; // This helper gets the setting.
+    const parentDir = dailyNoteDir
+      .split('/')
+      .filter(s => s)
+      .pop();
+    return parentDir ? [parentDir] : [];
+  }
+
   move(from: EventPathLocation, to: EditableCalendar): Promise<EventLocation> {
     throw new Error('Method not implemented.');
   }
@@ -487,7 +505,18 @@ export default class DailyNoteCalendar extends EditableCalendar {
   }
 
   async bulkRemoveCategories(knownCategories: Set<string>): Promise<void> {
+    // Create a new set with this calendar's specific folder categories added.
+    const categoriesToRemove = new Set(knownCategories);
+    for (const name of this.getFolderCategoryNames()) {
+      categoriesToRemove.add(name);
+    }
+
     const allNotes = Object.values(getAllDailyNotes()) as TFile[];
+
+    const removalSettings: FullCalendarSettings = {
+      ...this.settings,
+      enableCategoryColoring: true
+    };
 
     const processor = async (file: TFile) => {
       await this.app.rewrite(file, content => {
@@ -504,12 +533,17 @@ export default class DailyNoteCalendar extends EditableCalendar {
           const lineNumber = item.position.start.line;
           const line = lines[lineNumber];
 
-          const event = getInlineEventFromLine(line, {}, this.settings);
-          if (!event?.category || !knownCategories.has(event.category)) continue;
+          const event = getInlineEventFromLine(line, {}, removalSettings);
+
+          if (!event?.category || !categoriesToRemove.has(event.category)) {
+            continue;
+          }
 
           const eventWithoutCategory: OFCEvent = { ...event, category: undefined };
+
           const newLine = modifyListItem(line, eventWithoutCategory, this.settings);
-          if (newLine) {
+
+          if (newLine && newLine !== line) {
             lines[lineNumber] = newLine;
             modified = true;
           }

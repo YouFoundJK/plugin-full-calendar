@@ -83,19 +83,20 @@ export class CategorizationManager {
 
   public async bulkRemoveCategories(): Promise<void> {
     await this.performBulkOperation(async () => {
+      // The manager is ONLY responsible for gathering categories from the settings.
       const settings = this.plugin.settings;
       const knownCategories = new Set(settings.categorySettings.map(s => s.name));
 
       const editableCalendars = this.getEditableCalendars();
-      // CORRECTED: Use a for...of loop for async operations.
       for (const calendar of editableCalendars) {
-        // Also consider folder names from local calendars as "known" categories to remove.
-        if (calendar instanceof FullNoteCalendar) {
-          const dir = calendar.directory.split('/').pop();
-          if (dir) {
-            knownCategories.add(dir);
+        const folderCategories = calendar.getFolderCategoryNames();
+        if (folderCategories.length > 0) {
+          for (const name of folderCategories) {
+            knownCategories.add(name);
           }
         }
+      }
+      for (const calendar of editableCalendars) {
         await calendar.bulkRemoveCategories(knownCategories);
       }
     });

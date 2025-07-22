@@ -304,6 +304,11 @@ export default class FullNoteCalendar extends EditableCalendar {
     return files;
   }
 
+  public getFolderCategoryNames(): string[] {
+    const dir = this.directory.split('/').pop();
+    return dir ? [dir] : [];
+  }
+
   async bulkAddCategories(getCategory: CategoryProvider, force: boolean): Promise<void> {
     const allFiles = await this.getAllFiles();
     const processor = async (file: TFile) => {
@@ -338,14 +343,22 @@ export default class FullNoteCalendar extends EditableCalendar {
   }
 
   async bulkRemoveCategories(knownCategories: Set<string>): Promise<void> {
+    // Create a new set to avoid modifying the original set passed to other calendars.
+    const categoriesToRemove = new Set(knownCategories);
+
+    // Add this calendar's own folder-based categories to the set.
+    for (const name of this.getFolderCategoryNames()) {
+      categoriesToRemove.add(name);
+    }
+
     const allFiles = await this.getAllFiles();
     const processor = async (file: TFile) => {
-      // Use `processFrontMatter` for safety and efficiency.
       await this.plugin.app.fileManager.processFrontMatter(file, frontmatter => {
         if (!frontmatter.title) return;
 
         const { category, title: cleanTitle } = parseTitle(frontmatter.title);
-        if (category && knownCategories.has(category)) {
+        // Use the expanded, local set for the check.
+        if (category && categoriesToRemove.has(category)) {
           frontmatter.title = cleanTitle;
         }
       });
