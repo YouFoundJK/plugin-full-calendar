@@ -11,6 +11,8 @@
 
 import * as React from 'react';
 import { useState } from 'react';
+import { AutocompleteInput } from './AutocompleteInput';
+import { getNextColor } from '../colors';
 
 export interface CategorySetting {
   name: string;
@@ -19,10 +21,15 @@ export interface CategorySetting {
 
 interface CategorySettingsProps {
   settings: CategorySetting[];
+  suggestions: string[]; // <-- ADD suggestions PROP
   onSave: (newSettings: CategorySetting[]) => Promise<void>;
 }
 
-export const CategorySettingsManager = ({ settings, onSave }: CategorySettingsProps) => {
+export const CategorySettingsManager = ({
+  settings,
+  suggestions,
+  onSave
+}: CategorySettingsProps) => {
   const [localSettings, setLocalSettings] = useState<CategorySetting[]>(settings);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [dirty, setDirty] = useState(false);
@@ -34,13 +41,18 @@ export const CategorySettingsManager = ({ settings, onSave }: CategorySettingsPr
 
   const addCategory = () => {
     if (newCategoryName.trim() === '' || localSettings.find(s => s.name === newCategoryName)) {
-      // Don't add empty or duplicate categories
       return;
     }
+
+    // MODIFICATION: Use getNextColor for the default
+    const currentColors = localSettings.map(s => s.color);
+    const newColor = getNextColor(currentColors);
+
     const newCategory: CategorySetting = {
       name: newCategoryName,
-      color: getComputedStyle(document.body).getPropertyValue('--interactive-accent').trim()
+      color: newColor
     };
+
     setLocalSettings([...localSettings, newCategory]);
     setNewCategoryName('');
     setDirty(true);
@@ -93,14 +105,15 @@ export const CategorySettingsManager = ({ settings, onSave }: CategorySettingsPr
         </div>
       ))}
 
-      {/* Add New Category Row */}
+      {/* MODIFICATION: Use AutocompleteInput here */}
       <div className="setting-item">
         <div className="setting-item-control" style={{ flex: '1' }}>
-          <input
-            type="text"
+          <AutocompleteInput
+            id="category-settings-autocomplete"
             value={newCategoryName}
-            onChange={e => setNewCategoryName(e.target.value)}
-            placeholder="New Category Name"
+            onChange={setNewCategoryName}
+            suggestions={suggestions}
+            placeholder="Add a new category..."
           />
         </div>
         <div className="setting-item-control">
@@ -110,7 +123,6 @@ export const CategorySettingsManager = ({ settings, onSave }: CategorySettingsPr
         </div>
       </div>
 
-      {/* Save Button */}
       {dirty && (
         <div className="setting-item">
           <div className="setting-item-control">

@@ -309,6 +309,7 @@ export default class FullCalendarPlugin extends Plugin {
 
   /**
    * OPTION 2: Forcibly prepends parent folder names to ALL event titles.
+   * This will create nested categories if a category already exists.
    */
   async bulkForceUpdateFromFolders() {
     const allFiles = await this.getAllLocalEventFiles();
@@ -317,9 +318,10 @@ export default class FullCalendarPlugin extends Plugin {
       if (!parentName || parentName === '/' || parentName === this.app.vault.getRoot().name) return;
       await this.app.fileManager.processFrontMatter(file, frontmatter => {
         if (!frontmatter.title) return;
-        // The "forced" part: parse to get the clean title, then reconstruct with the folder name.
-        const { title: cleanTitle } = parseTitle(frontmatter.title);
-        frontmatter.title = constructTitle(parentName, cleanTitle);
+
+        // CORRECTED LOGIC: Prepend to the FULL existing title.
+        // `constructTitle` will correctly create "Parent - Old Category - Title".
+        frontmatter.title = constructTitle(parentName, frontmatter.title);
       });
     };
     this.nonBlockingProcess(allFiles, processor, 'Forcing folder categories on titles');
@@ -327,8 +329,11 @@ export default class FullCalendarPlugin extends Plugin {
 
   /**
    * OPTION 3: Forcibly prepends a default category name to ALL event titles.
+   * This will create nested categories if a category already exists.
    */
   async bulkForceUpdateWithDefault(defaultCategory: string) {
+    // The check for empty category will now be handled in the UI,
+    // but keeping it here is a good defensive measure.
     if (!defaultCategory || defaultCategory.trim() === '') {
       new Notice('Cannot add an empty category.');
       return;
@@ -337,9 +342,9 @@ export default class FullCalendarPlugin extends Plugin {
     const processor = async (file: TFile) => {
       await this.app.fileManager.processFrontMatter(file, frontmatter => {
         if (!frontmatter.title) return;
-        // The "forced" part: parse to get the clean title, then reconstruct with the default category.
-        const { title: cleanTitle } = parseTitle(frontmatter.title);
-        frontmatter.title = constructTitle(defaultCategory, cleanTitle);
+
+        // CORRECTED LOGIC: Prepend to the FULL existing title.
+        frontmatter.title = constructTitle(defaultCategory, frontmatter.title);
       });
     };
     this.nonBlockingProcess(allFiles, processor, `Forcing "${defaultCategory}" category on titles`);

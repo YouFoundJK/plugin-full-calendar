@@ -14,7 +14,7 @@ export interface Version {
 // Add new versions to the TOP of this array.
 export const changelogData: Version[] = [
   {
-    version: '0.11.0-beta', // This would be our current version with the timezone fixes
+    version: '0.11.1', // This would be our current version with the timezone fixes
     changes: [
       {
         type: 'new',
@@ -36,9 +36,9 @@ export const changelogData: Version[] = [
       },
       {
         type: 'improvement',
-        title: 'Non-Blocking Bulk Operations',
+        title: 'Color Palette Enhancements',
         description:
-          'All bulk-update operations now run in the background to avoid UI freezes, especially in large vaults. Users receive a progress notice during execution.'
+          'Colors no longer defaults to black, but is now rotated from a carefully choosen Palette.'
       },
       {
         type: 'improvement',
