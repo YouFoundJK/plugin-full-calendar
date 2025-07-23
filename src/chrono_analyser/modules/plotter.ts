@@ -16,9 +16,56 @@ import {
   ProcessingError
 } from './types';
 import * as Utils from './utils';
-import { OFCEvent } from 'src/types';
 
 type ShowDetailPopupFn = (categoryName: string, recordsList: TimeRecord[], context?: any) => void;
+
+/**
+ * A simple debounce utility function.
+ */
+function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+  let timeout: number | null = null;
+  return (...args: Parameters<T>): void => {
+    if (timeout) {
+      window.clearTimeout(timeout);
+    }
+    timeout = window.setTimeout(() => fn(...args), delay);
+  };
+}
+
+/**
+ * Creates a debounced resize function for a Plotly chart.
+ * This prevents rapid, successive resize calls which can be slow.
+ */
+const debouncedResize = debounce((element: HTMLElement) => {
+  Plotly.Plots.resize(element);
+}, 100);
+
+/**
+ * The single ResizeObserver instance for all charts. It watches an element
+ * and calls the debounced resize function when its size changes.
+ */
+const chartResizeObserver = new ResizeObserver(entries => {
+  for (const entry of entries) {
+    debouncedResize(entry.target as HTMLElement);
+  }
+});
+
+let currentlyObservedChart: HTMLElement | null = null;
+
+/**
+ * Manages the ResizeObserver to ensure only one chart is being observed at a time,
+ * preventing memory leaks.
+ * @param element The chart's DOM element to observe.
+ */
+function manageChartResizeObserver(element: HTMLElement) {
+  if (currentlyObservedChart) {
+    chartResizeObserver.unobserve(currentlyObservedChart);
+  }
+  chartResizeObserver.observe(element);
+  currentlyObservedChart = element;
+}
+
+// --- END: RESIZE OBSERVER IMPLEMENTATION ---
 
 /**
  * Displays a simple message in the main chart area, used for "no data" states.
@@ -28,15 +75,14 @@ type ShowDetailPopupFn = (categoryName: string, recordsList: TimeRecord[], conte
 export function renderChartMessage(rootEl: HTMLElement, message: string) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
+
+  if (currentlyObservedChart) {
+    chartResizeObserver.unobserve(currentlyObservedChart);
+    currentlyObservedChart = null;
+  }
   // Purge any existing chart before showing the message
   Plotly.purge(mainChartEl);
   mainChartEl.innerHTML = `<p class="chart-message">${message}</p>`;
-}
-
-function triggerResize(chartEl: HTMLElement) {
-  setTimeout(() => {
-    Plotly.Plots.resize(chartEl);
-  }, 0);
 }
 
 /**
@@ -50,7 +96,6 @@ function getThemedLayout(chartLayout: Partial<Plotly.Layout>): Partial<Plotly.La
   return { ...PLOTLY_BASE_LAYOUT, ...theme, ...chartLayout };
 }
 
-// A generic function to handle the plotting logic
 function plotChart(
   mainChartEl: HTMLElement,
   data: Plotly.Data[],
@@ -63,6 +108,8 @@ function plotChart(
   } else {
     Plotly.newPlot(mainChartEl, data, finalLayout, { responsive: true });
   }
+  // Register the chart with our resize observer after plotting.
+  manageChartResizeObserver(mainChartEl);
 }
 
 /**
@@ -105,7 +152,7 @@ export function renderPieChartDisplay(
     margin: { l: 40, r: 40, t: 60, b: 80 }
   };
 
-  plotChart(mainChartEl, data, layout, useReact);
+  plotChart(mainChartEl, data, layout, useReact); // This now handles the observer
 
   const plotlyChart = mainChartEl as any;
   plotlyChart.removeAllListeners('plotly_click');
@@ -121,10 +168,6 @@ export function renderPieChartDisplay(
       }
     }
   });
-
-  if (!useReact) {
-    triggerResize(mainChartEl);
-  }
 }
 
 /**
@@ -172,8 +215,9 @@ export function renderSunburstChartDisplay(
     showlegend: false
   };
 
+  // We call plotChart on the specific sunburst chart div
   plotChart(chartEl, data, layout, useReact);
-  legendEl.innerHTML = ''; // Clear custom legend on each render
+  legendEl.innerHTML = '';
 
   const plotlyChart = chartEl as any;
   plotlyChart.removeAllListeners('plotly_sunburstclick');
@@ -188,9 +232,6 @@ export function renderSunburstChartDisplay(
       }
     }
   });
-  if (!useReact) {
-    triggerResize(chartEl);
-  }
 }
 
 export function renderTimeSeriesChart(
@@ -350,9 +391,6 @@ export function renderTimeSeriesChart(
     hovermode: 'x unified'
   };
   plotChart(mainChartEl, traces as Plotly.Data[], layout, useReact);
-  if (!useReact) {
-    triggerResize(mainChartEl);
-  }
 }
 
 export function renderActivityPatternChart(
@@ -604,10 +642,6 @@ export function renderActivityPatternChart(
       showDetailPopup(categoryNameForPopup, recordsForPopup, { value: clickedValue });
     }
   });
-
-  if (!useReact) {
-    triggerResize(mainChartEl);
-  }
 }
 
 /**
