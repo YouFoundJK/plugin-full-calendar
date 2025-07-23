@@ -614,51 +614,6 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
 }
 
 /* =================================================================
-   AUTOCOMPLETE
-   ================================================================= */
-
-.chrono-analyser-view .autocomplete-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.chrono-analyser-view .autocomplete-suggestions {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-m);
-    box-shadow: var(--shadow-l);
-    max-height: 300px;
-    overflow-y: auto;
-    margin-top: var(--size-2-1);
-}
-
-.chrono-analyser-view .autocomplete-suggestions div {
-    padding: var(--size-2-3) var(--size-4-3);
-    cursor: pointer;
-    font-size: var(--font-ui-medium);
-    color: var(--text-normal);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: all var(--anim-duration-fast) var(--anim-motion-smooth);
-}
-
-.chrono-analyser-view .autocomplete-suggestions div:hover {
-    background: var(--background-modifier-hover);
-}
-
-.chrono-analyser-view .autocomplete-suggestions div.active {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-
-/* =================================================================
    MODAL/POPUP
    ================================================================= */
 
@@ -1054,6 +1009,7 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     flex-shrink: 0;
     white-space: nowrap;
 }
+
 /* =================================================================
    INSIGHTS CONFIG MODAL
    ================================================================= */
@@ -1116,19 +1072,18 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
 }
 
 /* =================================================================
-   AUTOCOMPLETE
+   AUTOCOMPLETE (SINGLE SOURCE OF TRUTH)
    ================================================================= */
 
-/* Wrapper positioning needs to work in both the main view and the modal */
-.chrono-analyser-view .autocomplete-wrapper,
-.chrono-analyser-modal .autocomplete-wrapper {
+/* This wrapper is needed to position the suggestions dropdown correctly. */
+.autocomplete-wrapper {
     position: relative;
     display: flex;
     align-items: center;
-    width: 100%; /* Ensure wrapper takes full width in modal settings */
+    width: 100%;
 }
 
-/* Dropdown styles that apply in both the main view and the modal */
+/* The dropdown container. Positioned relative to the wrapper. */
 .autocomplete-suggestions {
     position: absolute;
     top: 100%;
@@ -1140,14 +1095,13 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     border-radius: var(--radius-m);
     box-shadow: var(--shadow-l);
     margin-top: var(--size-2-1);
-    /* --- THIS IS THE FIX --- */
-    max-height: 200px; /* Limit the height */
-    overflow-y: auto;   /* Add a scrollbar when needed */
+    max-height: 200px; /* Limit height and allow scrolling */
+    overflow-y: auto;
     display: none;      /* Start hidden */
 }
 
-/* Item styles that apply in both the main view and the modal */
-.autocomplete-suggestions div {
+/* Individual suggestion items. */
+.autocomplete-suggestion-item {
     padding: var(--size-2-3) var(--size-4-3);
     cursor: pointer;
     font-size: var(--font-ui-medium);
@@ -1158,11 +1112,12 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     transition: all var(--anim-duration-fast) var(--anim-motion-smooth);
 }
 
-.autocomplete-suggestions div:hover {
+.autocomplete-suggestion-item:hover {
     background: var(--background-modifier-hover);
 }
 
-.autocomplete-suggestions div.active {
+/* The currently highlighted/active suggestion item. */
+.autocomplete-suggestion-item.is-active {
     background: var(--interactive-accent);
     color: var(--text-on-accent);
 }

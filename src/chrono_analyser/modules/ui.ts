@@ -17,6 +17,120 @@ export interface InsightsConfig {
   insightGroups: InsightGroups;
 }
 
+// --- Autocomplete Component Class ---
+class AutocompleteComponent {
+  private inputEl: HTMLInputElement;
+  private wrapperEl: HTMLElement;
+  private suggestionsEl: HTMLElement;
+  private onSelectCallback: (value: string) => void;
+  private getDataFunc: () => string[];
+  private activeSuggestionIndex = -1;
+
+  constructor(
+    wrapperEl: HTMLElement,
+    onSelectCallback: (value: string) => void,
+    getDataFunc: () => string[]
+  ) {
+    this.wrapperEl = wrapperEl;
+    this.inputEl = wrapperEl.querySelector('input')!;
+    this.onSelectCallback = onSelectCallback;
+    this.getDataFunc = getDataFunc;
+
+    this.suggestionsEl = this.wrapperEl.createDiv({ cls: 'autocomplete-suggestions' });
+
+    this.bindEvents();
+  }
+
+  private bindEvents() {
+    this.inputEl.addEventListener('focus', this.updateFilteredSuggestions);
+    this.inputEl.addEventListener('input', this.updateFilteredSuggestions);
+    this.inputEl.addEventListener('blur', this.onBlur);
+    this.inputEl.addEventListener('keydown', this.onKeyDown);
+  }
+
+  private onBlur = () => {
+    // Delay hiding to allow click events on suggestions to fire
+    setTimeout(() => {
+      this.suggestionsEl.style.display = 'none';
+    }, 200);
+  };
+
+  private onKeyDown = (e: KeyboardEvent) => {
+    const suggestions = Array.from(this.suggestionsEl.children) as HTMLElement[];
+    if (suggestions.length === 0 && e.key !== 'Enter' && e.key !== 'Escape') return;
+
+    switch (e.key) {
+      case 'Enter':
+        e.preventDefault();
+        const valueToSubmit =
+          this.activeSuggestionIndex > -1 && suggestions[this.activeSuggestionIndex]
+            ? suggestions[this.activeSuggestionIndex].textContent!
+            : this.inputEl.value;
+        this.onSelectCallback(valueToSubmit);
+        this.suggestionsEl.style.display = 'none';
+        this.inputEl.blur();
+        break;
+      case 'Escape':
+        this.suggestionsEl.style.display = 'none';
+        break;
+      case 'ArrowDown':
+      case 'ArrowUp':
+        e.preventDefault();
+        this.activeSuggestionIndex =
+          e.key === 'ArrowDown'
+            ? (this.activeSuggestionIndex + 1) % suggestions.length
+            : (this.activeSuggestionIndex - 1 + suggestions.length) % suggestions.length;
+        this.updateActiveSuggestion(suggestions, this.activeSuggestionIndex);
+        break;
+    }
+  };
+
+  private populateSuggestions = (items: string[]) => {
+    this.suggestionsEl.empty();
+    this.activeSuggestionIndex = -1;
+
+    if (items.length > 0) {
+      items.forEach(item => {
+        const div = this.suggestionsEl.createDiv({ cls: 'autocomplete-suggestion-item' });
+        div.textContent = item;
+        div.addEventListener('mousedown', e => {
+          e.preventDefault(); // Prevent blur event from firing first
+          this.onSelectCallback(item);
+          this.suggestionsEl.style.display = 'none';
+        });
+      });
+      this.suggestionsEl.style.display = 'block';
+    } else {
+      this.suggestionsEl.style.display = 'none';
+    }
+  };
+
+  private updateFilteredSuggestions = () => {
+    const value = this.inputEl.value.toLowerCase().trim();
+    const allData = this.getDataFunc();
+    const filteredData =
+      value === '' ? allData : allData.filter(item => item.toLowerCase().includes(value));
+    this.populateSuggestions(filteredData);
+  };
+
+  private updateActiveSuggestion(suggestions: HTMLElement[], index: number) {
+    suggestions.forEach((suggestion, idx) => {
+      suggestion.classList.toggle('is-active', idx === index);
+    });
+  }
+}
+
+// --- NEW simplified setup function ---
+export function setupAutocomplete(
+  wrapperEl: HTMLElement,
+  onSelectCallback: (value: string) => void,
+  getDataFunc: () => string[]
+) {
+  if (wrapperEl.querySelector('input')) {
+    new AutocompleteComponent(wrapperEl, onSelectCallback, getDataFunc);
+  }
+}
+
 // INSIGHTS CONFIG MODAL - NOW WITH WORKING AUTOCOMPLETE
 export class InsightConfigModal extends Modal {
   private config: InsightsConfig;
@@ -158,11 +272,11 @@ export class InsightConfigModal extends Modal {
     suggestions: string[]
   ) {
     const setting = new Setting(container).setName(name).setDesc(desc);
-    const wrapper = setting.controlEl.createDiv({ cls: 'autocomplete-wrapper' }); // The wrapper needs this class
+    // The wrapper now only needs this one class. The component does the rest.
+    const wrapper = setting.controlEl.createDiv({ cls: 'autocomplete-wrapper' });
     const tagInputContainer = wrapper.createDiv({ cls: 'tag-input-container' });
     const tagsEl = tagInputContainer.createDiv({ cls: 'tags' });
     const inputEl = tagInputContainer.createEl('input', { type: 'text', cls: 'tag-input' });
-    wrapper.createDiv({ cls: 'autocomplete-suggestions' }); // The empty container for the utility to find
 
     const renderTags = () => {
       tagsEl.empty();
@@ -190,6 +304,7 @@ export class InsightConfigModal extends Modal {
       }
     });
 
+    // Use the new, clean setup function.
     setupAutocomplete(
       wrapper,
       value => {
@@ -210,84 +325,6 @@ export class InsightConfigModal extends Modal {
   onClose() {
     this.contentEl.empty();
   }
-}
-
-// --- Autocomplete Utility ---
-function updateActiveSuggestion(suggestions: HTMLElement[], index: number) {
-  suggestions.forEach((suggestion, idx) => suggestion.classList.toggle('active', idx === index));
-}
-
-export function setupAutocomplete(
-  wrapperEl: HTMLElement,
-  onSelectCallback: (value: string) => void,
-  getDataFunc: () => string[]
-) {
-  const input = wrapperEl.querySelector<HTMLInputElement>('input');
-  const suggestionsContainer = wrapperEl.querySelector<HTMLElement>('.autocomplete-suggestions');
-  if (!input || !suggestionsContainer) return;
-
-  let activeSuggestionIndex = -1;
-
-  const populateSuggestions = (items: string[]) => {
-    suggestionsContainer.empty();
-    activeSuggestionIndex = -1;
-    if (items.length > 0) {
-      items.forEach(item => {
-        const div = suggestionsContainer.createDiv(); // Uses default div, no custom class needed
-        div.textContent = item;
-        div.addEventListener('mousedown', e => {
-          // Use mousedown to prevent blur event firing first
-          e.preventDefault();
-          onSelectCallback(item);
-          suggestionsContainer.style.display = 'none';
-        });
-      });
-      suggestionsContainer.style.display = 'block';
-    } else {
-      suggestionsContainer.style.display = 'none';
-    }
-  };
-
-  const updateFilteredSuggestions = () => {
-    const value = input.value.toLowerCase().trim();
-    const data = getDataFunc();
-    populateSuggestions(
-      value === '' ? data : data.filter(item => item.toLowerCase().includes(value))
-    );
-  };
-
-  input.addEventListener('focus', updateFilteredSuggestions);
-  input.addEventListener('input', updateFilteredSuggestions);
-  input.addEventListener('blur', () =>
-    setTimeout(() => {
-      suggestionsContainer.style.display = 'none';
-    }, 200)
-  );
-
-  input.addEventListener('keydown', (e: KeyboardEvent) => {
-    const currentSuggestions = Array.from(suggestionsContainer.children) as HTMLElement[];
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const valueToSubmit =
-        activeSuggestionIndex > -1 && currentSuggestions[activeSuggestionIndex]
-          ? currentSuggestions[activeSuggestionIndex].textContent!
-          : input.value;
-
-      onSelectCallback(valueToSubmit);
-      suggestionsContainer.style.display = 'none';
-      input.blur(); // Lose focus after selection
-    } else if (e.key === 'Escape') {
-      suggestionsContainer.style.display = 'none';
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      if (currentSuggestions.length === 0) return;
-      e.preventDefault();
-      activeSuggestionIndex =
-        e.key === 'ArrowDown'
-          ? (activeSuggestionIndex + 1) % currentSuggestions.length
-          : (activeSuggestionIndex - 1 + currentSuggestions.length) % currentSuggestions.length;
-      updateActiveSuggestion(currentSuggestions, activeSuggestionIndex);
-    }
-  });
 }
 
 // FOLDER SUGGEST MODAL

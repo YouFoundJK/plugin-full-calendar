@@ -35,14 +35,12 @@ export function createDOMStructure(rootEl: HTMLElement): void {
               <label for="hierarchyFilterInput">📂 Filter by Hierarchy (Calendar Source)</label>
               <div class="autocomplete-wrapper">
                 <input type="text" id="hierarchyFilterInput" placeholder="All Hierarchies (type to filter...)">
-                <div class="autocomplete-suggestions" id="hierarchySuggestions"></div>
               </div>
             </div>
             <div class="control-item">
               <label for="projectFilterInput">📋 Filter by Project</label>
               <div class="autocomplete-wrapper">
                 <input type="text" id="projectFilterInput" placeholder="All Projects (type to filter...)">
-                <div class="autocomplete-suggestions" id="projectSuggestions"></div>
               </div>
             </div>
           </div>
