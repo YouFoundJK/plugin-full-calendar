@@ -7,7 +7,7 @@
  */
 
 import EventCache, { UpdateViewCallback } from '../../core/EventCache';
-import { DataManager } from './DataManager';
+import { DataManager } from '../data/DataManager';
 import * as Translator from './translator';
 import { TimeRecord } from './types';
 import FullNoteCalendar from '../../calendars/FullNoteCalendar';

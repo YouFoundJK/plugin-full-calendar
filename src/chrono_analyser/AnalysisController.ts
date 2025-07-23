@@ -6,14 +6,14 @@
 
 import { App, Notice } from 'obsidian';
 import FullCalendarPlugin from '../main';
-import * as Plotter from './modules/plotter';
-import * as Aggregator from './modules/aggregator';
-import { DataManager } from './modules/DataManager';
-import { UIService } from './modules/UIService';
-import { DataService } from './modules/DataService';
-import { PieData, TimeRecord } from './modules/types';
-import { InsightsEngine } from './modules/InsightsEngine';
-import { InsightConfigModal, InsightsConfig } from './modules/ui'; // Import necessary types
+import * as Plotter from './ui/plotter';
+import * as Aggregator from './data/aggregator';
+import { DataManager } from './data/DataManager';
+import { UIService } from './ui/UIService';
+import { DataService } from './data/DataService';
+import { PieData, TimeRecord } from './data/types';
+import { InsightsEngine } from './data/InsightsEngine';
+import { InsightConfigModal, InsightsConfig } from './ui/ui'; // Import necessary types
 
 interface IChartStrategy {
   analysisName: string;

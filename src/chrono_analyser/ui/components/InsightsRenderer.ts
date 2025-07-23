@@ -1,7 +1,7 @@
 // src/chrono_analyser/modules/InsightsRenderer.ts
 
-import { Insight, InsightPayloadItem } from './InsightsEngine';
-import { FilterPayload } from './UIService';
+import { Insight, InsightPayloadItem } from '../../data/InsightsEngine';
+import { FilterPayload } from '../UIService';
 
 /**
  * Renders insights into a designated container, handling all DOM creation and interaction.

@@ -3,7 +3,7 @@
  * This centralizes the data contracts used across different modules (parsing, aggregation, plotting).
  */
 
-import Plotly from '../plotly-custom';
+import Plotly from '../ui/plotly-custom';
 import { OFCEvent } from '../../types';
 
 export interface TimeRecord {

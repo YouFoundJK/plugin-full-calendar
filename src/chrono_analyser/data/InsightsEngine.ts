@@ -1,8 +1,8 @@
 // src/chrono_analyser/modules/InsightsEngine.ts
 
-import { TimeRecord } from './types';
-import { InsightsConfig } from './ui';
-import { FilterPayload } from './UIService';
+import { TimeRecord } from '../data/types';
+import { InsightsConfig } from '../ui/ui';
+import { FilterPayload } from '../ui/UIService';
 
 const BATCH_SIZE = 500;
 

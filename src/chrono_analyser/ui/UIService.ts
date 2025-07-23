@@ -8,14 +8,14 @@ import { App, debounce, Notice } from 'obsidian';
 import flatpickr from 'flatpickr';
 import { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import * as UI from './ui';
-import { AnalysisFilters } from './DataManager';
-import { TimeRecord } from './types';
-import * as Utils from './utils';
+import { AnalysisFilters } from '../data/DataManager';
+import { TimeRecord } from '../data/types';
+import * as Utils from '../data/utils';
 import FullCalendarPlugin from '../../main';
 import { InsightsConfig } from './ui';
-import { Insight } from './InsightsEngine';
-import { DetailPopup } from './DetailPopup';
-import { InsightsRenderer } from './InsightsRenderer';
+import { Insight } from '../data/InsightsEngine';
+import { DetailPopup } from './components/DetailPopup';
+import { InsightsRenderer } from './components/InsightsRenderer';
 
 export interface FilterPayload {
   analysisTypeSelect?: string;

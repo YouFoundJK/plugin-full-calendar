@@ -1,8 +1,8 @@
 // src/chrono_analyser/modules/DetailPopup.ts
 
 import { App } from 'obsidian';
-import { TimeRecord } from './types';
-import * as Utils from './utils';
+import { TimeRecord } from '../../data/types';
+import * as Utils from '../../data/utils';
 
 /**
  * Manages the detail popup modal, including its visibility and content.

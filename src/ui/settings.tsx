@@ -40,7 +40,7 @@ import { CalendarSettings, CalendarSettingsRef } from './components/CalendarSett
 import { changelogData } from './changelogData';
 import './changelog.css';
 import { CategorySettingsManager } from './components/CategorySetting';
-import { InsightsConfig } from '../chrono_analyser/modules/ui';
+import { InsightsConfig } from '../chrono_analyser/ui/ui';
 
 export interface FullCalendarSettings {
   calendarSources: CalendarInfo[];

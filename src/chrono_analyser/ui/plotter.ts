@@ -3,7 +3,7 @@
  * Each function in this module takes prepared data and renders a specific type of chart to the DOM.
  */
 
-import Plotly from '../plotly-custom';
+import Plotly from './plotly-custom';
 import {
   TimeRecord,
   SunburstData,
@@ -12,8 +12,8 @@ import {
   PLOTLY_LIGHT_THEME,
   PLOTLY_DARK_THEME,
   ProcessingError
-} from './types';
-import * as Utils from './utils';
+} from '../data/types';
+import * as Utils from '../data/utils';
 import { OFCEvent } from '../../types';
 
 type ShowDetailPopupFn = (categoryName: string, recordsList: TimeRecord[], context?: any) => void;
