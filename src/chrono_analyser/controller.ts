@@ -14,6 +14,7 @@ import { DataService } from './modules/DataService';
 import { PieData, TimeRecord } from './modules/types';
 import { InsightsEngine } from './modules/InsightsEngine';
 import { InsightConfigModal, InsightsConfig } from './modules/ui'; // Import necessary types
+
 interface IChartStrategy {
   analysisName: string;
   render(
@@ -49,7 +50,6 @@ export class AnalysisController {
     this.dataManager = new DataManager();
     this.insightsEngine = new InsightsEngine();
 
-    // CORRECTED: This call now matches the UIService constructor signature
     this.uiService = new UIService(
       app,
       rootEl,
@@ -78,7 +78,6 @@ export class AnalysisController {
     );
     this.uiService.setInsightsLoading(true);
 
-    // Use the new public method to get all records safely.
     const allRecords = this.dataManager.getAllRecords();
     try {
       const insights = await this.insightsEngine.generateInsights(allRecords, config);
@@ -91,29 +90,21 @@ export class AnalysisController {
     }
   }
 
-  // CORRECTED: This method now properly creates the modal
   private openInsightsConfigModal() {
     new InsightConfigModal(
       this.app,
       this.uiService.insightsConfig,
       this.dataManager.getKnownHierarchies(),
       this.dataManager.getKnownProjects(),
-      // CORRECTED: Explicitly type the callback parameter
       (newConfig: InsightsConfig) => {
-        // The controller should handle saving, as it has the plugin instance.
         this.plugin.settings.chrono_analyser_config = newConfig;
         this.plugin.saveSettings();
-        // Also update the UI service's in-memory copy
         this.uiService.insightsConfig = newConfig;
         new Notice('Insights configuration saved!');
       }
     ).open();
   }
 
-  /**
-   * Initializes all services. Crucially, it checks if the main plugin's
-   * event cache has been populated and triggers it if not.
-   */
   public async initialize(): Promise<void> {
     await this.uiService.initialize();
 
@@ -171,7 +162,14 @@ export class AnalysisController {
     }
 
     filters.pattern = chartSpecificFilters.pattern;
-    const { records, totalHours, fileCount } = this.dataManager.getAnalyzedData(filters, null);
+
+    // REFACTOR: Tell DataManager to expand events for time-based charts
+    const expandRecurring = ['time-series', 'activity'].includes(newChartType || '');
+    const { records, totalHours, fileCount } = this.dataManager.getAnalyzedData(
+      filters,
+      null, // breakdown is handled by the chart strategy if needed
+      { expandRecurring }
+    );
 
     this.renderUI(records, totalHours, fileCount, useReact, isNewChartType);
 
@@ -242,14 +240,32 @@ export class AnalysisController {
         isNewChartType: boolean
       ) => {
         const pieFilters = controller.uiService.getChartSpecificFilter('pie');
-        const { aggregation, recordsByCategory, error } = controller.dataManager.getAnalyzedData(
-          { ...controller.uiService.getFilterState().filters, pattern: pieFilters.pattern },
-          pieFilters.breakdownBy
-        );
-        if (error) {
-          Plotter.renderChartMessage(controller.rootEl, `Regex Error: ${error}`);
-          return;
+        const breakdownBy = pieFilters.breakdownBy as keyof TimeRecord;
+        let regex: RegExp | null = null;
+        if (pieFilters.pattern) {
+          try {
+            regex = new RegExp(pieFilters.pattern, 'i');
+          } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            Plotter.renderChartMessage(controller.rootEl, `Regex Error: ${message}`);
+            return;
+          }
         }
+
+        const aggregation = new Map<string, number>();
+        const recordsByCategory = new Map<string, TimeRecord[]>();
+
+        for (const record of filteredRecords) {
+          const key = String(record[breakdownBy] || `(No ${breakdownBy})`);
+          if (regex && !regex.test(key)) continue;
+
+          const duration = record._effectiveDurationInPeriod || 0;
+          aggregation.set(key, (aggregation.get(key) || 0) + duration);
+
+          if (!recordsByCategory.has(key)) recordsByCategory.set(key, []);
+          recordsByCategory.get(key)!.push(record);
+        }
+
         const pieData: PieData = { hours: aggregation, recordsByCategory, error: false };
         Plotter.renderPieChartDisplay(
           controller.rootEl,
@@ -292,18 +308,8 @@ export class AnalysisController {
         filteredRecords: TimeRecord[],
         isNewChartType: boolean
       ) => {
-        const { filters } = controller.uiService.getFilterState();
-        const filterDates = {
-          filterStartDate: filters.filterStartDate ?? null,
-          filterEndDate: filters.filterEndDate ?? null
-        };
-        Plotter.renderTimeSeriesChart(
-          controller.rootEl,
-          filteredRecords,
-          filterDates,
-          useReact,
-          isNewChartType
-        );
+        // No extra data fetching needed, plotter will use the pre-expanded records
+        Plotter.renderTimeSeriesChart(controller.rootEl, filteredRecords, useReact, isNewChartType);
       }
     });
 
@@ -315,15 +321,10 @@ export class AnalysisController {
         filteredRecords: TimeRecord[],
         isNewChartType: boolean
       ) => {
-        const { filters } = controller.uiService.getFilterState();
-        const filterDates = {
-          filterStartDate: filters.filterStartDate ?? null,
-          filterEndDate: filters.filterEndDate ?? null
-        };
+        // No extra data fetching needed, plotter will use the pre-expanded records
         Plotter.renderActivityPatternChart(
           controller.rootEl,
           filteredRecords,
-          filterDates,
           controller.uiService.showDetailPopup,
           useReact,
           isNewChartType

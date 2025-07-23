@@ -1,5 +1,3 @@
-// src/chrono_analyser/modules/plotter.ts
-
 /**
  * @file Handles all chart rendering logic using the Plotly.js library.
  * Each function in this module takes prepared data and renders a specific type of chart to the DOM.
@@ -20,9 +18,6 @@ import { OFCEvent } from '../../types';
 
 type ShowDetailPopupFn = (categoryName: string, recordsList: TimeRecord[], context?: any) => void;
 
-/**
- * A simple debounce utility function.
- */
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   let timeout: number | null = null;
   return (...args: Parameters<T>): void => {
@@ -33,38 +28,21 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   };
 }
 
-/**
- * Creates a debounced resize function for a Plotly chart.
- * This prevents rapid, successive resize calls which can be slow.
- */
 const debouncedResize = debounce((element: HTMLElement) => {
   Plotly.Plots.resize(element);
 }, 100);
 
-/**
- * The single ResizeObserver instance for all charts. It watches an element
- * and calls the debounced resize function when its size changes.
- */
 const chartResizeObserver = new ResizeObserver(entries => {
   for (const entry of entries) {
     const element = entry.target as HTMLElement;
-    // --- THIS IS THE FIX ---
-    // A plot's offsetParent is null if it or any of its parents has display: none.
-    // Plotly throws an error if we try to resize a non-displayed element.
     if (element.offsetParent !== null) {
       debouncedResize(element);
     }
-    // --- END OF FIX ---
   }
 });
 
 let currentlyObservedChart: HTMLElement | null = null;
 
-/**
- * Manages the ResizeObserver to ensure only one chart is being observed at a time,
- * preventing memory leaks.
- * @param element The chart's DOM element to observe.
- */
 function manageChartResizeObserver(element: HTMLElement) {
   if (currentlyObservedChart) {
     chartResizeObserver.unobserve(currentlyObservedChart);
@@ -73,13 +51,6 @@ function manageChartResizeObserver(element: HTMLElement) {
   currentlyObservedChart = element;
 }
 
-// --- END RESIZE OBSERVER IMPLEMENTATION ---
-
-/**
- * Displays a simple message in the main chart area, used for "no data" states.
- * @param rootEl - The root HTML element of the view.
- * @param message - The message string to display.
- */
 export function renderChartMessage(rootEl: HTMLElement, message: string) {
   const mainChartEl = rootEl.querySelector<HTMLElement>('#mainChart');
   if (!mainChartEl) return;
@@ -88,16 +59,10 @@ export function renderChartMessage(rootEl: HTMLElement, message: string) {
     chartResizeObserver.unobserve(currentlyObservedChart);
     currentlyObservedChart = null;
   }
-  // Purge any existing chart before showing the message
   Plotly.purge(mainChartEl);
   mainChartEl.innerHTML = `<p class="chart-message">${message}</p>`;
 }
 
-/**
- * Merges a chart-specific layout with the base dark theme layout if dark mode is active.
- * @param chartLayout - The layout object specific to the chart being rendered.
- * @returns The final, themed layout object.
- */
 function getThemedLayout(chartLayout: Partial<Plotly.Layout>): Partial<Plotly.Layout> {
   const isDarkMode = document.body.classList.contains('theme-dark');
   const theme = isDarkMode ? PLOTLY_DARK_THEME : PLOTLY_LIGHT_THEME;
@@ -116,13 +81,9 @@ function plotChart(
   } else {
     Plotly.newPlot(mainChartEl, data, finalLayout, { responsive: true });
   }
-  // Register the chart with our resize observer after plotting.
   manageChartResizeObserver(mainChartEl);
 }
 
-/**
- * Renders a Pie chart to the main chart container.
- */
 export function renderPieChartDisplay(
   rootEl: HTMLElement,
   pieData: PieData,
@@ -160,7 +121,7 @@ export function renderPieChartDisplay(
     margin: { l: 40, r: 40, t: 60, b: 80 }
   };
 
-  plotChart(mainChartEl, data, layout, useReact); // This now handles the observer
+  plotChart(mainChartEl, data, layout, useReact);
 
   const plotlyChart = mainChartEl as any;
   plotlyChart.removeAllListeners('plotly_click');
@@ -178,9 +139,6 @@ export function renderPieChartDisplay(
   });
 }
 
-/**
- * Renders a Sunburst chart to the main chart container.
- */
 export function renderSunburstChartDisplay(
   rootEl: HTMLElement,
   sunburstData: SunburstData,
@@ -223,7 +181,6 @@ export function renderSunburstChartDisplay(
     showlegend: false
   };
 
-  // We call plotChart on the specific sunburst chart div
   plotChart(chartEl, data, layout, useReact);
   legendEl.innerHTML = '';
 
@@ -245,7 +202,6 @@ export function renderSunburstChartDisplay(
 export function renderTimeSeriesChart(
   rootEl: HTMLElement,
   filteredRecords: TimeRecord[],
-  filterDates: { filterStartDate: Date | null; filterEndDate: Date | null },
   useReact: boolean,
   isNewChartType: boolean
 ) {
@@ -269,82 +225,29 @@ export function renderTimeSeriesChart(
     ?.value as keyof TimeRecord;
   if (!granularity || !chartType || !stackingLevel) return;
 
-  const { filterStartDate, filterEndDate } = filterDates;
   const dataByPeriod = new Map<string, { total: number; categories: { [key: string]: number } }>();
 
+  // REFACTORED: Simple, unified loop. All records are now dated instances.
   filteredRecords.forEach(record => {
-    if (record.metadata?.type === 'recurring') {
-      const { startRecur, endRecur, daysOfWeek } = record.metadata as {
-        startRecur?: Date;
-        endRecur?: Date;
-        daysOfWeek: string[];
-      };
-      const duration = record.duration;
+    if (!record.date || isNaN(record.date.getTime())) return;
+    const duration = record._effectiveDurationInPeriod || 0;
+    if (duration <= 0) return;
 
-      if (!startRecur || !daysOfWeek || !duration) return;
+    let periodKey: string | null;
+    if (granularity === 'daily') periodKey = Utils.getISODate(record.date);
+    else if (granularity === 'weekly')
+      periodKey = Utils.getISODate(Utils.getWeekStartDate(record.date));
+    else periodKey = Utils.getISODate(Utils.getMonthStartDate(record.date));
 
-      let recStart = startRecur;
-      let recEnd = endRecur || new Date(Date.UTC(9999, 0, 1));
+    if (!periodKey) return;
 
-      const actualDays = (
-        Array.isArray(daysOfWeek)
-          ? daysOfWeek
-          : String(daysOfWeek)
-              .replace(/[\[\]\s]/g, '')
-              .split(',')
-      )
-        .map(d => Utils.getDayOfWeekNumber(d))
-        .filter((d): d is number => d !== undefined);
+    if (!dataByPeriod.has(periodKey)) dataByPeriod.set(periodKey, { total: 0, categories: {} });
+    const periodData = dataByPeriod.get(periodKey)!;
+    periodData.total += duration;
 
-      let iterDate = new Date(
-        Math.max(
-          recStart.getTime(),
-          filterStartDate ? filterStartDate.getTime() : recStart.getTime()
-        )
-      );
-      let maxDate = new Date(
-        Math.min(recEnd.getTime(), filterEndDate ? filterEndDate.getTime() : recEnd.getTime())
-      );
-
-      while (iterDate <= maxDate) {
-        if (actualDays.includes(iterDate.getUTCDay())) {
-          let periodKey: string | null = null;
-          if (granularity === 'daily') periodKey = Utils.getISODate(iterDate);
-          else if (granularity === 'weekly')
-            periodKey = Utils.getISODate(Utils.getWeekStartDate(iterDate));
-          else periodKey = Utils.getISODate(Utils.getMonthStartDate(iterDate));
-
-          if (periodKey) {
-            if (!dataByPeriod.has(periodKey))
-              dataByPeriod.set(periodKey, { total: 0, categories: {} });
-            const periodData = dataByPeriod.get(periodKey)!;
-            periodData.total += duration;
-            if (chartType === 'stackedArea') {
-              const category = String(record[stackingLevel] || `(No ${stackingLevel})`);
-              periodData.categories[category] = (periodData.categories[category] || 0) + duration;
-            }
-          }
-        }
-        iterDate.setUTCDate(iterDate.getUTCDate() + 1);
-      }
-    } else {
-      if (!record.date || isNaN(record.date.getTime())) return;
-      let periodKey: string | null;
-      if (granularity === 'daily') periodKey = Utils.getISODate(record.date);
-      else if (granularity === 'weekly')
-        periodKey = Utils.getISODate(Utils.getWeekStartDate(record.date));
-      else periodKey = Utils.getISODate(Utils.getMonthStartDate(record.date));
-
-      if (!periodKey) return;
-
-      if (!dataByPeriod.has(periodKey)) dataByPeriod.set(periodKey, { total: 0, categories: {} });
-      const periodData = dataByPeriod.get(periodKey)!;
-      periodData.total += record._effectiveDurationInPeriod || 0;
-      if (chartType === 'stackedArea') {
-        const category = String(record[stackingLevel] || `(No ${stackingLevel})`);
-        periodData.categories[category] =
-          (periodData.categories[category] || 0) + (record._effectiveDurationInPeriod || 0);
-      }
+    if (chartType === 'stackedArea') {
+      const category = String(record[stackingLevel] || `(No ${stackingLevel})`);
+      periodData.categories[category] = (periodData.categories[category] || 0) + duration;
     }
   });
 
@@ -404,7 +307,6 @@ export function renderTimeSeriesChart(
 export function renderActivityPatternChart(
   rootEl: HTMLElement,
   filteredRecords: TimeRecord[],
-  filterDates: { filterStartDate: Date | null; filterEndDate: Date | null },
   showDetailPopup: ShowDetailPopupFn,
   useReact: boolean,
   isNewChartType: boolean
@@ -426,7 +328,6 @@ export function renderActivityPatternChart(
   const patternType = patternTypeEl.value;
   const analysisTypeName = patternTypeEl.selectedOptions[0]?.text || 'Activity Pattern';
 
-  const { filterStartDate, filterEndDate } = filterDates;
   let data: Partial<Plotly.PlotData>[] = [];
   let layout: Partial<Plotly.Layout> = {};
   let plotType: 'bar' | 'heatmap' = 'bar';
@@ -444,49 +345,11 @@ export function renderActivityPatternChart(
 
   if (patternType === 'dayOfWeek') {
     const hoursByDay = Array(7).fill(0);
+    // REFACTORED: Simple, unified loop.
     filteredRecords.forEach(record => {
-      if (record.metadata?.type === 'recurring') {
-        const { startRecur, endRecur, daysOfWeek } = record.metadata as {
-          startRecur?: Date;
-          endRecur?: Date;
-          daysOfWeek: string[];
-        };
-        const duration = record.duration;
-
-        if (!startRecur || !daysOfWeek || !duration) return;
-
-        let recStart = startRecur;
-        let recEnd = endRecur || new Date(Date.UTC(9999, 0, 1));
-
-        const actualDays = (
-          Array.isArray(daysOfWeek)
-            ? daysOfWeek
-            : String(daysOfWeek)
-                .replace(/[\[\]\s]/g, '')
-                .split(',')
-        )
-          .map(d => Utils.getDayOfWeekNumber(d))
-          .filter((d): d is number => d !== undefined);
-
-        let iterDate = new Date(
-          Math.max(recStart.getTime(), filterStartDate?.getTime() || recStart.getTime())
-        );
-        let maxDate = new Date(
-          Math.min(recEnd.getTime(), filterEndDate?.getTime() || recEnd.getTime())
-        );
-
-        while (iterDate <= maxDate) {
-          const dayIndex = iterDate.getUTCDay();
-          if (actualDays.includes(dayIndex)) {
-            hoursByDay[dayIndex] += duration;
-          }
-          iterDate.setUTCDate(iterDate.getUTCDate() + 1);
-        }
-      } else {
-        if (record.date && !isNaN(record.date.getTime())) {
-          const dayIndex = record.date.getUTCDay();
-          hoursByDay[dayIndex] += record._effectiveDurationInPeriod || 0;
-        }
+      if (record.date && !isNaN(record.date.getTime())) {
+        const dayIndex = record.date.getUTCDay();
+        hoursByDay[dayIndex] += record._effectiveDurationInPeriod || 0;
       }
     });
     data = [{ x: daysOfWeekLabels, y: hoursByDay.map(h => h.toFixed(2)), type: 'bar' }];
@@ -497,6 +360,7 @@ export function renderActivityPatternChart(
     };
   } else if (patternType === 'hourOfDay') {
     const hoursByHour = Array(24).fill(0);
+    // REFACTORED: Simple, unified loop.
     filteredRecords.forEach(record => {
       const startTime = 'startTime' in record.metadata ? record.metadata.startTime : null;
       const startHour = startTime ? Utils.getHourFromTimeStr(startTime) : null;
@@ -516,53 +380,14 @@ export function renderActivityPatternChart(
     const heatmapData = Array(7)
       .fill(null)
       .map(() => Array(24).fill(0));
+    // REFACTORED: Simple, unified loop.
     filteredRecords.forEach(record => {
       const startTime = 'startTime' in record.metadata ? record.metadata.startTime : null;
       const startHour = startTime ? Utils.getHourFromTimeStr(startTime) : null;
       if (startHour === null) return;
-
-      if (record.metadata?.type === 'recurring') {
-        const { startRecur, endRecur, daysOfWeek } = record.metadata as {
-          startRecur?: Date;
-          endRecur?: Date;
-          daysOfWeek: string[];
-        };
-        const duration = record.duration;
-
-        if (!startRecur || !daysOfWeek || !duration) return;
-
-        let recStart = startRecur;
-        let recEnd = endRecur || new Date(Date.UTC(9999, 0, 1));
-
-        const actualDays = (
-          Array.isArray(daysOfWeek)
-            ? daysOfWeek
-            : String(daysOfWeek)
-                .replace(/[\[\]\s]/g, '')
-                .split(',')
-        )
-          .map(d => Utils.getDayOfWeekNumber(d))
-          .filter((d): d is number => d !== undefined);
-
-        let iterDate = new Date(
-          Math.max(recStart.getTime(), filterStartDate?.getTime() || recStart.getTime())
-        );
-        let maxDate = new Date(
-          Math.min(recEnd.getTime(), filterEndDate?.getTime() || recEnd.getTime())
-        );
-
-        while (iterDate <= maxDate) {
-          const dayIndex = iterDate.getUTCDay();
-          if (actualDays.includes(dayIndex)) {
-            heatmapData[dayIndex][startHour] += duration;
-          }
-          iterDate.setUTCDate(iterDate.getUTCDate() + 1);
-        }
-      } else {
-        if (record.date && !isNaN(record.date.getTime())) {
-          const dayIndex = record.date.getUTCDay();
-          heatmapData[dayIndex][startHour] += record._effectiveDurationInPeriod || 0;
-        }
+      if (record.date && !isNaN(record.date.getTime())) {
+        const dayIndex = record.date.getUTCDay();
+        heatmapData[dayIndex][startHour] += record._effectiveDurationInPeriod || 0;
       }
     });
     data = [
@@ -613,9 +438,7 @@ export function renderActivityPatternChart(
         recordsForPopup = filteredRecords.filter(
           r => r.date && r.date.getUTCDay() === dayIndexClicked
         );
-      }
-
-      if (patternType === 'hourOfDay') {
+      } else if (patternType === 'hourOfDay') {
         const hourClicked = parseInt(categoryClicked, 10);
         if (isNaN(hourClicked)) return;
         categoryNameForPopup = `${categoryClicked}:00 (Start Hour)`;
@@ -632,9 +455,7 @@ export function renderActivityPatternChart(
       if (isNaN(clickedHour) || clickedDayIndex === -1 || !clickedValue || clickedValue === 0)
         return;
       const nextHour = (clickedHour + 1) % 24;
-      categoryNameForPopup = `Activity: ${point.y}, ${String(clickedHour).padStart(2, '0')}:00 - ${String(
-        nextHour
-      ).padStart(2, '0')}:00`;
+      categoryNameForPopup = `Activity: ${point.y}, ${String(clickedHour).padStart(2, '0')}:00 - ${String(nextHour).padStart(2, '0')}:00`;
       recordsForPopup = filteredRecords.filter(r => {
         const startTime = 'startTime' in r.metadata ? r.metadata.startTime : null;
         return (
@@ -652,9 +473,6 @@ export function renderActivityPatternChart(
   });
 }
 
-/**
- * Renders the log of file processing errors into its dedicated container.
- */
 export function renderErrorLog(
   rootEl: HTMLElement,
   processingErrors: ProcessingError[],
@@ -679,20 +497,16 @@ export function renderErrorLog(
   processingErrors.forEach(err => {
     const details = document.createElement('details');
     details.className = 'log-entry';
-
     const summary = document.createElement('summary');
     summary.textContent = `⚠️ ${err.file || 'Unknown File'}`;
-
     const content = document.createElement('div');
     content.className = 'log-entry-content';
     content.innerHTML = `<strong>Path:</strong> ${err.path || 'N/A'}<br><strong>Reason:</strong> ${
       err.reason || 'No specific reason provided.'
     }`;
-
     details.appendChild(summary);
     details.appendChild(content);
     errorLogEntries.appendChild(details);
   });
-
   errorLogContainer.style.display = 'block';
 }
