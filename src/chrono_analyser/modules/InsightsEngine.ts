@@ -69,6 +69,11 @@ export class InsightsEngine {
 
     for (const groupName in config.insightGroups) {
       const group = config.insightGroups[groupName];
+
+      // Guard against malformed or null entries in the config.
+      if (!group || !group.rules) {
+        continue; // Skip this invalid group and move to the next one.
+      }
       const rules = group.rules;
 
       if (rules.hierarchies.some(h => h.toLowerCase() === record.hierarchy.toLowerCase())) {
@@ -87,6 +92,8 @@ export class InsightsEngine {
     (record as any)._semanticTags = Array.from(tags);
     return record;
   }
+
+  // --- INSIGHT CALCULATORS ---
 
   /**
    * Calculates the total time spent in each Insight Group over the last 30 days.
@@ -148,7 +155,7 @@ export class InsightsEngine {
 
     for (const record of taggedRecords) {
       const recordDate = record.date;
-      if (!recordDate) continue; // Skip non-dated events for this insight
+      if (!recordDate) continue;
 
       if (recordDate >= sevenDaysAgo) {
         recentProjects.add(record.project);
@@ -162,7 +169,6 @@ export class InsightsEngine {
       if (count >= 2 && !recentProjects.has(project)) {
         lapsedInsights.push({
           displayText: `It's been over a week since you've logged time for **'${project}'**. You logged it ${count} times in the month prior.`,
-          // MODIFICATION: Add a specific action to investigate this lapse.
           action: {
             chartType: 'time-series',
             filters: {

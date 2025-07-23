@@ -16,6 +16,7 @@ import {
   ProcessingError
 } from './types';
 import * as Utils from './utils';
+import { OFCEvent } from '../../types';
 
 type ShowDetailPopupFn = (categoryName: string, recordsList: TimeRecord[], context?: any) => void;
 
@@ -46,7 +47,14 @@ const debouncedResize = debounce((element: HTMLElement) => {
  */
 const chartResizeObserver = new ResizeObserver(entries => {
   for (const entry of entries) {
-    debouncedResize(entry.target as HTMLElement);
+    const element = entry.target as HTMLElement;
+    // --- THIS IS THE FIX ---
+    // A plot's offsetParent is null if it or any of its parents has display: none.
+    // Plotly throws an error if we try to resize a non-displayed element.
+    if (element.offsetParent !== null) {
+      debouncedResize(element);
+    }
+    // --- END OF FIX ---
   }
 });
 
@@ -65,7 +73,7 @@ function manageChartResizeObserver(element: HTMLElement) {
   currentlyObservedChart = element;
 }
 
-// --- END: RESIZE OBSERVER IMPLEMENTATION ---
+// --- END RESIZE OBSERVER IMPLEMENTATION ---
 
 /**
  * Displays a simple message in the main chart area, used for "no data" states.
