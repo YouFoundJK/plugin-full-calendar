@@ -55,16 +55,6 @@ export class DataService {
       const eventsInCalendar = this.eventCache._storeForTest.getEventsInCalendar(calendar);
 
       for (const storedEvent of eventsInCalendar) {
-        // --- NEW DIAGNOSTIC LOG ---
-        // Check if the event is remote (i.e., has no file location).
-        if (!storedEvent.location) {
-          console.log(
-            `[Chrono] Remote event detected in calendar "${calendar.name}". Raw data:`,
-            JSON.parse(JSON.stringify(storedEvent))
-          );
-        }
-        // --- END OF LOG ---
-
         const timeRecord = Translator.storedEventToTimeRecord(
           storedEvent,
           useCategoryFeature,

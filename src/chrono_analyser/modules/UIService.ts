@@ -21,8 +21,6 @@ import { Insight } from './InsightsEngine'; // Import the Insight type
 export class UIService {
   private flatpickrInstance: FlatpickrInstance | null = null;
   private uiStateKey = 'ChronoAnalyzerUIState_v5';
-
-  // MODIFIED: Make config public for the controller
   public insightsConfig: InsightsConfig | null = null;
 
   constructor(
@@ -30,43 +28,23 @@ export class UIService {
     private rootEl: HTMLElement,
     private plugin: FullCalendarPlugin,
     private onFilterChange: () => void,
-    // NEW: Callback to trigger analysis in the controller
-    private onGenerateInsights: () => void
+    private onGenerateInsights: () => void,
+    private onOpenConfig: () => void
   ) {}
 
   /**
    * Initializes all UI components and event listeners.
    */
-  public initialize(): void {
+  public async initialize(): Promise<void> {
     this.setupEventListeners();
     this.loadFilterState();
-    // MODIFIED: Load directly from settings. No await needed for this part.
-    this.loadInsightsConfig();
+    await this.loadInsightsConfig();
   }
 
   private async loadInsightsConfig() {
     // Read directly from the plugin's settings object.
     this.insightsConfig = this.plugin.settings.chrono_analyser_config || null;
   }
-
-  private async saveInsightsConfig(newConfig: InsightsConfig) {
-    // 1. Update the settings object in memory.
-    this.plugin.settings.chrono_analyser_config = newConfig;
-    this.insightsConfig = newConfig;
-
-    // 2. Call the plugin's save method to persist the entire settings object.
-    await this.plugin.saveSettings();
-
-    new Notice('Insights configuration saved!');
-  }
-
-  private openInsightsConfigModal() {
-    new InsightConfigModal(this.app, this.plugin, this.insightsConfig, newConfig => {
-      this.saveInsightsConfig(newConfig);
-    }).open();
-  }
-
-  // --- NEW UI Management Methods ---
 
   public setInsightsLoading(isLoading: boolean) {
     const generateBtn = this.rootEl.querySelector<HTMLButtonElement>('#generateInsightsBtn');
@@ -212,14 +190,12 @@ export class UIService {
   private setupEventListeners = () => {
     this.rootEl
       .querySelector('#configureInsightsBtn')
-      ?.addEventListener('click', () => this.openInsightsConfigModal());
+      ?.addEventListener('click', () => this.onOpenConfig());
 
-    // MODIFIED: Wire up the generate button
     this.rootEl
       .querySelector('#generateInsightsBtn')
       ?.addEventListener('click', () => this.onGenerateInsights());
 
-    // ... rest of event listeners are unchanged ...
     const datePickerEl = this.rootEl.querySelector<HTMLInputElement>('#dateRangePicker');
     if (datePickerEl) {
       this.flatpickrInstance = flatpickr(datePickerEl, {
@@ -433,7 +409,6 @@ export class UIService {
     }
   };
 
-  // --- NEW METHOD: Programmatically applies filters and refreshes the chart ---
   private applyFiltersAndRefresh(action: Insight['action']) {
     if (!action) return;
 
@@ -505,19 +480,35 @@ export class UIService {
   };
 
   public populateFilterDataSources(getHierarchies: () => string[], getProjects: () => string[]) {
-    UI.setupAutocomplete(
-      this.rootEl,
-      'hierarchyFilterInput',
-      'hierarchySuggestions',
-      getHierarchies,
-      this.onFilterChange
-    );
-    UI.setupAutocomplete(
-      this.rootEl,
-      'projectFilterInput',
-      'projectSuggestions',
-      getProjects,
-      this.onFilterChange
-    );
+    const hierarchyWrapper = this.rootEl
+      .querySelector<HTMLInputElement>('#hierarchyFilterInput')
+      ?.closest('.autocomplete-wrapper');
+    if (hierarchyWrapper instanceof HTMLElement) {
+      UI.setupAutocomplete(
+        hierarchyWrapper,
+        value => {
+          // Set the input value manually on selection before triggering change
+          const input = hierarchyWrapper.querySelector('input');
+          if (input) input.value = value;
+          this.onFilterChange();
+        },
+        getHierarchies
+      );
+    }
+
+    const projectWrapper = this.rootEl
+      .querySelector<HTMLInputElement>('#projectFilterInput')
+      ?.closest('.autocomplete-wrapper');
+    if (projectWrapper instanceof HTMLElement) {
+      UI.setupAutocomplete(
+        projectWrapper,
+        value => {
+          const input = projectWrapper.querySelector('input');
+          if (input) input.value = value;
+          this.onFilterChange();
+        },
+        getProjects
+      );
+    }
   }
 }

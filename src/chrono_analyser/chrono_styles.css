@@ -1025,3 +1025,115 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     color: var(--text-accent);
     font-weight: 600;
 }
+/* =================================================================
+   INSIGHTS CONFIG MODAL
+   ================================================================= */
+
+.chrono-analyser-modal .setting-item {
+    border-top: 1px solid var(--background-modifier-border);
+    padding: var(--size-4-4) 0;
+}
+
+.chrono-analyser-modal .insight-group-setting {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-4);
+    margin-bottom: var(--size-4-4);
+    background-color: var(--background-secondary);
+}
+
+.chrono-analyser-modal .tag-input-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-2-2);
+    background-color: var(--background-primary);
+}
+
+.chrono-analyser-modal .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-2-2);
+    margin-bottom: var(--size-2-2);
+}
+
+.chrono-analyser-modal .tag {
+    display: flex;
+    align-items: center;
+    background-color: var(--background-modifier-hover);
+    padding: var(--size-2-1) var(--size-4-2);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-small);
+}
+
+.chrono-analyser-modal .tag-remove {
+    margin-left: var(--size-4-2);
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--text-muted);
+}
+.chrono-analyser-modal .tag-remove:hover {
+    color: var(--text-error);
+}
+
+.chrono-analyser-modal .tag-input {
+    border: none;
+    outline: none;
+    background-color: transparent;
+    width: 100%;
+    padding: var(--size-2-1);
+}
+
+/* =================================================================
+   AUTOCOMPLETE
+   ================================================================= */
+
+/* Wrapper positioning needs to work in both the main view and the modal */
+.chrono-analyser-view .autocomplete-wrapper,
+.chrono-analyser-modal .autocomplete-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%; /* Ensure wrapper takes full width in modal settings */
+}
+
+/* Dropdown styles that apply in both the main view and the modal */
+.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-l);
+    margin-top: var(--size-2-1);
+    /* --- THIS IS THE FIX --- */
+    max-height: 200px; /* Limit the height */
+    overflow-y: auto;   /* Add a scrollbar when needed */
+    display: none;      /* Start hidden */
+}
+
+/* Item styles that apply in both the main view and the modal */
+.autocomplete-suggestions div {
+    padding: var(--size-2-3) var(--size-4-3);
+    cursor: pointer;
+    font-size: var(--font-ui-medium);
+    color: var(--text-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all var(--anim-duration-fast) var(--anim-motion-smooth);
+}
+
+.autocomplete-suggestions div:hover {
+    background: var(--background-modifier-hover);
+}
+
+.autocomplete-suggestions div.active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}

@@ -13,7 +13,7 @@ import { UIService } from './modules/UIService';
 import { DataService } from './modules/DataService';
 import { PieData, TimeRecord } from './modules/types';
 import { InsightsEngine } from './modules/InsightsEngine';
-
+import { InsightConfigModal, InsightsConfig } from './modules/ui'; // Import necessary types
 interface IChartStrategy {
   analysisName: string;
   render(
@@ -49,12 +49,14 @@ export class AnalysisController {
     this.dataManager = new DataManager();
     this.insightsEngine = new InsightsEngine();
 
+    // CORRECTED: This call now matches the UIService constructor signature
     this.uiService = new UIService(
       app,
       rootEl,
       plugin,
       () => this.updateAnalysis(),
-      () => this.handleGenerateInsights()
+      () => this.handleGenerateInsights(),
+      () => this.openInsightsConfigModal()
     );
 
     this.dataService = new DataService(
@@ -71,16 +73,13 @@ export class AnalysisController {
       new Notice('Please configure your Insight Groups first using the ⚙️ icon.', 5000);
       return;
     }
-
     new Notice(
       `Using insights rules last updated on ${new Date(config.lastUpdated).toLocaleString()}.`
     );
-
     this.uiService.setInsightsLoading(true);
 
     // Use the new public method to get all records safely.
     const allRecords = this.dataManager.getAllRecords();
-
     try {
       const insights = await this.insightsEngine.generateInsights(allRecords, config);
       this.uiService.renderInsights(insights);
@@ -90,6 +89,25 @@ export class AnalysisController {
     } finally {
       this.uiService.setInsightsLoading(false);
     }
+  }
+
+  // CORRECTED: This method now properly creates the modal
+  private openInsightsConfigModal() {
+    new InsightConfigModal(
+      this.app,
+      this.uiService.insightsConfig,
+      this.dataManager.getKnownHierarchies(),
+      this.dataManager.getKnownProjects(),
+      // CORRECTED: Explicitly type the callback parameter
+      (newConfig: InsightsConfig) => {
+        // The controller should handle saving, as it has the plugin instance.
+        this.plugin.settings.chrono_analyser_config = newConfig;
+        this.plugin.saveSettings();
+        // Also update the UI service's in-memory copy
+        this.uiService.insightsConfig = newConfig;
+        new Notice('Insights configuration saved!');
+      }
+    ).open();
   }
 
   /**
