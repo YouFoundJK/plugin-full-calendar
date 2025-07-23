@@ -88,8 +88,6 @@ export class InsightsEngine {
     return record;
   }
 
-  // --- INSIGHT CALCULATORS ---
-
   /**
    * Calculates the total time spent in each Insight Group over the last 30 days.
    */
@@ -100,11 +98,14 @@ export class InsightsEngine {
     const distribution = new Map<string, number>();
 
     for (const record of taggedRecords) {
-      const recordDate = record.date || new Date(); // Assume recurring events are current
+      // NOTE: This logic is slightly different from the main chart's handling of recurring events.
+      // For insights, we'll consider recurring events without a date as "current".
+      const recordDate = record.date || new Date();
       if (recordDate < thirtyDaysAgo) continue;
 
       const tags = (record as any)._semanticTags || [];
       for (const tag of tags) {
+        // Here we're using the base duration, not the effective duration in a filtered period.
         distribution.set(tag, (distribution.get(tag) || 0) + record.duration);
       }
     }
@@ -116,7 +117,16 @@ export class InsightsEngine {
       if (hours > 0) {
         insights.push({
           displayText: `You spent **${hours.toFixed(1)} hours** on activities in your **'${groupName}'** group in the last 30 days.`,
-          action: null // Action hook for future implementation
+          // MODIFICATION: Add a concrete action to show a relevant chart.
+          action: {
+            chartType: 'pie',
+            filters: {
+              // Note: We can't filter by a "group", so we show a general project breakdown
+              // for the relevant period as a starting point for exploration.
+              filterStartDate: thirtyDaysAgo,
+              filterEndDate: new Date()
+            }
+          }
         });
       }
     }
@@ -125,11 +135,9 @@ export class InsightsEngine {
 
   /**
    * A simple calculator to find projects that were done regularly but have been missed recently.
-   * Here we'll define "lapsed" as not done in the last 7 days but done at least twice in the 30 days prior.
+   * "Lapsed" = not done in the last 7 days but done at least twice in the 30 days prior.
    */
   private _calculateLapsedHabits(taggedRecords: TimeRecord[], config: InsightsConfig): Insight[] {
-    // For this simple example, we'll assume any group could contain habits.
-    // A more advanced version could use a specific "habit" group type.
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const thirtySevenDaysAgo = new Date();
@@ -140,7 +148,7 @@ export class InsightsEngine {
 
     for (const record of taggedRecords) {
       const recordDate = record.date;
-      if (!recordDate) continue;
+      if (!recordDate) continue; // Skip non-dated events for this insight
 
       if (recordDate >= sevenDaysAgo) {
         recentProjects.add(record.project);
@@ -154,7 +162,15 @@ export class InsightsEngine {
       if (count >= 2 && !recentProjects.has(project)) {
         lapsedInsights.push({
           displayText: `It's been over a week since you've logged time for **'${project}'**. You logged it ${count} times in the month prior.`,
-          action: null
+          // MODIFICATION: Add a specific action to investigate this lapse.
+          action: {
+            chartType: 'time-series',
+            filters: {
+              project: project,
+              filterStartDate: thirtySevenDaysAgo,
+              filterEndDate: new Date()
+            }
+          }
         });
       }
     }

@@ -1004,12 +1004,22 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     transition: background-color 0.2s ease;
 }
 
-/* In the future, this will be used for clickable cards
-.chrono-analyser-view .insight-card:hover {
+/* Find this existing rule in your CSS file */
+.chrono-analyser-view .insight-card {
+    background-color: var(--background-primary);
+    padding: var(--size-4-3) var(--size-4-4);
+    border-radius: var(--radius-m);
+    margin-bottom: var(--size-2-2);
+    border: 1px solid var(--background-modifier-border);
+    font-size: var(--font-ui-medium);
+    transition: background-color 0.2s ease, border-color 0.2s ease; /* MODIFIED: Add border-color transition */
+}
+
+.chrono-analyser-view .insight-card.is-clickable:hover {
     background-color: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
     cursor: pointer;
 }
-*/
 
 .chrono-analyser-view .insight-card strong {
     color: var(--text-accent);

@@ -99,10 +99,16 @@ export class UIService {
     insights.forEach(insight => {
       const card = resultContainer.createDiv({ cls: 'insight-card' });
       card.innerHTML = insight.displayText;
-      // In the future, we would add a click listener here based on insight.action
+
+      if (insight.action) {
+        card.addClass('is-clickable');
+        card.setAttribute('aria-label', 'Click to view this insight in the chart');
+        card.addEventListener('click', () => {
+          this.applyFiltersAndRefresh(insight.action);
+        });
+      }
     });
   }
-  // --- END NEW UI Management Methods ---
 
   /**
    * Cleans up UI components to prevent memory leaks.
@@ -426,6 +432,37 @@ export class UIService {
       stackingLevelContainer.classList.toggle('hidden-controls', timeSeriesType !== 'stackedArea');
     }
   };
+
+  // --- NEW METHOD: Programmatically applies filters and refreshes the chart ---
+  private applyFiltersAndRefresh(action: Insight['action']) {
+    if (!action) return;
+
+    const { chartType, filters } = action;
+
+    // 1. Set the chart type
+    const analysisTypeSelect = this.rootEl.querySelector<HTMLSelectElement>('#analysisTypeSelect');
+    if (analysisTypeSelect) {
+      analysisTypeSelect.value = chartType;
+    }
+
+    // 2. Clear existing filters for a clean slate
+    this.rootEl.querySelector<HTMLInputElement>('#hierarchyFilterInput')!.value = '';
+    this.rootEl.querySelector<HTMLInputElement>('#projectFilterInput')!.value = '';
+
+    // 3. Apply new filters from the action
+    if (filters.project) {
+      this.rootEl.querySelector<HTMLInputElement>('#projectFilterInput')!.value = filters.project;
+    }
+    if (filters.filterStartDate && filters.filterEndDate && this.flatpickrInstance) {
+      this.flatpickrInstance.setDate([filters.filterStartDate, filters.filterEndDate], false);
+    }
+
+    // 4. Trigger the main analysis loop in the controller
+    this.onFilterChange();
+
+    // Smooth scroll down to the chart for a better user experience
+    this.rootEl.querySelector('.controls')?.scrollIntoView({ behavior: 'smooth' });
+  }
 
   private setPresetDateRange(preset: string) {
     const today = new Date();
