@@ -2,6 +2,7 @@
 
 import { TimeRecord } from './types';
 import { InsightsConfig } from './ui';
+import { FilterPayload } from './UIService';
 
 const BATCH_SIZE = 500;
 
@@ -9,18 +10,15 @@ const BATCH_SIZE = 500;
 export interface InsightPayloadItem {
   project: string;
   count: number;
-  action: Insight['action'];
+  action: FilterPayload | null;
 }
 
 export interface Insight {
   displayText: string;
   category: string;
   sentiment: 'neutral' | 'positive' | 'warning';
-  payload?: InsightPayloadItem[]; // Payload is now an array of interactive items
-  action: {
-    chartType: 'pie' | 'time-series';
-    filters: { [key: string]: any };
-  } | null;
+  payload?: InsightPayloadItem[];
+  action: FilterPayload | null;
 }
 
 export class InsightsEngine {
@@ -37,10 +35,7 @@ export class InsightsEngine {
     allRecords: TimeRecord[],
     config: InsightsConfig
   ): Promise<Insight[]> {
-    console.log('[Chrono] Starting insight generation...');
     const taggedRecords = await this._tagRecordsInBatches(allRecords, config);
-    console.log(`[Chrono] Tagging complete. ${taggedRecords.length} records tagged.`);
-
     const insights: Insight[] = [];
 
     // --- Run Calculators ---
@@ -52,8 +47,6 @@ export class InsightsEngine {
       // 3. Push the single object, not spread an array.
       insights.push(lapsedHabitInsight);
     }
-
-    console.log(`[Chrono] Insight generation complete. Found ${insights.length} insights.`);
     return insights;
   }
 
@@ -70,8 +63,8 @@ export class InsightsEngine {
     config: InsightsConfig
   ): Promise<TimeRecord[]> {
     let taggedRecords: TimeRecord[] = [];
-    for (let i = 0; i < records.length; i += BATCH_SIZE) {
-      const batch = records.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < records.length; i += 500) {
+      const batch = records.slice(i, i + 500);
       const processedBatch = batch.map(record => this._tagRecord(record, config));
       taggedRecords = taggedRecords.concat(processedBatch);
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -93,7 +86,6 @@ export class InsightsEngine {
         continue; // Skip this invalid group and move to the next one.
       }
       const rules = group.rules;
-
       if (rules.hierarchies.some(h => h.toLowerCase() === record.hierarchy.toLowerCase())) {
         tags.add(groupName);
         continue;
@@ -106,7 +98,6 @@ export class InsightsEngine {
         tags.add(groupName);
       }
     }
-    // We are adding a temporary property to the in-memory object for this run only
     (record as any)._semanticTags = Array.from(tags);
     return record;
   }
@@ -119,9 +110,7 @@ export class InsightsEngine {
   private _calculateGroupDistribution(taggedRecords: TimeRecord[]): Insight[] {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
     const distribution = new Map<string, number>();
-
     for (const record of taggedRecords) {
       const recordDate = record.date || new Date();
       if (recordDate < thirtyDaysAgo) continue;
@@ -130,9 +119,6 @@ export class InsightsEngine {
         distribution.set(tag, (distribution.get(tag) || 0) + record.duration);
       }
     }
-
-    if (distribution.size === 0) return [];
-
     const insights: Insight[] = [];
     for (const [groupName, hours] of distribution.entries()) {
       if (hours > 0) {
@@ -143,11 +129,10 @@ export class InsightsEngine {
           category: 'Activity Overview',
           sentiment: 'neutral',
           action: {
-            chartType: 'pie',
-            filters: {
-              filterStartDate: thirtyDaysAgo,
-              filterEndDate: new Date()
-            }
+            analysisTypeSelect: 'pie',
+            hierarchyFilterInput: groupName,
+            dateRangePicker: [thirtyDaysAgo, new Date()],
+            levelSelect_pie: 'project'
           }
         });
       }
@@ -163,10 +148,8 @@ export class InsightsEngine {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const thirtySevenDaysAgo = new Date();
     thirtySevenDaysAgo.setDate(thirtySevenDaysAgo.getDate() - 37);
-
     const recentProjects = new Set<string>();
     const baselineProjects = new Map<string, number>();
-
     for (const record of taggedRecords) {
       const recordDate = record.date;
       if (!recordDate) continue;
@@ -176,41 +159,31 @@ export class InsightsEngine {
         baselineProjects.set(record.project, (baselineProjects.get(record.project) || 0) + 1);
       }
     }
-
     const lapsedHabitsPayload: InsightPayloadItem[] = [];
     for (const [project, count] of baselineProjects.entries()) {
       if (count >= 2 && !recentProjects.has(project)) {
-        // For each lapsed habit, create a payload item with its own specific action
         lapsedHabitsPayload.push({
           project,
           count,
+          // Create the new, flat payload instead of the old { chartType, filters } object
           action: {
-            chartType: 'time-series',
-            filters: {
-              project: project,
-              filterStartDate: thirtySevenDaysAgo,
-              filterEndDate: new Date()
-            }
+            analysisTypeSelect: 'time-series',
+            projectFilterInput: project,
+            dateRangePicker: [thirtySevenDaysAgo, new Date()]
           }
         });
       }
     }
-
-    if (lapsedHabitsPayload.length === 0) {
-      return null;
-    }
-
-    // Sort the lapsed habits for consistent display
+    if (lapsedHabitsPayload.length === 0) return null;
     lapsedHabitsPayload.sort((a, b) => b.count - a.count);
-
     return {
       displayText: this._formatText(
         `You have **'${lapsedHabitsPayload.length} activities'** that you haven't logged in over a week, but were previously consistent.`
       ),
       category: 'Habit Consistency',
       sentiment: 'warning',
-      payload: lapsedHabitsPayload, // Attach the rich payload
-      action: null // The main card is not clickable
+      payload: lapsedHabitsPayload,
+      action: null
     };
   }
 }

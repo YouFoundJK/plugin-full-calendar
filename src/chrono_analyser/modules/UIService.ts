@@ -4,7 +4,7 @@
  * DOM manipulation away from the controller.
  */
 
-import { App, debounce, Notice } from 'obsidian';
+import { App, debounce } from 'obsidian';
 import flatpickr from 'flatpickr';
 import { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import * as UI from './ui';
@@ -13,7 +13,21 @@ import { TimeRecord } from './types';
 import * as Utils from './utils';
 import FullCalendarPlugin from '../../main';
 import { InsightsConfig } from './ui';
-import { Insight, InsightPayloadItem } from './InsightsEngine'; // Import InsightPayloadItem
+import { Insight, InsightPayloadItem } from './InsightsEngine';
+
+export interface FilterPayload {
+  analysisTypeSelect?: string;
+  hierarchyFilterInput?: string;
+  projectFilterInput?: string;
+  dateRangePicker?: [Date, Date];
+  levelSelect_pie?: string;
+  levelSelect?: string;
+  patternInput?: string;
+  timeSeriesGranularitySelect?: string;
+  timeSeriesTypeSelect?: string;
+  timeSeriesStackingLevelSelect?: string;
+  activityPatternTypeSelect?: string;
+}
 
 /**
  * Manages all DOM interactions, UI state, and event handling for the Chrono Analyser view.
@@ -42,15 +56,38 @@ export class UIService {
   }
 
   private async loadInsightsConfig() {
-    // Read directly from the plugin's settings object.
     this.insightsConfig = this.plugin.settings.chrono_analyser_config || null;
+  }
+
+  public setControlPanelState(payload: FilterPayload) {
+    this.rootEl.querySelector<HTMLInputElement>('#hierarchyFilterInput')!.value = '';
+    this.rootEl.querySelector<HTMLInputElement>('#projectFilterInput')!.value = '';
+    this.rootEl.querySelector<HTMLInputElement>('#patternInput')!.value = '';
+
+    for (const key in payload) {
+      if (key === 'dateRangePicker') {
+        const dates = payload[key];
+        if (dates && this.flatpickrInstance) {
+          this.flatpickrInstance.setDate(dates, false);
+        }
+      } else {
+        const element = this.rootEl.querySelector<HTMLInputElement | HTMLSelectElement>(`#${key}`);
+        if (element) {
+          element.value = payload[key as keyof FilterPayload] as string;
+        }
+      }
+    }
+
+    this.handleAnalysisTypeChange(false);
+    this.handleTimeSeriesTypeVis();
+    this.onFilterChange();
+    this.rootEl.querySelector('.controls')?.scrollIntoView({ behavior: 'smooth' });
   }
 
   public setInsightsLoading(isLoading: boolean) {
     const generateBtn = this.rootEl.querySelector<HTMLButtonElement>('#generateInsightsBtn');
     const resultContainer = this.rootEl.querySelector<HTMLElement>('#insightsResultContainer');
     if (!generateBtn || !resultContainer) return;
-
     if (isLoading) {
       generateBtn.textContent = 'Processing...';
       generateBtn.disabled = true;
@@ -63,12 +100,15 @@ export class UIService {
     }
   }
 
+  /**
+   * Renders the insights in a user-friendly format.
+   * This method is called after insights are generated to display them in the UI.
+   * @param insights - The array of Insight objects to render.
+   */
   public renderInsights(insights: Insight[]) {
     const resultContainer = this.rootEl.querySelector<HTMLElement>('#insightsResultContainer');
     if (!resultContainer) return;
-
-    resultContainer.innerHTML = ''; // Clear loading spinner
-
+    resultContainer.innerHTML = '';
     if (insights.length === 0) {
       resultContainer.innerHTML = `<div class="insights-placeholder">No specific insights found for the current period.</div>`;
       return;
@@ -81,7 +121,6 @@ export class UIService {
       warning: 'alert-triangle'
     };
 
-    // 1. Group insights by their category
     const groupedInsights = insights.reduce(
       (groups, insight) => {
         const key = insight.category;
@@ -95,54 +134,60 @@ export class UIService {
     for (const category in groupedInsights) {
       const groupContainer = resultContainer.createDiv({ cls: 'insight-group' });
       groupContainer.createEl('h3', { cls: 'insight-group-title', text: category });
-
       groupedInsights[category].forEach(insight => {
         const card = groupContainer.createDiv({
           cls: `insight-card sentiment-${insight.sentiment}`
         });
-        const iconEl = card.createDiv({ cls: 'insight-icon' });
-        const iconName = iconMap[insight.sentiment] || 'info';
-        iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-${iconName}"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`; // Simplified icon logic
+        const header = card.createDiv({ cls: 'insight-card-header' });
+        const body = card.createDiv({ cls: 'insight-card-body is-folded' });
 
-        const textEl = card.createDiv({ cls: 'insight-text' });
+        const iconEl = header.createDiv({ cls: 'insight-icon' });
+        const iconName = iconMap[insight.sentiment] || 'info';
+        iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-${iconName}"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+
+        const textEl = header.createDiv({ cls: 'insight-text' });
         textEl.innerHTML = insight.displayText;
 
-        if (insight.action) {
-          card.addClass('is-clickable');
-          card.addEventListener('click', () => this.applyFiltersAndRefresh(insight.action));
+        const graphButton = this.createGraphButton(insight.action);
+        if (graphButton) {
+          header.appendChild(graphButton);
         }
 
-        if (insight.payload && insight.payload.length > 0) {
-          const subItemsContainer = groupContainer.createDiv({
-            cls: 'insight-sub-items-container'
-          });
-          insight.payload.forEach((item: InsightPayloadItem) => {
-            const subItemCard = subItemsContainer.createDiv({
-              cls: 'insight-card is-sub-item is-clickable'
-            });
+        header.addEventListener('click', () => {
+          body.classList.toggle('is-folded');
+          card.classList.toggle('is-unfolded');
+        });
 
-            // --- MODIFICATION: Create two spans for alignment ---
-            subItemCard.createEl('span', {
-              cls: 'insight-sub-item-project',
-              text: item.project
-            });
-            subItemCard.createEl('span', {
+        if (insight.payload && insight.payload.length > 0) {
+          insight.payload.forEach((item: InsightPayloadItem) => {
+            const subItem = body.createDiv({ cls: 'insight-sub-item' });
+            subItem.createEl('span', { cls: 'insight-sub-item-project', text: item.project });
+            subItem.createEl('span', {
               cls: 'insight-sub-item-details',
               text: `(logged ${item.count} times in the month prior)`
             });
-            // --- END MODIFICATION ---
 
-            subItemCard.addEventListener('click', () => {
-              this.applyFiltersAndRefresh(item.action);
-            });
+            const subItemGraphButton = this.createGraphButton(item.action);
+            if (subItemGraphButton) {
+              subItem.appendChild(subItemGraphButton);
+            }
           });
         }
       });
     }
   }
 
-  private _formatText(text: string): string {
-    return text.replace(/\*\*'(.+?)'\*\*/g, '<strong>$1</strong>');
+  private createGraphButton(action: FilterPayload | null): HTMLButtonElement | null {
+    if (!action) return null;
+    const button = document.createElement('button');
+    button.className = 'insight-action-button clickable-icon';
+    button.setAttribute('aria-label', 'View in Chart');
+    button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-bar-chart-horizontal"><path d="M3 3v18h18"/><path d="M7 16h8"/><path d="M7 11h12"/><path d="M7 6h4"/></svg>`;
+    button.addEventListener('click', e => {
+      e.stopPropagation();
+      this.setControlPanelState(action);
+    });
+    return button;
   }
 
   /**
@@ -166,7 +211,6 @@ export class UIService {
     const dates = this.flatpickrInstance?.selectedDates;
     const filterStartDate = dates && dates.length === 2 ? dates[0] : null;
     const filterEndDate = dates && dates.length === 2 ? dates[1] : null;
-
     const filters: AnalysisFilters = {
       hierarchy: hierarchyFilter,
       project: projectFilter,
@@ -175,7 +219,6 @@ export class UIService {
     };
     const newChartType =
       this.rootEl.querySelector<HTMLSelectElement>('#analysisTypeSelect')?.value ?? null;
-
     return { filters, newChartType };
   }
 
@@ -248,11 +291,9 @@ export class UIService {
     this.rootEl
       .querySelector('#configureInsightsBtn')
       ?.addEventListener('click', () => this.onOpenConfig());
-
     this.rootEl
       .querySelector('#generateInsightsBtn')
       ?.addEventListener('click', () => this.onGenerateInsights());
-
     const datePickerEl = this.rootEl.querySelector<HTMLInputElement>('#dateRangePicker');
     if (datePickerEl) {
       this.flatpickrInstance = flatpickr(datePickerEl, {
@@ -263,7 +304,6 @@ export class UIService {
         onChange: this.onFilterChange
       });
     }
-
     this.rootEl.querySelector('#clearDatesBtn')?.addEventListener('click', this.clearDateFilters);
     this.rootEl
       .querySelector('#setTodayBtn')
@@ -329,7 +369,6 @@ export class UIService {
       );
     popupSummaryStatsEl.innerHTML = `<div class="summary-stat"><div class="summary-stat-value">${numSourceFiles}</div><div class="summary-stat-label">Unique Files</div></div><div class="summary-stat"><div class="summary-stat-value">${displayTotalHours.toFixed(2)}</div><div class="summary-stat-label">Total Hours</div></div>`;
     tableBody.innerHTML = '';
-
     recordsList.forEach(record => {
       const row = tableBody.insertRow();
       row.insertCell().textContent = record.project;
@@ -341,7 +380,6 @@ export class UIService {
       dateCell.textContent = record.date ? Utils.getISODate(record.date) : 'Recurring';
       row.insertCell().innerHTML = `<span class="file-path-cell" title="${record.path}">${record.path}</span>`;
     });
-
     detailOverlay.classList.add('visible');
     detailPopup.classList.add('visible');
     this.app.workspace.containerEl.ownerDocument.body.style.overflow = 'hidden';
@@ -359,7 +397,6 @@ export class UIService {
     const getElValue = (id: string) =>
       this.rootEl.querySelector<HTMLInputElement | HTMLSelectElement>(`#${id}`)?.value;
     const state: any = {
-      // lastFolderPath is no longer needed
       analysisTypeSelect: getElValue('analysisTypeSelect'),
       hierarchyFilter: getElValue('hierarchyFilterInput'),
       projectFilter: getElValue('projectFilterInput'),
@@ -466,36 +503,6 @@ export class UIService {
     }
   };
 
-  private applyFiltersAndRefresh(action: Insight['action']) {
-    if (!action) return;
-
-    const { chartType, filters } = action;
-
-    // 1. Set the chart type
-    const analysisTypeSelect = this.rootEl.querySelector<HTMLSelectElement>('#analysisTypeSelect');
-    if (analysisTypeSelect) {
-      analysisTypeSelect.value = chartType;
-    }
-
-    // 2. Clear existing filters for a clean slate
-    this.rootEl.querySelector<HTMLInputElement>('#hierarchyFilterInput')!.value = '';
-    this.rootEl.querySelector<HTMLInputElement>('#projectFilterInput')!.value = '';
-
-    // 3. Apply new filters from the action
-    if (filters.project) {
-      this.rootEl.querySelector<HTMLInputElement>('#projectFilterInput')!.value = filters.project;
-    }
-    if (filters.filterStartDate && filters.filterEndDate && this.flatpickrInstance) {
-      this.flatpickrInstance.setDate([filters.filterStartDate, filters.filterEndDate], false);
-    }
-
-    // 4. Trigger the main analysis loop in the controller
-    this.onFilterChange();
-
-    // Smooth scroll down to the chart for a better user experience
-    this.rootEl.querySelector('.controls')?.scrollIntoView({ behavior: 'smooth' });
-  }
-
   private setPresetDateRange(preset: string) {
     const today = new Date();
     let startDate, endDate;
@@ -544,7 +551,6 @@ export class UIService {
       UI.setupAutocomplete(
         hierarchyWrapper,
         value => {
-          // Set the input value manually on selection before triggering change
           const input = hierarchyWrapper.querySelector('input');
           if (input) input.value = value;
           this.onFilterChange();
@@ -552,7 +558,6 @@ export class UIService {
         getHierarchies
       );
     }
-
     const projectWrapper = this.rootEl
       .querySelector<HTMLInputElement>('#projectFilterInput')
       ?.closest('.autocomplete-wrapper');

@@ -967,73 +967,91 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
 }
 
 .chrono-analyser-view .insight-card {
-    display: flex;
-    align-items: center;
-    gap: var(--size-4-3);
     background-color: var(--background-primary);
-    padding: var(--size-4-3) var(--size-4-4);
     border-radius: var(--radius-m);
     margin-bottom: var(--size-2-2);
     border: 1px solid var(--background-modifier-border);
     border-left-width: 4px;
     font-size: var(--font-ui-medium);
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    transition: all 0.2s ease-in-out;
+}
+.chrono-analyser-view .insight-card.is-unfolded {
+    background-color: var(--background-secondary);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.chrono-analyser-view .insight-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+    padding: var(--size-4-3) var(--size-4-4);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.chrono-analyser-view .insight-card-header:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.chrono-analyser-view .insight-card-body {
+    max-height: 500px; /* Animate to this height when open */
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+    padding: 0 var(--size-4-4) var(--size-4-3) var(--size-4-4);
+}
+.chrono-analyser-view .insight-card-body.is-folded {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top: none;
 }
 
 .chrono-analyser-view .insight-card.sentiment-neutral { border-left-color: var(--background-modifier-border-hover); }
 .chrono-analyser-view .insight-card.sentiment-positive { border-left-color: var(--color-green); }
 .chrono-analyser-view .insight-card.sentiment-warning { border-left-color: var(--color-orange); }
 
-.chrono-analyser-view .insight-card.is-clickable:hover {
-    background-color: var(--background-modifier-hover);
-    border-color: var(--interactive-accent);
-    cursor: pointer;
-}
-
 .chrono-analyser-view .insight-icon { flex-shrink: 0; color: var(--text-muted); }
 .chrono-analyser-view .insight-text { flex-grow: 1; }
 .chrono-analyser-view .insight-card strong { color: var(--text-accent); font-weight: 600; }
 
-/* --- NEW: Styles for the sub-item list --- */
-
-.chrono-analyser-view .insight-sub-items-container {
-    padding-left: var(--size-4-8); /* Indent the sub-items */
-    margin-top: calc(-1 * var(--size-2-2)); /* Pull up slightly to connect with parent card */
-    border-left: 2px solid var(--background-modifier-border);
-    margin-left: var(--size-4-4);
+.chrono-analyser-view .insight-action-button {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: auto; /* Push the button to the far right */
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+.chrono-analyser-view .insight-action-button:hover {
+    color: var(--interactive-accent);
 }
 
-.chrono-analyser-view .insight-card.is-sub-item {
+/* Sub-Item Styles */
+.chrono-analyser-view .insight-sub-item {
     display: flex;
-    /* MODIFICATION: Align items to the start, not space-between */
-    justify-content: flex-start; 
+    justify-content: flex-start;
     align-items: baseline;
     gap: var(--size-4-4);
-    border: 1px solid var(--background-modifier-border-hover);
-    border-left: none;
     padding: var(--size-4-2) var(--size-4-3);
-    font-size: var(--font-ui-small);
-    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    transition: background-color 0.2s ease;
 }
-
-.chrono-analyser-view .insight-card.is-sub-item strong {
-    color: var(--text-normal); /* Tone down the emphasis for sub-items */
+.chrono-analyser-view .insight-sub-item:hover {
+    background-color: var(--background-modifier-hover);
 }
-/* --- NEW RULES for the two spans inside the sub-item card --- */
 
 .chrono-analyser-view .insight-sub-item-project {
     font-weight: 600;
     color: var(--text-normal);
-    /* MODIFICATION: Give the first column a fixed basis and allow it to shrink if needed */
-    flex: 0 1 250px; /* will not grow, can shrink, with a basis of 250px */
+    flex: 0 1 250px;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Add ellipsis for very long project names */
+    text-overflow: ellipsis;
 }
 
 .chrono-analyser-view .insight-sub-item-details {
     color: var(--text-faint);
-    flex-shrink: 0; 
+    flex-shrink: 0;
     white-space: nowrap;
 }
 /* =================================================================
