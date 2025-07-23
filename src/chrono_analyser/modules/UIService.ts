@@ -4,7 +4,7 @@
  * DOM manipulation away from the controller.
  */
 
-import { App, debounce } from 'obsidian';
+import { App, debounce, Notice } from 'obsidian';
 import flatpickr from 'flatpickr';
 import { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import * as UI from './ui';
@@ -13,7 +13,9 @@ import { TimeRecord } from './types';
 import * as Utils from './utils';
 import FullCalendarPlugin from '../../main';
 import { InsightsConfig } from './ui';
-import { Insight, InsightPayloadItem } from './InsightsEngine';
+import { Insight } from './InsightsEngine';
+import { DetailPopup } from './DetailPopup';
+import { InsightsRenderer } from './InsightsRenderer';
 
 export interface FilterPayload {
   analysisTypeSelect?: string;
@@ -30,10 +32,11 @@ export interface FilterPayload {
 }
 
 /**
- * Manages all DOM interactions, UI state, and event handling for the Chrono Analyser view.
+ * Manages the main UI controls and delegates popups and complex rendering.
  */
 export class UIService {
   private flatpickrInstance: FlatpickrInstance | null = null;
+  private detailPopup: DetailPopup;
   private uiStateKey = 'ChronoAnalyzerUIState_v5';
   public insightsConfig: InsightsConfig | null = null;
 
@@ -44,11 +47,10 @@ export class UIService {
     private onFilterChange: () => void,
     private onGenerateInsights: () => void,
     private onOpenConfig: () => void
-  ) {}
+  ) {
+    this.detailPopup = new DetailPopup(this.app, this.rootEl);
+  }
 
-  /**
-   * Initializes all UI components and event listeners.
-   */
   public async initialize(): Promise<void> {
     this.setupEventListeners();
     this.loadFilterState();
@@ -60,13 +62,14 @@ export class UIService {
   }
 
   public setControlPanelState(payload: FilterPayload) {
+    // Clear inputs first
     this.rootEl.querySelector<HTMLInputElement>('#hierarchyFilterInput')!.value = '';
     this.rootEl.querySelector<HTMLInputElement>('#projectFilterInput')!.value = '';
     this.rootEl.querySelector<HTMLInputElement>('#patternInput')!.value = '';
 
     for (const key in payload) {
       if (key === 'dateRangePicker') {
-        const dates = payload[key];
+        const dates = payload[key as 'dateRangePicker'];
         if (dates && this.flatpickrInstance) {
           this.flatpickrInstance.setDate(dates, false);
         }
@@ -88,6 +91,7 @@ export class UIService {
     const generateBtn = this.rootEl.querySelector<HTMLButtonElement>('#generateInsightsBtn');
     const resultContainer = this.rootEl.querySelector<HTMLElement>('#insightsResultContainer');
     if (!generateBtn || !resultContainer) return;
+
     if (isLoading) {
       generateBtn.textContent = 'Processing...';
       generateBtn.disabled = true;
@@ -100,99 +104,21 @@ export class UIService {
     }
   }
 
-  /**
-   * Renders the insights in a user-friendly format.
-   * This method is called after insights are generated to display them in the UI.
-   * @param insights - The array of Insight objects to render.
-   */
   public renderInsights(insights: Insight[]) {
     const resultContainer = this.rootEl.querySelector<HTMLElement>('#insightsResultContainer');
     if (!resultContainer) return;
-    resultContainer.innerHTML = '';
-    if (insights.length === 0) {
-      resultContainer.innerHTML = `<div class="insights-placeholder">No specific insights found for the current period.</div>`;
-      return;
-    }
 
-    // --- NEW: Grouping and Dashboard Rendering Logic ---
-    const iconMap: { [key: string]: string } = {
-      neutral: 'info',
-      positive: 'trending-up',
-      warning: 'alert-triangle'
-    };
-
-    const groupedInsights = insights.reduce(
-      (groups, insight) => {
-        const key = insight.category;
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(insight);
-        return groups;
-      },
-      {} as { [key: string]: Insight[] }
-    );
-
-    for (const category in groupedInsights) {
-      const groupContainer = resultContainer.createDiv({ cls: 'insight-group' });
-      groupContainer.createEl('h3', { cls: 'insight-group-title', text: category });
-      groupedInsights[category].forEach(insight => {
-        const card = groupContainer.createDiv({
-          cls: `insight-card sentiment-${insight.sentiment}`
-        });
-        const header = card.createDiv({ cls: 'insight-card-header' });
-        const body = card.createDiv({ cls: 'insight-card-body is-folded' });
-
-        const iconEl = header.createDiv({ cls: 'insight-icon' });
-        const iconName = iconMap[insight.sentiment] || 'info';
-        iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-${iconName}"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
-
-        const textEl = header.createDiv({ cls: 'insight-text' });
-        textEl.innerHTML = insight.displayText;
-
-        const graphButton = this.createGraphButton(insight.action);
-        if (graphButton) {
-          header.appendChild(graphButton);
-        }
-
-        header.addEventListener('click', () => {
-          body.classList.toggle('is-folded');
-          card.classList.toggle('is-unfolded');
-        });
-
-        if (insight.payload && insight.payload.length > 0) {
-          insight.payload.forEach((item: InsightPayloadItem) => {
-            const subItem = body.createDiv({ cls: 'insight-sub-item' });
-            subItem.createEl('span', { cls: 'insight-sub-item-project', text: item.project });
-            subItem.createEl('span', {
-              cls: 'insight-sub-item-details',
-              text: `(logged ${item.count} times in the month prior)`
-            });
-
-            const subItemGraphButton = this.createGraphButton(item.action);
-            if (subItemGraphButton) {
-              subItem.appendChild(subItemGraphButton);
-            }
-          });
-        }
-      });
-    }
-  }
-
-  private createGraphButton(action: FilterPayload | null): HTMLButtonElement | null {
-    if (!action) return null;
-    const button = document.createElement('button');
-    button.className = 'insight-action-button clickable-icon';
-    button.setAttribute('aria-label', 'View in Chart');
-    button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-bar-chart-horizontal"><path d="M3 3v18h18"/><path d="M7 16h8"/><path d="M7 11h12"/><path d="M7 6h4"/></svg>`;
-    button.addEventListener('click', e => {
-      e.stopPropagation();
-      this.setControlPanelState(action);
+    const renderer = new InsightsRenderer(resultContainer, insights, payload => {
+      this.setControlPanelState(payload);
     });
-    return button;
+    renderer.render();
   }
 
-  /**
-   * Cleans up UI components to prevent memory leaks.
-   */
+  // Delegate to the DetailPopup instance
+  public showDetailPopup = (categoryName: string, recordsList: TimeRecord[], context: any = {}) => {
+    this.detailPopup.show(categoryName, recordsList, context);
+  };
+
   public destroy(): void {
     this.flatpickrInstance?.destroy();
   }
@@ -211,12 +137,14 @@ export class UIService {
     const dates = this.flatpickrInstance?.selectedDates;
     const filterStartDate = dates && dates.length === 2 ? dates[0] : null;
     const filterEndDate = dates && dates.length === 2 ? dates[1] : null;
+
     const filters: AnalysisFilters = {
       hierarchy: hierarchyFilter,
       project: projectFilter,
       filterStartDate,
       filterEndDate
     };
+
     const newChartType =
       this.rootEl.querySelector<HTMLSelectElement>('#analysisTypeSelect')?.value ?? null;
     return { filters, newChartType };
@@ -254,21 +182,12 @@ export class UIService {
     }
   }
 
-  /**
-   * Updates the statistical display cards.
-   * @param totalHours - The total hours to display. Can be a number or placeholder string.
-   * @param fileCount - The number of files to display. Can be a number or placeholder string.
-   */
   public renderStats(totalHours: number | string, fileCount: number | string): void {
     (this.rootEl.querySelector('#totalHours') as HTMLElement).textContent =
       typeof totalHours === 'number' ? totalHours.toFixed(2) : totalHours;
     (this.rootEl.querySelector('#totalFiles') as HTMLElement).textContent = String(fileCount);
   }
 
-  /**
-   * Updates the "Active Analysis" stat card.
-   * @param name - The name of the currently active analysis.
-   */
   public updateActiveAnalysisStat(name: string): void {
     const el = this.rootEl.querySelector('#currentAnalysisTypeStat') as HTMLElement;
     if (el) el.textContent = name;
@@ -284,16 +203,16 @@ export class UIService {
     this.rootEl.querySelector<HTMLElement>('#mainChartContainer')!.style.display = 'none';
   }
 
-  /**
-   * Sets up all event listeners for the view's interactive elements.
-   */
   private setupEventListeners = () => {
+    // Insights Buttons
     this.rootEl
       .querySelector('#configureInsightsBtn')
       ?.addEventListener('click', () => this.onOpenConfig());
     this.rootEl
       .querySelector('#generateInsightsBtn')
       ?.addEventListener('click', () => this.onGenerateInsights());
+
+    // Date Picker
     const datePickerEl = this.rootEl.querySelector<HTMLInputElement>('#dateRangePicker');
     if (datePickerEl) {
       this.flatpickrInstance = flatpickr(datePickerEl, {
@@ -304,6 +223,8 @@ export class UIService {
         onChange: this.onFilterChange
       });
     }
+
+    // Date Preset Buttons
     this.rootEl.querySelector('#clearDatesBtn')?.addEventListener('click', this.clearDateFilters);
     this.rootEl
       .querySelector('#setTodayBtn')
@@ -317,6 +238,8 @@ export class UIService {
     this.rootEl
       .querySelector('#setThisMonthBtn')
       ?.addEventListener('click', () => this.setPresetDateRange('thisMonth'));
+
+    // Analysis Controls
     this.rootEl
       .querySelector('#analysisTypeSelect')
       ?.addEventListener('change', () => this.handleAnalysisTypeChange());
@@ -338,59 +261,6 @@ export class UIService {
     this.rootEl
       .querySelector('#activityPatternTypeSelect')
       ?.addEventListener('change', this.onFilterChange);
-    this.rootEl.querySelector('#popupCloseBtn')?.addEventListener('click', this.hideDetailPopup);
-    this.rootEl.querySelector('#detailOverlay')?.addEventListener('click', this.hideDetailPopup);
-  };
-
-  public showDetailPopup = (categoryName: string, recordsList: TimeRecord[], context: any = {}) => {
-    const popupTitleEl = this.rootEl.querySelector<HTMLElement>('#popupTitle');
-    const popupSummaryStatsEl = this.rootEl.querySelector<HTMLElement>('#popupSummaryStats');
-    const tableBody = this.rootEl.querySelector<HTMLTableSectionElement>('#popupTableBody');
-    const detailOverlay = this.rootEl.querySelector<HTMLElement>('#detailOverlay');
-    const detailPopup = this.rootEl.querySelector<HTMLElement>('#detailPopup');
-    const popupBodyEl = this.rootEl.querySelector<HTMLElement>('.popup-body');
-    if (
-      !popupTitleEl ||
-      !popupSummaryStatsEl ||
-      !tableBody ||
-      !detailOverlay ||
-      !detailPopup ||
-      !popupBodyEl
-    )
-      return;
-    popupBodyEl.scrollTop = 0;
-    popupTitleEl.textContent = `Details for: ${categoryName}`;
-    const numSourceFiles = new Set(recordsList.map(r => r.path)).size;
-    const displayTotalHours =
-      context.value ??
-      recordsList.reduce(
-        (sum: number, r: TimeRecord) => sum + (r._effectiveDurationInPeriod || 0),
-        0
-      );
-    popupSummaryStatsEl.innerHTML = `<div class="summary-stat"><div class="summary-stat-value">${numSourceFiles}</div><div class="summary-stat-label">Unique Files</div></div><div class="summary-stat"><div class="summary-stat-value">${displayTotalHours.toFixed(2)}</div><div class="summary-stat-label">Total Hours</div></div>`;
-    tableBody.innerHTML = '';
-    recordsList.forEach(record => {
-      const row = tableBody.insertRow();
-      row.insertCell().textContent = record.project;
-      row.insertCell().textContent = record.subprojectFull;
-      row.insertCell().textContent = (record._effectiveDurationInPeriod || record.duration).toFixed(
-        2
-      );
-      const dateCell = row.insertCell();
-      dateCell.textContent = record.date ? Utils.getISODate(record.date) : 'Recurring';
-      row.insertCell().innerHTML = `<span class="file-path-cell" title="${record.path}">${record.path}</span>`;
-    });
-    detailOverlay.classList.add('visible');
-    detailPopup.classList.add('visible');
-    this.app.workspace.containerEl.ownerDocument.body.style.overflow = 'hidden';
-  };
-
-  public hideDetailPopup = () => {
-    const detailOverlay = this.rootEl.querySelector<HTMLElement>('#detailOverlay');
-    const detailPopup = this.rootEl.querySelector<HTMLElement>('#detailPopup');
-    if (detailOverlay) detailOverlay.classList.remove('visible');
-    if (detailPopup) detailPopup.classList.remove('visible');
-    this.app.workspace.containerEl.ownerDocument.body.style.overflow = '';
   };
 
   public saveState = (lastFolderPath: string | null) => {
@@ -408,6 +278,7 @@ export class UIService {
       timeSeriesStackingLevel: getElValue('timeSeriesStackingLevelSelect'),
       activityPatternType: getElValue('activityPatternTypeSelect')
     };
+
     if (this.flatpickrInstance && this.flatpickrInstance.selectedDates.length === 2) {
       state.startDate = Utils.getISODate(this.flatpickrInstance.selectedDates[0]);
       state.endDate = Utils.getISODate(this.flatpickrInstance.selectedDates[1]);
@@ -465,9 +336,11 @@ export class UIService {
       'timeSeriesStackingLevelContainer',
       'activityPatternTypeContainer'
     ];
+
     specificControlContainers.forEach(id =>
       this.rootEl.querySelector(`#${id}`)?.classList.add('hidden-controls')
     );
+
     if (analysisType === 'sunburst') {
       this.rootEl
         .querySelector('#sunburstBreakdownLevelContainer')
@@ -487,6 +360,7 @@ export class UIService {
         .querySelector('#activityPatternTypeContainer')
         ?.classList.remove('hidden-controls');
     }
+
     if (triggerAnalysis) {
       this.onFilterChange();
     }
@@ -519,7 +393,7 @@ export class UIService {
       case 'thisWeek':
         startDate = new Date(today);
         const day = today.getDay();
-        startDate.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+        startDate.setDate(today.getDate() - (day === 0 ? 6 : day - 1)); // Assumes Monday is the start of the week
         endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + 6);
         break;
@@ -532,12 +406,6 @@ export class UIService {
     }
     if (this.flatpickrInstance) this.flatpickrInstance.setDate([startDate, endDate], true);
   }
-
-  public clearAllFilters = () => {
-    this.rootEl.querySelector<HTMLInputElement>('#hierarchyFilterInput')!.value = '';
-    this.rootEl.querySelector<HTMLInputElement>('#projectFilterInput')!.value = '';
-    if (this.flatpickrInstance) this.flatpickrInstance.clear(false, false);
-  };
 
   private clearDateFilters = () => {
     if (this.flatpickrInstance) this.flatpickrInstance.clear(true, true);
