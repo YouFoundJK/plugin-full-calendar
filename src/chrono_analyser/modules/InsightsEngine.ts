@@ -3,11 +3,20 @@
 import { TimeRecord } from './types';
 import { InsightsConfig } from './ui';
 
-const BATCH_SIZE = 500; // Process 500 records at a time before yielding
+const BATCH_SIZE = 500;
 
-// The structure for a generated insight
+// This defines the structure for one of our interactive sub-items
+export interface InsightPayloadItem {
+  project: string;
+  count: number;
+  action: Insight['action'];
+}
+
 export interface Insight {
   displayText: string;
+  category: string;
+  sentiment: 'neutral' | 'positive' | 'warning';
+  payload?: InsightPayloadItem[]; // Payload is now an array of interactive items
   action: {
     chartType: 'pie' | 'time-series';
     filters: { [key: string]: any };
@@ -36,10 +45,21 @@ export class InsightsEngine {
 
     // --- Run Calculators ---
     insights.push(...this._calculateGroupDistribution(taggedRecords));
-    insights.push(...this._calculateLapsedHabits(taggedRecords, config));
+    // 1. Call the correctly named function.
+    // 2. Handle the `Insight | null` return type.
+    const lapsedHabitInsight = this._consolidateLapsedHabits(taggedRecords);
+    if (lapsedHabitInsight) {
+      // 3. Push the single object, not spread an array.
+      insights.push(lapsedHabitInsight);
+    }
 
     console.log(`[Chrono] Insight generation complete. Found ${insights.length} insights.`);
     return insights;
+  }
+
+  // Helper to convert our markdown-like bold to HTML
+  private _formatText(text: string): string {
+    return text.replace(/\*\*'(.+?)'\*\*/g, '<strong>$1</strong>');
   }
 
   /**
@@ -54,7 +74,6 @@ export class InsightsEngine {
       const batch = records.slice(i, i + BATCH_SIZE);
       const processedBatch = batch.map(record => this._tagRecord(record, config));
       taggedRecords = taggedRecords.concat(processedBatch);
-      // Yield to the main thread to keep the UI responsive
       await new Promise(resolve => setTimeout(resolve, 0));
     }
     return taggedRecords;
@@ -66,7 +85,6 @@ export class InsightsEngine {
   private _tagRecord(record: TimeRecord, config: InsightsConfig): TimeRecord {
     const tags = new Set<string>();
     const subprojectLower = record.subproject.toLowerCase();
-
     for (const groupName in config.insightGroups) {
       const group = config.insightGroups[groupName];
 
@@ -105,14 +123,10 @@ export class InsightsEngine {
     const distribution = new Map<string, number>();
 
     for (const record of taggedRecords) {
-      // NOTE: This logic is slightly different from the main chart's handling of recurring events.
-      // For insights, we'll consider recurring events without a date as "current".
       const recordDate = record.date || new Date();
       if (recordDate < thirtyDaysAgo) continue;
-
       const tags = (record as any)._semanticTags || [];
       for (const tag of tags) {
-        // Here we're using the base duration, not the effective duration in a filtered period.
         distribution.set(tag, (distribution.get(tag) || 0) + record.duration);
       }
     }
@@ -123,13 +137,14 @@ export class InsightsEngine {
     for (const [groupName, hours] of distribution.entries()) {
       if (hours > 0) {
         insights.push({
-          displayText: `You spent **${hours.toFixed(1)} hours** on activities in your **'${groupName}'** group in the last 30 days.`,
-          // MODIFICATION: Add a concrete action to show a relevant chart.
+          displayText: this._formatText(
+            `You spent **'${hours.toFixed(1)} hours'** on **'${groupName}'** activities.`
+          ),
+          category: 'Activity Overview',
+          sentiment: 'neutral',
           action: {
             chartType: 'pie',
             filters: {
-              // Note: We can't filter by a "group", so we show a general project breakdown
-              // for the relevant period as a starting point for exploration.
               filterStartDate: thirtyDaysAgo,
               filterEndDate: new Date()
             }
@@ -141,10 +156,9 @@ export class InsightsEngine {
   }
 
   /**
-   * A simple calculator to find projects that were done regularly but have been missed recently.
-   * "Lapsed" = not done in the last 7 days but done at least twice in the 30 days prior.
+   * Finds projects that were done regularly but have been missed recently.
    */
-  private _calculateLapsedHabits(taggedRecords: TimeRecord[], config: InsightsConfig): Insight[] {
+  private _consolidateLapsedHabits(taggedRecords: TimeRecord[]): Insight | null {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const thirtySevenDaysAgo = new Date();
@@ -156,7 +170,6 @@ export class InsightsEngine {
     for (const record of taggedRecords) {
       const recordDate = record.date;
       if (!recordDate) continue;
-
       if (recordDate >= sevenDaysAgo) {
         recentProjects.add(record.project);
       } else if (recordDate >= thirtySevenDaysAgo) {
@@ -164,11 +177,13 @@ export class InsightsEngine {
       }
     }
 
-    const lapsedInsights: Insight[] = [];
+    const lapsedHabitsPayload: InsightPayloadItem[] = [];
     for (const [project, count] of baselineProjects.entries()) {
       if (count >= 2 && !recentProjects.has(project)) {
-        lapsedInsights.push({
-          displayText: `It's been over a week since you've logged time for **'${project}'**. You logged it ${count} times in the month prior.`,
+        // For each lapsed habit, create a payload item with its own specific action
+        lapsedHabitsPayload.push({
+          project,
+          count,
           action: {
             chartType: 'time-series',
             filters: {
@@ -180,6 +195,22 @@ export class InsightsEngine {
         });
       }
     }
-    return lapsedInsights;
+
+    if (lapsedHabitsPayload.length === 0) {
+      return null;
+    }
+
+    // Sort the lapsed habits for consistent display
+    lapsedHabitsPayload.sort((a, b) => b.count - a.count);
+
+    return {
+      displayText: this._formatText(
+        `You have **'${lapsedHabitsPayload.length} activities'** that you haven't logged in over a week, but were previously consistent.`
+      ),
+      category: 'Habit Consistency',
+      sentiment: 'warning',
+      payload: lapsedHabitsPayload, // Attach the rich payload
+      action: null // The main card is not clickable
+    };
   }
 }

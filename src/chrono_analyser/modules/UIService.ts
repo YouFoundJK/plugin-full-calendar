@@ -12,8 +12,8 @@ import { AnalysisFilters } from './DataManager';
 import { TimeRecord } from './types';
 import * as Utils from './utils';
 import FullCalendarPlugin from '../../main';
-import { InsightConfigModal, InsightsConfig } from './ui';
-import { Insight } from './InsightsEngine'; // Import the Insight type
+import { InsightsConfig } from './ui';
+import { Insight, InsightPayloadItem } from './InsightsEngine'; // Import InsightPayloadItem
 
 /**
  * Manages all DOM interactions, UI state, and event handling for the Chrono Analyser view.
@@ -74,18 +74,75 @@ export class UIService {
       return;
     }
 
-    insights.forEach(insight => {
-      const card = resultContainer.createDiv({ cls: 'insight-card' });
-      card.innerHTML = insight.displayText;
+    // --- NEW: Grouping and Dashboard Rendering Logic ---
+    const iconMap: { [key: string]: string } = {
+      neutral: 'info',
+      positive: 'trending-up',
+      warning: 'alert-triangle'
+    };
 
-      if (insight.action) {
-        card.addClass('is-clickable');
-        card.setAttribute('aria-label', 'Click to view this insight in the chart');
-        card.addEventListener('click', () => {
-          this.applyFiltersAndRefresh(insight.action);
+    // 1. Group insights by their category
+    const groupedInsights = insights.reduce(
+      (groups, insight) => {
+        const key = insight.category;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(insight);
+        return groups;
+      },
+      {} as { [key: string]: Insight[] }
+    );
+
+    for (const category in groupedInsights) {
+      const groupContainer = resultContainer.createDiv({ cls: 'insight-group' });
+      groupContainer.createEl('h3', { cls: 'insight-group-title', text: category });
+
+      groupedInsights[category].forEach(insight => {
+        const card = groupContainer.createDiv({
+          cls: `insight-card sentiment-${insight.sentiment}`
         });
-      }
-    });
+        const iconEl = card.createDiv({ cls: 'insight-icon' });
+        const iconName = iconMap[insight.sentiment] || 'info';
+        iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-${iconName}"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`; // Simplified icon logic
+
+        const textEl = card.createDiv({ cls: 'insight-text' });
+        textEl.innerHTML = insight.displayText;
+
+        if (insight.action) {
+          card.addClass('is-clickable');
+          card.addEventListener('click', () => this.applyFiltersAndRefresh(insight.action));
+        }
+
+        if (insight.payload && insight.payload.length > 0) {
+          const subItemsContainer = groupContainer.createDiv({
+            cls: 'insight-sub-items-container'
+          });
+          insight.payload.forEach((item: InsightPayloadItem) => {
+            const subItemCard = subItemsContainer.createDiv({
+              cls: 'insight-card is-sub-item is-clickable'
+            });
+
+            // --- MODIFICATION: Create two spans for alignment ---
+            subItemCard.createEl('span', {
+              cls: 'insight-sub-item-project',
+              text: item.project
+            });
+            subItemCard.createEl('span', {
+              cls: 'insight-sub-item-details',
+              text: `(logged ${item.count} times in the month prior)`
+            });
+            // --- END MODIFICATION ---
+
+            subItemCard.addEventListener('click', () => {
+              this.applyFiltersAndRefresh(item.action);
+            });
+          });
+        }
+      });
+    }
+  }
+
+  private _formatText(text: string): string {
+    return text.replace(/\*\*'(.+?)'\*\*/g, '<strong>$1</strong>');
   }
 
   /**
