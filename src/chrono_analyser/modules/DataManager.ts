@@ -76,7 +76,7 @@ export class DataManager {
    * (Currently empty, but kept for future optimizations like sorting indexes).
    */
   public finalize(): void {
-    // No-op for now. Date index has been removed in favor of a more robust filter logic.
+    // No-op for now.
   }
 
   public removeRecord(filePath: string): void {
@@ -108,6 +108,16 @@ export class DataManager {
     Array.from(this.#originalHierarchyCasing.values()).sort();
   public getKnownProjects = (): string[] => Array.from(this.#originalProjectCasing.values()).sort();
   public getTotalRecordCount = (): number => this.#records.size;
+
+  // --- NEW PUBLIC METHOD ---
+  /**
+   * Returns all records currently held by the manager without any filtering.
+   * @returns An array of all TimeRecord objects.
+   */
+  public getAllRecords(): TimeRecord[] {
+    return Array.from(this.#records.values());
+  }
+  // --- END NEW METHOD ---
 
   /**
    * Performs a high-performance, single-pass filter AND aggregation of the data.

@@ -13,6 +13,7 @@ import { TimeRecord } from './types';
 import * as Utils from './utils';
 import FullCalendarPlugin from '../../main';
 import { InsightConfigModal, InsightsConfig } from './ui';
+import { Insight } from './InsightsEngine'; // Import the Insight type
 
 /**
  * Manages all DOM interactions, UI state, and event handling for the Chrono Analyser view.
@@ -20,14 +21,17 @@ import { InsightConfigModal, InsightsConfig } from './ui';
 export class UIService {
   private flatpickrInstance: FlatpickrInstance | null = null;
   private uiStateKey = 'ChronoAnalyzerUIState_v5';
-  private insightsConfig: InsightsConfig | null = null;
 
-  // MODIFIED: Constructor now only needs the plugin instance.
+  // MODIFIED: Make config public for the controller
+  public insightsConfig: InsightsConfig | null = null;
+
   constructor(
     private app: App,
     private rootEl: HTMLElement,
     private plugin: FullCalendarPlugin,
-    private onFilterChange: () => void
+    private onFilterChange: () => void,
+    // NEW: Callback to trigger analysis in the controller
+    private onGenerateInsights: () => void
   ) {}
 
   /**
@@ -40,8 +44,7 @@ export class UIService {
     this.loadInsightsConfig();
   }
 
-  // --- CORRECTED METHODS for Insights Configuration ---
-  private loadInsightsConfig() {
+  private async loadInsightsConfig() {
     // Read directly from the plugin's settings object.
     this.insightsConfig = this.plugin.settings.chrono_analyser_config || null;
   }
@@ -62,7 +65,44 @@ export class UIService {
       this.saveInsightsConfig(newConfig);
     }).open();
   }
-  // --- END CORRECTED METHODS ---
+
+  // --- NEW UI Management Methods ---
+
+  public setInsightsLoading(isLoading: boolean) {
+    const generateBtn = this.rootEl.querySelector<HTMLButtonElement>('#generateInsightsBtn');
+    const resultContainer = this.rootEl.querySelector<HTMLElement>('#insightsResultContainer');
+    if (!generateBtn || !resultContainer) return;
+
+    if (isLoading) {
+      generateBtn.textContent = 'Processing...';
+      generateBtn.disabled = true;
+      generateBtn.classList.add('is-loading');
+      resultContainer.innerHTML = `<div class="loading-container"><div class="loading-spinner"></div><div>Analyzing your data...</div></div>`;
+    } else {
+      generateBtn.textContent = 'Generate Insights';
+      generateBtn.disabled = false;
+      generateBtn.classList.remove('is-loading');
+    }
+  }
+
+  public renderInsights(insights: Insight[]) {
+    const resultContainer = this.rootEl.querySelector<HTMLElement>('#insightsResultContainer');
+    if (!resultContainer) return;
+
+    resultContainer.innerHTML = ''; // Clear loading spinner
+
+    if (insights.length === 0) {
+      resultContainer.innerHTML = `<div class="insights-placeholder">No specific insights found for the current period.</div>`;
+      return;
+    }
+
+    insights.forEach(insight => {
+      const card = resultContainer.createDiv({ cls: 'insight-card' });
+      card.innerHTML = insight.displayText;
+      // In the future, we would add a click listener here based on insight.action
+    });
+  }
+  // --- END NEW UI Management Methods ---
 
   /**
    * Cleans up UI components to prevent memory leaks.
@@ -71,7 +111,6 @@ export class UIService {
     this.flatpickrInstance?.destroy();
   }
 
-  // ... All other methods in UIService are unchanged ...
   public getFilterState(): { filters: AnalysisFilters; newChartType: string | null } {
     const hierarchyFilter =
       this.rootEl
@@ -169,6 +208,12 @@ export class UIService {
       .querySelector('#configureInsightsBtn')
       ?.addEventListener('click', () => this.openInsightsConfigModal());
 
+    // MODIFIED: Wire up the generate button
+    this.rootEl
+      .querySelector('#generateInsightsBtn')
+      ?.addEventListener('click', () => this.onGenerateInsights());
+
+    // ... rest of event listeners are unchanged ...
     const datePickerEl = this.rootEl.querySelector<HTMLInputElement>('#dateRangePicker');
     if (datePickerEl) {
       this.flatpickrInstance = flatpickr(datePickerEl, {
@@ -248,7 +293,6 @@ export class UIService {
 
     recordsList.forEach(record => {
       const row = tableBody.insertRow();
-      // MODIFICATION: Reordered the cell insertion to match the new header order.
       row.insertCell().textContent = record.project;
       row.insertCell().textContent = record.subprojectFull;
       row.insertCell().textContent = (record._effectiveDurationInPeriod || record.duration).toFixed(

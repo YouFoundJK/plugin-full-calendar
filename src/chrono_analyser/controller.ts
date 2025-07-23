@@ -4,7 +4,7 @@
  * from the main plugin's EventCache and triggering UI updates in response.
  */
 
-import { App, Notice, TFolder } from 'obsidian';
+import { App, Notice } from 'obsidian';
 import FullCalendarPlugin from '../main';
 import * as Plotter from './modules/plotter';
 import * as Aggregator from './modules/aggregator';
@@ -12,6 +12,7 @@ import { DataManager } from './modules/DataManager';
 import { UIService } from './modules/UIService';
 import { DataService } from './modules/DataService';
 import { PieData, TimeRecord } from './modules/types';
+import { InsightsEngine } from './modules/InsightsEngine';
 
 interface IChartStrategy {
   analysisName: string;
@@ -27,6 +28,7 @@ export class AnalysisController {
   public uiService: UIService;
   public dataService: DataService;
   public dataManager: DataManager;
+  public insightsEngine: InsightsEngine;
   public rootEl: HTMLElement;
 
   private activeChartType: string | null = null;
@@ -45,8 +47,16 @@ export class AnalysisController {
   ) {
     this.rootEl = rootEl;
     this.dataManager = new DataManager();
-    // CORRECTED: Pass the plugin instance to UIService.
-    this.uiService = new UIService(app, rootEl, plugin, () => this.updateAnalysis());
+    this.insightsEngine = new InsightsEngine();
+
+    this.uiService = new UIService(
+      app,
+      rootEl,
+      plugin,
+      () => this.updateAnalysis(),
+      () => this.handleGenerateInsights()
+    );
+
     this.dataService = new DataService(
       this.plugin.cache,
       this.dataManager,
@@ -55,12 +65,38 @@ export class AnalysisController {
     );
   }
 
+  private async handleGenerateInsights() {
+    const config = this.uiService.insightsConfig;
+    if (!config || Object.keys(config.insightGroups).length === 0) {
+      new Notice('Please configure your Insight Groups first using the ⚙️ icon.', 5000);
+      return;
+    }
+
+    new Notice(
+      `Using insights rules last updated on ${new Date(config.lastUpdated).toLocaleString()}.`
+    );
+
+    this.uiService.setInsightsLoading(true);
+
+    // Use the new public method to get all records safely.
+    const allRecords = this.dataManager.getAllRecords();
+
+    try {
+      const insights = await this.insightsEngine.generateInsights(allRecords, config);
+      this.uiService.renderInsights(insights);
+    } catch (error) {
+      console.error('Error generating insights:', error);
+      new Notice('Failed to generate insights. Check the developer console for errors.');
+    } finally {
+      this.uiService.setInsightsLoading(false);
+    }
+  }
+
   /**
    * Initializes all services. Crucially, it checks if the main plugin's
    * event cache has been populated and triggers it if not.
    */
   public async initialize(): Promise<void> {
-    // MODIFIED: Make UIService initialization async
     await this.uiService.initialize();
 
     if (!this.plugin.cache.initialized) {
