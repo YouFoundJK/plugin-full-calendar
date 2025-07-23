@@ -7,7 +7,7 @@
  */
 
 import { App, Notice, TFolder } from 'obsidian';
-import FullCalendarPlugin from 'src/main';
+import FullCalendarPlugin from '../main';
 import * as Plotter from './modules/plotter';
 import * as Aggregator from './modules/aggregator';
 import { DataManager } from './modules/DataManager';
@@ -48,8 +48,11 @@ export class AnalysisController {
     this.rootEl = rootEl;
     this.dataManager = new DataManager();
     this.uiService = new UIService(app, rootEl, () => this.updateAnalysis());
-    this.dataService = new DataService(this.plugin.cache, this.dataManager, () =>
-      this.handleDataReady()
+    this.dataService = new DataService(
+      this.plugin.cache,
+      this.dataManager,
+      this.plugin.settings,
+      () => this.handleDataReady()
     );
   }
 

@@ -5,26 +5,27 @@
  * into the TimeRecord format used by the ChronoAnalyser.
  */
 
-import { StoredEvent } from 'src/core/EventStore';
+import { StoredEvent } from '../../core/EventStore';
 import { TimeRecord } from './types';
 import * as Utils from './utils';
-import { OFCEvent } from 'src/types';
+import { OFCEvent } from '../../types';
 
 /**
  * Converts a StoredEvent from the main EventCache into a TimeRecord for analysis.
  *
  * @param storedEvent - The event object from the main plugin's cache.
- * @param calendarSourcePath - The path of the calendar this event belongs to. This defines the hierarchy.
+ * @param useCategoryFeature - A boolean flag indicating if the category feature is enabled.
+ * @param calendarSource - The hierarchy source (name or path), used only in legacy mode.
  * @returns A structured TimeRecord object, or null if the event is not valid for analysis.
  */
 export function storedEventToTimeRecord(
   storedEvent: StoredEvent,
-  calendarSourcePath: string
+  useCategoryFeature: boolean,
+  calendarSource: string
 ): TimeRecord | null {
   const { event, location } = storedEvent;
-  const { path } = location || {};
-
-  if (!path) return null;
+  // This path is just a unique identifier for the DataManager, it's okay to have a fallback.
+  const path = location?.path || `remote-event-${storedEvent.id}`;
 
   const startTime = 'startTime' in event ? event.startTime : null;
   const endTime = 'endTime' in event ? event.endTime : null;
@@ -39,23 +40,60 @@ export function storedEventToTimeRecord(
     return null;
   }
 
-  // --- NEW HIERARCHY LOGIC ---
-  // The hierarchy is now simply the path of the calendar source folder.
-  const hierarchy = calendarSourcePath;
-  const filename = path.split('/').pop() || '';
+  // The filename is for display/reference in popups, it's not used for aggregation.
+  const filename = path.split('/').pop() || event.title;
 
-  // --- PROJECT/SUBPROJECT EXTRACTION from the event title ---
-  // We will now use the FULL filename (which is often the event title in FullNoteCalendar)
-  const basename = filename.endsWith('.md') ? filename.slice(0, -3) : filename;
+  // --- CORRECTED HIERARCHY LOGIC ---
+  const { hierarchy, project, subproject } = (() => {
+    // A small helper to avoid repeating the parsing logic.
+    const parseTitleForProject = (title: string) => {
+      const titleParts = title.split(' - ');
+      const parsedProject = titleParts[0]?.trim() || 'Unknown Project';
+      let parsedSubproject =
+        titleParts.length > 1 ? titleParts.slice(1).join(' - ').trim() : 'none';
+      if (parsedSubproject === '') {
+        parsedSubproject = 'none';
+      }
+      return { project: parsedProject, subproject: parsedSubproject };
+    };
 
-  // Regex to handle date prefix, e.g., "2023-11-01 " or "(Every M) "
-  const prefixRegex = /^(?:\d{4}-\d{2}-\d{2}\s+)?(?:\([^)]+\)\s*)?/;
-  const titleWithoutPrefix = basename.replace(prefixRegex, '');
+    if (useCategoryFeature) {
+      // CATEGORY MODE: DERIVE EVERYTHING FROM THE EVENT OBJECT.
+      // Ignore filename, ignore file path.
+      if (!event.category) {
+        // If the feature is on but an event has no category, skip it.
+        // This enforces data quality for this mode.
+        return { hierarchy: null, project: null, subproject: null };
+      }
 
-  const titleParts = titleWithoutPrefix.split(' - ');
-  const project = titleParts[0]?.trim() || 'Unknown Project';
-  let subproject = titleParts.length > 1 ? titleParts.slice(1).join(' - ').trim() : 'none';
-  if (subproject === '') subproject = 'none';
+      const { project, subproject } = parseTitleForProject(event.title);
+
+      return {
+        hierarchy: event.category,
+        project: project,
+        subproject: subproject
+      };
+    } else {
+      // LEGACY MODE: DERIVE FROM FILE/FOLDER STRUCTURE.
+      const basename = filename.endsWith('.md') ? filename.slice(0, -3) : filename;
+      const prefixRegex = /^(?:\d{4}-\d{2}-\d{2}\s+)?(?:\([^)]+\)\s*)?/;
+      const titleToParse = basename.replace(prefixRegex, '');
+
+      const { project, subproject } = parseTitleForProject(titleToParse);
+
+      return {
+        hierarchy: calendarSource,
+        project: project,
+        subproject: subproject
+      };
+    }
+  })();
+
+  // If the IIFE returned null, it means the record should be skipped.
+  if (!hierarchy || !project || !subproject) {
+    return null;
+  }
+  // --- END OF CORRECTED LOGIC ---
 
   let recordDate: Date | null = null;
   if ('date' in event && event.date) {

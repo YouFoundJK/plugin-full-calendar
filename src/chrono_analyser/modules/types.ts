@@ -4,7 +4,7 @@
  */
 
 import Plotly from '../plotly-custom';
-import { OFCEvent } from 'src/types';
+import { OFCEvent } from '../../types';
 
 export interface TimeRecord {
   path: string;
