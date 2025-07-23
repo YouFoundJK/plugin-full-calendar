@@ -162,11 +162,11 @@ export function createDOMStructure(rootEl: HTMLElement): void {
               <table class="detail-table" id="popupDetailTable">
                 <thead>
                   <tr>
-                    <th>File Path</th>
-                    <th>Date</th>
-                    <th>Duration (hrs)</th>
                     <th>Project</th>
                     <th>Sub-project (Full)</th>
+                    <th>Duration (hrs)</th>
+                    <th>Date</th>
+                    <th>File Path</th>
                   </tr>
                 </thead>
                 <tbody id="popupTableBody"></tbody>

@@ -19,7 +19,6 @@ export class UIService {
   private flatpickrInstance: FlatpickrInstance | null = null;
   private uiStateKey = 'ChronoAnalyzerUIState_v5'; // Incremented version
 
-  // CORRECTED CONSTRUCTOR: Removed obsolete parameters
   constructor(
     private app: App,
     private rootEl: HTMLElement,
@@ -143,7 +142,6 @@ export class UIService {
    * Sets up all event listeners for the view's interactive elements.
    */
   private setupEventListeners = () => {
-    // CORRECTED: Removed listeners for non-existent buttons
     const datePickerEl = this.rootEl.querySelector<HTMLInputElement>('#dateRangePicker');
     if (datePickerEl) {
       this.flatpickrInstance = flatpickr(datePickerEl, {
@@ -220,17 +218,20 @@ export class UIService {
       );
     popupSummaryStatsEl.innerHTML = `<div class="summary-stat"><div class="summary-stat-value">${numSourceFiles}</div><div class="summary-stat-label">Unique Files</div></div><div class="summary-stat"><div class="summary-stat-value">${displayTotalHours.toFixed(2)}</div><div class="summary-stat-label">Total Hours</div></div>`;
     tableBody.innerHTML = '';
+
     recordsList.forEach(record => {
       const row = tableBody.insertRow();
-      row.insertCell().innerHTML = `<span class="file-path-cell" title="${record.path}">${record.path}</span>`;
-      const dateCell = row.insertCell();
-      dateCell.textContent = record.date ? Utils.getISODate(record.date) : 'Recurring';
+      // MODIFICATION: Reordered the cell insertion to match the new header order.
+      row.insertCell().textContent = record.project;
+      row.insertCell().textContent = record.subprojectFull;
       row.insertCell().textContent = (record._effectiveDurationInPeriod || record.duration).toFixed(
         2
       );
-      row.insertCell().textContent = record.project;
-      row.insertCell().textContent = record.subprojectFull;
+      const dateCell = row.insertCell();
+      dateCell.textContent = record.date ? Utils.getISODate(record.date) : 'Recurring';
+      row.insertCell().innerHTML = `<span class="file-path-cell" title="${record.path}">${record.path}</span>`;
     });
+
     detailOverlay.classList.add('visible');
     detailPopup.classList.add('visible');
     this.app.workspace.containerEl.ownerDocument.body.style.overflow = 'hidden';
