@@ -40,6 +40,7 @@ import { CalendarSettings, CalendarSettingsRef } from './components/CalendarSett
 import { changelogData } from './changelogData';
 import './changelog.css';
 import { CategorySettingsManager } from './components/CategorySetting';
+import { InsightsConfig } from '../chrono_analyser/modules/ui';
 
 export interface FullCalendarSettings {
   calendarSources: CalendarInfo[];
@@ -55,6 +56,7 @@ export interface FullCalendarSettings {
   displayTimezone: string | null;
   lastSystemTimezone: string | null;
   enableCategoryColoring: boolean;
+  chrono_analyser_config: InsightsConfig | null;
   categorySettings: { name: string; color: string }[];
 }
 
@@ -72,6 +74,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   displayTimezone: null,
   lastSystemTimezone: null,
   enableCategoryColoring: false,
+  chrono_analyser_config: null,
   categorySettings: []
 };
 

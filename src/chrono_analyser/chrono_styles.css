@@ -908,3 +908,52 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
 .chrono-analyser-view .hidden-controls { display: none !important; }
 .chrono-analyser-view .file-input-wrapper .needs-attention { animation: shake 1.5s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes shake { 10%,90%{transform:translate3d(-1px,0,0)}20%,80%{transform:translate3d(2px,0,0)}30%,50%,70%{transform:translate3d(-3px,0,0)}40%,60%{transform:translate3d(3px,0,0)}}
+
+/* =================================================================
+   INSIGHTS PANEL
+   ================================================================= */
+
+.chrono-analyser-view .insights-panel {
+    background: var(--background-secondary-alt);
+    border-radius: var(--radius-l);
+    padding: var(--size-4-4) var(--size-4-6);
+    margin-bottom: var(--size-4-6);
+    border: 1px solid var(--background-modifier-border);
+    position: relative;
+    transition: all 0.3s ease-in-out;
+}
+
+.chrono-analyser-view .insights-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--size-4-3);
+}
+
+.chrono-analyser-view .insights-title {
+    font-size: var(--h4-size);
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.chrono-analyser-view .insights-actions {
+    display: flex;
+    gap: var(--size-4-3);
+    align-items: center;
+}
+
+.chrono-analyser-view .insights-actions .clickable-icon {
+    color: var(--text-muted);
+}
+
+.chrono-analyser-view .insights-body {
+    padding-top: var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.chrono-analyser-view .insights-placeholder {
+    color: var(--text-faint);
+    text-align: center;
+    padding: var(--size-4-4);
+    font-style: italic;
+}

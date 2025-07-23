@@ -1,13 +1,184 @@
+// src/chrono_analyser/modules/ui.ts
+
 /**
  * @file Provides reusable UI components and logic for the Chrono Analyser.
  * This includes custom modals, autocomplete functionality, and other DOM-interactive elements.
  */
 
-import { App, TFolder, SuggestModal } from 'obsidian';
+import { App, TFolder, SuggestModal, Modal, Setting } from 'obsidian';
+import FullCalendarPlugin from '../../main'; // We need the plugin type for saving data
 
-/**
- * A specialized SuggestModal for selecting a folder from the vault.
- */
+// --- NEW DATA STRUCTURE FOR CONFIG ---
+interface InsightRule {
+  hierarchies: string[];
+  projects: string[];
+  subprojectKeywords: string[];
+}
+
+interface InsightGroups {
+  [groupName: string]: {
+    rules: InsightRule;
+  };
+}
+
+export interface InsightsConfig {
+  version: number;
+  lastUpdated: string;
+  insightGroups: InsightGroups;
+}
+// --- END NEW DATA STRUCTURE ---
+
+// --- NEW INSIGHTS WIZARD MODAL ---
+export class InsightConfigModal extends Modal {
+  private config: InsightsConfig;
+  private onSave: (newConfig: InsightsConfig) => void;
+
+  constructor(
+    app: App,
+    private plugin: FullCalendarPlugin,
+    existingConfig: InsightsConfig | null,
+    onSaveCallback: (newConfig: InsightsConfig) => void
+  ) {
+    super(app);
+    this.onSave = onSaveCallback;
+
+    // Initialize with default structure if no config exists
+    this.config = existingConfig || {
+      version: 1,
+      lastUpdated: new Date().toISOString(),
+      insightGroups: {
+        'Sample Work Group': {
+          rules: {
+            hierarchies: ['Work'],
+            projects: ['Project A'],
+            subprojectKeywords: ['meeting']
+          }
+        },
+        'Sample Personal Group': {
+          rules: {
+            hierarchies: ['Personal'],
+            projects: ['Gym'],
+            subprojectKeywords: ['hobby', 'workout']
+          }
+        }
+      }
+    };
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass('chrono-analyser-modal');
+    contentEl.createEl('h2', { text: 'Configure Insight Groups' });
+    contentEl.createEl('p', {
+      text: 'Create groups to categorize your activities. The engine will use these rules to generate personalized insights. Changes are saved only when you click the "Save" button.'
+    });
+
+    this.renderGroups(contentEl.createDiv());
+
+    new Setting(contentEl)
+      .addButton(btn =>
+        btn
+          .setButtonText('Save Configuration')
+          .setCta()
+          .onClick(() => {
+            this.config.lastUpdated = new Date().toISOString();
+            this.onSave(this.config);
+            this.close();
+          })
+      )
+      .addButton(btn => btn.setButtonText('Cancel').onClick(() => this.close()));
+  }
+
+  private renderGroups(container: HTMLElement) {
+    container.empty();
+
+    for (const groupName in this.config.insightGroups) {
+      const details = this.contentEl.createEl('details');
+      details.addClass('log-entry');
+      details.open = true;
+
+      const summary = details.createEl('summary');
+      new Setting(summary).setName(groupName).addExtraButton(btn => {
+        btn
+          .setIcon('trash')
+          .setTooltip('Delete this group')
+          .onClick(() => {
+            delete this.config.insightGroups[groupName];
+            this.renderGroups(container); // Re-render the list
+          });
+      });
+
+      this.renderRuleInputs(details, this.config.insightGroups[groupName].rules);
+    }
+
+    new Setting(container).addButton(btn =>
+      btn.setButtonText('Add New Insight Group').onClick(() => {
+        const newGroupName = `New Group ${Object.keys(this.config.insightGroups).length + 1}`;
+        this.config.insightGroups[newGroupName] = {
+          rules: { hierarchies: [], projects: [], subprojectKeywords: [] }
+        };
+        this.renderGroups(container);
+      })
+    );
+  }
+
+  private renderRuleInputs(container: HTMLElement, rules: InsightRule) {
+    new Setting(container)
+      .setName('Matching Hierarchies')
+      .setDesc('Add hierarchy names that belong to this group.')
+      .addTextArea(text =>
+        text
+          .setValue(rules.hierarchies.join('\n'))
+          .setPlaceholder('Work\nPersonal/Clients...')
+          .onChange(value => {
+            rules.hierarchies = value
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+          })
+      );
+
+    new Setting(container)
+      .setName('Matching Projects')
+      .setDesc('Add project names that belong to this group.')
+      .addTextArea(text =>
+        text
+          .setValue(rules.projects.join('\n'))
+          .setPlaceholder('Project Titan\nGym...')
+          .onChange(value => {
+            rules.projects = value
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+          })
+      );
+
+    new Setting(container)
+      .setName('Matching Sub-project Keywords')
+      .setDesc('Add keywords that, if found in a sub-project, will match this group.')
+      .addTextArea(text =>
+        text
+          .setValue(rules.subprojectKeywords.join('\n'))
+          .setPlaceholder('meeting\nresearch\nworkout...')
+          .onChange(value => {
+            rules.subprojectKeywords = value
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+          })
+      );
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+// --- END NEW MODAL ---
+
+// ... (FolderSuggestModal and setupAutocomplete are unchanged) ...
+
 export class FolderSuggestModal extends SuggestModal<TFolder> {
   constructor(
     app: App,
@@ -40,16 +211,6 @@ function updateActiveSuggestion(suggestions: HTMLElement[], index: number) {
   suggestions.forEach((suggestion, idx) => suggestion.classList.toggle('active', idx === index));
 }
 
-/**
- * Sets up an autocomplete suggestion box for a text input field.
- * It handles focus, input, and keyboard navigation for the suggestions.
- *
- * @param rootEl - The root HTML element containing the input and suggestion container.
- * @param inputId - The ID of the input element.
- * @param suggestionsId - The ID of the container element for suggestions.
- * @param getDataFunc - A function that returns an array of strings to be used as suggestions.
- * @param onSelectCallback - A callback function to execute when a suggestion is selected or the input is finalized.
- */
 export function setupAutocomplete(
   rootEl: HTMLElement,
   inputId: string,

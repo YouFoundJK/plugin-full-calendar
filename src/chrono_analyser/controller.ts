@@ -1,5 +1,3 @@
-// src/chrono_analyser/controller.ts
-
 /**
  * @file The main orchestrator for the Chrono Analyser.
  * This class connects the DataService and UIService, managing the flow of data
@@ -47,7 +45,8 @@ export class AnalysisController {
   ) {
     this.rootEl = rootEl;
     this.dataManager = new DataManager();
-    this.uiService = new UIService(app, rootEl, () => this.updateAnalysis());
+    // CORRECTED: Pass the plugin instance to UIService.
+    this.uiService = new UIService(app, rootEl, plugin, () => this.updateAnalysis());
     this.dataService = new DataService(
       this.plugin.cache,
       this.dataManager,
@@ -61,21 +60,14 @@ export class AnalysisController {
    * event cache has been populated and triggers it if not.
    */
   public async initialize(): Promise<void> {
-    this.uiService.initialize();
+    // MODIFIED: Make UIService initialization async
+    await this.uiService.initialize();
 
-    // --- THIS IS THE KEY FIX ---
-    // Check if the main EventCache has been populated.
     if (!this.plugin.cache.initialized) {
-      // If not, it means this view is loading before the main calendar view.
-      // We must take responsibility for populating the cache.
       new Notice('Chrono Analyser: Initializing event cache...', 2000);
       await this.plugin.cache.populate();
     }
-    // --- END OF FIX ---
 
-    // Now that we're sure the cache is either populated or will be soon,
-    // we can initialize our data service, which subscribes to it and
-    // performs an initial data pull.
     this.dataService.initialize();
   }
 
@@ -164,7 +156,7 @@ export class AnalysisController {
       this.uiService.renderStats('-', '-');
       this.uiService.updateActiveAnalysisStat('N/A');
       Plotter.renderChartMessage(this.rootEl, 'No data matches the current filters.');
-      this.isChartRendered = false; // The chart was purged
+      this.isChartRendered = false;
       return;
     }
 
@@ -189,12 +181,12 @@ export class AnalysisController {
 
     strategies.set('pie', {
       analysisName: 'Category Breakdown',
-      render(
+      render: (
         controller: AnalysisController,
         useReact: boolean,
         filteredRecords: TimeRecord[],
         isNewChartType: boolean
-      ) {
+      ) => {
         const pieFilters = controller.uiService.getChartSpecificFilter('pie');
         const { aggregation, recordsByCategory, error } = controller.dataManager.getAnalyzedData(
           { ...controller.uiService.getFilterState().filters, pattern: pieFilters.pattern },
@@ -217,12 +209,12 @@ export class AnalysisController {
 
     strategies.set('sunburst', {
       analysisName: 'Hierarchical Breakdown',
-      render(
+      render: (
         controller: AnalysisController,
         useReact: boolean,
         filteredRecords: TimeRecord[],
         isNewChartType: boolean
-      ) {
+      ) => {
         const sunburstFilters = controller.uiService.getChartSpecificFilter('sunburst');
         const sunburstData = Aggregator.aggregateForSunburst(
           filteredRecords,
@@ -240,12 +232,12 @@ export class AnalysisController {
 
     strategies.set('time-series', {
       analysisName: 'Time-Series Trend',
-      render(
+      render: (
         controller: AnalysisController,
         useReact: boolean,
         filteredRecords: TimeRecord[],
         isNewChartType: boolean
-      ) {
+      ) => {
         const { filters } = controller.uiService.getFilterState();
         const filterDates = {
           filterStartDate: filters.filterStartDate ?? null,
@@ -263,12 +255,12 @@ export class AnalysisController {
 
     strategies.set('activity', {
       analysisName: 'Activity Patterns',
-      render(
+      render: (
         controller: AnalysisController,
         useReact: boolean,
         filteredRecords: TimeRecord[],
         isNewChartType: boolean
-      ) {
+      ) => {
         const { filters } = controller.uiService.getFilterState();
         const filterDates = {
           filterStartDate: filters.filterStartDate ?? null,

@@ -4,25 +4,30 @@
  * DOM manipulation away from the controller.
  */
 
-import { App, debounce, TFolder } from 'obsidian';
+import { App, debounce, Notice } from 'obsidian';
 import flatpickr from 'flatpickr';
 import { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import * as UI from './ui';
 import { AnalysisFilters } from './DataManager';
 import { TimeRecord } from './types';
 import * as Utils from './utils';
+import FullCalendarPlugin from '../../main';
+import { InsightConfigModal, InsightsConfig } from './ui';
 
 /**
  * Manages all DOM interactions, UI state, and event handling for the Chrono Analyser view.
  */
 export class UIService {
   private flatpickrInstance: FlatpickrInstance | null = null;
-  private uiStateKey = 'ChronoAnalyzerUIState_v5'; // Incremented version
+  private uiStateKey = 'ChronoAnalyzerUIState_v5';
+  private insightsConfig: InsightsConfig | null = null;
 
+  // MODIFIED: Constructor now only needs the plugin instance.
   constructor(
     private app: App,
     private rootEl: HTMLElement,
-    private onFilterChange: () => void // Callback to trigger analysis
+    private plugin: FullCalendarPlugin,
+    private onFilterChange: () => void
   ) {}
 
   /**
@@ -31,7 +36,33 @@ export class UIService {
   public initialize(): void {
     this.setupEventListeners();
     this.loadFilterState();
+    // MODIFIED: Load directly from settings. No await needed for this part.
+    this.loadInsightsConfig();
   }
+
+  // --- CORRECTED METHODS for Insights Configuration ---
+  private loadInsightsConfig() {
+    // Read directly from the plugin's settings object.
+    this.insightsConfig = this.plugin.settings.chrono_analyser_config || null;
+  }
+
+  private async saveInsightsConfig(newConfig: InsightsConfig) {
+    // 1. Update the settings object in memory.
+    this.plugin.settings.chrono_analyser_config = newConfig;
+    this.insightsConfig = newConfig;
+
+    // 2. Call the plugin's save method to persist the entire settings object.
+    await this.plugin.saveSettings();
+
+    new Notice('Insights configuration saved!');
+  }
+
+  private openInsightsConfigModal() {
+    new InsightConfigModal(this.app, this.plugin, this.insightsConfig, newConfig => {
+      this.saveInsightsConfig(newConfig);
+    }).open();
+  }
+  // --- END CORRECTED METHODS ---
 
   /**
    * Cleans up UI components to prevent memory leaks.
@@ -40,10 +71,7 @@ export class UIService {
     this.flatpickrInstance?.destroy();
   }
 
-  /**
-   * Reads the current state of all filter controls in the UI.
-   * @returns An object containing a clean AnalysisFilters object and the selected chart type.
-   */
+  // ... All other methods in UIService are unchanged ...
   public getFilterState(): { filters: AnalysisFilters; newChartType: string | null } {
     const hierarchyFilter =
       this.rootEl
@@ -71,11 +99,6 @@ export class UIService {
     return { filters, newChartType };
   }
 
-  /**
-   * Gets specific filter values required by certain chart types.
-   * @param type - The chart type being rendered.
-   * @returns A record of chart-specific filter values.
-   */
   public getChartSpecificFilter(type: string | null): Record<string, any> {
     switch (type) {
       case 'pie':
@@ -142,6 +165,10 @@ export class UIService {
    * Sets up all event listeners for the view's interactive elements.
    */
   private setupEventListeners = () => {
+    this.rootEl
+      .querySelector('#configureInsightsBtn')
+      ?.addEventListener('click', () => this.openInsightsConfigModal());
+
     const datePickerEl = this.rootEl.querySelector<HTMLInputElement>('#dateRangePicker');
     if (datePickerEl) {
       this.flatpickrInstance = flatpickr(datePickerEl, {
