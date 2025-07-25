@@ -59,24 +59,27 @@ export class DataManager {
   }
 
   public addRecord(record: TimeRecord): void {
-    if (this.#records.has(record.path)) {
-      this.removeRecord(record.path);
+    // --- CHANGE 'record.path' to 'record._id' ---
+    if (this.#records.has(record._id)) {
+      this.removeRecord(record._id);
     }
-    this.#records.set(record.path, record);
+    this.#records.set(record._id, record);
 
     const hierarchyKey = record.hierarchy.toLowerCase();
     if (!this.#hierarchyIndex.has(hierarchyKey)) {
       this.#hierarchyIndex.set(hierarchyKey, new Set());
       this.#originalHierarchyCasing.set(hierarchyKey, record.hierarchy);
     }
-    this.#hierarchyIndex.get(hierarchyKey)!.add(record.path);
+    // --- CHANGE 'record.path' to 'record._id' ---
+    this.#hierarchyIndex.get(hierarchyKey)!.add(record._id);
 
     const projectKey = record.project.toLowerCase();
     if (!this.#projectIndex.has(projectKey)) {
       this.#projectIndex.set(projectKey, new Set());
       this.#originalProjectCasing.set(projectKey, record.project);
     }
-    this.#projectIndex.get(projectKey)!.add(record.path);
+    // --- CHANGE 'record.path' to 'record._id' ---
+    this.#projectIndex.get(projectKey)!.add(record._id);
   }
 
   /**
@@ -87,15 +90,18 @@ export class DataManager {
     // No-op for now.
   }
 
-  public removeRecord(filePath: string): void {
-    const record = this.#records.get(filePath);
+  public removeRecord(recordId: string): void {
+    // <-- CHANGE parameter name for clarity
+    // --- CHANGE 'filePath' to 'recordId' ---
+    const record = this.#records.get(recordId);
     if (!record) return;
 
     const hierarchyKey = record.hierarchy.toLowerCase();
     const projectKey = record.project.toLowerCase();
     const hierarchyPaths = this.#hierarchyIndex.get(hierarchyKey);
     if (hierarchyPaths) {
-      hierarchyPaths.delete(filePath);
+      // --- CHANGE 'filePath' to 'recordId' ---
+      hierarchyPaths.delete(recordId);
       if (hierarchyPaths.size === 0) {
         this.#hierarchyIndex.delete(hierarchyKey);
         this.#originalHierarchyCasing.delete(hierarchyKey);
@@ -103,13 +109,15 @@ export class DataManager {
     }
     const projectPaths = this.#projectIndex.get(projectKey);
     if (projectPaths) {
-      projectPaths.delete(filePath);
+      // --- CHANGE 'filePath' to 'recordId' ---
+      projectPaths.delete(recordId);
       if (projectPaths.size === 0) {
         this.#projectIndex.delete(projectKey);
         this.#originalProjectCasing.delete(projectKey);
       }
     }
-    this.#records.delete(filePath);
+    // --- CHANGE 'filePath' to 'recordId' ---
+    this.#records.delete(recordId);
   }
 
   public getKnownHierarchies = (): string[] =>
