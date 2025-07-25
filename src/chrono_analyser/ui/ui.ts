@@ -7,11 +7,14 @@ interface InsightRule {
   hierarchies: string[];
   projects: string[];
   subprojectKeywords: string[];
-  mutedSubprojectKeywords: string[]; // Correct property name
-  mutedProjects: string[]; // Correct property name
+  mutedSubprojectKeywords: string[];
+  mutedProjects: string[];
 }
 interface InsightGroups {
-  [groupName: string]: { rules: InsightRule };
+  [groupName: string]: {
+    rules: InsightRule;
+    persona: 'productivity' | 'wellness' | 'none'; // <-- ADD THIS LINE
+  };
 }
 export interface InsightsConfig {
   version: number;
@@ -163,6 +166,7 @@ export class InsightConfigModal extends Modal {
       lastUpdated: new Date().toISOString(),
       insightGroups: {
         Work: {
+          persona: 'productivity', // <-- ADD DEFAULT PERSONA
           rules: {
             hierarchies: ['Work'],
             projects: [],
@@ -172,6 +176,7 @@ export class InsightConfigModal extends Modal {
           }
         },
         Personal: {
+          persona: 'wellness', // <-- ADD DEFAULT PERSONA
           rules: {
             hierarchies: ['Personal'],
             projects: [],
@@ -183,33 +188,31 @@ export class InsightConfigModal extends Modal {
       }
     };
 
-    // --- START OF THE NEW MIGRATION LOGIC ---
+    // --- MIGRATION LOGIC: add persona if missing ---
     let loadedConfig = existingConfig || defaultConfig;
-
-    // Perform migration on the loaded config
     if (loadedConfig && loadedConfig.insightGroups) {
       Object.values(loadedConfig.insightGroups).forEach(group => {
-        if (group && group.rules) {
-          // Ensure the new fields exist
+        if (group) {
+          if ((group as any).persona === undefined) {
+            (group as any).persona = 'productivity';
+          }
+          // Existing migration for muted fields
           if (group.rules.mutedProjects === undefined) {
             group.rules.mutedProjects = [];
           }
           if (group.rules.mutedSubprojectKeywords === undefined) {
-            // Check if there's an old field to migrate from
             if ((group.rules as any).subprojectKeywords_exclude) {
               group.rules.mutedSubprojectKeywords = (group.rules as any).subprojectKeywords_exclude;
             } else {
               group.rules.mutedSubprojectKeywords = [];
             }
           }
-          // Delete the old, incorrect field if it exists
           delete (group.rules as any).subprojectKeywords_exclude;
         }
       });
     }
-
     this.config = loadedConfig;
-    // --- END OF THE NEW MIGRATION LOGIC ---
+    // --- END MIGRATION LOGIC ---
   }
 
   onOpen() {
@@ -255,9 +258,8 @@ export class InsightConfigModal extends Modal {
     const groupsEl = container.createDiv('insight-groups-container');
     for (const groupName in this.config.insightGroups) {
       const groupData = this.config.insightGroups[groupName];
-      // Defensive check to prevent crash on corrupt data
       if (groupData && groupData.rules) {
-        this.renderGroupSetting(groupsEl, groupName, groupData.rules);
+        this.renderGroupSetting(groupsEl, groupName, groupData); // Pass groupData (with persona)
       } else {
         // Clean up corrupt group
         console.warn(`[Chrono Analyser] Found and removed corrupt insight group: "${groupName}"`);
@@ -267,27 +269,29 @@ export class InsightConfigModal extends Modal {
     new Setting(container).addButton(btn =>
       btn.setButtonText('Add New Insight Group').onClick(() => {
         const newGroupName = `New Group ${Object.keys(this.config.insightGroups).length + 1}`;
-        // --- FIX 3: Correct the creation of new groups ---
         this.config.insightGroups[newGroupName] = {
+          persona: 'productivity', // <-- ADD persona to new groups
           rules: {
             hierarchies: [],
             projects: [],
             subprojectKeywords: [],
-            mutedSubprojectKeywords: [], // ENSURE THIS IS THE NAME USED
-            mutedProjects: [] // ENSURE THIS IS THE NAME USED
+            mutedSubprojectKeywords: [],
+            mutedProjects: []
           }
         };
-        this.renderGroupSetting(
-          groupsEl,
-          newGroupName,
-          this.config.insightGroups[newGroupName].rules
-        );
+        this.renderGroupSetting(groupsEl, newGroupName, this.config.insightGroups[newGroupName]);
       })
     );
   }
 
-  private renderGroupSetting(container: HTMLElement, groupName: string, rules: InsightRule) {
+  // --- Update signature to accept groupData (with persona) ---
+  private renderGroupSetting(
+    container: HTMLElement,
+    groupName: string,
+    groupData: { rules: InsightRule; persona: 'productivity' | 'wellness' | 'none' }
+  ) {
     let currentGroupName = groupName;
+    const { rules, persona } = groupData;
     const isExpanded = this.expandedGroupName === currentGroupName;
 
     const groupContainer = container.createDiv({ cls: 'insight-group-setting' });
@@ -334,33 +338,41 @@ export class InsightConfigModal extends Modal {
           });
       });
 
-    // --- NEW, SMARTER EVENT LISTENER ---
     groupContainer.addEventListener('click', evt => {
       const target = evt.target as HTMLElement;
-
-      // If the group is collapsed, any click should expand it.
       if (!isExpanded) {
         this.expandedGroupName = currentGroupName;
         this.renderGroups(container.parentElement!);
         return;
       }
-
-      // If the group is expanded, only a click on the "header" should collapse it.
-      // Our header is the `nameSetting.settingEl`.
       const clickedOnHeader = nameSetting.settingEl.contains(target);
       const clickedOnInteractive = target.closest('input, textarea, button, .tag-remove');
-
       if (clickedOnHeader && !clickedOnInteractive) {
-        this.expandedGroupName = null; // Collapse
+        this.expandedGroupName = null;
         this.renderGroups(container.parentElement!);
       }
-      // Otherwise, if expanded, do nothing. This prevents collapsing when clicking on content.
     });
 
     // Foldable content container
     const foldableContent = groupContainer.createDiv('foldable-content');
 
-    // All settings inside foldableContent
+    // --- ADD Persona Dropdown ---
+    new Setting(foldableContent)
+      .setName('Analyze as Persona')
+      .setDesc('Choose the analytical model to apply to this group.')
+      .setDisabled(!isExpanded)
+      .addDropdown(dd => {
+        dd.addOption('productivity', '🎯 Productivity')
+          .addOption('wellness', '❤️ Wellness & Routine')
+          .addOption('none', '⚪ (Ignore in Dashboard)')
+          .setValue(persona || 'productivity')
+          .onChange(value => {
+            groupData.persona = value as any;
+            this.checkForUnsavedChanges();
+          });
+      });
+
+    // --- The rest of the settings ---
     this.createTagInput(
       foldableContent,
       'Matching Hierarchies',
@@ -379,13 +391,12 @@ export class InsightConfigModal extends Modal {
       this.knownProjects,
       () => this.checkForUnsavedChanges()
     );
-    // --- FIX 4: Make sure `renderGroupSetting` is accessing the correct property ---
     this.createTagInput(
       foldableContent,
       'Muted Projects',
       'Mute specific projects (case-sensitive, exact match) to exclude them from Habit Consistency checks.',
       'Add muted project...',
-      rules.mutedProjects || [], // THIS MUST BE `mutedProjects`
+      rules.mutedProjects || [],
       this.knownProjects,
       () => this.checkForUnsavedChanges()
     );
@@ -414,11 +425,11 @@ export class InsightConfigModal extends Modal {
       )
       .addTextArea(text => {
         text
-          .setValue((rules.mutedSubprojectKeywords || []).join('\n')) // THIS MUST BE `mutedSubprojectKeywords`
+          .setValue((rules.mutedSubprojectKeywords || []).join('\n'))
           .setPlaceholder('e.g., completed\narchive\nold')
           .setDisabled(!isExpanded)
           .onChange(value => {
-            rules.mutedSubprojectKeywords = value // THIS MUST BE `mutedSubprojectKeywords`
+            rules.mutedSubprojectKeywords = value
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
