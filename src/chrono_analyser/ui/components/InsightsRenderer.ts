@@ -114,7 +114,17 @@ export class InsightsRenderer {
   }
 
   private renderNestedItem(parentEl: HTMLElement, item: InsightPayloadItem): void {
+    // --- Handle separator ---
+    if (item.isSeparator) {
+      const separatorEl = parentEl.createDiv({ cls: 'insight-nested-item-separator' });
+      separatorEl.setText(item.project);
+      return;
+    }
+
     const nestedItemEl = parentEl.createDiv({ cls: 'insight-nested-item' });
+
+    // --- Deprioritized styling ---
+    if (item.isDeprioritized) nestedItemEl.addClass('is-deprioritized');
 
     // Project column
     nestedItemEl.createEl('span', { cls: 'insight-nested-item-project', text: item.project });

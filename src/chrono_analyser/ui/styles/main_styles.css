@@ -1273,3 +1273,29 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     transform: translateX(3px);
     color: var(--text-muted);
 }
+
+/* =================================================================
+   DEPRIORITIZED NESTED ITEMS & SEPARATORS
+   ================================================================= */
+
+.chrono-analyser-view .insight-nested-item.is-deprioritized {
+    opacity: 0.65;
+    font-style: italic;
+}
+
+.chrono-analyser-view .insight-nested-item.is-deprioritized:hover {
+    opacity: 1;
+    font-style: normal;
+}
+
+.chrono-analyser-view .insight-nested-item-separator {
+    font-size: var(--font-ui-small);
+    font-weight: 600;
+    color: var(--text-faint);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-top: var(--size-4-3);
+    margin: var(--size-2-2) var(--size-4-3) var(--size-2-2) var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+}

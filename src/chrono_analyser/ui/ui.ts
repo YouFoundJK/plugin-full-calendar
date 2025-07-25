@@ -311,16 +311,16 @@ export class InsightConfigModal extends Modal {
           });
       });
 
-    // --- NEW: Exclusion keywords textarea ---
+    // --- REPLACED: Exclusion keywords textarea is now Deprioritization ---
     new Setting(groupContainer)
-      .setName('Exclusion Keywords for Sub-project')
+      .setName('Deprioritization Keywords for Sub-project')
       .setDesc(
-        'If a sub-project contains any of these (case-insensitive) keywords, the record will NOT be added to this group, even if other rules match.'
+        "If a sub-project contains any of these (case-insensitive) keywords, its time won't count towards the group's main total. The entry will appear at the bottom of the insight breakdown, marked as deprioritized."
       )
       .addTextArea(text => {
         text
           .setValue((rules.subprojectKeywords_exclude || []).join('\n'))
-          .setPlaceholder('eg., lunch\nbreak\nadmin')
+          .setPlaceholder('e.g., lunch\nbreak\nadmin')
           .onChange(value => {
             rules.subprojectKeywords_exclude = value
               .split('\n')
