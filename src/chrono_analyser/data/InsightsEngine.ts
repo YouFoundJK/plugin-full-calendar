@@ -6,11 +6,11 @@ import { FilterPayload } from '../ui/UIService';
 
 const BATCH_SIZE = 500;
 
-// This defines the structure for one of our interactive sub-items
 export interface InsightPayloadItem {
   project: string;
-  count: number;
+  details: string;
   action: FilterPayload | null;
+  subItems?: InsightPayloadItem[]; // NEW: For nested breakdowns
 }
 
 export interface Insight {
@@ -24,13 +24,6 @@ export interface Insight {
 export class InsightsEngine {
   constructor() {}
 
-  /**
-   * The main entry point for generating insights.
-   * Processes all records asynchronously in chunks to avoid blocking the UI.
-   * @param allRecords - The complete list of TimeRecords from the DataManager.
-   * @param config - The user's defined Insight Group configuration.
-   * @returns A promise that resolves to an array of Insight objects.
-   */
   public async generateInsights(
     allRecords: TimeRecord[],
     config: InsightsConfig
@@ -39,25 +32,29 @@ export class InsightsEngine {
     const insights: Insight[] = [];
 
     // --- Run Calculators ---
-    insights.push(...this._calculateGroupDistribution(taggedRecords));
-    // 1. Call the correctly named function.
-    // 2. Handle the `Insight | null` return type.
+
+    const hierarchyExtremesInsight = this._createHierarchyExtremesInsight(allRecords);
+    if (hierarchyExtremesInsight) {
+      insights.push(hierarchyExtremesInsight);
+    }
+
+    const groupDistributionInsight = this._calculateGroupDistribution(taggedRecords);
+    if (groupDistributionInsight) {
+      insights.push(groupDistributionInsight);
+    }
+
     const lapsedHabitInsight = this._consolidateLapsedHabits(taggedRecords);
     if (lapsedHabitInsight) {
-      // 3. Push the single object, not spread an array.
       insights.push(lapsedHabitInsight);
     }
+
     return insights;
   }
 
-  // Helper to convert our markdown-like bold to HTML
   private _formatText(text: string): string {
     return text.replace(/\*\*'(.+?)'\*\*/g, '<strong>$1</strong>');
   }
 
-  /**
-   * Processes records in non-blocking chunks, applying semantic tags based on user rules.
-   */
   private async _tagRecordsInBatches(
     records: TimeRecord[],
     config: InsightsConfig
@@ -72,18 +69,13 @@ export class InsightsEngine {
     return taggedRecords;
   }
 
-  /**
-   * Applies rules from the config to a single record to determine its semantic tags.
-   */
   private _tagRecord(record: TimeRecord, config: InsightsConfig): TimeRecord {
     const tags = new Set<string>();
     const subprojectLower = record.subproject.toLowerCase();
     for (const groupName in config.insightGroups) {
       const group = config.insightGroups[groupName];
-
-      // Guard against malformed or null entries in the config.
       if (!group || !group.rules) {
-        continue; // Skip this invalid group and move to the next one.
+        continue;
       }
       const rules = group.rules;
       if (rules.hierarchies.some(h => h.toLowerCase() === record.hierarchy.toLowerCase())) {
@@ -105,49 +97,204 @@ export class InsightsEngine {
   // --- INSIGHT CALCULATORS ---
 
   /**
-   * Calculates the total time spent in each Insight Group over the last 30 days.
+   * REWRITTEN & CORRECTED: Creates the Weekly Snapshot insight.
+   * Re-instates the monthly comparison data.
    */
-  private _calculateGroupDistribution(taggedRecords: TimeRecord[]): Insight[] {
+  private _createHierarchyExtremesInsight(allRecords: TimeRecord[]): Insight | null {
+    // Define date ranges
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    const thirtySevenDaysAgo = new Date();
+    thirtySevenDaysAgo.setDate(today.getDate() - 37);
+
+    const weeklyDistribution = new Map<string, number>();
+    const monthlyDistribution = new Map<string, number>();
+    let weeklyTotalHours = 0;
+    let monthlyTotalHours = 0;
+
+    // For nested breakdowns
+    const projectDistribution = new Map<string, Map<string, number>>();
+
+    for (const record of allRecords) {
+      if (!record.date) continue;
+      if (record.date >= sevenDaysAgo && record.date <= today) {
+        weeklyTotalHours += record.duration;
+        weeklyDistribution.set(
+          record.hierarchy,
+          (weeklyDistribution.get(record.hierarchy) || 0) + record.duration
+        );
+
+        // Nested: hierarchy -> project -> hours
+        if (!projectDistribution.has(record.hierarchy)) {
+          projectDistribution.set(record.hierarchy, new Map());
+        }
+        const projectsInHierarchy = projectDistribution.get(record.hierarchy)!;
+        projectsInHierarchy.set(
+          record.project,
+          (projectsInHierarchy.get(record.project) || 0) + record.duration
+        );
+      } else if (record.date >= thirtySevenDaysAgo && record.date < sevenDaysAgo) {
+        monthlyTotalHours += record.duration;
+        monthlyDistribution.set(
+          record.hierarchy,
+          (monthlyDistribution.get(record.hierarchy) || 0) + record.duration
+        );
+      }
+    }
+
+    if (weeklyDistribution.size < 2 || weeklyTotalHours === 0) return null;
+
+    const sortedHierarchies = Array.from(weeklyDistribution.entries())
+      .map(([name, hours]) => ({ name, hours }))
+      .sort((a, b) => a.hours - b.hours);
+    const least = sortedHierarchies[0];
+    const most = sortedHierarchies[sortedHierarchies.length - 1];
+
+    if (least.name === most.name || most.hours === 0) return null;
+
+    const mostPercentage = (most.hours / weeklyTotalHours) * 100;
+    const leastPercentage = (least.hours / weeklyTotalHours) * 100;
+
+    let displayText = this._formatText(
+      `Last week, your main focus was **'${most.name}'** for **'${mostPercentage.toFixed(0)}%'**, while **'${least.name}'** for **'${leastPercentage.toFixed(0)}%'** took a backseat.`
+    );
+
+    // FIX: Add the comparison if data from the previous month exists for these hierarchies.
+    if (monthlyTotalHours > 0) {
+      const mostHoursLastMonth = monthlyDistribution.get(most.name) || 0;
+      const leastHoursLastMonth = monthlyDistribution.get(least.name) || 0;
+      if (mostHoursLastMonth > 0 || leastHoursLastMonth > 0) {
+        const mostPercentageLastMonth = (mostHoursLastMonth / monthlyTotalHours) * 100;
+        const leastPercentageLastMonth = (leastHoursLastMonth / monthlyTotalHours) * 100;
+        const comparisonText = this._formatText(
+          ` This compares to last month's **'${mostPercentageLastMonth.toFixed(0)}%'** on **'${most.name}'** and **'${leastPercentageLastMonth.toFixed(0)}%'** on **'${least.name}'**.`
+        );
+        displayText += comparisonText;
+      }
+    }
+
+    const createProjectSubItems = (hierarchyName: string): InsightPayloadItem[] => {
+      const projects = projectDistribution.get(hierarchyName);
+      if (!projects) return [];
+      return Array.from(projects.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([projectName, projectHours]) => ({
+          project: `• ${projectName}`,
+          details: `${projectHours.toFixed(1)} hours`,
+          action: {
+            analysisTypeSelect: 'time-series',
+            projectFilterInput: projectName,
+            dateRangePicker: [sevenDaysAgo, new Date()]
+          }
+        }));
+    };
+
+    const payload: InsightPayloadItem[] = [
+      {
+        project: most.name,
+        details: `**${mostPercentage.toFixed(0)}%** (${most.hours.toFixed(1)} hours last week)`,
+        action: {
+          analysisTypeSelect: 'pie',
+          hierarchyFilterInput: most.name,
+          dateRangePicker: [sevenDaysAgo, new Date()],
+          levelSelect_pie: 'project'
+        },
+        subItems: createProjectSubItems(most.name)
+      },
+      {
+        project: least.name,
+        details: `**${leastPercentage.toFixed(0)}%** (${least.hours.toFixed(1)} hours last week)`,
+        action: {
+          analysisTypeSelect: 'pie',
+          hierarchyFilterInput: least.name,
+          dateRangePicker: [sevenDaysAgo, new Date()],
+          levelSelect_pie: 'project'
+        },
+        subItems: createProjectSubItems(least.name)
+      }
+    ];
+
+    return {
+      displayText,
+      category: 'WEEKLY SNAPSHOT',
+      sentiment: 'neutral',
+      payload: payload,
+      action: null
+    };
+  }
+
+  private _calculateGroupDistribution(taggedRecords: TimeRecord[]): Insight | null {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const distribution = new Map<string, number>();
+    let trueGrandTotalHours = 0;
+
     for (const record of taggedRecords) {
       const recordDate = record.date || new Date();
       if (recordDate < thirtyDaysAgo) continue;
+      trueGrandTotalHours += record.duration;
       const tags = (record as any)._semanticTags || [];
       for (const tag of tags) {
         distribution.set(tag, (distribution.get(tag) || 0) + record.duration);
       }
     }
-    const insights: Insight[] = [];
-    for (const [groupName, hours] of distribution.entries()) {
-      if (hours > 0) {
-        insights.push({
-          displayText: this._formatText(
-            `You spent **'${hours.toFixed(1)} hours'** on **'${groupName}'** activities.`
-          ),
-          category: 'Activity Overview',
-          sentiment: 'neutral',
-          action: {
-            analysisTypeSelect: 'pie',
-            hierarchyFilterInput: groupName,
-            dateRangePicker: [thirtyDaysAgo, new Date()],
-            levelSelect_pie: 'project'
-          }
-        });
-      }
+
+    if (trueGrandTotalHours === 0) return null;
+
+    const sortedGroups = Array.from(distribution.entries())
+      .map(([groupName, hours]) => ({ groupName, hours }))
+      .sort((a, b) => b.hours - a.hours);
+
+    const topGroups = sortedGroups.slice(0, 3);
+    if (topGroups.length === 0) return null;
+
+    const topGroupNames = topGroups.map(g => `**'${g.groupName}'**`);
+    let topGroupsText: string;
+    if (topGroupNames.length === 1) {
+      topGroupsText = topGroupNames[0];
+    } else if (topGroupNames.length === 2) {
+      topGroupsText = topGroupNames.join(' and ');
+    } else {
+      topGroupsText = `${topGroupNames.slice(0, -1).join(', ')}, and ${topGroupNames.slice(-1)}`;
     }
-    return insights;
+
+    const topGroupsTotalHours = topGroups.reduce((sum, g) => sum + g.hours, 0);
+    const topGroupsPercentage = (topGroupsTotalHours / trueGrandTotalHours) * 100;
+
+    const displayText = this._formatText(
+      `Your top ${topGroups.length === 1 ? 'activity was' : 'activities were'} ${topGroupsText}, accounting for **'${topGroupsPercentage.toFixed(0)}%'** of your total logged time.`
+    );
+
+    const payload: InsightPayloadItem[] = topGroups.map(group => {
+      const percentage = (group.hours / trueGrandTotalHours) * 100;
+      return {
+        project: group.groupName,
+        details: `${group.hours.toFixed(1)} hours (${percentage.toFixed(0)}% of total)`,
+        action: {
+          analysisTypeSelect: 'pie',
+          hierarchyFilterInput: group.groupName,
+          dateRangePicker: [thirtyDaysAgo, new Date()],
+          levelSelect_pie: 'project'
+        }
+      };
+    });
+
+    return {
+      displayText,
+      category: 'Activity Overview',
+      sentiment: 'neutral',
+      payload: payload,
+      action: null
+    };
   }
 
-  /**
-   * Finds projects that were done regularly but have been missed recently.
-   */
   private _consolidateLapsedHabits(taggedRecords: TimeRecord[]): Insight | null {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const thirtySevenDaysAgo = new Date();
-    thirtySevenDaysAgo.setDate(thirtySevenDaysAgo.getDate() - 37);
+    thirtySevenDaysAgo.setDate(sevenDaysAgo.getDate() - 30);
     const recentProjects = new Set<string>();
     const baselineProjects = new Map<string, number>();
     for (const record of taggedRecords) {
@@ -164,8 +311,7 @@ export class InsightsEngine {
       if (count >= 2 && !recentProjects.has(project)) {
         lapsedHabitsPayload.push({
           project,
-          count,
-          // Create the new, flat payload instead of the old { chartType, filters } object
+          details: `(logged ${count} times in the month prior)`,
           action: {
             analysisTypeSelect: 'time-series',
             projectFilterInput: project,
@@ -175,7 +321,12 @@ export class InsightsEngine {
       }
     }
     if (lapsedHabitsPayload.length === 0) return null;
-    lapsedHabitsPayload.sort((a, b) => b.count - a.count);
+    lapsedHabitsPayload.sort((a, b) => {
+      const countA = parseInt(a.details.match(/\d+/)?.[0] || '0');
+      const countB = parseInt(b.details.match(/\d+/)?.[0] || '0');
+      return countB - countA;
+    });
+
     return {
       displayText: this._formatText(
         `You have **'${lapsedHabitsPayload.length} activities'** that you haven't logged in over a week, but were previously consistent.`
