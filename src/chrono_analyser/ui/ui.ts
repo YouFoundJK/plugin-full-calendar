@@ -139,6 +139,12 @@ export class InsightConfigModal extends Modal {
   private onSave: (newConfig: InsightsConfig) => void;
   private knownHierarchies: string[];
   private knownProjects: string[];
+  private expandedGroupName: string | null = null; // Collapsible state
+
+  // --- Unsaved changes tracking ---
+  private originalConfigString: string = '';
+  private hasUnsavedChanges: boolean = false;
+  private isSaving: boolean = false;
 
   constructor(
     app: App,
@@ -202,10 +208,17 @@ export class InsightConfigModal extends Modal {
             });
             this.config.lastUpdated = new Date().toISOString();
             this.onSave(this.config);
+
+            this.isSaving = true;
             this.close();
           })
       )
       .addButton(btn => btn.setButtonText('Cancel').onClick(() => this.close()));
+
+    // Track original config for unsaved changes
+    this.originalConfigString = JSON.stringify(this.config);
+    this.hasUnsavedChanges = false;
+    this.isSaving = false;
   }
 
   private renderGroups(container: HTMLElement) {
@@ -244,16 +257,19 @@ export class InsightConfigModal extends Modal {
   }
 
   private renderGroupSetting(container: HTMLElement, groupName: string, rules: InsightRule) {
-    // Track the current group name for renaming
     let currentGroupName = groupName;
+    const isExpanded = this.expandedGroupName === currentGroupName;
 
     const groupContainer = container.createDiv({ cls: 'insight-group-setting' });
+    groupContainer.toggleClass('is-expanded', isExpanded);
+
     const nameSetting = new Setting(groupContainer)
       .setName('Group Name')
       .addText(text =>
         text
           .setValue(currentGroupName)
           .setPlaceholder('e.g., Work')
+          .setDisabled(!isExpanded)
           .onChange(newName => {
             const newNameTrimmed = newName.trim();
             if (
@@ -266,65 +282,101 @@ export class InsightConfigModal extends Modal {
                 delete this.config.insightGroups[currentGroupName];
                 this.config.insightGroups[newNameTrimmed] = groupData;
                 currentGroupName = newNameTrimmed;
+                this.expandedGroupName = newNameTrimmed;
+                this.checkForUnsavedChanges();
+                this.renderGroups(container.parentElement!);
               }
             }
+            this.checkForUnsavedChanges();
           })
       )
-      .addExtraButton(btn =>
+      .addExtraButton(btn => {
         btn
           .setIcon('trash')
           .setTooltip('Delete this group')
+          .setDisabled(!isExpanded)
           .onClick(() => {
             const currentName =
               nameSetting.nameEl.nextElementSibling?.querySelector('input')?.value ||
               currentGroupName;
             delete this.config.insightGroups[currentName];
-            groupContainer.remove();
-          })
-      );
+            this.renderGroups(container.parentElement!);
+          });
+      });
 
+    // --- NEW, SMARTER EVENT LISTENER ---
+    groupContainer.addEventListener('click', evt => {
+      const target = evt.target as HTMLElement;
+
+      // If the group is collapsed, any click should expand it.
+      if (!isExpanded) {
+        this.expandedGroupName = currentGroupName;
+        this.renderGroups(container.parentElement!);
+        return;
+      }
+
+      // If the group is expanded, only a click on the "header" should collapse it.
+      // Our header is the `nameSetting.settingEl`.
+      const clickedOnHeader = nameSetting.settingEl.contains(target);
+      const clickedOnInteractive = target.closest('input, textarea, button, .tag-remove');
+
+      if (clickedOnHeader && !clickedOnInteractive) {
+        this.expandedGroupName = null; // Collapse
+        this.renderGroups(container.parentElement!);
+      }
+      // Otherwise, if expanded, do nothing. This prevents collapsing when clicking on content.
+    });
+
+    // Foldable content container
+    const foldableContent = groupContainer.createDiv('foldable-content');
+
+    // All settings inside foldableContent
     this.createTagInput(
-      groupContainer,
+      foldableContent,
       'Matching Hierarchies',
       'e.g., Work Calendar, Personal Calendar',
       'Add hierarchy...',
       rules.hierarchies || [],
-      this.knownHierarchies
+      this.knownHierarchies,
+      () => this.checkForUnsavedChanges()
     );
     this.createTagInput(
-      groupContainer,
+      foldableContent,
       'Matching Projects',
       'e.g., Project Phoenix, Q4 Report',
       'Add project...',
       rules.projects || [],
-      this.knownProjects
+      this.knownProjects,
+      () => this.checkForUnsavedChanges()
     );
-
     this.createTagInput(
-      groupContainer,
+      foldableContent,
       'Muted Projects',
       'Mute specific projects (case-sensitive, exact match) to exclude them from Habit Consistency checks.',
       'Add muted project...',
       rules.mutedProjects || [],
-      this.knownProjects
+      this.knownProjects,
+      () => this.checkForUnsavedChanges()
     );
 
-    new Setting(groupContainer)
+    new Setting(foldableContent)
       .setName('Matching Sub-project Keywords')
       .setDesc('Add keywords that will match if found anywhere in a sub-project.')
       .addTextArea(text => {
         text
           .setValue((rules.subprojectKeywords || []).join('\n'))
           .setPlaceholder('eg., design\nresearch\nmeeting')
+          .setDisabled(!isExpanded)
           .onChange(value => {
             rules.subprojectKeywords = value
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
+            this.checkForUnsavedChanges();
           });
       });
 
-    new Setting(groupContainer)
+    new Setting(foldableContent)
       .setName('Muted Sub-project Keywords')
       .setDesc(
         'Mute activities by keyword. If a sub-project contains any of these (case-insensitive) keywords, it will be excluded from Habit Consistency checks.'
@@ -333,11 +385,13 @@ export class InsightConfigModal extends Modal {
         text
           .setValue((rules.mutedSubprojectKeywords || []).join('\n'))
           .setPlaceholder('e.g., completed\narchive\nold')
+          .setDisabled(!isExpanded)
           .onChange(value => {
             rules.mutedSubprojectKeywords = value
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
+            this.checkForUnsavedChanges();
           });
       });
   }
@@ -346,12 +400,12 @@ export class InsightConfigModal extends Modal {
     container: HTMLElement,
     name: string,
     desc: string,
-    placeholder: string, // NEW
+    placeholder: string,
     values: string[],
-    suggestions: string[]
+    suggestions: string[],
+    onChange?: () => void
   ) {
     const setting = new Setting(container).setName(name).setDesc(desc);
-    // The wrapper now only needs this one class. The component does the rest.
     const wrapper = setting.controlEl.createDiv({ cls: 'autocomplete-wrapper' });
     const tagInputContainer = wrapper.createDiv({ cls: 'tag-input-container' });
     const tagsEl = tagInputContainer.createDiv({ cls: 'tags' });
@@ -359,7 +413,7 @@ export class InsightConfigModal extends Modal {
       type: 'text',
       cls: 'tag-input',
       placeholder
-    }); // NEW
+    });
 
     const renderTags = () => {
       tagsEl.empty();
@@ -371,6 +425,7 @@ export class InsightConfigModal extends Modal {
         removeEl.onClickEvent(() => {
           values.splice(index, 1);
           renderTags();
+          if (onChange) onChange();
         });
       });
     };
@@ -382,12 +437,12 @@ export class InsightConfigModal extends Modal {
         if (newTag && !values.includes(newTag)) {
           values.push(newTag);
           renderTags();
+          if (onChange) onChange();
         }
         inputEl.value = '';
       }
     });
 
-    // Use the new, clean setup function.
     setupAutocomplete(
       wrapper,
       value => {
@@ -395,6 +450,7 @@ export class InsightConfigModal extends Modal {
         if (newTag && !values.includes(newTag)) {
           values.push(newTag);
           renderTags();
+          if (onChange) onChange();
         }
         inputEl.value = '';
         inputEl.focus();
@@ -403,6 +459,51 @@ export class InsightConfigModal extends Modal {
     );
 
     renderTags();
+  }
+
+  private checkForUnsavedChanges() {
+    const currentConfigString = JSON.stringify(this.config);
+    this.hasUnsavedChanges = currentConfigString !== this.originalConfigString;
+  }
+
+  close() {
+    this.checkForUnsavedChanges();
+    if (this.hasUnsavedChanges && !this.isSaving) {
+      this.showConfirmationModal();
+    } else {
+      super.close();
+    }
+  }
+
+  private showConfirmationModal() {
+    const confirmationModal = new Modal(this.app);
+    confirmationModal.contentEl.addClass('chrono-analyser-modal');
+    confirmationModal.contentEl.createEl('h2', { text: 'Unsaved Changes' });
+    confirmationModal.contentEl.createEl('p', {
+      text: 'You have unsaved changes. Would you like to save them before closing?'
+    });
+
+    new Setting(confirmationModal.contentEl)
+      .addButton(btn =>
+        btn
+          .setButtonText('Save and Close')
+          .setCta()
+          .onClick(() => {
+            this.isSaving = true;
+            const saveButton = this.modalEl.querySelector('.mod-cta') as HTMLButtonElement;
+            saveButton?.click();
+            confirmationModal.close();
+          })
+      )
+      .addButton(btn =>
+        btn.setButtonText('Discard Changes').onClick(() => {
+          this.isSaving = true;
+          confirmationModal.close();
+          this.close();
+        })
+      );
+
+    confirmationModal.open();
   }
 
   onClose() {

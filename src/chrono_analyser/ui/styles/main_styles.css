@@ -1120,6 +1120,39 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     padding: var(--size-4-4);
     margin-bottom: var(--size-4-4);
     background-color: var(--background-secondary);
+    cursor: default; /* Change from 'pointer' to 'default' */
+    transition: background-color 0.2s ease;
+}
+
+/* When a group is COLLAPSED, make the whole block clickable again. */
+.chrono-analyser-modal .insight-group-setting:not(.is-expanded) {
+    cursor: pointer;
+}
+
+/* When a group is EXPANDED, only make the HEADER (name setting) part clickable. */
+.chrono-analyser-modal .insight-group-setting.is-expanded .setting-item:first-child {
+    cursor: pointer;
+}
+
+.chrono-analyser-modal .insight-group-setting .foldable-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, margin-top 0.3s ease-in-out;
+    margin-top: 0;
+}
+
+.chrono-analyser-modal .insight-group-setting.is-expanded .foldable-content {
+    max-height: 1000px;
+    margin-top: var(--size-4-4);
+}
+
+.chrono-analyser-modal .insight-group-setting .setting-item {
+    border-top-color: var(--background-modifier-border) !important;
+}
+
+.chrono-analyser-modal .insight-group-setting:not(.is-expanded) .setting-item-control input,
+.chrono-analyser-modal .insight-group-setting:not(.is-expanded) .setting-item-control textarea {
+    opacity: 0.5;
 }
 
 .chrono-analyser-modal .tag-input-container {
