@@ -42,8 +42,8 @@ export class InsightsEngine {
       insights.push(groupDistributionInsight);
     }
 
-    // Always run on allRecords, not taggedRecords
-    const lapsedHabitInsight = this._consolidateLapsedHabits(allRecords);
+    // Always run on taggedRecords, not allRecords
+    const lapsedHabitInsight = this._consolidateLapsedHabits(taggedRecords);
     if (lapsedHabitInsight) {
       insights.push(lapsedHabitInsight);
     }
@@ -90,8 +90,9 @@ export class InsightsEngine {
 
         // Muting logic
         const isMutedForGroup =
-          (rules.mutedProjects || []).includes(record.project) ||
+          (rules.mutedProjects || []).includes(record.project) || // MUST BE `mutedProjects`
           (rules.mutedSubprojectKeywords || []).some(
+            // MUST BE `mutedSubprojectKeywords`
             kw => kw && subprojectLower.includes(kw.toLowerCase())
           );
         if (isMutedForGroup) {
@@ -339,7 +340,7 @@ export class InsightsEngine {
     };
   }
 
-  private _consolidateLapsedHabits(allRecords: TimeRecord[]): Insight | null {
+  private _consolidateLapsedHabits(taggedRecords: TimeRecord[]): Insight | null {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -352,7 +353,7 @@ export class InsightsEngine {
     const recentProjects = new Set<string>();
     const baselineProjects = new Map<string, number>();
 
-    for (const record of allRecords) {
+    for (const record of taggedRecords) {
       // Correctly apply the muting logic
       if ((record as any)._isMuted) {
         continue; // Ignore muted projects for habit tracking

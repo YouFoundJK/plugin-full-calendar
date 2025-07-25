@@ -7,8 +7,8 @@ interface InsightRule {
   hierarchies: string[];
   projects: string[];
   subprojectKeywords: string[];
-  mutedSubprojectKeywords: string[]; // Renamed from subprojectKeywords_exclude
-  mutedProjects: string[]; // NEW
+  mutedSubprojectKeywords: string[]; // Correct property name
+  mutedProjects: string[]; // Correct property name
 }
 interface InsightGroups {
   [groupName: string]: { rules: InsightRule };
@@ -158,7 +158,7 @@ export class InsightConfigModal extends Modal {
     this.knownHierarchies = knownHierarchies;
     this.knownProjects = knownProjects;
 
-    this.config = existingConfig || {
+    const defaultConfig: InsightsConfig = {
       version: 1,
       lastUpdated: new Date().toISOString(),
       insightGroups: {
@@ -182,6 +182,34 @@ export class InsightConfigModal extends Modal {
         }
       }
     };
+
+    // --- START OF THE NEW MIGRATION LOGIC ---
+    let loadedConfig = existingConfig || defaultConfig;
+
+    // Perform migration on the loaded config
+    if (loadedConfig && loadedConfig.insightGroups) {
+      Object.values(loadedConfig.insightGroups).forEach(group => {
+        if (group && group.rules) {
+          // Ensure the new fields exist
+          if (group.rules.mutedProjects === undefined) {
+            group.rules.mutedProjects = [];
+          }
+          if (group.rules.mutedSubprojectKeywords === undefined) {
+            // Check if there's an old field to migrate from
+            if ((group.rules as any).subprojectKeywords_exclude) {
+              group.rules.mutedSubprojectKeywords = (group.rules as any).subprojectKeywords_exclude;
+            } else {
+              group.rules.mutedSubprojectKeywords = [];
+            }
+          }
+          // Delete the old, incorrect field if it exists
+          delete (group.rules as any).subprojectKeywords_exclude;
+        }
+      });
+    }
+
+    this.config = loadedConfig;
+    // --- END OF THE NEW MIGRATION LOGIC ---
   }
 
   onOpen() {
@@ -206,6 +234,7 @@ export class InsightConfigModal extends Modal {
             Object.keys(this.config.insightGroups).forEach(name => {
               if (!name) delete this.config.insightGroups[name];
             });
+
             this.config.lastUpdated = new Date().toISOString();
             this.onSave(this.config);
 
@@ -238,13 +267,14 @@ export class InsightConfigModal extends Modal {
     new Setting(container).addButton(btn =>
       btn.setButtonText('Add New Insight Group').onClick(() => {
         const newGroupName = `New Group ${Object.keys(this.config.insightGroups).length + 1}`;
+        // --- FIX 3: Correct the creation of new groups ---
         this.config.insightGroups[newGroupName] = {
           rules: {
             hierarchies: [],
             projects: [],
             subprojectKeywords: [],
-            mutedSubprojectKeywords: [],
-            mutedProjects: []
+            mutedSubprojectKeywords: [], // ENSURE THIS IS THE NAME USED
+            mutedProjects: [] // ENSURE THIS IS THE NAME USED
           }
         };
         this.renderGroupSetting(
@@ -349,12 +379,13 @@ export class InsightConfigModal extends Modal {
       this.knownProjects,
       () => this.checkForUnsavedChanges()
     );
+    // --- FIX 4: Make sure `renderGroupSetting` is accessing the correct property ---
     this.createTagInput(
       foldableContent,
       'Muted Projects',
       'Mute specific projects (case-sensitive, exact match) to exclude them from Habit Consistency checks.',
       'Add muted project...',
-      rules.mutedProjects || [],
+      rules.mutedProjects || [], // THIS MUST BE `mutedProjects`
       this.knownProjects,
       () => this.checkForUnsavedChanges()
     );
@@ -383,11 +414,11 @@ export class InsightConfigModal extends Modal {
       )
       .addTextArea(text => {
         text
-          .setValue((rules.mutedSubprojectKeywords || []).join('\n'))
+          .setValue((rules.mutedSubprojectKeywords || []).join('\n')) // THIS MUST BE `mutedSubprojectKeywords`
           .setPlaceholder('e.g., completed\narchive\nold')
           .setDisabled(!isExpanded)
           .onChange(value => {
-            rules.mutedSubprojectKeywords = value
+            rules.mutedSubprojectKeywords = value // THIS MUST BE `mutedSubprojectKeywords`
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
@@ -436,6 +467,7 @@ export class InsightConfigModal extends Modal {
         const newTag = inputEl.value.trim();
         if (newTag && !values.includes(newTag)) {
           values.push(newTag);
+
           renderTags();
           if (onChange) onChange();
         }
@@ -449,6 +481,7 @@ export class InsightConfigModal extends Modal {
         const newTag = value.trim();
         if (newTag && !values.includes(newTag)) {
           values.push(newTag);
+
           renderTags();
           if (onChange) onChange();
         }

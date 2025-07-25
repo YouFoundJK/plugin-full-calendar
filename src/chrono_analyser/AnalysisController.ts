@@ -73,6 +73,7 @@ export class AnalysisController {
       new Notice('Please configure your Insight Groups first using the ⚙️ icon.', 5000);
       return;
     }
+
     new Notice(
       `Using insights rules last updated on ${new Date(config.lastUpdated).toLocaleString()}.`
     );

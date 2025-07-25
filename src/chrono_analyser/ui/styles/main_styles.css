@@ -966,26 +966,6 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     border-top: none;
 }
 
-.chrono-analyser-view .insight-card.sentiment-neutral { border-left-color: var(--background-modifier-border-hover); }
-.chrono-analyser-view .insight-card.sentiment-positive { border-left-color: var(--color-green); }
-.chrono-analyser-view .insight-card.sentiment-warning { border-left-color: var(--color-orange); }
-
-.chrono-analyser-view .insight-icon { flex-shrink: 0; color: var(--text-muted); }
-.chrono-analyser-view .insight-text { flex-grow: 1; }
-.chrono-analyser-view .insight-card strong { color: var(--text-accent); font-weight: 600; }
-
-.chrono-analyser-view .insight-action-button {
-    background: none;
-    border: none;
-    padding: 0;
-    margin-left: auto; /* Push the button to the far right */
-    flex-shrink: 0;
-    color: var(--text-muted);
-}
-.chrono-analyser-view .insight-action-button:hover {
-    color: var(--interactive-accent);
-}
-
 /* -- Styles for Sub-Items and Nested Insights (Definitive Fix) -- */
 
 .chrono-analyser-view .insight-sub-item {
