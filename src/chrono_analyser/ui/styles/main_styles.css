@@ -1217,3 +1217,59 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     background: var(--interactive-accent);
     color: var(--text-on-accent);
 }
+
+/* =================================================================
+   PRO TIPS PANEL
+   ================================================================= */
+.chrono-analyser-view .pro-tips-panel {
+    display: flex;
+    align-items: center;
+    background-color: var(--background-primary);
+    border: 1px solid var(--interactive-accent-tint);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2) var(--size-4-4);
+    margin-bottom: var(--size-4-4);
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    position: relative;
+    user-select: none;
+}
+
+.chrono-analyser-view .pro-tips-panel:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+.chrono-analyser-view .pro-tips-content {
+    flex-grow: 1;
+}
+
+.chrono-analyser-view .pro-tips-title {
+    font-size: var(--font-ui-small);
+    font-weight: 700;
+    color: var(--interactive-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: var(--size-2-1);
+}
+
+.chrono-analyser-view #proTipText {
+    margin: 0;
+    font-size: var(--font-ui-medium);
+    color: var(--text-muted);
+    line-height: 1.4;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.chrono-analyser-view .pro-tips-nav {
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--text-faint);
+    transition: transform 0.2s ease;
+}
+
+.chrono-analyser-view .pro-tips-panel:hover .pro-tips-nav {
+    transform: translateX(3px);
+    color: var(--text-muted);
+}

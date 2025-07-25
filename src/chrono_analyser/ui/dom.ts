@@ -13,6 +13,15 @@ export function createDOMStructure(rootEl: HTMLElement): void {
 
         <!-- --- NEW: Insights Panel --- -->
         <div class="insights-panel" id="insightsPanel">
+            <!-- --- NEW: Pro-Tips Section --- -->
+            <div class="pro-tips-panel" id="proTipsPanel" title="Click to see the next tip">
+                <div class="pro-tips-content">
+                    <span class="pro-tips-title">PRO TIP</span>
+                    <p id="proTipText"></p>
+                </div>
+                <div class="pro-tips-nav">›</div>
+            </div>
+            <!-- --- END: Pro-Tips Section --- -->
             <div class="insights-header">
                 <div class="insights-title">💡 Insights</div>
                 <div class="insights-actions">
