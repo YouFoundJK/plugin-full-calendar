@@ -124,7 +124,21 @@ export class DataManager {
   /**
    * Performs a high-performance, single-pass filter AND aggregation of the data.
    * This is the primary query method for the analyzer.
-   * @param filters - The filter criteria to apply.
+   *
+   * ## Filter Format
+   * The `filters.pattern` property supports both inclusion and exclusion keywords:
+   *
+   * - **Inclusion:** Any word or quoted phrase (e.g. `"work" 'team meeting' urgent`) will match records whose project name contains **all** of those tokens (AND logic).
+   * - **Exclusion:** Prefix a keyword or quoted phrase with a space and hyphen (e.g. `"work -personal -'team meeting'"`) to exclude records whose project name contains any of those tokens.
+   * - **Multiple exclusions:** You can chain exclusions: `"work -personal -test -'team meeting'"` excludes all listed tokens.
+   * - **Quoted phrases:** Use double or single quotes to match exact phrases, e.g. `"project A" -'archive folder'`.
+   * - **Regex:** Each token is interpreted as a case-insensitive regular expression.
+   *
+   * Example:
+   *   pattern = `"projectA" urgent -archive -'old version'`
+   *   → Includes records with both "projectA" and "urgent" in the project name, but excludes those containing "archive" or "old version".
+   *
+   * @param filters - The filter criteria to apply (see above for pattern usage).
    * @param breakdownBy - The TimeRecord property to use for aggregation/categorization.
    * @param options - Options to control data processing, like expanding recurring events.
    * @returns An AnalysisResult object containing filtered records, stats, and aggregated data.
@@ -142,12 +156,61 @@ export class DataManager {
       recordsByCategory: new Map(),
       error: null
     };
-    let regex: RegExp | null = null;
+
     const { expandRecurring = false } = options;
+
+    // --- NEW: Use an array for multiple inclusion conditions (AND logic) ---
+    const inclusionRegexes: RegExp[] = [];
+    let exclusionRegex: RegExp | null = null;
 
     if (filters.pattern) {
       try {
-        regex = new RegExp(filters.pattern, 'i');
+        let patternText = filters.pattern;
+        const exclusionKeywords: string[] = [];
+
+        // 1. Find and strip out all exclusion tokens first
+        const exclusionTokenRegex = /\s-(?:"[^"]+"|\'[^\']+\'|\S+)/g;
+        const exclusionMatches = patternText.match(exclusionTokenRegex);
+
+        if (exclusionMatches) {
+          for (const match of exclusionMatches) {
+            let keyword = match.substring(2);
+            const firstChar = keyword.charAt(0);
+            const lastChar = keyword.charAt(keyword.length - 1);
+            if (
+              (firstChar === '"' && lastChar === '"') ||
+              (firstChar === "'" && lastChar === "'")
+            ) {
+              keyword = keyword.slice(1, -1);
+            }
+            if (keyword) exclusionKeywords.push(keyword);
+          }
+          patternText = patternText.replace(exclusionTokenRegex, '').trim();
+        }
+        if (exclusionKeywords.length > 0) {
+          exclusionRegex = new RegExp(exclusionKeywords.join('|'), 'i');
+        }
+
+        // 2. Parse the remaining text for inclusion tokens (words or phrases)
+        if (patternText) {
+          const inclusionTokenRegex = /"[^"]+"|\'[^\']+\'|\S+/g;
+          const inclusionMatches = patternText.match(inclusionTokenRegex);
+          if (inclusionMatches) {
+            for (let token of inclusionMatches) {
+              const firstChar = token.charAt(0);
+              const lastChar = token.charAt(token.length - 1);
+              if (
+                (firstChar === '"' && lastChar === '"') ||
+                (firstChar === "'" && lastChar === "'")
+              ) {
+                token = token.slice(1, -1);
+              }
+              if (token) {
+                inclusionRegexes.push(new RegExp(token, 'i'));
+              }
+            }
+          }
+        }
       } catch (e) {
         result.error = e instanceof Error ? e.message : String(e);
         return result;
@@ -181,13 +244,16 @@ export class DataManager {
     const hasDateFilter = !!(startDate || endDate);
 
     for (const record of recordsToScan) {
+      // --- NEW: Correctly apply universal category filter with AND/OR logic ---
+      const targetString = record.project;
+      if (exclusionRegex && exclusionRegex.test(targetString)) continue;
+      if (inclusionRegexes.length > 0 && !inclusionRegexes.every(re => re.test(targetString)))
+        continue;
+
       if (record.metadata.type === 'recurring' && hasDateFilter) {
         if (expandRecurring) {
-          // EXPAND MODE: Create a new record for each instance in the date range.
           const instances = Utils.getRecurringInstances(record, startDate, endDate);
           for (const instanceDate of instances) {
-            // When expanding, create a new metadata object that conforms to the SingleEvent shape.
-            // This is a type-safe transformation from a RecurringEvent to a SingleEvent.
             let newMetadata: OFCEvent;
             const commonProperties = {
               title: record.metadata.title,
@@ -198,41 +264,25 @@ export class DataManager {
               date: Utils.getISODate(instanceDate)!,
               endDate: Utils.getISODate(instanceDate)!
             };
-
             if (record.metadata.allDay) {
-              // It's an all-day event. startTime and endTime are not allowed.
-              newMetadata = {
-                ...commonProperties,
-                allDay: true
-              };
+              newMetadata = { ...commonProperties, allDay: true };
             } else {
-              // It's a timed event. startTime and endTime are required.
               newMetadata = {
                 ...commonProperties,
                 allDay: false,
-                startTime: 'startTime' in record.metadata ? record.metadata.startTime : '00:00', // Provide a fallback to satisfy type
-                endTime: 'endTime' in record.metadata ? record.metadata.endTime : '00:00' // Provide a fallback to satisfy type
+                startTime: 'startTime' in record.metadata ? record.metadata.startTime : '00:00',
+                endTime: 'endTime' in record.metadata ? record.metadata.endTime : '00:00'
               };
             }
-
             const instanceRecord: TimeRecord = {
               ...record,
-              date: instanceDate, // This instance has a specific date
-              metadata: newMetadata, // Use the new, correctly-shaped metadata
-              _effectiveDurationInPeriod: record.duration // Duration of a single instance
+              date: instanceDate,
+              metadata: newMetadata,
+              _effectiveDurationInPeriod: record.duration
             };
-
-            this.processRecord(
-              instanceRecord,
-              record.duration,
-              breakdownBy,
-              regex,
-              result,
-              uniqueFiles
-            );
+            this.processRecord(instanceRecord, record.duration, breakdownBy, result, uniqueFiles);
           }
         } else {
-          // AGGREGATE MODE: Calculate total duration for the single recurring record.
           const numInstances = Utils.calculateRecurringInstancesInDateRange(
             record.metadata,
             startDate,
@@ -241,44 +291,26 @@ export class DataManager {
           if (numInstances > 0) {
             const effectiveDuration = record.duration * numInstances;
             const finalRecord = { ...record, _effectiveDurationInPeriod: effectiveDuration };
-            this.processRecord(
-              finalRecord,
-              effectiveDuration,
-              breakdownBy,
-              regex,
-              result,
-              uniqueFiles
-            );
+            this.processRecord(finalRecord, effectiveDuration, breakdownBy, result, uniqueFiles);
           }
         }
       } else {
-        // Handle single, dated events, or any event if there's no date filter.
         const effectiveDuration = record.duration;
         let includeRecord = false;
         if (record.metadata.type === 'recurring' && !hasDateFilter) {
-          // For non-date-filtered views, include recurring events with a single instance duration.
           includeRecord = true;
         } else if (record.metadata.type !== 'recurring') {
-          // It's a single, dated event
           if (hasDateFilter) {
             if (this.isWithinDateRange(record.date, startDate, endDate)) {
               includeRecord = true;
             }
           } else {
-            includeRecord = true; // No date filter, so include all single events
+            includeRecord = true;
           }
         }
-
         if (includeRecord && effectiveDuration > 0) {
           const finalRecord = { ...record, _effectiveDurationInPeriod: effectiveDuration };
-          this.processRecord(
-            finalRecord,
-            effectiveDuration,
-            breakdownBy,
-            regex,
-            result,
-            uniqueFiles
-          );
+          this.processRecord(finalRecord, effectiveDuration, breakdownBy, result, uniqueFiles);
         }
       }
     }
@@ -295,15 +327,13 @@ export class DataManager {
     record: TimeRecord,
     duration: number,
     breakdownBy: keyof TimeRecord | null,
-    regex: RegExp | null,
+    // regex parameter is now removed
     result: AnalysisResult,
     uniqueFiles: Set<string>
   ): void {
     if (breakdownBy) {
       const key = String(record[breakdownBy] || `(No ${breakdownBy})`);
-      if (regex && !regex.test(key)) {
-        return; // Skip if it doesn't match the category regex
-      }
+      // The regex check is now removed from here
       result.aggregation.set(key, (result.aggregation.get(key) || 0) + duration);
       if (!result.recordsByCategory.has(key)) result.recordsByCategory.set(key, []);
       result.recordsByCategory.get(key)!.push(record);

@@ -137,12 +137,15 @@ export class UIService {
     const dates = this.flatpickrInstance?.selectedDates;
     const filterStartDate = dates && dates.length === 2 ? dates[0] : null;
     const filterEndDate = dates && dates.length === 2 ? dates[1] : null;
+    // ADDED: Pattern is now a global filter
+    const pattern = this.rootEl.querySelector<HTMLInputElement>('#patternInput')?.value ?? '';
 
     const filters: AnalysisFilters = {
       hierarchy: hierarchyFilter,
       project: projectFilter,
       filterStartDate,
-      filterEndDate
+      filterEndDate,
+      pattern: pattern // Now part of the main filter object
     };
 
     const newChartType =
@@ -155,13 +158,13 @@ export class UIService {
       case 'pie':
         return {
           breakdownBy: (this.rootEl.querySelector<HTMLSelectElement>('#levelSelect_pie')?.value ||
-            'hierarchy') as keyof TimeRecord,
-          pattern: this.rootEl.querySelector<HTMLInputElement>('#patternInput')?.value ?? ''
+            'hierarchy') as keyof TimeRecord
+          // The 'pattern' property is now removed from here
         };
       case 'sunburst':
         return {
-          level: this.rootEl.querySelector<HTMLSelectElement>('#levelSelect')?.value ?? '',
-          pattern: this.rootEl.querySelector<HTMLInputElement>('#patternInput')?.value ?? ''
+          level: this.rootEl.querySelector<HTMLSelectElement>('#levelSelect')?.value ?? ''
+          // The 'pattern' property is now removed from here
         };
       case 'time-series':
         return {
@@ -330,7 +333,7 @@ export class UIService {
     const specificControlContainers = [
       'sunburstBreakdownLevelContainer',
       'pieBreakdownLevelContainer',
-      'pieCategoryFilterContainer',
+      // 'pieCategoryFilterContainer', // This line should be deleted
       'timeSeriesGranularityContainer',
       'timeSeriesTypeContainer',
       'timeSeriesStackingLevelContainer',
@@ -345,10 +348,10 @@ export class UIService {
       this.rootEl
         .querySelector('#sunburstBreakdownLevelContainer')
         ?.classList.remove('hidden-controls');
-      this.rootEl.querySelector('#pieCategoryFilterContainer')?.classList.remove('hidden-controls');
+      // this.rootEl.querySelector('#pieCategoryFilterContainer')?.classList.remove('hidden-controls'); // removed
     } else if (analysisType === 'pie') {
       this.rootEl.querySelector('#pieBreakdownLevelContainer')?.classList.remove('hidden-controls');
-      this.rootEl.querySelector('#pieCategoryFilterContainer')?.classList.remove('hidden-controls');
+      // this.rootEl.querySelector('#pieCategoryFilterContainer')?.classList.remove('hidden-controls'); // removed
     } else if (analysisType === 'time-series') {
       this.rootEl
         .querySelector('#timeSeriesGranularityContainer')

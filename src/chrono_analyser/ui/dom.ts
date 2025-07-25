@@ -29,7 +29,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
         <!-- --- END: Insights Panel --- -->
 
         <div class="controls">
-          <!-- ... rest of the controls section is unchanged ... -->
+          <!-- Row 1: Hierarchy and Project Filters -->
           <div class="control-group">
             <div class="control-item">
               <label for="hierarchyFilterInput">📂 Filter by Hierarchy (Calendar Source)</label>
@@ -42,6 +42,11 @@ export function createDOMStructure(rootEl: HTMLElement): void {
               <div class="autocomplete-wrapper">
                 <input type="text" id="projectFilterInput" placeholder="All Projects (type to filter...)">
               </div>
+            </div>
+            <!-- NEW LOCATION FOR THE UNIVERSAL FILTER -->
+            <div class="control-item" id="categoryFilterContainer">
+              <label for="patternInput">🔍 Filter by Category (e.g., keyword -exclude)</label>
+              <input type="text" id="patternInput" placeholder="e.g., Task.* -review">
             </div>
           </div>
 
@@ -90,10 +95,6 @@ export function createDOMStructure(rootEl: HTMLElement): void {
                 <option value="project">Projects by Hierarchy</option>
                 <option value="subproject">Sub-projects by Project</option>
               </select>
-            </div>
-            <div class="control-item hidden-controls" id="pieCategoryFilterContainer">
-              <label for="patternInput">🔍 Category Filter (Regex)</label>
-              <input type="text" id="patternInput" placeholder="e.g., Task.*">
             </div>
 
             <!-- Time-Series Specific -->
