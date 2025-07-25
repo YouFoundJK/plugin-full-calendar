@@ -209,7 +209,15 @@ export class InsightConfigModal extends Modal {
     container.empty();
     const groupsEl = container.createDiv('insight-groups-container');
     for (const groupName in this.config.insightGroups) {
-      this.renderGroupSetting(groupsEl, groupName, this.config.insightGroups[groupName].rules);
+      const groupData = this.config.insightGroups[groupName];
+      // Defensive check to prevent crash on corrupt data
+      if (groupData && groupData.rules) {
+        this.renderGroupSetting(groupsEl, groupName, groupData.rules);
+      } else {
+        // Clean up corrupt group
+        console.warn(`[Chrono Analyser] Found and removed corrupt insight group: "${groupName}"`);
+        delete this.config.insightGroups[groupName];
+      }
     }
     new Setting(container).addButton(btn =>
       btn.setButtonText('Add New Insight Group').onClick(() => {
@@ -232,18 +240,29 @@ export class InsightConfigModal extends Modal {
   }
 
   private renderGroupSetting(container: HTMLElement, groupName: string, rules: InsightRule) {
+    // Track the current group name for renaming
+    let currentGroupName = groupName;
+
     const groupContainer = container.createDiv({ cls: 'insight-group-setting' });
     const nameSetting = new Setting(groupContainer)
       .setName('Group Name')
       .addText(text =>
         text
-          .setValue(groupName)
+          .setValue(currentGroupName)
           .setPlaceholder('e.g., Work')
           .onChange(newName => {
-            if (newName && newName !== groupName && !this.config.insightGroups[newName]) {
-              const oldGroup = this.config.insightGroups[groupName];
-              delete this.config.insightGroups[groupName];
-              this.config.insightGroups[newName] = oldGroup;
+            const newNameTrimmed = newName.trim();
+            if (
+              newNameTrimmed &&
+              newNameTrimmed !== currentGroupName &&
+              !this.config.insightGroups[newNameTrimmed]
+            ) {
+              const groupData = this.config.insightGroups[currentGroupName];
+              if (groupData) {
+                delete this.config.insightGroups[currentGroupName];
+                this.config.insightGroups[newNameTrimmed] = groupData;
+                currentGroupName = newNameTrimmed;
+              }
             }
           })
       )
@@ -253,7 +272,8 @@ export class InsightConfigModal extends Modal {
           .setTooltip('Delete this group')
           .onClick(() => {
             const currentName =
-              nameSetting.nameEl.nextElementSibling?.querySelector('input')?.value || groupName;
+              nameSetting.nameEl.nextElementSibling?.querySelector('input')?.value ||
+              currentGroupName;
             delete this.config.insightGroups[currentName];
             groupContainer.remove();
           })

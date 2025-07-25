@@ -43,7 +43,8 @@ export class InsightsEngine {
       insights.push(groupDistributionInsight);
     }
 
-    const lapsedHabitInsight = this._consolidateLapsedHabits(taggedRecords);
+    // FIX: Always run on allRecords, not taggedRecords
+    const lapsedHabitInsight = this._consolidateLapsedHabits(allRecords);
     if (lapsedHabitInsight) {
       insights.push(lapsedHabitInsight);
     }
@@ -114,12 +115,15 @@ export class InsightsEngine {
    * Re-instates the monthly comparison data.
    */
   private _createHierarchyExtremesInsight(allRecords: TimeRecord[]): Insight | null {
-    // Define date ranges
+    // Set all boundaries to midnight (local time)
     const today = new Date();
-    const sevenDaysAgo = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 7);
-    const thirtySevenDaysAgo = new Date();
-    thirtySevenDaysAgo.setDate(today.getDate() - 37);
+
+    const thirtySevenDaysAgo = new Date(sevenDaysAgo);
+    thirtySevenDaysAgo.setDate(sevenDaysAgo.getDate() - 30);
 
     const weeklyDistribution = new Map<string, number>();
     const monthlyDistribution = new Map<string, number>();
@@ -131,7 +135,11 @@ export class InsightsEngine {
 
     for (const record of allRecords) {
       if (!record.date) continue;
-      if (record.date >= sevenDaysAgo && record.date <= today) {
+      // Set record date to midnight for fair comparison
+      const recordDay = new Date(record.date);
+      recordDay.setHours(0, 0, 0, 0);
+
+      if (recordDay >= sevenDaysAgo && recordDay <= today) {
         weeklyTotalHours += record.duration;
         weeklyDistribution.set(
           record.hierarchy,
@@ -147,7 +155,7 @@ export class InsightsEngine {
           record.project,
           (projectsInHierarchy.get(record.project) || 0) + record.duration
         );
-      } else if (record.date >= thirtySevenDaysAgo && record.date < sevenDaysAgo) {
+      } else if (recordDay >= thirtySevenDaysAgo && recordDay < sevenDaysAgo) {
         monthlyTotalHours += record.duration;
         monthlyDistribution.set(
           record.hierarchy,
@@ -240,13 +248,18 @@ export class InsightsEngine {
 
   private _calculateGroupDistribution(taggedRecords: TimeRecord[]): Insight | null {
     const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const distribution = new Map<string, number>();
     let trueGrandTotalHours = 0;
 
     for (const record of taggedRecords) {
-      const recordDate = record.date || new Date();
-      if (recordDate < thirtyDaysAgo) continue;
+      const recordDate = record.date;
+      if (!recordDate) continue;
+      const recordDay = new Date(recordDate);
+      recordDay.setHours(0, 0, 0, 0);
+      if (recordDay < thirtyDaysAgo) continue;
+
       trueGrandTotalHours += record.duration;
       const tags = (record as any)._semanticTags || [];
       for (const tag of tags) {
@@ -303,19 +316,27 @@ export class InsightsEngine {
     };
   }
 
-  private _consolidateLapsedHabits(taggedRecords: TimeRecord[]): Insight | null {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const thirtySevenDaysAgo = new Date();
+  private _consolidateLapsedHabits(allRecords: TimeRecord[]): Insight | null {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+
+    const thirtySevenDaysAgo = new Date(sevenDaysAgo);
     thirtySevenDaysAgo.setDate(sevenDaysAgo.getDate() - 30);
+
     const recentProjects = new Set<string>();
     const baselineProjects = new Map<string, number>();
-    for (const record of taggedRecords) {
+    for (const record of allRecords) {
       const recordDate = record.date;
       if (!recordDate) continue;
-      if (recordDate >= sevenDaysAgo) {
+      const recordDay = new Date(recordDate);
+      recordDay.setHours(0, 0, 0, 0);
+
+      if (recordDay >= sevenDaysAgo) {
         recentProjects.add(record.project);
-      } else if (recordDate >= thirtySevenDaysAgo) {
+      } else if (recordDay >= thirtySevenDaysAgo) {
         baselineProjects.set(record.project, (baselineProjects.get(record.project) || 0) + 1);
       }
     }
