@@ -11,8 +11,6 @@ export interface InsightPayloadItem {
   details: string;
   action: FilterPayload | null;
   subItems?: InsightPayloadItem[]; // For nested breakdowns
-  isDeprioritized?: boolean;
-  isSeparator?: boolean;
 }
 
 export interface Insight {
@@ -73,21 +71,14 @@ export class InsightsEngine {
 
   private _tagRecord(record: TimeRecord, config: InsightsConfig): TimeRecord {
     const tags = new Set<string>();
-    const deprioritizedTags = new Set<string>();
+    let isMuted = false;
     const subprojectLower = record.subproject.toLowerCase();
 
     for (const groupName in config.insightGroups) {
       const group = config.insightGroups[groupName];
       if (!group || !group.rules) continue;
-      const rules = group.rules;
 
-      let isDeprioritized = false;
-      const exclusionKeywords = rules.subprojectKeywords_exclude || [];
-      if (exclusionKeywords.length > 0) {
-        if (exclusionKeywords.some(kw => kw && subprojectLower.includes(kw.toLowerCase()))) {
-          isDeprioritized = true;
-        }
-      }
+      const rules = group.rules;
 
       const isIncluded =
         rules.hierarchies.some(h => h.toLowerCase() === record.hierarchy.toLowerCase()) ||
@@ -96,13 +87,20 @@ export class InsightsEngine {
 
       if (isIncluded) {
         tags.add(groupName);
-        if (isDeprioritized) {
-          deprioritizedTags.add(groupName);
+
+        // Muting logic
+        const isMutedForGroup =
+          (rules.mutedProjects || []).includes(record.project) ||
+          (rules.mutedSubprojectKeywords || []).some(
+            kw => kw && subprojectLower.includes(kw.toLowerCase())
+          );
+        if (isMutedForGroup) {
+          isMuted = true;
         }
       }
     }
     (record as any)._semanticTags = Array.from(tags);
-    (record as any)._deprioritizedTags = Array.from(deprioritizedTags);
+    (record as any)._isMuted = isMuted;
     return record;
   }
 
@@ -237,28 +235,6 @@ export class InsightsEngine {
     };
   }
 
-  private createProjectSubItemsForGroup(
-    projects: Map<string, number> | undefined,
-    startDate: Date,
-    isDeprioritized: boolean = false
-  ): InsightPayloadItem[] {
-    if (!projects) return [];
-    return Array.from(projects.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([projectName, projectHours]) => ({
-        project: `• ${projectName}`,
-        details: `${projectHours.toFixed(1)} hours`,
-        action: {
-          analysisTypeSelect: 'time-series',
-          projectFilterInput: projectName,
-          dateRangePicker: [startDate, new Date()]
-        },
-        isDeprioritized: isDeprioritized,
-        isSeparator: false
-      }));
-  }
-
   private _calculateGroupDistribution(taggedRecords: TimeRecord[]): Insight | null {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setHours(0, 0, 0, 0);
@@ -266,7 +242,7 @@ export class InsightsEngine {
 
     const distribution = new Map<string, number>();
     const projectsByGroup = new Map<string, Map<string, number>>();
-    const deprioritizedProjectsByGroup = new Map<string, Map<string, number>>();
+    let trueGrandTotalHours = 0;
 
     for (const record of taggedRecords) {
       const recordDate = record.date;
@@ -275,26 +251,25 @@ export class InsightsEngine {
       recordDay.setHours(0, 0, 0, 0);
       if (recordDay < thirtyDaysAgo) continue;
 
+      trueGrandTotalHours += record.duration;
       const tags = (record as any)._semanticTags || [];
-      const deprioritizedTags = new Set((record as any)._deprioritizedTags || []);
-
       for (const tag of tags) {
-        const projectsMap = deprioritizedTags.has(tag)
-          ? deprioritizedProjectsByGroup
-          : projectsByGroup;
-        // Only count hours for non-deprioritized in the main distribution
-        if (!projectsMap.has(tag)) projectsMap.set(tag, new Map());
-        const projects = projectsMap.get(tag)!;
-        projects.set(record.project, (projects.get(record.project) || 0) + record.duration);
+        // Add to total group distribution
+        distribution.set(tag, (distribution.get(tag) || 0) + record.duration);
 
-        if (!deprioritizedTags.has(tag)) {
-          distribution.set(tag, (distribution.get(tag) || 0) + record.duration);
+        // Add to project-level breakdown for that group
+        if (!projectsByGroup.has(tag)) {
+          projectsByGroup.set(tag, new Map());
         }
+        const projectsInGroup = projectsByGroup.get(tag)!;
+        projectsInGroup.set(
+          record.project,
+          (projectsInGroup.get(record.project) || 0) + record.duration
+        );
       }
     }
 
-    const primaryTotalHours = Array.from(distribution.values()).reduce((sum, h) => sum + h, 0);
-    if (primaryTotalHours === 0) return null;
+    if (trueGrandTotalHours === 0) return null;
 
     const sortedGroups = Array.from(distribution.entries())
       .map(([groupName, hours]) => ({ groupName, hours }))
@@ -304,55 +279,54 @@ export class InsightsEngine {
     if (topGroups.length === 0) return null;
 
     const topGroupNames = topGroups.map(g => `**'${g.groupName}'**`);
-    const topGroupsText =
-      topGroups.length === 1
-        ? topGroupNames[0]
-        : topGroups.length === 2
-          ? topGroupNames.join(' and ')
-          : `${topGroupNames.slice(0, -1).join(', ')}, and ${topGroupNames.slice(-1)}`;
+    let topGroupsText: string;
+    if (topGroupNames.length === 1) {
+      topGroupsText = topGroupNames[0];
+    } else if (topGroupNames.length === 2) {
+      topGroupsText = topGroupNames.join(' and ');
+    } else {
+      topGroupsText = `${topGroupNames.slice(0, -1).join(', ')}, and ${topGroupNames.slice(-1)}`;
+    }
 
     const topGroupsTotalHours = topGroups.reduce((sum, g) => sum + g.hours, 0);
-    const topGroupsPercentage =
-      primaryTotalHours > 0 ? (topGroupsTotalHours / primaryTotalHours) * 100 : 0;
+    const topGroupsPercentage = (topGroupsTotalHours / trueGrandTotalHours) * 100;
 
     const displayText = this._formatText(
-      `Your top activities were ${topGroupsText}, making up **'${topGroupsPercentage.toFixed(0)}%'** of your primary logged time.`
+      `Your top ${topGroups.length === 1 ? 'activity was' : 'activities were'} ${topGroupsText}, accounting for **'${topGroupsPercentage.toFixed(0)}%'** of your total logged time.`
     );
 
     const payload: InsightPayloadItem[] = topGroups.map(group => {
-      const percentage = primaryTotalHours > 0 ? (group.hours / primaryTotalHours) * 100 : 0;
-      const subItems = this.createProjectSubItemsForGroup(
-        projectsByGroup.get(group.groupName),
-        thirtyDaysAgo,
-        false
-      );
-      const deprioSubItems = this.createProjectSubItemsForGroup(
-        deprioritizedProjectsByGroup.get(group.groupName),
-        thirtyDaysAgo,
-        true
-      );
+      const percentage = (group.hours / trueGrandTotalHours) * 100;
+      const projects = projectsByGroup.get(group.groupName);
+      const subItems: InsightPayloadItem[] = [];
 
-      if (subItems.length > 0 && deprioSubItems.length > 0) {
-        subItems.push({
-          project: 'Deprioritized Items',
-          details: '',
-          action: null,
-          isSeparator: true
-        });
+      if (projects) {
+        Array.from(projects.entries())
+          .sort((a, b) => b[1] - a[1]) // Sort projects by hours
+          .slice(0, 5) // Show top 5 projects
+          .forEach(([projectName, projectHours]) => {
+            subItems.push({
+              project: `• ${projectName}`,
+              details: `${projectHours.toFixed(1)} hours`,
+              action: {
+                analysisTypeSelect: 'time-series',
+                projectFilterInput: projectName,
+                dateRangePicker: [thirtyDaysAgo, new Date()]
+              }
+            });
+          });
       }
-      subItems.push(...deprioSubItems);
 
       return {
         project: group.groupName,
-        details: `${group.hours.toFixed(1)} hours (${percentage.toFixed(0)}% of primary)`,
+        details: `${group.hours.toFixed(1)} hours (${percentage.toFixed(0)}% of total)`,
         action: {
           analysisTypeSelect: 'pie',
           hierarchyFilterInput: group.groupName,
           dateRangePicker: [thirtyDaysAgo, new Date()],
           levelSelect_pie: 'project'
         },
-        subItems: subItems,
-        isDeprioritized: false
+        subItems: subItems.length > 0 ? subItems : undefined
       };
     });
 
@@ -377,7 +351,12 @@ export class InsightsEngine {
 
     const recentProjects = new Set<string>();
     const baselineProjects = new Map<string, number>();
+
     for (const record of allRecords) {
+      // Correctly apply the muting logic
+      if ((record as any)._isMuted) {
+        continue; // Ignore muted projects for habit tracking
+      }
       const recordDate = record.date;
       if (!recordDate) continue;
       const recordDay = new Date(recordDate);
@@ -389,6 +368,7 @@ export class InsightsEngine {
         baselineProjects.set(record.project, (baselineProjects.get(record.project) || 0) + 1);
       }
     }
+
     const lapsedHabitsPayload: InsightPayloadItem[] = [];
     for (const [project, count] of baselineProjects.entries()) {
       if (count >= 2 && !recentProjects.has(project)) {
@@ -403,7 +383,9 @@ export class InsightsEngine {
         });
       }
     }
+
     if (lapsedHabitsPayload.length === 0) return null;
+
     lapsedHabitsPayload.sort((a, b) => {
       const countA = parseInt(a.details.match(/\d+/)?.[0] || '0');
       const countB = parseInt(b.details.match(/\d+/)?.[0] || '0');

@@ -7,7 +7,8 @@ interface InsightRule {
   hierarchies: string[];
   projects: string[];
   subprojectKeywords: string[];
-  subprojectKeywords_exclude: string[]; // NEW
+  mutedSubprojectKeywords: string[]; // Renamed from subprojectKeywords_exclude
+  mutedProjects: string[]; // NEW
 }
 interface InsightGroups {
   [groupName: string]: { rules: InsightRule };
@@ -160,7 +161,8 @@ export class InsightConfigModal extends Modal {
             hierarchies: ['Work'],
             projects: [],
             subprojectKeywords: [],
-            subprojectKeywords_exclude: []
+            mutedSubprojectKeywords: [],
+            mutedProjects: []
           }
         },
         Personal: {
@@ -168,7 +170,8 @@ export class InsightConfigModal extends Modal {
             hierarchies: ['Personal'],
             projects: [],
             subprojectKeywords: [],
-            subprojectKeywords_exclude: []
+            mutedSubprojectKeywords: [],
+            mutedProjects: []
           }
         }
       }
@@ -227,7 +230,8 @@ export class InsightConfigModal extends Modal {
             hierarchies: [],
             projects: [],
             subprojectKeywords: [],
-            subprojectKeywords_exclude: []
+            mutedSubprojectKeywords: [],
+            mutedProjects: []
           }
         };
         this.renderGroupSetting(
@@ -284,7 +288,7 @@ export class InsightConfigModal extends Modal {
       'Matching Hierarchies',
       'e.g., Work Calendar, Personal Calendar',
       'Add hierarchy...',
-      rules.hierarchies,
+      rules.hierarchies || [],
       this.knownHierarchies
     );
     this.createTagInput(
@@ -292,7 +296,16 @@ export class InsightConfigModal extends Modal {
       'Matching Projects',
       'e.g., Project Phoenix, Q4 Report',
       'Add project...',
-      rules.projects,
+      rules.projects || [],
+      this.knownProjects
+    );
+
+    this.createTagInput(
+      groupContainer,
+      'Muted Projects',
+      'Mute specific projects (case-sensitive, exact match) to exclude them from Habit Consistency checks.',
+      'Add muted project...',
+      rules.mutedProjects || [],
       this.knownProjects
     );
 
@@ -301,7 +314,7 @@ export class InsightConfigModal extends Modal {
       .setDesc('Add keywords that will match if found anywhere in a sub-project.')
       .addTextArea(text => {
         text
-          .setValue(rules.subprojectKeywords.join('\n'))
+          .setValue((rules.subprojectKeywords || []).join('\n'))
           .setPlaceholder('eg., design\nresearch\nmeeting')
           .onChange(value => {
             rules.subprojectKeywords = value
@@ -311,18 +324,17 @@ export class InsightConfigModal extends Modal {
           });
       });
 
-    // --- REPLACED: Exclusion keywords textarea is now Deprioritization ---
     new Setting(groupContainer)
-      .setName('Deprioritization Keywords for Sub-project')
+      .setName('Muted Sub-project Keywords')
       .setDesc(
-        "If a sub-project contains any of these (case-insensitive) keywords, its time won't count towards the group's main total. The entry will appear at the bottom of the insight breakdown, marked as deprioritized."
+        'Mute activities by keyword. If a sub-project contains any of these (case-insensitive) keywords, it will be excluded from Habit Consistency checks.'
       )
       .addTextArea(text => {
         text
-          .setValue((rules.subprojectKeywords_exclude || []).join('\n'))
-          .setPlaceholder('e.g., lunch\nbreak\nadmin')
+          .setValue((rules.mutedSubprojectKeywords || []).join('\n'))
+          .setPlaceholder('e.g., completed\narchive\nold')
           .onChange(value => {
-            rules.subprojectKeywords_exclude = value
+            rules.mutedSubprojectKeywords = value
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
