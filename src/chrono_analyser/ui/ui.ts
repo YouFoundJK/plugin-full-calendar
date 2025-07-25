@@ -7,6 +7,7 @@ interface InsightRule {
   hierarchies: string[];
   projects: string[];
   subprojectKeywords: string[];
+  subprojectKeywords_exclude: string[]; // NEW
 }
 interface InsightGroups {
   [groupName: string]: { rules: InsightRule };
@@ -154,8 +155,22 @@ export class InsightConfigModal extends Modal {
       version: 1,
       lastUpdated: new Date().toISOString(),
       insightGroups: {
-        Work: { rules: { hierarchies: ['Work'], projects: [], subprojectKeywords: [] } },
-        Personal: { rules: { hierarchies: ['Personal'], projects: [], subprojectKeywords: [] } }
+        Work: {
+          rules: {
+            hierarchies: ['Work'],
+            projects: [],
+            subprojectKeywords: [],
+            subprojectKeywords_exclude: []
+          }
+        },
+        Personal: {
+          rules: {
+            hierarchies: ['Personal'],
+            projects: [],
+            subprojectKeywords: [],
+            subprojectKeywords_exclude: []
+          }
+        }
       }
     };
   }
@@ -200,7 +215,12 @@ export class InsightConfigModal extends Modal {
       btn.setButtonText('Add New Insight Group').onClick(() => {
         const newGroupName = `New Group ${Object.keys(this.config.insightGroups).length + 1}`;
         this.config.insightGroups[newGroupName] = {
-          rules: { hierarchies: [], projects: [], subprojectKeywords: [] }
+          rules: {
+            hierarchies: [],
+            projects: [],
+            subprojectKeywords: [],
+            subprojectKeywords_exclude: []
+          }
         };
         this.renderGroupSetting(
           groupsEl,
@@ -216,13 +236,16 @@ export class InsightConfigModal extends Modal {
     const nameSetting = new Setting(groupContainer)
       .setName('Group Name')
       .addText(text =>
-        text.setValue(groupName).onChange(newName => {
-          if (newName && newName !== groupName && !this.config.insightGroups[newName]) {
-            const oldGroup = this.config.insightGroups[groupName];
-            delete this.config.insightGroups[groupName];
-            this.config.insightGroups[newName] = oldGroup;
-          }
-        })
+        text
+          .setValue(groupName)
+          .setPlaceholder('e.g., Work')
+          .onChange(newName => {
+            if (newName && newName !== groupName && !this.config.insightGroups[newName]) {
+              const oldGroup = this.config.insightGroups[groupName];
+              delete this.config.insightGroups[groupName];
+              this.config.insightGroups[newName] = oldGroup;
+            }
+          })
       )
       .addExtraButton(btn =>
         btn
@@ -239,14 +262,16 @@ export class InsightConfigModal extends Modal {
     this.createTagInput(
       groupContainer,
       'Matching Hierarchies',
-      'Press Enter or select a suggestion.',
+      'e.g., Work Calendar, Personal Calendar',
+      'Add hierarchy...',
       rules.hierarchies,
       this.knownHierarchies
     );
     this.createTagInput(
       groupContainer,
       'Matching Projects',
-      'Press Enter or select a suggestion.',
+      'e.g., Project Phoenix, Q4 Report',
+      'Add project...',
       rules.projects,
       this.knownProjects
     );
@@ -255,12 +280,33 @@ export class InsightConfigModal extends Modal {
       .setName('Matching Sub-project Keywords')
       .setDesc('Add keywords that will match if found anywhere in a sub-project.')
       .addTextArea(text => {
-        text.setValue(rules.subprojectKeywords.join('\n')).onChange(value => {
-          rules.subprojectKeywords = value
-            .split('\n')
-            .map(s => s.trim())
-            .filter(Boolean);
-        });
+        text
+          .setValue(rules.subprojectKeywords.join('\n'))
+          .setPlaceholder('eg., design\nresearch\nmeeting')
+          .onChange(value => {
+            rules.subprojectKeywords = value
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+          });
+      });
+
+    // --- NEW: Exclusion keywords textarea ---
+    new Setting(groupContainer)
+      .setName('Exclusion Keywords for Sub-project')
+      .setDesc(
+        'If a sub-project contains any of these (case-insensitive) keywords, the record will NOT be added to this group, even if other rules match.'
+      )
+      .addTextArea(text => {
+        text
+          .setValue((rules.subprojectKeywords_exclude || []).join('\n'))
+          .setPlaceholder('eg., lunch\nbreak\nadmin')
+          .onChange(value => {
+            rules.subprojectKeywords_exclude = value
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+          });
       });
   }
 
@@ -268,6 +314,7 @@ export class InsightConfigModal extends Modal {
     container: HTMLElement,
     name: string,
     desc: string,
+    placeholder: string, // NEW
     values: string[],
     suggestions: string[]
   ) {
@@ -276,7 +323,11 @@ export class InsightConfigModal extends Modal {
     const wrapper = setting.controlEl.createDiv({ cls: 'autocomplete-wrapper' });
     const tagInputContainer = wrapper.createDiv({ cls: 'tag-input-container' });
     const tagsEl = tagInputContainer.createDiv({ cls: 'tags' });
-    const inputEl = tagInputContainer.createEl('input', { type: 'text', cls: 'tag-input' });
+    const inputEl = tagInputContainer.createEl('input', {
+      type: 'text',
+      cls: 'tag-input',
+      placeholder
+    }); // NEW
 
     const renderTags = () => {
       tagsEl.empty();

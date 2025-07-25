@@ -74,10 +74,23 @@ export class InsightsEngine {
     const subprojectLower = record.subproject.toLowerCase();
     for (const groupName in config.insightGroups) {
       const group = config.insightGroups[groupName];
+
       if (!group || !group.rules) {
         continue;
       }
       const rules = group.rules;
+
+      // --- NEW EXCLUSION LOGIC ---
+      // Check for veto keywords first. If a match is found, skip this group entirely.
+      const exclusionKeywords = rules.subprojectKeywords_exclude || [];
+      if (exclusionKeywords.length > 0) {
+        if (exclusionKeywords.some(kw => kw && subprojectLower.includes(kw.toLowerCase()))) {
+          continue; // Veto power: skip to the next group
+        }
+      }
+      // --- END OF NEW LOGIC ---
+
+      // Existing inclusion logic runs only if no exclusion keyword was found.
       if (rules.hierarchies.some(h => h.toLowerCase() === record.hierarchy.toLowerCase())) {
         tags.add(groupName);
         continue;
@@ -86,7 +99,7 @@ export class InsightsEngine {
         tags.add(groupName);
         continue;
       }
-      if (rules.subprojectKeywords.some(kw => subprojectLower.includes(kw.toLowerCase()))) {
+      if (rules.subprojectKeywords.some(kw => kw && subprojectLower.includes(kw.toLowerCase()))) {
         tags.add(groupName);
       }
     }
