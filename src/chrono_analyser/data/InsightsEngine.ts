@@ -365,7 +365,9 @@ export class InsightsEngine {
 
       return {
         project: group.groupName,
-        details: this._formatText(`**'${percentage.toFixed(0)}%'** (${group.hours.toFixed(1)} hours)`),
+        details: this._formatText(
+          `**'${percentage.toFixed(0)}%'** (${group.hours.toFixed(1)} hours)`
+        ),
         action: {
           analysisTypeSelect: 'pie',
           hierarchyFilterInput: group.groupName,
@@ -469,7 +471,9 @@ export class InsightsEngine {
     if (topMovers.length > 0) {
       const moversPayload: InsightPayloadItem[] = topMovers.map(([project, delta]) => ({
         project: project,
-        details: this._formatText(`**'${delta > 0 ? '+' : ''}${delta.toFixed(1)}'** hours vs last week`),
+        details: this._formatText(
+          `**'${delta > 0 ? '+' : ''}${delta.toFixed(1)}'** hours vs last week`
+        ),
         action: {
           analysisTypeSelect: 'time-series',
           projectFilterInput: project,
@@ -493,7 +497,9 @@ export class InsightsEngine {
     if (lapsedHabitInsight) {
       lapsedHabitInsight.category = '🎯 PRODUCTIVITY';
       lapsedHabitInsight.sentiment = 'warning';
-      lapsedHabitInsight.displayText = this._formatText(`You have **'${lapsedHabitInsight.payload?.length}'** at-risk initiatives that haven't been logged in over a week.`);
+      lapsedHabitInsight.displayText = this._formatText(
+        `You have **'${lapsedHabitInsight.payload?.length}'** at-risk initiatives that haven't been logged in over a week.`
+      );
       insights.push(lapsedHabitInsight);
     }
 
