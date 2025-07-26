@@ -149,6 +149,7 @@ export function toEventInput(
     title: frontmatter.title, // Use the clean title for display
     allDay: frontmatter.allDay,
     extendedProps: {
+      recurringEventId: frontmatter.recurringEventId,
       category: frontmatter.category
     }
   };
@@ -238,7 +239,7 @@ export function toEventInput(
       if (!start) {
         return null;
       }
-      let end = undefined;
+      let end: string | null | undefined = undefined;
       if (frontmatter.endTime) {
         end = combineDateTimeStrings(frontmatter.endDate || frontmatter.date, frontmatter.endTime);
         if (!end) {
@@ -294,7 +295,8 @@ export function fromEventApi(event: EventApi): OFCEvent {
   const endDate = getDate(event.end as Date);
   return {
     title: event.title,
-    category: originalCategory, // Preserve the category
+    category: event.extendedProps.category, // Preserve the category
+    recurringEventId: event.extendedProps.recurringEventId,
     ...(event.allDay
       ? { allDay: true }
       : {

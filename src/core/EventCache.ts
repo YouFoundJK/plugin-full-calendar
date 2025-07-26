@@ -36,6 +36,7 @@ import RemoteCalendar from '../calendars/RemoteCalendar';
 import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import FullCalendarPlugin from '../main';
 import { FullCalendarSettings } from '../ui/settings';
+import { toggleTask } from '../ui/tasks';
 
 export type CalendarInitializerMap = Record<
   CalendarInfo['type'],
@@ -420,6 +421,70 @@ export default class EventCache {
     const newEvent = process(event);
     // console.debug('process', newEvent, process);
     return this.updateEventWithId(id, newEvent);
+  }
+
+  /**
+   * Handles the logic for marking an instance of a recurring event as complete or not.
+   * This uses the "exception and override" strategy.
+   * @param eventId The ID of the event instance clicked in the UI. This could be the parent recurring event or a single-event override.
+   * @param instanceDate The specific date of the instance to modify (e.g., '2023-11-20').
+   * @param isDone The desired completion state.
+   */
+  async toggleRecurringInstance(
+    eventId: string,
+    instanceDate: string,
+    isDone: boolean
+  ): Promise<void> {
+    const originalEvent = this.getEventById(eventId);
+    if (!originalEvent) {
+      throw new Error(`Event with ID ${eventId} not found.`);
+    }
+
+    if (isDone) {
+      // MARKING AS COMPLETE:
+      // 1. Create a new single event override that is marked as complete.
+      const overrideEvent: OFCEvent = {
+        ...originalEvent,
+        type: 'single',
+        date: instanceDate,
+        endDate: null,
+        completed: false, // This will be properly set by toggleTask
+        recurringEventId: eventId // Link back to the parent.
+      };
+
+      // 2. Add the override event to the same calendar.
+      const details = this.getInfoForEditableEvent(eventId);
+      await this.addEvent(details.calendar.id, toggleTask(overrideEvent, true));
+
+      // 3. Add an exception to the original recurring event so the uncompleted instance disappears.
+      if (originalEvent.type === 'rrule') {
+        await this.processEvent(eventId, e => {
+          if (e.type !== 'rrule') return e; // Should not happen
+          return { ...e, skipDates: [...e.skipDates, instanceDate] };
+        });
+      }
+    } else {
+      // MARKING AS INCOMPLETE:
+      // The user clicked on the override event. `eventId` is the ID of the single completed event.
+      const recurringEventId = originalEvent.recurringEventId;
+      if (!recurringEventId) {
+        throw new Error(
+          "Cannot un-complete an override event that isn't linked to a recurring event."
+        );
+      }
+
+      // 1. Delete the single-event override.
+      await this.deleteEvent(eventId);
+
+      // 2. Remove the exception from the parent recurring event, making it visible again.
+      const masterEvent = this.getEventById(recurringEventId);
+      if (masterEvent?.type === 'rrule') {
+        await this.processEvent(recurringEventId, e => {
+          if (e.type !== 'rrule') return e;
+          return { ...e, skipDates: e.skipDates.filter(d => d !== instanceDate) };
+        });
+      }
+    }
   }
 
   async moveEventToCalendar(eventId: string, newCalendarId: string): Promise<void> {

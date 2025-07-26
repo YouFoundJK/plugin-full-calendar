@@ -6,7 +6,7 @@
  * This file defines the `EditEvent` React component, which provides the form
  * for creating and editing events. It manages all form state, including title,
  * dates, times, recurrence rules, and associated calendar. It performs form
-- * validation and calls a submit callback to persist changes.
+ * validation and calls a submit callback to persist changes.
  *
  * @license See LICENSE.md
  */
@@ -143,6 +143,12 @@ export const EditEvent = ({
   const [complete, setComplete] = useState(
     initialEvent?.type === 'single' && initialEvent.completed
   );
+  const [daysOfWeek, setDaysOfWeek] = useState<string[]>(
+    initialEvent?.type === 'recurring' ? initialEvent.daysOfWeek || [] : []
+  );
+  const [endRecur, setEndRecur] = useState(
+    initialEvent?.type === 'recurring' ? initialEvent.endRecur : undefined
+  );
 
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -154,13 +160,8 @@ export const EditEvent = ({
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // CORRECTED LOGIC FOR 'completed' PROPERTY
-    let completedValue: string | false | null;
-    if (!isTask) {
-      completedValue = null; // Not a task
-    } else {
-      // If it is a task, 'complete' holds either a date string or false.
-      // We just need to ensure it's not undefined.
+    let completedValue: string | false | null = null;
+    if (isTask) {
       completedValue = complete || false;
     }
 
@@ -173,19 +174,17 @@ export const EditEvent = ({
         ...(isRecurring
           ? {
               type: 'recurring',
-              // @ts-ignore
-              daysOfWeek: [],
+              daysOfWeek: daysOfWeek,
               startRecur: date || undefined,
-              // @ts-ignore
-              endRecur: undefined
+              endRecur: endRecur
             }
           : {
               type: 'single',
               date: date || '',
               endDate: endDate || null,
-              completed: completedValue // Use the correctly typed value
+              completed: completedValue
             })
-      },
+      } as OFCEvent,
       calendarIndex
     );
   };
@@ -218,7 +217,6 @@ export const EditEvent = ({
           </div>
         </div>
 
-        {/* POINT 3: CONDITIONAL CATEGORY INPUT */}
         {enableCategory && (
           <div className="setting-item">
             <div className="setting-item-info">
@@ -265,7 +263,31 @@ export const EditEvent = ({
           </div>
         </div>
 
-        {/* POINT 4: DISABLE TIME INPUTS INSTEAD OF HIDING */}
+        {isRecurring && (
+          <>
+            <div className="setting-item">
+              <div className="setting-item-info">
+                <div className="setting-item-name">Repeat on</div>
+              </div>
+              <div className="setting-item-control">
+                <DaySelect value={daysOfWeek} onChange={setDaysOfWeek} />
+              </div>
+            </div>
+            <div className="setting-item">
+              <div className="setting-item-info">
+                <div className="setting-item-name">End Repeat</div>
+              </div>
+              <div className="setting-item-control">
+                <input
+                  type="date"
+                  value={endRecur || ''}
+                  onChange={e => setEndRecur(e.target.value || undefined)}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
         <div className={`setting-item time-setting-item ${allDay ? 'is-disabled' : ''}`}>
           <div className="setting-item-info">
             <div className="setting-item-name">Time</div>
@@ -288,7 +310,6 @@ export const EditEvent = ({
           </div>
         </div>
 
-        {/* ... (Options and Footer remain the same) */}
         <div className="setting-item">
           <div className="setting-item-info">
             <div className="setting-item-name">Options</div>

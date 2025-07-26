@@ -77,7 +77,8 @@ export const CommonSchema = z.object({
   title: z.string(), // This will now store the CLEAN title.
   id: z.string().optional(),
   timezone: z.string().optional(),
-  category: z.string().optional() // This will store the parsed category.
+  category: z.string().optional(), // This will store the parsed category.
+  recurringEventId: z.string().optional() // The ID of the parent recurring event.
 });
 
 export const EventSchema = z.discriminatedUnion('type', [
@@ -97,7 +98,7 @@ export const EventSchema = z.discriminatedUnion('type', [
     type: z.literal('rrule'),
     startDate: ParsedDate,
     rrule: z.string(),
-    skipDates: z.array(ParsedDate)
+    skipDates: z.array(ParsedDate).default([])
   })
 ]);
 
