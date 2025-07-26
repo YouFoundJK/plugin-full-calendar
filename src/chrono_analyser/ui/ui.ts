@@ -1,6 +1,6 @@
 // src/chrono_analyser/modules/ui.ts
 
-import { App, Modal, Setting, TFolder, SuggestModal } from 'obsidian';
+import { App, Modal, Setting, TFolder, SuggestModal, Notice } from 'obsidian';
 
 // DATA STRUCTURES
 interface InsightRule {
@@ -144,10 +144,12 @@ export class InsightConfigModal extends Modal {
   private knownProjects: string[];
   private expandedGroupName: string | null = null; // Collapsible state
 
-  // --- Unsaved changes tracking ---
+  // --- ADD/MODIFY THESE PROPERTIES ---
+  private groupsContainerEl!: HTMLElement; // Our stable container
   private originalConfigString: string = '';
   private hasUnsavedChanges: boolean = false;
   private isSaving: boolean = false;
+  // --- END ---
 
   constructor(
     app: App,
@@ -215,6 +217,12 @@ export class InsightConfigModal extends Modal {
     // --- END MIGRATION LOGIC ---
   }
 
+  // --- ADD THIS HELPER METHOD ---
+  private rerender() {
+    this.renderGroups(this.groupsContainerEl);
+  }
+  // --- END ---
+
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
@@ -224,8 +232,9 @@ export class InsightConfigModal extends Modal {
       text: 'Create groups to categorize your activities. The engine will use these rules to generate personalized insights.'
     });
 
-    const groupsContainer = contentEl.createDiv();
-    this.renderGroups(groupsContainer);
+    // --- INITIALIZE THE STABLE CONTAINER ---
+    this.groupsContainerEl = contentEl.createDiv();
+    this.rerender(); // Initial render
 
     new Setting(contentEl)
       .addButton(btn =>
@@ -279,12 +288,14 @@ export class InsightConfigModal extends Modal {
             mutedProjects: []
           }
         };
-        this.renderGroupSetting(groupsEl, newGroupName, this.config.insightGroups[newGroupName]);
+        this.checkForUnsavedChanges();
+        this.expandedGroupName = newGroupName; // Expand the new group by default
+        this.rerender();
       })
     );
   }
 
-  // --- Update signature to accept groupData (with persona) ---
+  // --- REPLACE THE ENTIRE renderGroupSetting METHOD ---
   private renderGroupSetting(
     container: HTMLElement,
     groupName: string,
@@ -297,59 +308,80 @@ export class InsightConfigModal extends Modal {
     const groupContainer = container.createDiv({ cls: 'insight-group-setting' });
     groupContainer.toggleClass('is-expanded', isExpanded);
 
+    groupContainer.addEventListener('click', evt => {
+      // Only expand if collapsed. Collapsing is handled by the header's click listener.
+      if (!isExpanded) {
+        this.expandedGroupName = currentGroupName;
+        this.rerender();
+      }
+    });
+
     const nameSetting = new Setting(groupContainer)
       .setName('Group Name')
-      .addText(text =>
+      .addText(text => {
         text
           .setValue(currentGroupName)
           .setPlaceholder('e.g., Work')
           .setDisabled(!isExpanded)
-          .onChange(newName => {
-            const newNameTrimmed = newName.trim();
-            if (
-              newNameTrimmed &&
-              newNameTrimmed !== currentGroupName &&
-              !this.config.insightGroups[newNameTrimmed]
-            ) {
-              const groupData = this.config.insightGroups[currentGroupName];
-              if (groupData) {
-                delete this.config.insightGroups[currentGroupName];
-                this.config.insightGroups[newNameTrimmed] = groupData;
-                currentGroupName = newNameTrimmed;
-                this.expandedGroupName = newNameTrimmed;
-                this.checkForUnsavedChanges();
-                this.renderGroups(container.parentElement!);
-              }
-            }
+          .onChange(() => {
             this.checkForUnsavedChanges();
-          })
-      )
+          });
+
+        // Use 'blur' to finalize the rename
+        text.inputEl.addEventListener('blur', () => {
+          // --- ADD THIS CHECK AT THE VERY TOP ---
+          // If the group was deleted while this input had focus, do nothing.
+          if (!this.config.insightGroups[currentGroupName]) {
+            return;
+          }
+          // --- END OF ADDITION ---
+
+          const newNameTrimmed = text.inputEl.value.trim();
+          if (!newNameTrimmed || newNameTrimmed === currentGroupName) {
+            text.inputEl.value = currentGroupName;
+            return;
+          }
+          if (this.config.insightGroups[newNameTrimmed]) {
+            new Notice(`Group name "${newNameTrimmed}" already exists.`);
+            text.inputEl.value = currentGroupName;
+            return;
+          }
+          const groupData = this.config.insightGroups[currentGroupName];
+          if (groupData) {
+            delete this.config.insightGroups[currentGroupName];
+            this.config.insightGroups[newNameTrimmed] = groupData;
+            this.expandedGroupName = newNameTrimmed;
+            this.rerender();
+          }
+        });
+      })
       .addExtraButton(btn => {
         btn
           .setIcon('trash')
           .setTooltip('Delete this group')
           .setDisabled(!isExpanded)
+          // --- FIX: REMOVE 'evt' and 'stopPropagation' ---
           .onClick(() => {
-            const currentName =
-              nameSetting.nameEl.nextElementSibling?.querySelector('input')?.value ||
-              currentGroupName;
-            delete this.config.insightGroups[currentName];
-            this.renderGroups(container.parentElement!);
+            delete this.config.insightGroups[currentGroupName];
+            this.checkForUnsavedChanges();
+
+            // If we deleted the currently expanded group, no group should be expanded.
+            if (this.expandedGroupName === currentGroupName) {
+              this.expandedGroupName = null;
+            }
+
+            this.rerender();
           });
       });
 
-    groupContainer.addEventListener('click', evt => {
+    // Make the header clickable to collapse the group
+    nameSetting.settingEl.addEventListener('click', evt => {
       const target = evt.target as HTMLElement;
-      if (!isExpanded) {
-        this.expandedGroupName = currentGroupName;
-        this.renderGroups(container.parentElement!);
-        return;
-      }
-      const clickedOnHeader = nameSetting.settingEl.contains(target);
-      const clickedOnInteractive = target.closest('input, textarea, button, .tag-remove');
-      if (clickedOnHeader && !clickedOnInteractive) {
+      if (target.closest('input, button, .tag-remove')) return;
+
+      if (isExpanded) {
         this.expandedGroupName = null;
-        this.renderGroups(container.parentElement!);
+        this.rerender();
       }
     });
 
@@ -437,6 +469,7 @@ export class InsightConfigModal extends Modal {
           });
       });
   }
+  // --- END OF REPLACEMENT ---
 
   private createTagInput(
     container: HTMLElement,

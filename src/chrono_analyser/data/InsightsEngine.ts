@@ -53,21 +53,22 @@ export class InsightsEngine {
       }
     }
 
+    // --- FIXED LOGIC: allow records to contribute to both personas ---
     const productivityRecords: TimeRecord[] = [];
     const wellnessRecords: TimeRecord[] = [];
+    let totalProductivityHours = 0;
+    let totalWellnessHours = 0;
 
     for (const record of taggedRecords) {
       const tags = (record as any)._semanticTags || [];
-      let assignedPersona = 'none';
-      if (tags.some((tag: string) => groupPersonas.get(tag) === 'wellness')) {
-        assignedPersona = 'wellness';
-      } else if (tags.some((tag: string) => groupPersonas.get(tag) === 'productivity')) {
-        assignedPersona = 'productivity';
-      }
-      if (assignedPersona === 'wellness') {
-        wellnessRecords.push(record);
-      } else if (assignedPersona === 'productivity') {
+      const duration = record.duration;
+      if (tags.some((tag: string) => groupPersonas.get(tag) === 'productivity')) {
         productivityRecords.push(record);
+        totalProductivityHours += duration;
+      }
+      if (tags.some((tag: string) => groupPersonas.get(tag) === 'wellness')) {
+        wellnessRecords.push(record);
+        totalWellnessHours += duration;
       }
     }
 
@@ -75,7 +76,8 @@ export class InsightsEngine {
       insights.push(...this._generateProductivityInsights(productivityRecords));
     }
     if (wellnessRecords.length > 0) {
-      insights.push(...this._generateWellnessInsights(wellnessRecords));
+      // Pass correct productivity total for balance calculation
+      insights.push(...this._generateWellnessInsights(wellnessRecords, totalProductivityHours));
     }
 
     // --- 3. Final Check ---
@@ -363,7 +365,7 @@ export class InsightsEngine {
 
       return {
         project: group.groupName,
-        details: `${group.hours.toFixed(1)} hours (${percentage.toFixed(0)}% of total)`,
+        details: this._formatText(`**'${percentage.toFixed(0)}%'** (${group.hours.toFixed(1)} hours)`),
         action: {
           analysisTypeSelect: 'pie',
           hierarchyFilterInput: group.groupName,
@@ -467,7 +469,7 @@ export class InsightsEngine {
     if (topMovers.length > 0) {
       const moversPayload: InsightPayloadItem[] = topMovers.map(([project, delta]) => ({
         project: project,
-        details: `${delta > 0 ? '+' : ''}${delta.toFixed(1)} hours vs last week`,
+        details: this._formatText(`**'${delta > 0 ? '+' : ''}${delta.toFixed(1)}'** hours vs last week`),
         action: {
           analysisTypeSelect: 'time-series',
           projectFilterInput: project,
@@ -491,7 +493,7 @@ export class InsightsEngine {
     if (lapsedHabitInsight) {
       lapsedHabitInsight.category = '🎯 PRODUCTIVITY';
       lapsedHabitInsight.sentiment = 'warning';
-      lapsedHabitInsight.displayText = `You have **'${lapsedHabitInsight.payload?.length}'** at-risk initiatives that haven't been logged in over a week.`;
+      lapsedHabitInsight.displayText = this._formatText(`You have **'${lapsedHabitInsight.payload?.length}'** at-risk initiatives that haven't been logged in over a week.`);
       insights.push(lapsedHabitInsight);
     }
 
@@ -499,7 +501,10 @@ export class InsightsEngine {
   }
 
   // --- REPLACE the existing _generateWellnessInsights with this new, complete version ---
-  private _generateWellnessInsights(records: TimeRecord[]): Insight[] {
+  private _generateWellnessInsights(
+    records: TimeRecord[],
+    totalProductiveHoursLast30Days: number
+  ): Insight[] {
     if (records.length < 5) return [];
     const insights: Insight[] = [];
 
@@ -579,13 +584,8 @@ export class InsightsEngine {
     }
 
     // --- Insight 2: Long-Term Balance Trend ---
-    // Get total productive hours for comparison
-    const totalProductiveHoursLast30Days = records.reduce((sum, r) => {
-      if (!r.date) return sum;
-      const recordDay = new Date(r.date);
-      recordDay.setHours(0, 0, 0, 0);
-      return recordDay >= last30DaysStart ? sum + r.duration : sum;
-    }, 0);
+    // REMOVE: calculation of totalProductiveHoursLast30Days here
+    // Use the value passed in from generateInsights
 
     if (totalWellnessHoursLast30Days > 0 && totalProductiveHoursLast30Days > 0) {
       const totalHours = totalWellnessHoursLast30Days + totalProductiveHoursLast30Days;
@@ -650,7 +650,7 @@ export class InsightsEngine {
       if (count >= 2 && !recentProjects.has(project)) {
         lapsedHabitsPayload.push({
           project,
-          details: `(logged ${count} times in the month prior)`,
+          details: this._formatText(`(logged **'${count}'** times in the month prior)`),
           action: {
             analysisTypeSelect: 'time-series',
             projectFilterInput: project,
