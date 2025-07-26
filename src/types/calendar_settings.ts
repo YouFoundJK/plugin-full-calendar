@@ -68,7 +68,7 @@ export function safeParseCalendarInfo(obj: unknown): CalendarInfo | null {
  */
 export function makeDefaultPartialCalendarSource(
   type: CalendarInfo['type'] | 'icloud',
-  existingColors: string[]
+  existingColors: string[] = []
 ): Partial<CalendarInfo> {
   const newColor = getNextColor(existingColors);
 

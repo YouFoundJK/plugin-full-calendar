@@ -15,7 +15,7 @@ import { MarkdownView, TFile, Vault, Workspace } from 'obsidian';
 import EventCache from '../core/EventCache';
 
 /**
- * Open a file in a NEW PANE (split view) to a given event.
+ * Open a file in a NEW PANE (new tab view) to a given event.
  * @param cache
  * @param param1 App
  * @param id event ID
