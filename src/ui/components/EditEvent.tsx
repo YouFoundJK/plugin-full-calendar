@@ -136,9 +136,12 @@ export const EditEvent = ({
   const [allDay, setAllDay] = useState(initialEvent?.allDay || false);
   const [calendarIndex, setCalendarIndex] = useState(defaultCalendarIndex);
   const [isTask, setIsTask] = useState(
-    initialEvent?.type === 'single' &&
+    (initialEvent?.type === 'single' &&
       initialEvent.completed !== undefined &&
-      initialEvent.completed !== null
+      initialEvent.completed !== null) ||
+      (initialEvent?.type === 'recurring' && initialEvent.isTask) ||
+      (initialEvent?.type === 'rrule' && initialEvent.isTask) ||
+      false
   );
   const [complete, setComplete] = useState(
     initialEvent?.type === 'single' && initialEvent.completed
@@ -176,7 +179,8 @@ export const EditEvent = ({
               type: 'recurring',
               daysOfWeek: daysOfWeek,
               startRecur: date || undefined,
-              endRecur: endRecur
+              endRecur: endRecur,
+              isTask: isTask // Add this line
             }
           : {
               type: 'single',
@@ -331,16 +335,17 @@ export const EditEvent = ({
               <input type="checkbox" checked={isTask} onChange={e => setIsTask(e.target.checked)} />{' '}
               Is a Task
             </label>
-            {isTask && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={!!complete}
-                  onChange={e => setComplete(e.target.checked ? DateTime.now().toISO() : false)}
-                />{' '}
-                Completed
-              </label>
-            )}
+            {isTask &&
+              !isRecurring && ( // Modified conditional rendering
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!!complete}
+                    onChange={e => setComplete(e.target.checked ? DateTime.now().toISO() : false)}
+                  />{' '}
+                  Completed
+                </label>
+              )}
           </div>
         </div>
 

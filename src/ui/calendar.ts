@@ -187,7 +187,7 @@ export function renderCalendar(
         if (event.extendedProps.isTask) {
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
-          checkbox.checked = event.extendedProps.taskCompleted !== false;
+          checkbox.checked = !!event.extendedProps.taskCompleted;
           checkbox.onclick = async e => {
             e.stopPropagation();
             if (e.target) {

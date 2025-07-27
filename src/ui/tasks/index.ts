@@ -12,10 +12,17 @@
  */
 
 import { DateTime } from 'luxon';
-import { OFCEvent } from 'src/types';
+import { OFCEvent } from '../../types';
 
-export const isTask = (e: OFCEvent) =>
-  e.type === 'single' && e.completed !== undefined && e.completed !== null;
+export const isTask = (e: OFCEvent) => {
+  if (e.type === 'single') {
+    return e.completed !== undefined && e.completed !== null;
+  }
+  if (e.type === 'recurring' || e.type === 'rrule') {
+    return !!e.isTask;
+  }
+  return false;
+};
 
 export const unmakeTask = (event: OFCEvent): OFCEvent => {
   if (event.type !== 'single') {

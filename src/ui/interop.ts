@@ -171,7 +171,7 @@ export function toEventInput(
       daysOfWeek: frontmatter.daysOfWeek.map(c => DAYS.indexOf(c)),
       startRecur: frontmatter.startRecur,
       endRecur: frontmatter.endRecur,
-      extendedProps: { ...event.extendedProps, isTask: false }
+      extendedProps: { ...event.extendedProps, isTask: !!frontmatter.isTask } // Modified line
     };
     if (!frontmatter.allDay) {
       event = {
@@ -216,7 +216,8 @@ export function toEventInput(
       rrule: rrulestr(frontmatter.rrule, {
         dtstart: dtstart.toJSDate()
       }).toString(),
-      exdate
+      exdate,
+      extendedProps: { ...event.extendedProps, isTask: !!frontmatter.isTask } // Added line
     };
 
     if (!frontmatter.allDay) {
