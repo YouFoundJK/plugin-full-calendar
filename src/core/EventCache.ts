@@ -529,45 +529,83 @@ export default class EventCache {
 
     if (isDone) {
       // MARKING AS COMPLETE:
-      // 1. Create a new single event override that is marked as complete.
+      // 1. Get details of the master event.
+      const details = this.getInfoForEditableEvent(eventId);
+      const { calendar, event: masterEvent } = details;
+
+      // 2. Get the master event's persistent identifier.
+      const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
+      if (!masterLocalIdentifier) {
+        throw new Error(
+          `Cannot create an override for a recurring event that has no persistent local identifier.`
+        );
+      }
+
+      // 3. Create a new single event override that is marked as complete.
       const overrideEvent: OFCEvent = {
-        ...originalEvent,
+        ...masterEvent,
         type: 'single',
         date: instanceDate,
         endDate: null,
-        completed: false, // This will be properly set by toggleTask
-        recurringEventId: eventId // Link back to the parent.
+        // No need to set `completed` here, toggleTask will do it.
+        recurringEventId: masterLocalIdentifier // Link back to the parent's persistent ID.
       };
 
-      // 2. Add the override event to the same calendar.
-      const details = this.getInfoForEditableEvent(eventId);
-      await this.addEvent(details.calendar.id, toggleTask(overrideEvent, true));
+      // 4. Add the override event to the same calendar.
+      // `toggleTask` will set the `completed` status correctly.
+      await this.addEvent(calendar.id, toggleTask(overrideEvent, true));
 
-      // 3. Add an exception to the original recurring event so the uncompleted instance disappears.
-      if (originalEvent.type === 'rrule') {
+      // 5. Add an exception to the original recurring event so the uncompleted instance disappears.
+      if (masterEvent.type === 'rrule') {
         await this.processEvent(eventId, e => {
           if (e.type !== 'rrule') return e; // Should not happen
+          // Avoid adding duplicate dates
+          if (e.skipDates.includes(instanceDate)) {
+            return e;
+          }
           return { ...e, skipDates: [...e.skipDates, instanceDate] };
         });
       }
     } else {
       // MARKING AS INCOMPLETE:
       // The user clicked on the override event. `eventId` is the ID of the single completed event.
-      const recurringEventId = originalEvent.recurringEventId;
-      if (!recurringEventId) {
+      const overrideEvent = this.getEventById(eventId);
+      if (!overrideEvent) {
+        throw new Error(`Cannot un-complete an event that does not exist (ID: ${eventId}).`);
+      }
+
+      // 1. Get the persistent identifier of the master event from the override's data.
+      const masterLocalIdentifier = overrideEvent.recurringEventId;
+      if (!masterLocalIdentifier) {
         throw new Error(
           "Cannot un-complete an override event that isn't linked to a recurring event."
         );
       }
 
-      // 1. Delete the single-event override.
+      const { calendar } = this.getInfoForEditableEvent(eventId);
+
+      // 2. Construct the global identifier and look up the master event's current session ID.
+      const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
+      const masterSessionId = await this.getSessionId(globalMasterIdentifier);
+
+      if (!masterSessionId) {
+        // This can happen if the original recurring event note was deleted or renamed.
+        // In this case, we can only delete the override. The master event is gone.
+        console.warn(
+          `Master recurring event with identifier "${globalMasterIdentifier}" not found. Deleting orphan override.`
+        );
+        await this.deleteEvent(eventId);
+        return;
+      }
+
+      // 3. Delete the single-event override.
       await this.deleteEvent(eventId);
 
-      // 2. Remove the exception from the parent recurring event, making it visible again.
-      const masterEvent = this.getEventById(recurringEventId);
+      // 4. Remove the exception from the parent recurring event, making it visible again.
+      const masterEvent = this.getEventById(masterSessionId);
       if (masterEvent?.type === 'rrule') {
-        await this.processEvent(recurringEventId, e => {
-          if (e.type !== 'rrule') return e;
+        await this.processEvent(masterSessionId, e => {
+          if (e.type !== 'rrule') return e; // Should not happen
           return { ...e, skipDates: e.skipDates.filter(d => d !== instanceDate) };
         });
       }
