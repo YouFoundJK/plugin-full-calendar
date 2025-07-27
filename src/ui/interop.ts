@@ -19,7 +19,7 @@ import { EventApi, EventInput } from '@fullcalendar/core';
 import { OFCEvent } from '../types';
 
 import { DateTime, Duration } from 'luxon';
-import { rrulestr } from 'rrule';
+import { RRule, RRuleSet, rrulestr } from 'rrule';
 import { FullCalendarSettings } from '../types/settings';
 import { getCalendarColors } from './view';
 
@@ -166,19 +166,100 @@ export function toEventInput(
   }
 
   if (frontmatter.type === 'recurring') {
-    event = {
-      ...event,
-      daysOfWeek: frontmatter.daysOfWeek.map(c => DAYS.indexOf(c)),
-      startRecur: frontmatter.startRecur,
-      endRecur: frontmatter.endRecur,
-      extendedProps: { ...event.extendedProps, isTask: !!frontmatter.isTask } // Modified line
-    };
-    if (!frontmatter.allDay) {
+    if (frontmatter.isTask) {
+      const weekdays = { U: 'SU', M: 'MO', T: 'TU', W: 'WE', R: 'TH', F: 'FR', S: 'SA' };
+      const byday = frontmatter.daysOfWeek.map(c => weekdays[c as keyof typeof weekdays]);
+
+      // 1. Manually build the core RRULE string
+      let rruleString = `FREQ=WEEKLY;BYDAY=${byday.join(',')}`;
+
+      // 2. If endRecur exists, parse and format it into the required Z-time format
+      if (frontmatter.endRecur) {
+        const until = DateTime.fromISO(frontmatter.endRecur)
+          .endOf('day')
+          .setZone('utc')
+          .toFormat("yyyyMMdd'T'HHmmss'Z'");
+        rruleString += `;UNTIL=${until}`;
+      }
+
+      // 3. Determine the series start date (dtstart) which must be the first valid occurrence
+      const seriesAnchor = DateTime.fromISO(frontmatter.startRecur || '1970-01-01');
+      if (!seriesAnchor.isValid) {
+        return null;
+      }
+
+      // The full DTSTART + RRULE string is needed to correctly calculate the first occurrence.
+      // DTSTART and UNTIL must be of the same type (both DATE-TIME).
+      // We use the start of the day for the calculation DTSTART.
+      const tempDtstartString = seriesAnchor.startOf('day').toFormat("yyyyMMdd'T'HHmmss'Z'");
+      const tempRrulestr = `DTSTART:${tempDtstartString}\nRRULE:${rruleString}`;
+
+      const firstOccurrence = rrulestr(tempRrulestr).after(
+        seriesAnchor.minus({ days: 1 }).toJSDate(),
+        true
+      );
+      if (!firstOccurrence) {
+        return null;
+      }
+
+      const rruleOptions = {
+        ...RRule.parseString(rruleString),
+        dtstart: firstOccurrence
+      };
+
+      // 4. Create the RRuleSet and add the main rule
+      const rruleSet = new RRuleSet();
+      rruleSet.rrule(new RRule(rruleOptions));
+
+      // 5. Add exceptions (exdates)
+      const exdates = frontmatter.skipDates
+        .map((d: string) => {
+          if (frontmatter.allDay) {
+            return DateTime.fromISO(d).toJSDate();
+          }
+          const dt = combineDateTimeStrings(d, frontmatter.startTime);
+          return dt ? DateTime.fromISO(dt).toJSDate() : null;
+        })
+        .flatMap((d: Date | null) => (d ? [d] : []));
+
+      exdates.forEach(date => rruleSet.exdate(date));
+
+      // 6. Construct the final event for FullCalendar
       event = {
         ...event,
-        startTime: normalizeTimeString(frontmatter.startTime || ''),
-        endTime: frontmatter.endTime ? normalizeTimeString(frontmatter.endTime) : undefined
+        rrule: rruleSet.toString()
       };
+
+      if (!frontmatter.allDay) {
+        const startTime = parseTime(frontmatter.startTime);
+        if (startTime && frontmatter.endTime) {
+          const endTime = parseTime(frontmatter.endTime);
+          const duration = endTime?.minus(startTime);
+          if (duration) {
+            event.duration = duration.toISOTime({
+              includePrefix: false,
+              suppressMilliseconds: true,
+              suppressSeconds: true
+            });
+          }
+        }
+      }
+    } else {
+      // This is the original path for non-task recurring events.
+      event = {
+        ...event,
+        daysOfWeek: frontmatter.daysOfWeek.map(c => DAYS.indexOf(c)),
+        startRecur: frontmatter.startRecur,
+        endRecur: frontmatter.endRecur,
+        extendedProps: { ...event.extendedProps, isTask: false }
+      };
+      if (!frontmatter.allDay) {
+        event = {
+          ...event,
+          startTime: normalizeTimeString(frontmatter.startTime || ''),
+          endTime: frontmatter.endTime ? normalizeTimeString(frontmatter.endTime) : undefined
+        };
+      }
     }
   } else if (frontmatter.type === 'rrule') {
     const dtstart = (() => {
@@ -311,7 +392,9 @@ export function fromEventApi(event: EventApi): OFCEvent {
           type: 'recurring',
           daysOfWeek: event.extendedProps.daysOfWeek.map((i: number) => DAYS[i]),
           startRecur: event.extendedProps.startRecur && getDate(event.extendedProps.startRecur),
-          endRecur: event.extendedProps.endRecur && getDate(event.extendedProps.endRecur)
+          endRecur: event.extendedProps.endRecur && getDate(event.extendedProps.endRecur),
+          skipDates: [], // Default to empty as exception info is unavailable
+          isTask: event.extendedProps.isTask
         }
       : {
           type: 'single',
