@@ -18,6 +18,7 @@
 
 import './overrides.css';
 import { ItemView, Menu, Notice, WorkspaceLeaf } from 'obsidian';
+import { DateTime } from 'luxon';
 import { Calendar, EventSourceInput } from '@fullcalendar/core';
 import { renderCalendar } from './calendar';
 import FullCalendarPlugin from '../main';
@@ -183,11 +184,42 @@ export class CalendarView extends ItemView {
       },
       modifyEvent: async (newEvent, oldEvent) => {
         try {
-          const didModify = await this.plugin.cache.updateEventWithId(
-            oldEvent.id,
-            fromEventApi(newEvent)
-          );
-          return !!didModify;
+          const originalEvent = this.plugin.cache.getEventById(oldEvent.id);
+          if (!originalEvent) {
+            throw new Error('Original event not found in cache.');
+          }
+
+          // Check if the event being dragged is part of a recurring series.
+          // We must check the original event from the cache, because `oldEvent` from FullCalendar
+          // is just an instance and doesn't have our `type` property.
+          if (originalEvent.type === 'rrule' || originalEvent.type === 'recurring') {
+            if (!oldEvent.start) {
+              throw new Error('Recurring instance is missing original start date.');
+            }
+
+            // This is a recurring instance. We need to create an override.
+            const instanceDate = DateTime.fromJSDate(oldEvent.start).toISODate();
+            if (!instanceDate) {
+              throw new Error('Could not determine instance date from recurring event.');
+            }
+
+            const modifiedEvent = fromEventApi(newEvent);
+            await this.plugin.cache.modifyRecurringInstance(
+              oldEvent.id,
+              instanceDate,
+              modifiedEvent
+            );
+            // Return true because we have successfully handled the modification.
+            return true;
+          } else {
+            // This is a standard single event or an existing override.
+            // Let it update normally.
+            const didModify = await this.plugin.cache.updateEventWithId(
+              oldEvent.id,
+              fromEventApi(newEvent)
+            );
+            return !!didModify;
+          }
         } catch (e: any) {
           console.error(e);
           new Notice(e.message);

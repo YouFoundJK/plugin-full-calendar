@@ -528,44 +528,15 @@ export default class EventCache {
     }
 
     if (isDone) {
-      // MARKING AS COMPLETE:
-      // 1. Get details of the master event.
-      const details = this.getInfoForEditableEvent(eventId);
-      const { calendar, event: masterEvent } = details;
-
-      // 2. Get the master event's persistent identifier.
-      const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
-      if (!masterLocalIdentifier) {
-        throw new Error(
-          `Cannot create an override for a recurring event that has no persistent local identifier.`
-        );
-      }
-
-      // 3. Create a new single event override that is marked as complete.
+      const { event: masterEvent } = this.getInfoForEditableEvent(eventId);
       const overrideEvent: OFCEvent = {
         ...masterEvent,
         type: 'single',
         date: instanceDate,
-        endDate: null,
-        // No need to set `completed` here, toggleTask will do it.
-        recurringEventId: masterLocalIdentifier // Link back to the parent's persistent ID.
+        endDate: null
       };
 
-      // 4. Add the override event to the same calendar.
-      // `toggleTask` will set the `completed` status correctly.
-      await this.addEvent(calendar.id, toggleTask(overrideEvent, true));
-
-      // 5. Add an exception to the original recurring event so the uncompleted instance disappears.
-      if (masterEvent.type === 'rrule') {
-        await this.processEvent(eventId, e => {
-          if (e.type !== 'rrule') return e; // Should not happen
-          // Avoid adding duplicate dates
-          if (e.skipDates.includes(instanceDate)) {
-            return e;
-          }
-          return { ...e, skipDates: [...e.skipDates, instanceDate] };
-        });
-      }
+      await this._createRecurringOverride(eventId, instanceDate, toggleTask(overrideEvent, true));
     } else {
       // MARKING AS INCOMPLETE:
       // The user clicked on the override event. `eventId` is the ID of the single completed event.
@@ -649,6 +620,64 @@ export default class EventCache {
         event
       });
     });
+  }
+
+  /**
+   * Handles the modification of a single instance of a recurring event.
+   * This is triggered when a user drags or resizes an instance in the calendar view.
+   * It creates an override event and adds an exception to the parent.
+   * @param masterEventId The session ID of the master recurring event.
+   * @param instanceDate The original date of the instance that is being modified.
+   * @param newEventData The new event data for the single-instance override.
+   */
+  async modifyRecurringInstance(
+    masterEventId: string,
+    instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<void> {
+    if (newEventData.type !== 'single') {
+      throw new Error('Cannot create a recurring override from a non-single event.');
+    }
+    await this._createRecurringOverride(masterEventId, instanceDate, newEventData);
+  }
+
+  /**
+   * Private helper to perform the "skip and override" logic for recurring events.
+   * @param masterEventId The session ID of the master recurring event.
+   * @param instanceDateToSkip The date of the original instance to add to the parent's skipDates.
+   * @param overrideEventData The complete OFCEvent object for the new single-instance override.
+   */
+  private async _createRecurringOverride(
+    masterEventId: string,
+    instanceDateToSkip: string,
+    overrideEventData: OFCEvent
+  ): Promise<void> {
+    const details = this.getInfoForEditableEvent(masterEventId);
+    const { calendar, event: masterEvent } = details;
+
+    const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
+    if (!masterLocalIdentifier) {
+      throw new Error(
+        `Cannot create an override for a recurring event that has no persistent local identifier.`
+      );
+    }
+
+    const finalOverrideEvent: OFCEvent = {
+      ...overrideEventData,
+      recurringEventId: masterLocalIdentifier
+    };
+
+    await this.addEvent(calendar.id, finalOverrideEvent);
+
+    if (masterEvent.type === 'rrule') {
+      await this.processEvent(masterEventId, e => {
+        if (e.type !== 'rrule') return e;
+        if (e.skipDates.includes(instanceDateToSkip)) {
+          return e;
+        }
+        return { ...e, skipDates: [...e.skipDates, instanceDateToSkip] };
+      });
+    }
   }
 
   ///
