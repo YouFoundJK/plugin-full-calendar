@@ -20,7 +20,7 @@ import { OFCEvent } from '../types';
 
 import { DateTime, Duration } from 'luxon';
 import { rrulestr } from 'rrule';
-import { FullCalendarSettings } from './settings';
+import { FullCalendarSettings } from '../types/settings';
 import { getCalendarColors } from './view';
 
 /**

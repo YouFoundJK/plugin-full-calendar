@@ -21,7 +21,7 @@ import { ItemView, Menu, Notice, WorkspaceLeaf } from 'obsidian';
 import { Calendar, EventSourceInput } from '@fullcalendar/core';
 import { renderCalendar } from './calendar';
 import FullCalendarPlugin from '../main';
-import { FCError, PLUGIN_SLUG } from '../types';
+import { FCError, PLUGIN_SLUG, CalendarInfo } from '../types';
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from './interop';
 import { renderOnboarding } from './onboard';
 import { openFileForEvent } from './actions';
@@ -121,8 +121,11 @@ export class CalendarView extends ItemView {
     container.empty();
     let calendarEl = container.createEl('div');
 
-    if (this.plugin.settings.calendarSources.filter(s => s.type !== 'FOR_TEST_ONLY').length === 0) {
-      renderOnboarding(this.app, this.plugin, calendarEl);
+    if (
+      this.plugin.settings.calendarSources.filter((s: CalendarInfo) => s.type !== 'FOR_TEST_ONLY')
+        .length === 0
+    ) {
+      renderOnboarding(this.plugin, calendarEl);
       return;
     }
 

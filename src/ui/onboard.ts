@@ -15,7 +15,7 @@ import FullCalendarPlugin from '../main';
 import { addCalendarButton } from './settings';
 import { CalendarInfo } from '../types';
 
-export function renderOnboarding(app: App, plugin: FullCalendarPlugin, el: HTMLElement) {
+export function renderOnboarding(plugin: FullCalendarPlugin, el: HTMLElement) {
   el.style.height = '100%';
   const nocal = el.createDiv();
   nocal.style.height = '100%';
@@ -29,7 +29,7 @@ export function renderOnboarding(app: App, plugin: FullCalendarPlugin, el: HTMLE
 
   const container = notice.createDiv();
   container.style.position = 'fixed';
-  addCalendarButton(app, plugin, container, async (source: CalendarInfo) => {
+  addCalendarButton(plugin, container, async (source: CalendarInfo) => {
     const { calendarSources } = plugin.settings;
     calendarSources.push(source);
     await plugin.saveSettings();

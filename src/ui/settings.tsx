@@ -41,6 +41,7 @@ import { changelogData } from './changelogData';
 import './changelog.css';
 import { CategorySettingsManager } from './components/CategorySetting';
 import { InsightsConfig } from '../chrono_analyser/ui/ui';
+import { generateCalendarId } from '../types/calendar_settings';
 
 export interface FullCalendarSettings {
   calendarSources: CalendarInfo[];
@@ -179,14 +180,13 @@ class BulkCategorizeModal extends Modal {
 }
 
 export function addCalendarButton(
-  app: App,
   plugin: FullCalendarPlugin,
   containerEl: HTMLElement,
   submitCallback: (setting: CalendarInfo) => void,
   listUsedDirectories?: () => string[]
 ) {
   let dropdown: DropdownComponent;
-  const directories = app.vault
+  const directories = plugin.app.vault
     .getAllLoadedFiles()
     .filter(f => f instanceof TFolder)
     .map(f => f.path);
@@ -208,14 +208,14 @@ export function addCalendarButton(
       button.setTooltip('Add Calendar');
       button.setIcon('plus-with-circle');
       button.onClick(() => {
-        let modal = new ReactModal(app, async () => {
+        let modal = new ReactModal(plugin.app, async () => {
           await plugin.loadSettings();
           const usedDirectories = (
             listUsedDirectories
               ? listUsedDirectories
               : () =>
                   plugin.settings.calendarSources
-                    .map(s => s.type === 'local' && s.directory)
+                    .map((s: CalendarInfo) => s.type === 'local' && s.directory)
                     .filter((s): s is string => !!s)
           )();
           let headings: string[] = [];
@@ -225,9 +225,10 @@ export function addCalendarButton(
             if (!template.endsWith('.md')) {
               template += '.md';
             }
-            const file = app.vault.getAbstractFileByPath(template);
+            const file = plugin.app.vault.getAbstractFileByPath(template);
             if (file instanceof TFile) {
-              headings = app.metadataCache.getFileCache(file)?.headings?.map(h => h.heading) || [];
+              headings =
+                plugin.app.metadataCache.getFileCache(file)?.headings?.map(h => h.heading) || [];
             }
           }
 
@@ -243,13 +244,15 @@ export function addCalendarButton(
             submit: async (source: CalendarInfo) => {
               if (source.type === 'caldav') {
                 try {
+                  const existingIds = plugin.settings.calendarSources.map(s => s.id);
                   let sources = await importCalendars(
                     {
                       type: 'basic',
                       username: source.username,
                       password: source.password
                     },
-                    source.url
+                    source.url,
+                    existingIds
                   );
                   sources.forEach(source => submitCallback(source));
                 } catch (e) {
@@ -657,7 +660,6 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         />
       );
       addCalendarButton(
-        this.app,
         this.plugin,
         containerEl,
         async (source: CalendarInfo) => {
@@ -669,4 +671,32 @@ export class FullCalendarSettingTab extends PluginSettingTab {
 
     render(); // Initial render
   }
+}
+
+/**
+ * Ensures that every calendar source in an array has a persistent, unique ID.
+ * If a source from a legacy settings file is missing an ID, it will be assigned one.
+ * This is a non-destructive operation that prepares settings for use with the current version.
+ * @param sources The array of calendar sources from a settings file.
+ * @returns An object containing the updated sources array and a boolean indicating if any changes were made.
+ */
+export function ensureCalendarIds(sources: any[]): { updated: boolean; sources: CalendarInfo[] } {
+  let updated = false;
+  // Get all IDs that already exist to avoid creating duplicates.
+  const existingIds: string[] = sources.map(s => s.id).filter(Boolean);
+
+  const updatedSources = sources.map(source => {
+    // If a source does not have an ID, it's a legacy source that needs one.
+    if (!source.id) {
+      updated = true;
+      const newId = generateCalendarId(source.type, existingIds);
+      // Add the new ID to our running list to ensure the NEXT generated ID is also unique within this loop.
+      existingIds.push(newId);
+      return { ...source, id: newId };
+    }
+    // If it already has an ID, return it unchanged.
+    return source;
+  });
+
+  return { updated, sources: updatedSources as CalendarInfo[] };
 }
