@@ -120,6 +120,12 @@ export default class EventCache {
   private store = new EventStore();
   calendars = new Map<string, Calendar>();
 
+  private identifierToSessionIdMap: Map<string, string> = new Map();
+  private identifierMapPromise: Promise<void> | null = null;
+  public get isIdentifierMapReady(): boolean {
+    return this.identifierMapPromise !== null;
+  }
+
   private pkCounter = 0;
 
   private revalidating = false;
@@ -164,6 +170,40 @@ export default class EventCache {
   }
 
   /**
+   * Generates a globally-unique, persistent identifier for an event.
+   * This ID is a combination of the calendar's persistent ID and the event's local ID.
+   * @param event The event object.
+   * @param calendarId The persistent ID of the calendar the event belongs to.
+   * @returns A globally-unique ID string, or null if an ID cannot be generated.
+   */
+  public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
+    const calendar = this.calendars.get(calendarId);
+    if (!calendar) {
+      console.warn(`Could not find calendar with ID ${calendarId} to generate global identifier.`);
+      return null;
+    }
+    const localIdentifier = calendar.getLocalIdentifier(event);
+    if (!localIdentifier) {
+      return null;
+    }
+    return `${calendar.id}::${localIdentifier}`;
+  }
+
+  /**
+   * Performs a reverse-lookup to find an event's transient (session-specific) ID
+   * from its persistent, globally-unique identifier.
+   * Ensures the lookup map is populated before attempting to find the ID.
+   * @param globalIdentifier The persistent global ID of the event.
+   * @returns The session-specific ID as a string, or null if not found.
+   */
+  public async getSessionId(globalIdentifier: string): Promise<string | null> {
+    if (this.identifierMapPromise) {
+      await this.identifierMapPromise;
+    }
+    return this.identifierToSessionIdMap.get(globalIdentifier) || null;
+  }
+
+  /**
    * Populate the cache with events.
    */
   async populate(): Promise<void> {
@@ -182,6 +222,25 @@ export default class EventCache {
       );
     }
     this.initialized = true;
+
+    // Create and store the promise so other functions can await it.
+    this.identifierMapPromise = (async () => {
+      // Clear the map to ensure a fresh build.
+      this.identifierToSessionIdMap.clear();
+      // Iterate over every event now in the store.
+      for (const storedEvent of this.store.getAllEvents()) {
+        const globalIdentifier = this.getGlobalIdentifier(
+          storedEvent.event,
+          storedEvent.calendarId
+        );
+        if (globalIdentifier) {
+          this.identifierToSessionIdMap.set(globalIdentifier, storedEvent.id);
+        }
+      }
+    })();
+    // We don't await the promise here, allowing the UI to load immediately.
+    // The `getSessionId` method will await it if needed.
+
     this.revalidateRemoteCalendars();
   }
 
@@ -259,7 +318,7 @@ export default class EventCache {
     if (!details) {
       throw new Error(`Event ID ${eventId} not present in event store.`);
     }
-    const { calendarId, location } = details;
+    const { calendarId, location, event } = details; // Extract event here
     const calendar = this.calendars.get(calendarId);
     if (!calendar) {
       throw new Error(`Calendar ID ${calendarId} is not registered.`);
@@ -271,7 +330,7 @@ export default class EventCache {
     if (!location) {
       throw new Error(`Event with ID ${eventId} does not have a location in the Vault.`);
     }
-    return { calendar, location };
+    return { calendar, location, event }; // Return event here
   }
 
   ///
@@ -355,6 +414,12 @@ export default class EventCache {
       event
     });
 
+    // Update identifier map
+    const globalIdentifier = this.getGlobalIdentifier(event, calendarId);
+    if (globalIdentifier) {
+      this.identifierToSessionIdMap.set(globalIdentifier, id);
+    }
+
     this.updateViews([], [{ event, id, calendarId: calendar.id }]);
     return true;
   }
@@ -364,7 +429,14 @@ export default class EventCache {
    * @param eventId ID of event to be deleted.
    */
   async deleteEvent(eventId: string): Promise<void> {
-    const { calendar, location } = this.getInfoForEditableEvent(eventId);
+    const { calendar, location, event } = this.getInfoForEditableEvent(eventId);
+
+    // Remove from identifier map
+    const globalIdentifier = this.getGlobalIdentifier(event, calendar.id);
+    if (globalIdentifier) {
+      this.identifierToSessionIdMap.delete(globalIdentifier);
+    }
+
     this.store.delete(eventId);
     await calendar.deleteEvent(location);
     this.updateViews([eventId], []);
@@ -385,9 +457,18 @@ export default class EventCache {
    * @throws If the event is not in an editable calendar or cannot be found.
    */
   async updateEventWithId(eventId: string, newEvent: OFCEvent): Promise<boolean> {
-    const { calendar, location: oldLocation } = this.getInfoForEditableEvent(eventId);
+    const {
+      calendar,
+      location: oldLocation,
+      event: oldEvent
+    } = this.getInfoForEditableEvent(eventId);
     const { path, lineNumber } = oldLocation;
-    // console.debug('updating event with ID', eventId);
+
+    // Remove old identifier
+    const oldGlobalIdentifier = this.getGlobalIdentifier(oldEvent, calendar.id);
+    if (oldGlobalIdentifier) {
+      this.identifierToSessionIdMap.delete(oldGlobalIdentifier);
+    }
 
     await calendar.modifyEvent({ path, lineNumber }, newEvent, newLocation => {
       this.store.delete(eventId);
@@ -398,6 +479,12 @@ export default class EventCache {
         event: newEvent
       });
     });
+
+    // Add new identifier
+    const newGlobalIdentifier = this.getGlobalIdentifier(newEvent, calendar.id);
+    if (newGlobalIdentifier) {
+      this.identifierToSessionIdMap.set(newGlobalIdentifier, eventId);
+    }
 
     this.updateViews([eventId], [{ id: eventId, calendarId: calendar.id, event: newEvent }]);
     return true;
@@ -537,6 +624,17 @@ export default class EventCache {
    * @param path Path of the file that has been deleted.
    */
   deleteEventsAtPath(path: string) {
+    const eventsToDelete = this.store.getEventsInFile({ path });
+    for (const storedEvent of eventsToDelete) {
+      const calendar = this.calendars.get(storedEvent.calendarId);
+      if (calendar) {
+        const globalIdentifier = this.getGlobalIdentifier(storedEvent.event, calendar.id);
+        if (globalIdentifier) {
+          this.identifierToSessionIdMap.delete(globalIdentifier);
+        }
+      }
+    }
+
     this.updateViews([...this.store.deleteEventsAtPath(path)], []);
   }
 
@@ -573,37 +671,44 @@ export default class EventCache {
 
     for (const calendar of calendars) {
       const oldEvents = this.store.getEventsInFileAndCalendar(file, calendar);
-      // TODO: Relying on calendars for file I/O means that we're potentially
-      // reading the file from disk multiple times. Could be more effecient if
-      // we break the abstraction layer here.
-      // console.debug('get events in file', file.path);
       const newEvents = await calendar.getEventsInFile(file);
 
       const oldEventsMapped = oldEvents.map(({ event }) => event);
       const newEventsMapped = newEvents.map(([event, _]) => event);
-      // console.debug('comparing events', file.path, oldEvents, newEvents);
-      // TODO: It's possible events are not different, but the location has changed.
       const eventsHaveChanged = eventsAreDifferent(oldEventsMapped, newEventsMapped);
 
-      // If no events have changed from what's in the cache, then there's no need to update the event store.
       if (!eventsHaveChanged) {
-        // console.debug('events have not changed, do not update store or view.');
         return;
       }
-      // console.debug('events have changed, updating store and views...', oldEvents, newEvents);
 
-      const newEventsWithIds = newEvents.map(([event, location]) => ({
-        event,
-        id: event.id || this.generateId(),
-        location,
-        calendarId: calendar.id
-      }));
+      // Remove old identifiers
+      for (const oldStoredEvent of oldEvents) {
+        const globalIdentifier = this.getGlobalIdentifier(oldStoredEvent.event, calendar.id);
+        if (globalIdentifier) {
+          this.identifierToSessionIdMap.delete(globalIdentifier);
+        }
+      }
 
-      // If events have changed in the calendar, then remove all the old events from the store and add in new ones.
-      const oldIds = oldEvents.map((r: StoredEvent) => r.id);
-      oldIds.forEach((id: string) => {
+      const oldSessionIds = oldEvents.map((r: StoredEvent) => r.id);
+      oldSessionIds.forEach((id: string) => {
         this.store.delete(id);
       });
+
+      const newEventsWithIds = newEvents.map(([event, location]) => {
+        const newSessionId = event.id || this.generateId();
+        // Add new identifiers
+        const globalIdentifier = this.getGlobalIdentifier(event, calendar.id);
+        if (globalIdentifier) {
+          this.identifierToSessionIdMap.set(globalIdentifier, newSessionId);
+        }
+        return {
+          event,
+          id: newSessionId,
+          location,
+          calendarId: calendar.id
+        };
+      });
+
       newEventsWithIds.forEach(({ event, id, location }) => {
         this.store.add({
           calendar,
@@ -613,7 +718,7 @@ export default class EventCache {
         });
       });
 
-      idsToRemove.push(...oldIds);
+      idsToRemove.push(...oldSessionIds);
       eventsToAdd.push(...newEventsWithIds);
     }
 
