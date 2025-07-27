@@ -16,7 +16,7 @@ import ical from 'ical.js';
 import { OFCEvent, validateEvent } from '../../types';
 import { DateTime } from 'luxon';
 import { rrulestr } from 'rrule';
-import { FullCalendarSettings } from '../../ui/settings';
+import { FullCalendarSettings } from '../../types/settings';
 import { parseTitle } from '../../core/categoryParser';
 
 /**

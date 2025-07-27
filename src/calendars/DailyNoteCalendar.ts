@@ -29,7 +29,7 @@ import { ObsidianInterface } from '../ObsidianAdapter';
 import { OFCEvent, EventLocation, CalendarInfo, validateEvent } from '../types';
 import { EventResponse } from './Calendar';
 import { EditableCalendar, EditableEventResponse, CategoryProvider } from './EditableCalendar';
-import { FullCalendarSettings } from '../ui/settings';
+import { FullCalendarSettings } from '../types/settings';
 import { convertEvent } from '../core/Timezone';
 import { constructTitle, parseTitle } from '../core/categoryParser';
 import FullCalendarPlugin from '../main';
@@ -245,15 +245,14 @@ export default class DailyNoteCalendar extends EditableCalendar {
   constructor(
     app: ObsidianInterface,
     plugin: FullCalendarPlugin,
-    color: string,
-    heading: string,
+    info: CalendarInfo,
     settings: FullCalendarSettings
   ) {
-    super(color, settings);
+    super(info, settings);
     appHasDailyNotesPluginLoaded();
     this.app = app;
     this.plugin = plugin;
-    this.heading = heading;
+    this.heading = (info as Extract<CalendarInfo, { type: 'dailynote' }>).heading;
   }
 
   get type(): CalendarInfo['type'] {

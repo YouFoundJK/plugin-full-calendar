@@ -35,7 +35,7 @@ import { CalendarInfo, OFCEvent, validateEvent } from '../types';
 import RemoteCalendar from '../calendars/RemoteCalendar';
 import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import FullCalendarPlugin from '../main';
-import { FullCalendarSettings } from '../ui/settings';
+import { FullCalendarSettings } from '../types/settings';
 import { toggleTask } from '../ui/tasks';
 
 export type CalendarInitializerMap = Record<
