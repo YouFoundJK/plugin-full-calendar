@@ -553,4 +553,12 @@ export default class DailyNoteCalendar extends EditableCalendar {
 
     await this.plugin.nonBlockingProcess(allNotes, processor, 'De-categorizing daily notes');
   }
+
+  public getLocalIdentifier(event: OFCEvent): string | null {
+    if (event.type === 'single' && event.date) {
+      const fullTitle = constructTitle(event.category, event.title);
+      return `${event.date}::${fullTitle}`;
+    }
+    return null;
+  }
 }

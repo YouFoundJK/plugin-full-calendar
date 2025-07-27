@@ -92,4 +92,8 @@ export default class CalDAVCalendar extends RemoteCalendar {
       return [translatedEvent, null];
     });
   }
+
+  public getLocalIdentifier(event: OFCEvent): string | null {
+    return event.uid || null;
+  }
 }

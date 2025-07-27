@@ -40,4 +40,10 @@ export abstract class Calendar {
    * Get all events from this calendar.
    */
   abstract getEvents(): Promise<EventResponse[]>;
+
+  /**
+   * For a given event, return a string that is unique to that event within this
+   * calendar. This is used to create a globally unique ID for the event.
+   */
+  public abstract getLocalIdentifier(event: OFCEvent): string | null;
 }

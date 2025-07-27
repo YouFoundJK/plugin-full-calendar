@@ -48,6 +48,11 @@ class TestReadonlyCalendar extends Calendar {
   async getEvents(): Promise<EventResponse[]> {
     return this.events.map(event => [event, null]);
   }
+
+  // Add getLocalIdentifier for tests
+  public getLocalIdentifier(event: OFCEvent): string | null {
+    return event.title;
+  }
 }
 
 // For tests, we only want test calendars to
@@ -217,6 +222,11 @@ class TestEditable extends EditableCalendar {
   }
   get identifier(): string {
     return this.directory;
+  }
+
+  // Add getLocalIdentifier for tests
+  public getLocalIdentifier(event: OFCEvent): string | null {
+    return event.title;
   }
 }
 

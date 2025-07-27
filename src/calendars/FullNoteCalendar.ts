@@ -369,4 +369,8 @@ export default class FullNoteCalendar extends EditableCalendar {
       `De-categorizing notes in ${this.directory}`
     );
   }
+
+  public getLocalIdentifier(event: OFCEvent): string | null {
+    return basenameFromEvent(event, this.settings);
+  }
 }

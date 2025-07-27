@@ -15,7 +15,7 @@
  */
 
 import { request } from 'obsidian';
-import { CalendarInfo } from '../types';
+import { CalendarInfo, OFCEvent } from '../types';
 import { EventResponse } from './Calendar';
 import { getEventsFromICS } from './parsing/ics';
 import RemoteCalendar from './RemoteCalendar';
@@ -84,5 +84,9 @@ export default class ICSCalendar extends RemoteCalendar {
       }
       return [translatedEvent, null];
     });
+  }
+
+  public getLocalIdentifier(event: OFCEvent): string | null {
+    return event.uid || null;
   }
 }

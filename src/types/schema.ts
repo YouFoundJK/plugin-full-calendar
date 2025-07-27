@@ -76,6 +76,7 @@ export const TimeSchema = z.discriminatedUnion('allDay', [
 export const CommonSchema = z.object({
   title: z.string(), // This will now store the CLEAN title.
   id: z.string().optional(),
+  uid: z.string().optional(), // Added line
   timezone: z.string().optional(),
   category: z.string().optional(), // This will store the parsed category.
   recurringEventId: z.string().optional() // The ID of the parent recurring event.
