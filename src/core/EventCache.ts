@@ -617,22 +617,35 @@ export default class EventCache {
     instanceDate: string,
     isDone: boolean
   ): Promise<void> {
+    // Get the event that was actually clicked.
+    const { event: clickedEvent } = this.getInfoForEditableEvent(eventId);
+
     if (isDone) {
-      const { event: masterEvent } = this.getInfoForEditableEvent(eventId);
-      if (masterEvent.type !== 'recurring' && masterEvent.type !== 'rrule') {
-        throw new Error('Cannot complete an instance of a non-recurring event.');
+      // === USE CASE: COMPLETING A TASK ===
+      if (clickedEvent.type === 'single') {
+        // The user clicked the checkbox on an existing, incomplete override.
+        // We just need to update its status to complete.
+        await this.updateEventWithId(eventId, toggleTask(clickedEvent, true));
+      } else {
+        // The user clicked the checkbox on a master recurring instance.
+        // We need to create a new, completed override.
+        const overrideEvent: OFCEvent = {
+          ...clickedEvent,
+          type: 'single',
+          date: instanceDate,
+          endDate: null
+        };
+
+        await this._createRecurringOverride(eventId, instanceDate, toggleTask(overrideEvent, true));
       }
-
-      const overrideEvent: OFCEvent = {
-        ...masterEvent,
-        type: 'single',
-        date: instanceDate,
-        endDate: null
-      };
-
-      await this._createRecurringOverride(eventId, instanceDate, toggleTask(overrideEvent, true));
     } else {
-      await this.deleteEvent(eventId, { silent: true });
+      // === USE CASE: UN-COMPLETING A TASK ===
+      // This action is only possible on an existing override.
+      // The logic is to simply delete that override. Our improved `deleteEvent`
+      // method will handle removing the date from the parent's skipDates array
+      // and updating the view.
+      new Notice('Reverting control to Main Recurring event sequence.');
+      await this.deleteEvent(eventId);
     }
     this.flushUpdateQueue([], []);
   }
@@ -720,6 +733,15 @@ export default class EventCache {
       ...overrideEventData,
       recurringEventId: masterLocalIdentifier
     };
+
+    if (
+      (masterEvent.type === 'recurring' || masterEvent.type === 'rrule') &&
+      masterEvent.isTask &&
+      finalOverrideEvent.type === 'single' &&
+      finalOverrideEvent.completed === undefined
+    ) {
+      finalOverrideEvent.completed = false;
+    }
 
     // Perform all data operations silently. The caller is responsible for flushing the queue.
     await this.addEvent(calendar.id, finalOverrideEvent, { silent: true });
