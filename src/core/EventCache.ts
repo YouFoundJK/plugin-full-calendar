@@ -425,11 +425,55 @@ export default class EventCache {
   }
 
   /**
-   * Delete an event by its ID.
-   * @param eventId ID of event to be deleted.
+   * Deletes an event by its identifier, handling both regular and override events.
+   *
+   * If the event is an override of a recurring event (i.e., a single occurrence with a `recurringEventId`),
+   * this method will attempt to "undo" the override by removing the exception date from the parent recurring event's
+   * `skipDates` array. If the parent recurring event cannot be found (e.g., it was deleted or renamed), only the override
+   * event will be deleted and a warning will be logged.
+   *
+   * The method also removes the event from the internal identifier map, deletes the event data from storage,
+   * and updates the calendar views accordingly.
+   *
+   * @param eventId - The unique identifier of the event to delete.
+   * @returns A promise that resolves when the event has been deleted.
    */
   async deleteEvent(eventId: string): Promise<void> {
     const { calendar, location, event } = this.getInfoForEditableEvent(eventId);
+
+    // ====================================================================
+    // NEW: "Undo Override" Logic
+    // ====================================================================
+    // Check if the event being deleted is an override of a recurring event.
+    if (event.type === 'single' && event.recurringEventId) {
+      // 1. Get the persistent identifier of the master event from the override's data.
+      const masterLocalIdentifier = event.recurringEventId;
+
+      // 2. Construct the global identifier and look up the master event's current session ID.
+      const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
+      const masterSessionId = await this.getSessionId(globalMasterIdentifier);
+
+      if (masterSessionId) {
+        // 3. Remove the exception date from the parent recurring event.
+        await this.processEvent(masterSessionId, e => {
+          if (e.type !== 'recurring') return e; // Should not happen
+
+          // The date of the override event is the date to remove from skipDates.
+          const dateToUnskip = event.date;
+          return {
+            ...e,
+            skipDates: e.skipDates.filter(d => d !== dateToUnskip)
+          };
+        });
+      } else {
+        // This can happen if the original recurring event note was deleted or renamed.
+        // In this case, we can only delete the override. The master event is gone.
+        console.warn(
+          `Master recurring event with identifier "${globalMasterIdentifier}" not found. Deleting orphan override.`
+        );
+      }
+    }
+    // ====================================================================
 
     // Remove from identifier map
     const globalIdentifier = this.getGlobalIdentifier(event, calendar.id);
@@ -437,6 +481,8 @@ export default class EventCache {
       this.identifierToSessionIdMap.delete(globalIdentifier);
     }
 
+    // Original logic to delete the event file/data. This runs for both
+    // regular events and override events.
     this.store.delete(eventId);
     await calendar.deleteEvent(location);
     this.updateViews([eventId], []);
@@ -666,18 +712,17 @@ export default class EventCache {
       ...overrideEventData,
       recurringEventId: masterLocalIdentifier
     };
-
     await this.addEvent(calendar.id, finalOverrideEvent);
 
-    if (masterEvent.type === 'rrule') {
-      await this.processEvent(masterEventId, e => {
-        if (e.type !== 'rrule') return e;
-        if (e.skipDates.includes(instanceDateToSkip)) {
-          return e;
-        }
-        return { ...e, skipDates: [...e.skipDates, instanceDateToSkip] };
-      });
-    }
+    await this.processEvent(masterEventId, e => {
+      if (e.type !== 'recurring') return e;
+
+      const skipDates = e.skipDates.includes(instanceDateToSkip)
+        ? e.skipDates
+        : [...e.skipDates, instanceDateToSkip];
+
+      return { ...e, skipDates };
+    });
   }
 
   ///

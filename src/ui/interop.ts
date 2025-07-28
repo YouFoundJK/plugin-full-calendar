@@ -166,7 +166,8 @@ export function toEventInput(
   }
 
   if (frontmatter.type === 'recurring') {
-    if (frontmatter.isTask) {
+    // If the event has exceptions, we must convert it to an rrule for FullCalendar.
+    if (frontmatter.skipDates && frontmatter.skipDates.length > 0) {
       const weekdays = { U: 'SU', M: 'MO', T: 'TU', W: 'WE', R: 'TH', F: 'FR', S: 'SA' };
       const byday = frontmatter.daysOfWeek.map(c => weekdays[c as keyof typeof weekdays]);
 
@@ -183,17 +184,25 @@ export function toEventInput(
       }
 
       // 3. Determine the series start date (dtstart) which must be the first valid occurrence
-      const seriesAnchor = DateTime.fromISO(frontmatter.startRecur || '1970-01-01');
-      if (!seriesAnchor.isValid) {
-        return null;
-      }
-
       // The full DTSTART + RRULE string is needed to correctly calculate the first occurrence.
       // DTSTART and UNTIL must be of the same type (both DATE-TIME).
       // We use the start of the day for the calculation DTSTART.
-      const tempDtstartString = seriesAnchor.startOf('day').toFormat("yyyyMMdd'T'HHmmss'Z'");
-      const tempRrulestr = `DTSTART:${tempDtstartString}\nRRULE:${rruleString}`;
+      let seriesAnchor: DateTime;
+      if (frontmatter.allDay) {
+        seriesAnchor = DateTime.fromISO(frontmatter.startRecur || '1970-01-01').startOf('day');
+      } else {
+        const startTimeDt = parseTime(frontmatter.startTime);
+        if (!startTimeDt) return null; // Invalid start time format
 
+        seriesAnchor = DateTime.fromISO(frontmatter.startRecur || '1970-01-01').set({
+          hour: startTimeDt.hours,
+          minute: startTimeDt.minutes,
+          second: 0,
+          millisecond: 0
+        });
+      }
+
+      const tempRrulestr = `DTSTART:${seriesAnchor.setZone('utc').toFormat("yyyyMMdd'T'HHmmss'Z'")}\nRRULE:${rruleString}`;
       const firstOccurrence = rrulestr(tempRrulestr).after(
         seriesAnchor.minus({ days: 1 }).toJSDate(),
         true
@@ -202,15 +211,14 @@ export function toEventInput(
         return null;
       }
 
-      const rruleOptions = {
-        ...RRule.parseString(rruleString),
-        dtstart: firstOccurrence
-      };
-
       // 4. Create the RRuleSet and add the main rule
       const rruleSet = new RRuleSet();
-      rruleSet.rrule(new RRule(rruleOptions));
-
+      rruleSet.rrule(
+        new RRule({
+          ...RRule.parseString(rruleString),
+          dtstart: firstOccurrence
+        })
+      );
       // 5. Add exceptions (exdates)
       const exdates = frontmatter.skipDates
         .map((d: string) => {
@@ -222,25 +230,17 @@ export function toEventInput(
         })
         .flatMap((d: Date | null) => (d ? [d] : []));
 
-      exdates.forEach(date => rruleSet.exdate(date));
-
+      exdates.forEach((date: Date) => rruleSet.exdate(date));
       // 6. Construct the final event for FullCalendar
-      event = {
-        ...event,
-        rrule: rruleSet.toString()
-      };
+      event.rrule = rruleSet.toString();
 
-      if (!frontmatter.allDay) {
+      if (!frontmatter.allDay && frontmatter.startTime && frontmatter.endTime) {
         const startTime = parseTime(frontmatter.startTime);
-        if (startTime && frontmatter.endTime) {
-          const endTime = parseTime(frontmatter.endTime);
-          const duration = endTime?.minus(startTime);
-          if (duration) {
-            event.duration = duration.toISOTime({
-              includePrefix: false,
-              suppressMilliseconds: true,
-              suppressSeconds: true
-            });
+        const endTime = parseTime(frontmatter.endTime);
+        if (startTime && endTime) {
+          const duration = endTime.minus(startTime);
+          if (duration.as('milliseconds') > 0) {
+            event.duration = duration.toFormat('hh:mm');
           }
         }
       }
@@ -250,16 +250,17 @@ export function toEventInput(
         ...event,
         daysOfWeek: frontmatter.daysOfWeek.map(c => DAYS.indexOf(c)),
         startRecur: frontmatter.startRecur,
-        endRecur: frontmatter.endRecur,
-        extendedProps: { ...event.extendedProps, isTask: false }
+        endRecur: frontmatter.endRecur
       };
-      if (!frontmatter.allDay) {
-        event = {
-          ...event,
-          startTime: normalizeTimeString(frontmatter.startTime || ''),
-          endTime: frontmatter.endTime ? normalizeTimeString(frontmatter.endTime) : undefined
-        };
-      }
+    }
+
+    event.extendedProps = { ...event.extendedProps, isTask: !!frontmatter.isTask };
+    if (!frontmatter.allDay) {
+      event = {
+        ...event,
+        startTime: normalizeTimeString(frontmatter.startTime || ''),
+        endTime: frontmatter.endTime ? normalizeTimeString(frontmatter.endTime) : undefined
+      };
     }
   } else if (frontmatter.type === 'rrule') {
     const dtstart = (() => {

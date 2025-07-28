@@ -94,7 +94,8 @@ export const EventSchema = z.discriminatedUnion('type', [
     daysOfWeek: z.array(z.enum(['U', 'M', 'T', 'W', 'R', 'F', 'S'])),
     startRecur: ParsedDate.optional(),
     endRecur: ParsedDate.optional(),
-    isTask: z.boolean().optional() // Add this line
+    isTask: z.boolean().optional(),
+    skipDates: z.array(ParsedDate).default([]) // <-- ADD THIS LINE
   }),
   z.object({
     type: z.literal('rrule'),
