@@ -300,35 +300,28 @@ export class CalendarView extends ItemView {
         const event = this.plugin.cache.getEventById(eventId);
         if (!event) return false;
 
-        // Check if the event is a recurring master *or* a single-event override of one.
-        const isRecurringSystem = event.type === 'rrule' || event.recurringEventId;
+        const isRecurringSystem =
+          event.type === 'recurring' || event.type === 'rrule' || event.recurringEventId;
 
         if (!isRecurringSystem) {
-          // It's a standard single event. Use the simple logic.
           await this.plugin.cache.updateEventWithId(eventId, toggleTask(event, isDone));
           return true;
         }
 
-        // It's part of a recurring series. Use the new logic.
-        if (!eventApi.start) return false; // Should not happen for a rendered event.
-        const instanceAsSingleEvent = fromEventApi(eventApi);
-        if (instanceAsSingleEvent.type !== 'single') {
-          // This should theoretically never happen for a visible, non-master recurring event instance,
-          // but it's a necessary type guard.
-          return false;
-        }
-        const instanceDate = instanceAsSingleEvent.date;
+        if (!eventApi.start) return false;
+
+        const instanceDate = DateTime.fromJSDate(eventApi.start).toISODate();
         if (!instanceDate) return false;
 
         try {
           await this.plugin.cache.toggleRecurringInstance(eventId, instanceDate, isDone);
+          return true;
         } catch (e) {
           if (e instanceof Error) {
             new Notice(e.message);
           }
           return false;
         }
-        return true;
       }
     });
     // @ts-ignore

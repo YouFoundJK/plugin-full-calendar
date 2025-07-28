@@ -180,7 +180,8 @@ export const EditEvent = ({
               daysOfWeek: daysOfWeek,
               startRecur: date || undefined,
               endRecur: endRecur,
-              isTask: isTask // Add this line
+              isTask: isTask, // <-- ADD THIS LINE
+              skipDates: initialEvent?.type === 'recurring' ? initialEvent.skipDates : [] // <-- ADD THIS LINE
             }
           : {
               type: 'single',
@@ -335,17 +336,19 @@ export const EditEvent = ({
               <input type="checkbox" checked={isTask} onChange={e => setIsTask(e.target.checked)} />{' '}
               Is a Task
             </label>
-            {isTask &&
-              !isRecurring && ( // Modified conditional rendering
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={!!complete}
-                    onChange={e => setComplete(e.target.checked ? DateTime.now().toISO() : false)}
-                  />{' '}
-                  Completed
-                </label>
-              )}
+            {isTask && ( // <-- REMOVE "!isRecurring" from this line
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!complete}
+                  onChange={e =>
+                    !isRecurring && setComplete(e.target.checked ? DateTime.now().toISO() : false)
+                  }
+                  disabled={isRecurring}
+                />{' '}
+                Completed
+              </label>
+            )}
           </div>
         </div>
 

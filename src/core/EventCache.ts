@@ -568,13 +568,12 @@ export default class EventCache {
     instanceDate: string,
     isDone: boolean
   ): Promise<void> {
-    const originalEvent = this.getEventById(eventId);
-    if (!originalEvent) {
-      throw new Error(`Event with ID ${eventId} not found.`);
-    }
-
     if (isDone) {
       const { event: masterEvent } = this.getInfoForEditableEvent(eventId);
+      if (masterEvent.type !== 'recurring' && masterEvent.type !== 'rrule') {
+        throw new Error('Cannot complete an instance of a non-recurring event.');
+      }
+
       const overrideEvent: OFCEvent = {
         ...masterEvent,
         type: 'single',
@@ -584,48 +583,7 @@ export default class EventCache {
 
       await this._createRecurringOverride(eventId, instanceDate, toggleTask(overrideEvent, true));
     } else {
-      // MARKING AS INCOMPLETE:
-      // The user clicked on the override event. `eventId` is the ID of the single completed event.
-      const overrideEvent = this.getEventById(eventId);
-      if (!overrideEvent) {
-        throw new Error(`Cannot un-complete an event that does not exist (ID: ${eventId}).`);
-      }
-
-      // 1. Get the persistent identifier of the master event from the override's data.
-      const masterLocalIdentifier = overrideEvent.recurringEventId;
-      if (!masterLocalIdentifier) {
-        throw new Error(
-          "Cannot un-complete an override event that isn't linked to a recurring event."
-        );
-      }
-
-      const { calendar } = this.getInfoForEditableEvent(eventId);
-
-      // 2. Construct the global identifier and look up the master event's current session ID.
-      const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
-      const masterSessionId = await this.getSessionId(globalMasterIdentifier);
-
-      if (!masterSessionId) {
-        // This can happen if the original recurring event note was deleted or renamed.
-        // In this case, we can only delete the override. The master event is gone.
-        console.warn(
-          `Master recurring event with identifier "${globalMasterIdentifier}" not found. Deleting orphan override.`
-        );
-        await this.deleteEvent(eventId);
-        return;
-      }
-
-      // 3. Delete the single-event override.
       await this.deleteEvent(eventId);
-
-      // 4. Remove the exception from the parent recurring event, making it visible again.
-      const masterEvent = this.getEventById(masterSessionId);
-      if (masterEvent?.type === 'rrule') {
-        await this.processEvent(masterSessionId, e => {
-          if (e.type !== 'rrule') return e; // Should not happen
-          return { ...e, skipDates: e.skipDates.filter(d => d !== instanceDate) };
-        });
-      }
     }
   }
 
