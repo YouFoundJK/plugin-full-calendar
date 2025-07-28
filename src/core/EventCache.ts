@@ -141,6 +141,11 @@ export default class EventCache {
 
   lastRevalidation: number = 0;
 
+  private _updateQueue: { toRemove: Set<string>; toAdd: Map<string, CacheEntry> } = {
+    toRemove: new Set(),
+    toAdd: new Map()
+  };
+
   constructor(plugin: FullCalendarPlugin, calendarInitializers: CalendarInitializerMap) {
     this.plugin = plugin;
     this.calendarInitializers = calendarInitializers;
@@ -156,6 +161,7 @@ export default class EventCache {
     this.pkCounter = 0;
     this.calendars.clear();
     this.store.clear();
+    this._updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
     this.resync();
     this.init();
   }
@@ -381,6 +387,26 @@ export default class EventCache {
     }
   }
 
+  public flushUpdateQueue(toRemove: string[], toAdd: CacheEntry[]): void {
+    if (toRemove.length > 0 || toAdd.length > 0) {
+      this.updateViews(toRemove, toAdd);
+    }
+
+    if (this._updateQueue.toRemove.size === 0 && this._updateQueue.toAdd.size === 0) {
+      return;
+    }
+
+    this.isBulkUpdating = false;
+
+    toRemove = [...this._updateQueue.toRemove];
+    toAdd = [...this._updateQueue.toAdd.values()];
+
+    this.updateViews(toRemove, toAdd);
+
+    // Clear the queue for the next batch of operations.
+    this._updateQueue = { toRemove: new Set(), toAdd: new Map() };
+  }
+
   private updateCalendar(calendar: OFCEventSource) {
     for (const callback of this.updateViewCallbacks) {
       callback({ type: 'calendar', calendar });
@@ -397,7 +423,11 @@ export default class EventCache {
    * @param event Event details
    * @returns Returns true if successful, false otherwise.
    */
-  async addEvent(calendarId: string, event: OFCEvent): Promise<boolean> {
+  async addEvent(
+    calendarId: string,
+    event: OFCEvent,
+    options?: { silent: boolean }
+  ): Promise<boolean> {
     const calendar = this.calendars.get(calendarId);
     if (!calendar) {
       throw new Error(`Calendar ID ${calendarId} is not registered.`);
@@ -420,7 +450,13 @@ export default class EventCache {
       this.identifierToSessionIdMap.set(globalIdentifier, id);
     }
 
-    this.updateViews([], [{ event, id, calendarId: calendar.id }]);
+    const cacheEntry = { event, id, calendarId: calendar.id };
+    if (options?.silent) {
+      this.isBulkUpdating = true;
+      this._updateQueue.toAdd.set(id, cacheEntry);
+    } else {
+      this.flushUpdateQueue([], [cacheEntry]);
+    }
     return true;
   }
 
@@ -438,36 +474,31 @@ export default class EventCache {
    * @param eventId - The unique identifier of the event to delete.
    * @returns A promise that resolves when the event has been deleted.
    */
-  async deleteEvent(eventId: string): Promise<void> {
+  async deleteEvent(eventId: string, options?: { silent: boolean }): Promise<void> {
     const { calendar, location, event } = this.getInfoForEditableEvent(eventId);
 
     // ====================================================================
-    // NEW: "Undo Override" Logic
+    // "Undo Override" Logic
     // ====================================================================
-    // Check if the event being deleted is an override of a recurring event.
     if (event.type === 'single' && event.recurringEventId) {
-      // 1. Get the persistent identifier of the master event from the override's data.
       const masterLocalIdentifier = event.recurringEventId;
-
-      // 2. Construct the global identifier and look up the master event's current session ID.
       const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
       const masterSessionId = await this.getSessionId(globalMasterIdentifier);
 
       if (masterSessionId) {
-        // 3. Remove the exception date from the parent recurring event.
-        await this.processEvent(masterSessionId, e => {
-          if (e.type !== 'recurring') return e; // Should not happen
-
-          // The date of the override event is the date to remove from skipDates.
-          const dateToUnskip = event.date;
-          return {
-            ...e,
-            skipDates: e.skipDates.filter(d => d !== dateToUnskip)
-          };
-        });
+        await this.processEvent(
+          masterSessionId,
+          e => {
+            if (e.type !== 'recurring' && e.type !== 'rrule') return e;
+            const dateToUnskip = event.date;
+            return {
+              ...e,
+              skipDates: e.skipDates.filter(d => d !== dateToUnskip)
+            };
+          },
+          { silent: true }
+        );
       } else {
-        // This can happen if the original recurring event note was deleted or renamed.
-        // In this case, we can only delete the override. The master event is gone.
         console.warn(
           `Master recurring event with identifier "${globalMasterIdentifier}" not found. Deleting orphan override.`
         );
@@ -481,11 +512,15 @@ export default class EventCache {
       this.identifierToSessionIdMap.delete(globalIdentifier);
     }
 
-    // Original logic to delete the event file/data. This runs for both
-    // regular events and override events.
     this.store.delete(eventId);
     await calendar.deleteEvent(location);
-    this.updateViews([eventId], []);
+
+    if (options?.silent) {
+      this.isBulkUpdating = true;
+      this._updateQueue.toRemove.add(eventId);
+    } else {
+      this.flushUpdateQueue([eventId], []);
+    }
   }
 
   /**
@@ -502,7 +537,11 @@ export default class EventCache {
    * @returns true if the update was successful.
    * @throws If the event is not in an editable calendar or cannot be found.
    */
-  async updateEventWithId(eventId: string, newEvent: OFCEvent): Promise<boolean> {
+  async updateEventWithId(
+    eventId: string,
+    newEvent: OFCEvent,
+    options?: { silent: boolean }
+  ): Promise<boolean> {
     const {
       calendar,
       location: oldLocation,
@@ -532,7 +571,14 @@ export default class EventCache {
       this.identifierToSessionIdMap.set(newGlobalIdentifier, eventId);
     }
 
-    this.updateViews([eventId], [{ id: eventId, calendarId: calendar.id, event: newEvent }]);
+    const cacheEntry = { id: eventId, calendarId: calendar.id, event: newEvent };
+    if (options?.silent) {
+      this.isBulkUpdating = true;
+      this._updateQueue.toRemove.add(eventId);
+      this._updateQueue.toAdd.set(eventId, cacheEntry);
+    } else {
+      this.flushUpdateQueue([eventId], [cacheEntry]);
+    }
     return true;
   }
 
@@ -546,14 +592,17 @@ export default class EventCache {
    * @param process function to transform the event.
    * @returns true if the update was successful.
    */
-  processEvent(id: string, process: (e: OFCEvent) => OFCEvent): Promise<boolean> {
+  processEvent(
+    id: string,
+    process: (e: OFCEvent) => OFCEvent,
+    options?: { silent: boolean }
+  ): Promise<boolean> {
     const event = this.store.getEventById(id);
     if (!event) {
       throw new Error('Event does not exist');
     }
     const newEvent = process(event);
-    // console.debug('process', newEvent, process);
-    return this.updateEventWithId(id, newEvent);
+    return this.updateEventWithId(id, newEvent, options);
   }
 
   /**
@@ -583,8 +632,9 @@ export default class EventCache {
 
       await this._createRecurringOverride(eventId, instanceDate, toggleTask(overrideEvent, true));
     } else {
-      await this.deleteEvent(eventId);
+      await this.deleteEvent(eventId, { silent: true });
     }
+    this.flushUpdateQueue([], []);
   }
 
   async moveEventToCalendar(eventId: string, newCalendarId: string): Promise<void> {
@@ -643,6 +693,7 @@ export default class EventCache {
       throw new Error('Cannot create a recurring override from a non-single event.');
     }
     await this._createRecurringOverride(masterEventId, instanceDate, newEventData);
+    this.flushUpdateQueue([], []);
   }
 
   /**
@@ -656,8 +707,7 @@ export default class EventCache {
     instanceDateToSkip: string,
     overrideEventData: OFCEvent
   ): Promise<void> {
-    const details = this.getInfoForEditableEvent(masterEventId);
-    const { calendar, event: masterEvent } = details;
+    const { calendar, event: masterEvent } = this.getInfoForEditableEvent(masterEventId);
 
     const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
     if (!masterLocalIdentifier) {
@@ -670,17 +720,20 @@ export default class EventCache {
       ...overrideEventData,
       recurringEventId: masterLocalIdentifier
     };
-    await this.addEvent(calendar.id, finalOverrideEvent);
 
-    await this.processEvent(masterEventId, e => {
-      if (e.type !== 'recurring') return e;
-
-      const skipDates = e.skipDates.includes(instanceDateToSkip)
-        ? e.skipDates
-        : [...e.skipDates, instanceDateToSkip];
-
-      return { ...e, skipDates };
-    });
+    // Perform all data operations silently. The caller is responsible for flushing the queue.
+    await this.addEvent(calendar.id, finalOverrideEvent, { silent: true });
+    await this.processEvent(
+      masterEventId,
+      e => {
+        if (e.type !== 'recurring') return e;
+        const skipDates = e.skipDates.includes(instanceDateToSkip)
+          ? e.skipDates
+          : [...e.skipDates, instanceDateToSkip];
+        return { ...e, skipDates };
+      },
+      { silent: true }
+    );
   }
 
   ///
@@ -705,7 +758,7 @@ export default class EventCache {
       }
     }
 
-    this.updateViews([...this.store.deleteEventsAtPath(path)], []);
+    this.flushUpdateQueue([...this.store.deleteEventsAtPath(path)], []);
   }
 
   /**
@@ -792,7 +845,7 @@ export default class EventCache {
       eventsToAdd.push(...newEventsWithIds);
     }
 
-    this.updateViews(idsToRemove, eventsToAdd);
+    this.flushUpdateQueue(idsToRemove, eventsToAdd);
   }
 
   /**
