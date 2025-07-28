@@ -98,6 +98,7 @@ interface EditEventProps {
   enableCategory: boolean; // <-- ADD NEW PROP
   open?: () => Promise<void>;
   deleteEvent?: () => Promise<void>;
+  onAttemptEditInherited?: () => void; // Add this new prop
 }
 
 export const EditEvent = ({
@@ -108,8 +109,13 @@ export const EditEvent = ({
   calendars,
   defaultCalendarIndex,
   availableCategories = [],
-  enableCategory // <-- GET NEW PROP
+  enableCategory, // <-- GET NEW PROP
+  onAttemptEditInherited // <-- GET NEW PROP
 }: EditEventProps) => {
+  const isChildOverride = !!initialEvent?.recurringEventId;
+
+  const disabledTooltip = 'This property is inherited. Click to edit the parent recurring event.'; // Update tooltip
+
   const [date, setDate] = useState(
     initialEvent
       ? initialEvent.type === 'single'
@@ -210,7 +216,11 @@ export const EditEvent = ({
           <div className="setting-item-info">
             <div className="setting-item-name">Title</div>
           </div>
-          <div className="setting-item-control">
+          <div
+            className={`setting-item-control ${isChildOverride ? 'is-override-disabled' : ''}`}
+            onClick={isChildOverride ? onAttemptEditInherited : undefined}
+            title={isChildOverride ? disabledTooltip : ''}
+          >
             <input
               ref={titleRef}
               type="text"
@@ -218,6 +228,7 @@ export const EditEvent = ({
               placeholder="Event Title"
               required
               onChange={e => setTitle(e.target.value)}
+              readOnly={isChildOverride} // Change `disabled` to `readOnly`
             />
           </div>
         </div>
@@ -227,13 +238,18 @@ export const EditEvent = ({
             <div className="setting-item-info">
               <div className="setting-item-name">Category</div>
             </div>
-            <div className="setting-item-control">
+            <div
+              className={`setting-item-control ${isChildOverride ? 'is-override-disabled' : ''}`}
+              onClick={isChildOverride ? onAttemptEditInherited : undefined}
+              title={isChildOverride ? disabledTooltip : ''}
+            >
               <AutocompleteInput
                 id="category-autocomplete"
                 value={category}
                 onChange={setCategory}
                 suggestions={availableCategories}
                 placeholder="Category (optional)"
+                readOnly={isChildOverride} // Change `disabled` to `readOnly`
               />
             </div>
           </div>
@@ -296,8 +312,15 @@ export const EditEvent = ({
             <div className="setting-item-name">Options</div>
           </div>
           <div className="setting-item-control options-group">
-            <label>
-              <input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} />{' '}
+            <label title={isChildOverride ? disabledTooltip : ''}>
+              {' '}
+              {/* <-- ADD THIS LINE */}
+              <input
+                type="checkbox"
+                checked={allDay}
+                onChange={e => setAllDay(e.target.checked)}
+                disabled={isChildOverride} // <-- ADD THIS LINE
+              />{' '}
               All day
             </label>
             <label>

@@ -189,10 +189,42 @@ export class CalendarView extends ItemView {
             throw new Error('Original event not found in cache.');
           }
 
+          // ====================================================================
+          // NEW LOGIC: Prevent moving child overrides to a different day.
+          // ====================================================================
+          if (originalEvent.type === 'single' && originalEvent.recurringEventId) {
+            const oldDate = oldEvent.start ? DateTime.fromJSDate(oldEvent.start).toISODate() : null;
+            const newDate = newEvent.start ? DateTime.fromJSDate(newEvent.start).toISODate() : null;
+
+            if (oldDate && newDate && oldDate !== newDate) {
+              new Notice(
+                'Cannot move a recurring instance to a different day. Modify the time only or edit the main recurring event.',
+                6000
+              );
+              return false; // Reverts the event to its original position.
+            }
+          }
+          // ====================================================================
+
           // Check if the event being dragged is part of a recurring series.
           // We must check the original event from the cache, because `oldEvent` from FullCalendar
           // is just an instance and doesn't have our `type` property.
           if (originalEvent.type === 'rrule' || originalEvent.type === 'recurring') {
+            // ====================================================================
+            // NEW LOGIC: Prevent moving the master instance to a different day.
+            // ====================================================================
+            const oldDate = oldEvent.start ? DateTime.fromJSDate(oldEvent.start).toISODate() : null;
+            const newDate = newEvent.start ? DateTime.fromJSDate(newEvent.start).toISODate() : null;
+
+            if (oldDate && newDate && oldDate !== newDate) {
+              new Notice(
+                'Cannot move a recurring instance to a different day. You can only change the time.',
+                6000
+              );
+              return false; // Revert the change.
+            }
+            // ====================================================================
+
             if (!oldEvent.start) {
               throw new Error('Recurring instance is missing original start date.');
             }

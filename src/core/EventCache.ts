@@ -547,6 +547,20 @@ export default class EventCache {
       location: oldLocation,
       event: oldEvent
     } = this.getInfoForEditableEvent(eventId);
+
+    if (oldEvent.type === 'recurring' || oldEvent.type === 'rrule') {
+      const oldLocalIdentifier = calendar.getLocalIdentifier(oldEvent);
+      const newLocalIdentifier = calendar.getLocalIdentifier(newEvent);
+      if (oldLocalIdentifier && newLocalIdentifier && oldLocalIdentifier !== newLocalIdentifier) {
+        await this.updateRecurringChildren(
+          calendar.id,
+          oldLocalIdentifier,
+          newLocalIdentifier,
+          newEvent // Pass `newEvent` to the helper
+        );
+      }
+    }
+
     const { path, lineNumber } = oldLocation;
 
     // Remove old identifier
@@ -756,6 +770,55 @@ export default class EventCache {
       },
       { silent: true }
     );
+  }
+  private async updateRecurringChildren(
+    calendarId: string,
+    oldParentIdentifier: string,
+    newParentIdentifier: string,
+    newParentEvent: OFCEvent // Add new parameter
+  ): Promise<void> {
+    const childrenToUpdate = this.store
+      .getAllEvents()
+      .filter(e => e.calendarId === calendarId && e.event.recurringEventId === oldParentIdentifier);
+
+    if (childrenToUpdate.length === 0) {
+      return;
+    }
+
+    new Notice(`Updating ${childrenToUpdate.length} child event(s) to match new parent title.`);
+
+    for (const childStoredEvent of childrenToUpdate) {
+      const {
+        calendar: childCalendar,
+        location: childLocation,
+        event: childEvent
+      } = this.getInfoForEditableEvent(childStoredEvent.id);
+
+      const updatedChildEvent: OFCEvent = {
+        ...childEvent,
+        title: newParentEvent.title, // Inherit new title
+        category: newParentEvent.category, // Inherit new category
+        recurringEventId: newParentIdentifier
+      };
+
+      await childCalendar.modifyEvent(childLocation, updatedChildEvent, newChildLocation => {
+        this.store.delete(childStoredEvent.id);
+        this.store.add({
+          calendar: childCalendar,
+          location: newChildLocation,
+          id: childStoredEvent.id,
+          event: updatedChildEvent
+        });
+      });
+
+      this.isBulkUpdating = true;
+      this._updateQueue.toRemove.add(childStoredEvent.id);
+      this._updateQueue.toAdd.set(childStoredEvent.id, {
+        id: childStoredEvent.id,
+        calendarId: childCalendar.id,
+        event: updatedChildEvent
+      });
+    }
   }
 
   ///

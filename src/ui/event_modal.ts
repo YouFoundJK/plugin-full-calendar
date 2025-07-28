@@ -18,7 +18,7 @@
  * @license See LICENSE.md
  */
 
-import { Notice } from 'obsidian';
+import { Notice, Modal, App, Setting, ButtonComponent } from 'obsidian';
 import * as React from 'react';
 import { EditableCalendar } from '../calendars/EditableCalendar';
 import FullCalendarPlugin from '../main';
@@ -26,6 +26,40 @@ import { OFCEvent } from '../types';
 import { openFileForEvent } from './actions';
 import { EditEvent } from './components/EditEvent';
 import ReactModal from './ReactModal';
+
+class ConfirmModal extends Modal {
+  constructor(
+    app: App,
+    private titleText: string,
+    private bodyText: string,
+    private onConfirm: () => void
+  ) {
+    super(app);
+  }
+
+  onOpen() {
+    this.modalEl.addClass('full-calendar-confirm-modal');
+    const { contentEl } = this;
+    contentEl.createEl('h2', { text: this.titleText });
+    contentEl.createEl('p', { text: this.bodyText });
+
+    new Setting(contentEl)
+      .addButton((btn: ButtonComponent) =>
+        btn
+          .setButtonText('Yes, open parent')
+          .setCta()
+          .onClick(() => {
+            this.close();
+            this.onConfirm();
+          })
+      )
+      .addButton((btn: ButtonComponent) => btn.setButtonText('Cancel').onClick(() => this.close()));
+  }
+
+  onClose() {
+    this.contentEl.empty();
+  }
+}
 
 export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
   const calendars = [...plugin.cache.calendars.entries()]
@@ -84,12 +118,31 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
     });
 
   const calIdx = calendars.findIndex(({ id }) => id === calId);
-
-  // MODIFICATION: Get available categories
   const availableCategories = plugin.cache.getAllCategories();
 
-  new ReactModal(plugin.app, async closeModal =>
-    React.createElement(EditEvent, {
+  new ReactModal(plugin.app, async closeModal => {
+    const onAttemptEditInherited = () => {
+      new ConfirmModal(
+        plugin.app,
+        'Edit Parent Event?',
+        'This property is inherited from the parent recurring event. Would you like to open the parent to make changes?',
+        async () => {
+          if (eventToEdit.type === 'single' && eventToEdit.recurringEventId) {
+            const parentLocalId = eventToEdit.recurringEventId;
+            const parentGlobalId = `${calId}::${parentLocalId}`;
+            const parentSessionId = await plugin.cache.getSessionId(parentGlobalId);
+            if (parentSessionId) {
+              closeModal();
+              launchEditModal(plugin, parentSessionId);
+            } else {
+              new Notice('Could not find the parent recurring event.');
+            }
+          }
+        }
+      ).open();
+    };
+
+    return React.createElement(EditEvent, {
       initialEvent: eventToEdit,
       calendars,
       defaultCalendarIndex: calIdx, // <-- RESTORED THIS PROP
@@ -123,7 +176,8 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
             console.error(e);
           }
         }
-      }
-    })
-  ).open();
+      },
+      onAttemptEditInherited // Pass the new handler as a prop
+    });
+  }).open();
 }

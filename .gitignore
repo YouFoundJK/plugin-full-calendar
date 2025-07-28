@@ -25,7 +25,6 @@ obsidian-dev-vault/
 
 
 # Others
-src/*/export-to-txt.py
-src/export-to-txt.py
+src/.*
 exported
 .DS_Store

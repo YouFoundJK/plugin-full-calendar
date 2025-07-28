@@ -215,5 +215,9 @@
 
 .full-calendar-edit-modal .options-group label:has(input[type="checkbox"]:disabled) {
     opacity: 0.5;
-    cursor: not-allowed;
+}
+
+.full-calendar-edit-modal .setting-item-control.is-override-disabled,
+.full-calendar-edit-modal .setting-item-control.is-override-disabled input {
+    opacity: 0.6;
 }
