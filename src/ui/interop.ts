@@ -166,74 +166,76 @@ export function toEventInput(
   }
 
   if (frontmatter.type === 'recurring') {
-    // If the event has exceptions, we must convert it to an rrule for FullCalendar.
     if (frontmatter.skipDates && frontmatter.skipDates.length > 0) {
+      // ====================================================================
+      // Timezone-Aware Conversion (Final Version)
+      // ====================================================================
+
+      // A. Identify zones
+      const sourceZone = frontmatter.timezone || DateTime.local().zoneName;
+      const displayZone = settings.displayTimezone || DateTime.local().zoneName;
+
+      // B. Create the RRULE string part first.
       const weekdays = { U: 'SU', M: 'MO', T: 'TU', W: 'WE', R: 'TH', F: 'FR', S: 'SA' };
       const byday = frontmatter.daysOfWeek.map(c => weekdays[c as keyof typeof weekdays]);
-
-      // 1. Manually build the core RRULE string
       let rruleString = `FREQ=WEEKLY;BYDAY=${byday.join(',')}`;
-
-      // 2. If endRecur exists, parse and format it into the required Z-time format
       if (frontmatter.endRecur) {
-        const until = DateTime.fromISO(frontmatter.endRecur)
+        const until = DateTime.fromISO(frontmatter.endRecur, { zone: displayZone })
           .endOf('day')
-          .setZone('utc')
+          .toUTC()
           .toFormat("yyyyMMdd'T'HHmmss'Z'");
         rruleString += `;UNTIL=${until}`;
       }
 
-      // 3. Determine the series start date (dtstart) which must be the first valid occurrence
-      // The full DTSTART + RRULE string is needed to correctly calculate the first occurrence.
-      // DTSTART and UNTIL must be of the same type (both DATE-TIME).
-      // We use the start of the day for the calculation DTSTART.
-      let seriesAnchor: DateTime;
+      // C. Create the timezone-aware DTSTART string.
+      let dtstart: DateTime;
+      const startRecurDate = frontmatter.startRecur || '1970-01-01';
       if (frontmatter.allDay) {
-        seriesAnchor = DateTime.fromISO(frontmatter.startRecur || '1970-01-01').startOf('day');
+        dtstart = DateTime.fromISO(startRecurDate, { zone: displayZone }).startOf('day');
       } else {
         const startTimeDt = parseTime(frontmatter.startTime);
-        if (!startTimeDt) return null; // Invalid start time format
-
-        seriesAnchor = DateTime.fromISO(frontmatter.startRecur || '1970-01-01').set({
+        if (!startTimeDt) return null;
+        dtstart = DateTime.fromISO(startRecurDate, { zone: displayZone }).set({
           hour: startTimeDt.hours,
           minute: startTimeDt.minutes,
           second: 0,
           millisecond: 0
         });
       }
+      // Create a DTSTART string that INCLUDES the timezone identifier.
+      const dtstartString = `DTSTART;TZID=${displayZone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
 
-      const tempRrulestr = `DTSTART:${seriesAnchor.setZone('utc').toFormat("yyyyMMdd'T'HHmmss'Z'")}\nRRULE:${rruleString}`;
-      const firstOccurrence = rrulestr(tempRrulestr).after(
-        seriesAnchor.minus({ days: 1 }).toJSDate(),
-        true
-      );
-      if (!firstOccurrence) {
-        return null;
-      }
-
-      // 4. Create the RRuleSet and add the main rule
-      const rruleSet = new RRuleSet();
-      rruleSet.rrule(
-        new RRule({
-          ...RRule.parseString(rruleString),
-          dtstart: firstOccurrence
-        })
-      );
-      // 5. Add exceptions (exdates)
-      const exdates = frontmatter.skipDates
+      // D. Create timezone-aware EXDATE strings.
+      const exdateStrings = frontmatter.skipDates
         .map((d: string) => {
+          let exdateDt: DateTime;
           if (frontmatter.allDay) {
-            return DateTime.fromISO(d).toJSDate();
+            exdateDt = DateTime.fromISO(d, { zone: displayZone }).startOf('day');
+            return `EXDATE;TZID=${displayZone};VALUE=DATE:${exdateDt.toFormat('yyyyMMdd')}`;
+          } else {
+            const startTimeDt = parseTime(frontmatter.startTime);
+            if (!startTimeDt) return null;
+
+            // CRITICAL: The exception date must be interpreted in the SOURCE zone first, then converted.
+            const exdateInSource = DateTime.fromISO(d, { zone: sourceZone }).set({
+              hour: startTimeDt.hours,
+              minute: startTimeDt.minutes,
+              second: 0,
+              millisecond: 0
+            });
+            const exdateInDisplay = exdateInSource.setZone(displayZone);
+            return `EXDATE;TZID=${displayZone}:${exdateInDisplay.toFormat("yyyyMMdd'T'HHmmss")}`;
           }
-          const dt = combineDateTimeStrings(d, frontmatter.startTime);
-          return dt ? DateTime.fromISO(dt).toJSDate() : null;
         })
-        .flatMap((d: Date | null) => (d ? [d] : []));
+        .flatMap(s => (s ? [s] : []));
 
-      exdates.forEach((date: Date) => rruleSet.exdate(date));
-      // 6. Construct the final event for FullCalendar
-      event.rrule = rruleSet.toString();
+      // E. Combine everything into the final RRULESET string.
+      const finalRruleSetString = [dtstartString, `RRULE:${rruleString}`, ...exdateStrings].join(
+        '\n'
+      );
+      event.rrule = finalRruleSetString;
 
+      // F. Calculate duration
       if (!frontmatter.allDay && frontmatter.startTime && frontmatter.endTime) {
         const startTime = parseTime(frontmatter.startTime);
         const endTime = parseTime(frontmatter.endTime);
