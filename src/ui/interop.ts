@@ -143,7 +143,7 @@ export function toEventInput(
   id: string,
   frontmatter: OFCEvent,
   settings: FullCalendarSettings,
-	calendarId?: string
+  calendarId?: string
 ): EventInput | null {
   let event: EventInput = {
     id,
@@ -257,32 +257,33 @@ export function toEventInput(
           taskCompleted: frontmatter.completed
         }
       };
-		} else {
-			const isLocalCalendar = calendarId?.startsWith('local::');
-			let adjustedEndDate: string | undefined;
+    } else {
+      const isLocalCalendar = calendarId?.startsWith('local::');
+      let adjustedEndDate: string | undefined;
 
-			if (!frontmatter.endDate) {
-				// Single-day event: no end date needed
-				adjustedEndDate = undefined;
-			} else if (isLocalCalendar) {
-				// Multi-day local event: add 1 day to fix FullCalendar's exclusive end date
-				adjustedEndDate = DateTime.fromISO(frontmatter.endDate).plus({ days: 1 }).toISODate() ?? undefined;
-			} else {
-				// Multi-day external event: use as-is
-				adjustedEndDate = frontmatter.endDate;
-			}
+      if (!frontmatter.endDate) {
+        // Single-day event: no end date needed
+        adjustedEndDate = undefined;
+      } else if (isLocalCalendar) {
+        // Multi-day local event: add 1 day to fix FullCalendar's exclusive end date
+        adjustedEndDate =
+          DateTime.fromISO(frontmatter.endDate).plus({ days: 1 }).toISODate() ?? undefined;
+      } else {
+        // Multi-day external event: use as-is
+        adjustedEndDate = frontmatter.endDate;
+      }
 
-			event = {
-				...event,
-				start: frontmatter.date,
-				end: adjustedEndDate,
-				extendedProps: {
-					...event.extendedProps,
-					isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
-					taskCompleted: frontmatter.completed
-				}
-			};
-		}
+      event = {
+        ...event,
+        start: frontmatter.date,
+        end: adjustedEndDate,
+        extendedProps: {
+          ...event.extendedProps,
+          isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
+          taskCompleted: frontmatter.completed
+        }
+      };
+    }
   }
 
   return event;

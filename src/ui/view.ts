@@ -337,7 +337,9 @@ export class CalendarView extends ItemView {
         this.fullCalendarView?.addEventSource({
           id,
           // Pass settings to toEventInput
-					events: events.flatMap(({ id: eventId, event }) => toEventInput(eventId, event, settings, id) || []),
+          events: events.flatMap(
+            ({ id: eventId, event }) => toEventInput(eventId, event, settings, id) || []
+          ),
           editable,
           ...getCalendarColors(color)
         });
