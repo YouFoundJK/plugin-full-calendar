@@ -37,6 +37,7 @@ import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import FullCalendarPlugin from '../main';
 import { FullCalendarSettings } from '../types/settings';
 import { toggleTask } from '../ui/tasks';
+import { DeleteRecurringModal } from '../ui/event_modal';
 
 export type CalendarInitializerMap = Record<
   CalendarInfo['type'],
@@ -193,6 +194,30 @@ export default class EventCache {
       return null;
     }
     return `${calendar.id}::${localIdentifier}`;
+  }
+
+  /**
+   * Finds all override events that are children of a given master recurring event.
+   * @param masterEventId The session ID of the master recurring event.
+   * @returns An array of StoredEvent objects representing the child overrides.
+   */
+  private findRecurringChildren(masterEventId: string): StoredEvent[] {
+    const masterEventDetails = this.store.getEventDetails(masterEventId);
+    if (!masterEventDetails) return [];
+
+    const { calendarId, event: masterEvent } = masterEventDetails;
+    const calendar = this.calendars.get(calendarId);
+    if (!calendar) return [];
+
+    // The local identifier is what's stored in the child's `recurringEventId` field.
+    const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
+    if (!masterLocalIdentifier) return [];
+
+    return this.store
+      .getAllEvents()
+      .filter(
+        e => e.calendarId === calendar.id && e.event.recurringEventId === masterLocalIdentifier
+      );
   }
 
   /**
@@ -460,6 +485,46 @@ export default class EventCache {
     return true;
   }
 
+  async promoteRecurringChildren(masterEventId: string): Promise<void> {
+    const children = this.findRecurringChildren(masterEventId);
+    if (children.length === 0) {
+      // No children to promote, just delete the master.
+      await this.deleteEvent(masterEventId, { force: true });
+      return;
+    }
+
+    new Notice(`Promoting ${children.length} child event(s).`);
+    for (const child of children) {
+      await this.processEvent(
+        child.id,
+        e => ({
+          ...e,
+          recurringEventId: undefined
+        }),
+        { silent: true }
+      );
+    }
+
+    // Now delete the original master event
+    await this.deleteEvent(masterEventId, { force: true, silent: true });
+    this.flushUpdateQueue([], []);
+    new Notice('Recurring event deleted and children promoted.');
+  }
+
+  async deleteAllRecurring(masterEventId: string): Promise<void> {
+    const children = this.findRecurringChildren(masterEventId);
+    new Notice(`Deleting recurring event and its ${children.length} child override(s)...`);
+
+    for (const child of children) {
+      await this.deleteEvent(child.id, { force: true, silent: true });
+    }
+
+    // Finally, delete the master event itself
+    await this.deleteEvent(masterEventId, { force: true, silent: true });
+    this.flushUpdateQueue([], []);
+    new Notice('Successfully deleted recurring event and all children.');
+  }
+
   /**
    * Deletes an event by its identifier, handling both regular and override events.
    *
@@ -474,8 +539,30 @@ export default class EventCache {
    * @param eventId - The unique identifier of the event to delete.
    * @returns A promise that resolves when the event has been deleted.
    */
-  async deleteEvent(eventId: string, options?: { silent: boolean }): Promise<void> {
+  async deleteEvent(
+    eventId: string,
+    options?: { silent?: boolean; force?: boolean }
+  ): Promise<void> {
     const { calendar, location, event } = this.getInfoForEditableEvent(eventId);
+
+    // ====================================================================
+    // NEW LOGIC: Intercept deletion of recurring events with children
+    // ====================================================================
+    if (!options?.force) {
+      const isRecurringMaster = event.type === 'recurring' || event.type === 'rrule';
+      if (isRecurringMaster) {
+        const children = this.findRecurringChildren(eventId);
+        if (children.length > 0) {
+          new DeleteRecurringModal(
+            this.plugin.app,
+            () => this.promoteRecurringChildren(eventId),
+            () => this.deleteAllRecurring(eventId)
+          ).open();
+          return; // Stop execution here, let the modal handlers take over.
+        }
+      }
+    }
+    // ====================================================================
 
     // ====================================================================
     // "Undo Override" Logic
@@ -678,7 +765,7 @@ export default class EventCache {
     }
     const newCalendar = this.calendars.get(newCalendarId);
     if (!newCalendar) {
-      throw new Error(`Source calendar ${newCalendarId} does not exist.`);
+      throw new Error(`Source calendar ${newCalendarId} did not exist.`);
     }
 
     // TODO: Support moving around events between all sorts of editable calendars.
@@ -762,7 +849,7 @@ export default class EventCache {
     await this.processEvent(
       masterEventId,
       e => {
-        if (e.type !== 'recurring') return e;
+        if (e.type !== 'recurring' && e.type !== 'rrule') return e;
         const skipDates = e.skipDates.includes(instanceDateToSkip)
           ? e.skipDates
           : [...e.skipDates, instanceDateToSkip];
