@@ -20,8 +20,9 @@ main.js
 # Exclude sourcemaps
 *.map
 
-# obsidian
+# Ignore everything in obsidian-dev-vault
 obsidian-dev-vault/
+
 
 # Others
 src/*/export-to-txt.py
