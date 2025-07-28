@@ -212,3 +212,8 @@
     justify-content: center; /* Center the buttons */
     margin-top: 1.5rem;
 }
+
+.full-calendar-edit-modal .options-group label:has(input[type="checkbox"]:disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

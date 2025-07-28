@@ -268,6 +268,73 @@ export const EditEvent = ({
           </div>
         </div>
 
+        <div className={`setting-item time-setting-item ${allDay ? 'is-disabled' : ''}`}>
+          <div className="setting-item-info">
+            <div className="setting-item-name">Time</div>
+          </div>
+          <div className="setting-item-control time-group">
+            <input
+              type="time"
+              value={startTime}
+              required={!allDay}
+              disabled={allDay}
+              onChange={e => setStartTime(e.target.value)}
+            />
+            <span>-</span>
+            <input
+              type="time"
+              value={endTime}
+              disabled={allDay}
+              onChange={e => setEndTime(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Options section */}
+        <div className="setting-item">
+          <div className="setting-item-info">
+            <div className="setting-item-name">Options</div>
+          </div>
+          <div className="setting-item-control options-group">
+            <label>
+              <input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} />{' '}
+              All day
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={e => setIsRecurring(e.target.checked)}
+              />{' '}
+              Recurring
+            </label>
+            <label>
+              <input type="checkbox" checked={isTask} onChange={e => setIsTask(e.target.checked)} />{' '}
+              Is a Task
+            </label>
+            {isTask && (
+              <label
+                title={
+                  isRecurring
+                    ? 'Completion for recurring tasks can be toggled on individual instances in the calendar view.'
+                    : ''
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={isRecurring ? false : !!complete}
+                  onChange={e =>
+                    !isRecurring && setComplete(e.target.checked ? DateTime.now().toISO() : false)
+                  }
+                  disabled={isRecurring}
+                />{' '}
+                Completed
+              </label>
+            )}
+          </div>
+        </div>
+
+        {/* Recurring fields */}
         {isRecurring && (
           <>
             <div className="setting-item">
@@ -292,65 +359,6 @@ export const EditEvent = ({
             </div>
           </>
         )}
-
-        <div className={`setting-item time-setting-item ${allDay ? 'is-disabled' : ''}`}>
-          <div className="setting-item-info">
-            <div className="setting-item-name">Time</div>
-          </div>
-          <div className="setting-item-control time-group">
-            <input
-              type="time"
-              value={startTime}
-              required={!allDay}
-              disabled={allDay}
-              onChange={e => setStartTime(e.target.value)}
-            />
-            <span>-</span>
-            <input
-              type="time"
-              value={endTime}
-              disabled={allDay}
-              onChange={e => setEndTime(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-item-info">
-            <div className="setting-item-name">Options</div>
-          </div>
-          <div className="setting-item-control options-group">
-            <label>
-              <input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} />{' '}
-              All day
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={isRecurring}
-                onChange={e => setIsRecurring(e.target.checked)}
-              />{' '}
-              Recurring
-            </label>
-            <label>
-              <input type="checkbox" checked={isTask} onChange={e => setIsTask(e.target.checked)} />{' '}
-              Is a Task
-            </label>
-            {isTask && ( // <-- REMOVE "!isRecurring" from this line
-              <label>
-                <input
-                  type="checkbox"
-                  checked={!!complete}
-                  onChange={e =>
-                    !isRecurring && setComplete(e.target.checked ? DateTime.now().toISO() : false)
-                  }
-                  disabled={isRecurring}
-                />{' '}
-                Completed
-              </label>
-            )}
-          </div>
-        </div>
 
         <hr className="modal-hr" />
 
