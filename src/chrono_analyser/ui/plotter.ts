@@ -152,6 +152,7 @@ export function renderSunburstChartDisplay(
 
   if (isNewChartType) {
     Plotly.purge(mainContainerEl);
+    // MODIFIED: Programmatically create the sunburst layout instead of using innerHTML
     const container = mainContainerEl as any;
     container.empty();
     const wrapper = container.createDiv({

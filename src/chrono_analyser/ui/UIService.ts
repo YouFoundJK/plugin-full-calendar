@@ -102,6 +102,8 @@ export class UIService {
     this.rootEl.querySelector('.controls')?.scrollIntoView({ behavior: 'smooth' });
   }
 
+  // UIService.ts
+
   public setInsightsLoading(isLoading: boolean) {
     const generateBtn = this.rootEl.querySelector<HTMLButtonElement>('#generateInsightsBtn');
     const resultContainer = this.rootEl.querySelector<HTMLElement>('#insightsResultContainer');
@@ -111,7 +113,12 @@ export class UIService {
       generateBtn.textContent = 'Processing...';
       generateBtn.disabled = true;
       generateBtn.classList.add('is-loading');
-      resultContainer.innerHTML = `<div class="loading-container"><div class="loading-spinner"></div><div>Analyzing your data...</div></div>`;
+      // MODIFIED: Programmatically create the loading indicator
+      const container = resultContainer as any;
+      container.empty();
+      const loadingContainer = container.createDiv({ cls: 'loading-container' });
+      loadingContainer.createDiv({ cls: 'loading-spinner' });
+      loadingContainer.createDiv({ text: 'Analyzing your data...' });
     } else {
       generateBtn.textContent = 'Generate Insights';
       generateBtn.disabled = false;
