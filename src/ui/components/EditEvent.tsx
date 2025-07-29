@@ -15,7 +15,7 @@ import { DateTime } from 'luxon';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { CalendarInfo, OFCEvent } from '../../types';
-import { AutocompleteInput } from './AutocompleteInput';
+import { AutocompleteInput } from './forms/AutocompleteInput';
 
 function makeChangeListener<T>(
   setState: React.Dispatch<React.SetStateAction<T>>,
