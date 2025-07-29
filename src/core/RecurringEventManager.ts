@@ -1,13 +1,3 @@
-// FILE: src/core/RecurringEventManager.ts
-
-import EventCache from './EventCache';
-import { OFCEvent, validateEvent } from '../types';
-import { StoredEvent } from './EventStore';
-import { Notice } from 'obsidian';
-import { DeleteRecurringModal } from '../ui/modals/DeleteRecurringModal';
-import { toggleTask } from './tasks';
-import { DateTime } from 'luxon';
-
 /**
  * @file RecurringEventManager.ts
  * @brief Manages all complex business logic related to recurring events.
@@ -21,6 +11,13 @@ import { DateTime } from 'luxon';
  *
  * @license See LICENSE.md
  */
+
+import { Notice } from 'obsidian';
+import { toggleTask } from './tasks';
+import EventCache from './EventCache';
+import { StoredEvent } from './EventStore';
+import { OFCEvent } from '../types';
+import { DeleteRecurringModal } from '../ui/modals/DeleteRecurringModal';
 
 /**
  * Manages all complex business logic related to recurring events.
@@ -123,5 +120,167 @@ export class RecurringEventManager {
     }
 
     return false; // No children, proceed with normal deletion.
+  }
+
+  /**
+   * Private helper to perform the "skip and override" logic for recurring events.
+   * @param masterEventId The session ID of the master recurring event.
+   * @param instanceDateToSkip The date of the original instance to add to the parent's skipDates.
+   * @param overrideEventData The complete OFCEvent object for the new single-instance override.
+   */
+  private async _createRecurringOverride(
+    masterEventId: string,
+    instanceDateToSkip: string,
+    overrideEventData: OFCEvent
+  ): Promise<void> {
+    const { calendar, event: masterEvent } = this.cache.getInfoForEditableEvent(masterEventId);
+
+    const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
+    if (!masterLocalIdentifier) {
+      throw new Error(
+        `Cannot create an override for a recurring event that has no persistent local identifier.`
+      );
+    }
+
+    const finalOverrideEvent: OFCEvent = {
+      ...overrideEventData,
+      recurringEventId: masterLocalIdentifier
+    };
+
+    if (
+      (masterEvent.type === 'recurring' || masterEvent.type === 'rrule') &&
+      masterEvent.isTask &&
+      finalOverrideEvent.type === 'single' &&
+      finalOverrideEvent.completed === undefined
+    ) {
+      finalOverrideEvent.completed = false;
+    }
+
+    // Perform all data operations silently. The caller is responsible for flushing the queue.
+    await this.cache.addEvent(calendar.id, finalOverrideEvent, { silent: true });
+    await this.cache.processEvent(
+      masterEventId,
+      e => {
+        if (e.type !== 'recurring' && e.type !== 'rrule') return e;
+        const skipDates = e.skipDates.includes(instanceDateToSkip)
+          ? e.skipDates
+          : [...e.skipDates, instanceDateToSkip];
+        return { ...e, skipDates };
+      },
+      { silent: true }
+    );
+  }
+
+  /**
+   * Handles the modification of a single instance of a recurring event.
+   * This is triggered when a user drags or resizes an instance in the calendar view.
+   * It creates an override event and adds an exception to the parent.
+   * @param masterEventId The session ID of the master recurring event.
+   * @param instanceDate The original date of the instance that is being modified.
+   * @param newEventData The new event data for the single-instance override.
+   */
+  public async modifyRecurringInstance(
+    masterEventId: string,
+    instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<void> {
+    if (newEventData.type !== 'single') {
+      throw new Error('Cannot create a recurring override from a non-single event.');
+    }
+    await this._createRecurringOverride(masterEventId, instanceDate, newEventData);
+  }
+
+  /**
+   * Handles the logic for marking an instance of a recurring event as complete or not.
+   * This uses the "exception and override" strategy.
+   * @param eventId The ID of the event instance clicked in the UI. This could be the parent recurring event or a single-event override.
+   * @param instanceDate The specific date of the instance to modify (e.g., '2023-11-20').
+   * @param isDone The desired completion state.
+   */
+  public async toggleRecurringInstance(
+    eventId: string,
+    instanceDate: string,
+    isDone: boolean
+  ): Promise<void> {
+    // Get the event that was actually clicked.
+    const { event: clickedEvent } = this.cache.getInfoForEditableEvent(eventId);
+
+    if (isDone) {
+      // === USE CASE: COMPLETING A TASK ===
+      if (clickedEvent.type === 'single') {
+        // The user clicked the checkbox on an existing, incomplete override.
+        // We just need to update its status to complete.
+        await this.cache.updateEventWithId(eventId, toggleTask(clickedEvent, true));
+      } else {
+        // The user clicked the checkbox on a master recurring instance.
+        // We need to create a new, completed override.
+        const overrideEvent: OFCEvent = {
+          ...clickedEvent,
+          type: 'single',
+          date: instanceDate,
+          endDate: null
+        };
+
+        await this._createRecurringOverride(eventId, instanceDate, toggleTask(overrideEvent, true));
+      }
+    } else {
+      // === USE CASE: UN-COMPLETING A TASK ===
+      // This action is only possible on an existing override.
+      // The logic is to simply delete that override. Our improved `deleteEvent`
+      // method will handle removing the date from the parent's skipDates array
+      // and updating the view.
+      new Notice('Reverting control to Main Recurring event sequence.');
+      await this.cache.deleteEvent(eventId);
+    }
+  }
+
+  public async updateRecurringChildren(
+    calendarId: string,
+    oldParentIdentifier: string,
+    newParentIdentifier: string,
+    newParentEvent: OFCEvent // Add new parameter
+  ): Promise<void> {
+    const childrenToUpdate = this.cache.store
+      .getAllEvents()
+      .filter(e => e.calendarId === calendarId && e.event.recurringEventId === oldParentIdentifier);
+
+    if (childrenToUpdate.length === 0) {
+      return;
+    }
+
+    new Notice(`Updating ${childrenToUpdate.length} child event(s) to match new parent title.`);
+
+    for (const childStoredEvent of childrenToUpdate) {
+      const {
+        calendar: childCalendar,
+        location: childLocation,
+        event: childEvent
+      } = this.cache.getInfoForEditableEvent(childStoredEvent.id);
+
+      const updatedChildEvent: OFCEvent = {
+        ...childEvent,
+        title: newParentEvent.title, // Inherit new title
+        category: newParentEvent.category, // Inherit new category
+        recurringEventId: newParentIdentifier
+      };
+
+      await childCalendar.modifyEvent(childLocation, updatedChildEvent, newChildLocation => {
+        this.cache.store.delete(childStoredEvent.id);
+        this.cache.store.add({
+          calendar: childCalendar,
+          location: newChildLocation,
+          id: childStoredEvent.id,
+          event: updatedChildEvent
+        });
+      });
+
+      this.cache.isBulkUpdating = true;
+      this.cache._updateQueue.toRemove.add(childStoredEvent.id);
+      this.cache._updateQueue.toAdd.set(childStoredEvent.id, {
+        id: childStoredEvent.id,
+        calendarId: childCalendar.id,
+        event: updatedChildEvent
+      });
+    }
   }
 }

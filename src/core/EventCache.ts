@@ -25,20 +25,18 @@
  * @license See LICENSE.md
  */
 
-import { Notice, TFile } from 'obsidian';
 import equal from 'deep-equal';
+import { Notice, TFile } from 'obsidian';
 
-import { Calendar } from '../calendars/Calendar';
-import { EditableCalendar } from '../calendars/EditableCalendar';
-import EventStore, { StoredEvent } from './EventStore';
-import { CalendarInfo, OFCEvent, validateEvent } from '../types';
-import RemoteCalendar from '../calendars/RemoteCalendar';
-import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import FullCalendarPlugin from '../main';
+import { Calendar } from '../calendars/Calendar';
+import EventStore, { StoredEvent } from './EventStore';
+import RemoteCalendar from '../calendars/RemoteCalendar';
 import { FullCalendarSettings } from '../types/settings';
-import { toggleTask } from './tasks';
-import { DeleteRecurringModal } from '../ui/modals/DeleteRecurringModal';
+import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import { RecurringEventManager } from './RecurringEventManager';
+import { EditableCalendar } from '../calendars/EditableCalendar';
+import { CalendarInfo, OFCEvent, validateEvent } from '../types';
 
 export type CalendarInitializerMap = Record<
   CalendarInfo['type'],
@@ -145,7 +143,7 @@ export default class EventCache {
 
   lastRevalidation: number = 0;
 
-  private _updateQueue: { toRemove: Set<string>; toAdd: Map<string, CacheEntry> } = {
+  public _updateQueue: { toRemove: Set<string>; toAdd: Map<string, CacheEntry> } = {
     toRemove: new Set(),
     toAdd: new Map()
   };
@@ -570,7 +568,7 @@ export default class EventCache {
       const oldLocalIdentifier = calendar.getLocalIdentifier(oldEvent);
       const newLocalIdentifier = calendar.getLocalIdentifier(newEvent);
       if (oldLocalIdentifier && newLocalIdentifier && oldLocalIdentifier !== newLocalIdentifier) {
-        await this.updateRecurringChildren(
+        await this.recurringEventManager.updateRecurringChildren(
           calendar.id,
           oldLocalIdentifier,
           newLocalIdentifier,
@@ -649,36 +647,7 @@ export default class EventCache {
     instanceDate: string,
     isDone: boolean
   ): Promise<void> {
-    // Get the event that was actually clicked.
-    const { event: clickedEvent } = this.getInfoForEditableEvent(eventId);
-
-    if (isDone) {
-      // === USE CASE: COMPLETING A TASK ===
-      if (clickedEvent.type === 'single') {
-        // The user clicked the checkbox on an existing, incomplete override.
-        // We just need to update its status to complete.
-        await this.updateEventWithId(eventId, toggleTask(clickedEvent, true));
-      } else {
-        // The user clicked the checkbox on a master recurring instance.
-        // We need to create a new, completed override.
-        const overrideEvent: OFCEvent = {
-          ...clickedEvent,
-          type: 'single',
-          date: instanceDate,
-          endDate: null
-        };
-
-        await this._createRecurringOverride(eventId, instanceDate, toggleTask(overrideEvent, true));
-      }
-    } else {
-      // === USE CASE: UN-COMPLETING A TASK ===
-      // This action is only possible on an existing override.
-      // The logic is to simply delete that override. Our improved `deleteEvent`
-      // method will handle removing the date from the parent's skipDates array
-      // and updating the view.
-      new Notice('Reverting control to Main Recurring event sequence.');
-      await this.deleteEvent(eventId);
-    }
+    await this.recurringEventManager.toggleRecurringInstance(eventId, instanceDate, isDone);
     this.flushUpdateQueue([], []);
   }
 
@@ -734,109 +703,12 @@ export default class EventCache {
     instanceDate: string,
     newEventData: OFCEvent
   ): Promise<void> {
-    if (newEventData.type !== 'single') {
-      throw new Error('Cannot create a recurring override from a non-single event.');
-    }
-    await this._createRecurringOverride(masterEventId, instanceDate, newEventData);
-    this.flushUpdateQueue([], []);
-  }
-
-  /**
-   * Private helper to perform the "skip and override" logic for recurring events.
-   * @param masterEventId The session ID of the master recurring event.
-   * @param instanceDateToSkip The date of the original instance to add to the parent's skipDates.
-   * @param overrideEventData The complete OFCEvent object for the new single-instance override.
-   */
-  private async _createRecurringOverride(
-    masterEventId: string,
-    instanceDateToSkip: string,
-    overrideEventData: OFCEvent
-  ): Promise<void> {
-    const { calendar, event: masterEvent } = this.getInfoForEditableEvent(masterEventId);
-
-    const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
-    if (!masterLocalIdentifier) {
-      throw new Error(
-        `Cannot create an override for a recurring event that has no persistent local identifier.`
-      );
-    }
-
-    const finalOverrideEvent: OFCEvent = {
-      ...overrideEventData,
-      recurringEventId: masterLocalIdentifier
-    };
-
-    if (
-      (masterEvent.type === 'recurring' || masterEvent.type === 'rrule') &&
-      masterEvent.isTask &&
-      finalOverrideEvent.type === 'single' &&
-      finalOverrideEvent.completed === undefined
-    ) {
-      finalOverrideEvent.completed = false;
-    }
-
-    // Perform all data operations silently. The caller is responsible for flushing the queue.
-    await this.addEvent(calendar.id, finalOverrideEvent, { silent: true });
-    await this.processEvent(
+    await this.recurringEventManager.modifyRecurringInstance(
       masterEventId,
-      e => {
-        if (e.type !== 'recurring' && e.type !== 'rrule') return e;
-        const skipDates = e.skipDates.includes(instanceDateToSkip)
-          ? e.skipDates
-          : [...e.skipDates, instanceDateToSkip];
-        return { ...e, skipDates };
-      },
-      { silent: true }
+      instanceDate,
+      newEventData
     );
-  }
-  private async updateRecurringChildren(
-    calendarId: string,
-    oldParentIdentifier: string,
-    newParentIdentifier: string,
-    newParentEvent: OFCEvent // Add new parameter
-  ): Promise<void> {
-    const childrenToUpdate = this.store
-      .getAllEvents()
-      .filter(e => e.calendarId === calendarId && e.event.recurringEventId === oldParentIdentifier);
-
-    if (childrenToUpdate.length === 0) {
-      return;
-    }
-
-    new Notice(`Updating ${childrenToUpdate.length} child event(s) to match new parent title.`);
-
-    for (const childStoredEvent of childrenToUpdate) {
-      const {
-        calendar: childCalendar,
-        location: childLocation,
-        event: childEvent
-      } = this.getInfoForEditableEvent(childStoredEvent.id);
-
-      const updatedChildEvent: OFCEvent = {
-        ...childEvent,
-        title: newParentEvent.title, // Inherit new title
-        category: newParentEvent.category, // Inherit new category
-        recurringEventId: newParentIdentifier
-      };
-
-      await childCalendar.modifyEvent(childLocation, updatedChildEvent, newChildLocation => {
-        this.store.delete(childStoredEvent.id);
-        this.store.add({
-          calendar: childCalendar,
-          location: newChildLocation,
-          id: childStoredEvent.id,
-          event: updatedChildEvent
-        });
-      });
-
-      this.isBulkUpdating = true;
-      this._updateQueue.toRemove.add(childStoredEvent.id);
-      this._updateQueue.toAdd.set(childStoredEvent.id, {
-        id: childStoredEvent.id,
-        calendarId: childCalendar.id,
-        event: updatedChildEvent
-      });
-    }
+    this.flushUpdateQueue([], []);
   }
 
   ///
