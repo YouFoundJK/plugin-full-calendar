@@ -100,20 +100,27 @@ export const getInlineEventFromLine = (
   settings: FullCalendarSettings
 ): OFCEvent | null => {
   const attrs = getInlineAttributes(text);
-  const rawTitle = text.replace(listRegex, '').replace(fieldRegex, '').trim();
+  const rawTitle = text.replace(listRegex, '').replace(fieldRegex, ''); // REMOVED .trim()
+
+  const hasInlineFields = Object.keys(attrs).length > 0;
+
+  if (!settings.enableCategoryColoring && !hasInlineFields) {
+    return null;
+  }
 
   // If the line has no title and no inline fields, it's definitely not an event.
-  if (!rawTitle && Object.keys(attrs).length === 0) {
+  if (!rawTitle.trim() && !hasInlineFields) {
+    // check the trimmed version here instead
     return null;
   }
 
   let eventData: any = {};
   if (settings.enableCategoryColoring) {
     const { category, title } = parseTitle(rawTitle);
-    eventData.title = title;
-    eventData.category = category;
+    eventData.title = title.trim(); // Trim the final components
+    eventData.category = category ? category.trim() : undefined; // Trim the final components
   } else {
-    eventData.title = rawTitle;
+    eventData.title = rawTitle.trim(); // Trim the final title
   }
 
   // THE FIX IS HERE: We cast globalAttrs to a type that can hold `date`.

@@ -2,6 +2,21 @@
 
 import { TFile } from 'obsidian';
 
+// Add this mock
+jest.mock(
+  'obsidian',
+  () => ({
+    Modal: class {},
+    Notice: class {},
+    Plugin: class {},
+    TFile: class {},
+    TFolder: class {},
+    TAbstractFile: class {}
+  }),
+  { virtual: true }
+);
+// End of new code
+
 import { Calendar, EventResponse } from '../calendars/Calendar';
 import { EditableCalendar, EditableEventResponse } from '../calendars/EditableCalendar';
 import { DEFAULT_SETTINGS, FullCalendarSettings } from '../types/settings';

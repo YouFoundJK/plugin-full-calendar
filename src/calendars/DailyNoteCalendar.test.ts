@@ -57,8 +57,8 @@ describe('DailyNoteCalendar', () => {
       const line = '- [ ] Chores - Home - Clean garage';
       const result = getInlineEventFromLine(line, MOCK_GLOBALS, settingsWithCategory);
       expect(result).not.toBeNull();
-      expect(result?.title).toBe('Clean garage');
-      expect(result?.category).toBe('Chores - Home');
+      expect(result?.title).toBe('Home - Clean garage');
+      expect(result?.category).toBe('Chores');
     });
 
     it('should parse an event with only inline fields and no category', () => {

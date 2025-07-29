@@ -173,7 +173,9 @@ export default class EventCache {
         const cal = this.calendarInitializers[s.type](s, this.plugin.settings);
         return cal || [];
       })
-      .forEach(cal => this.calendars.set(cal.id, cal));
+      .forEach(cal => {
+        this.calendars.set(cal.id, cal);
+      });
   }
 
   /**

@@ -219,7 +219,8 @@ describe('FullNoteCalendar Tests', () => {
       enableCategoryColoring: true
     });
 
-    const firstFile = obsidian.getAbstractFileByPath(join('events', filename)) as TFile;
+    const path = 'events/' + filename; // Use forward slash instead of join
+    const firstFile = obsidian.getAbstractFileByPath(path) as TFile;
 
     const contents = await obsidian.read(firstFile);
 
@@ -232,7 +233,7 @@ describe('FullNoteCalendar Tests', () => {
     });
 
     await calendar.modifyEvent(
-      { path: join('events', filename), lineNumber: undefined },
+      { path, lineNumber: undefined }, // Use the same path variable
       newEvent,
       mockFn
     );

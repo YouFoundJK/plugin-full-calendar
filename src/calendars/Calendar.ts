@@ -23,13 +23,15 @@ export type EventResponse = [OFCEvent, EventLocation | null];
  */
 export abstract class Calendar {
   color: string;
-  id: string;
   settings: FullCalendarSettings;
 
   constructor(info: CalendarInfo, settings: FullCalendarSettings) {
     this.color = info.color;
-    this.id = info.id;
     this.settings = settings;
+  }
+
+  get id(): string {
+    return `${this.type}::${this.identifier}`;
   }
 
   abstract get type(): CalendarInfo['type'];
