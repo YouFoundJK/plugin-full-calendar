@@ -275,8 +275,8 @@ export class RecurringEventManager {
       });
 
       this.cache.isBulkUpdating = true;
-      this.cache._updateQueue.toRemove.add(childStoredEvent.id);
-      this.cache._updateQueue.toAdd.set(childStoredEvent.id, {
+      this.cache.updateQueue.toRemove.add(childStoredEvent.id);
+      this.cache.updateQueue.toAdd.set(childStoredEvent.id, {
         id: childStoredEvent.id,
         calendarId: childCalendar.id,
         event: updatedChildEvent

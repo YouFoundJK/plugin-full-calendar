@@ -1,26 +1,38 @@
 /**
  * @file EventCache.ts
- * @brief Defines the EventCache, the central state management for all event data.
+ * @brief Centralized state management for all calendar event data.
  *
  * @description
- * The EventCache is the single source of truth for all calendar events. It
- * orchestrates the fetching, storing, and updating of event data from all
- * configured calendar sources. It listens for Vault changes, manages CUD
- * operations by delegating to calendar instances, and notifies the UI of
- * any state changes, ensuring the view is always in sync.
+ * The `EventCache` serves as the authoritative source for all calendar events within the plugin.
+ * It is responsible for orchestrating the fetching, parsing, storing, and updating of event data
+ * from all configured calendar sources (local and remote). The cache listens for changes in the
+ * Obsidian Vault, manages create/update/delete (CUD) operations by delegating to the appropriate
+ * calendar instance, and notifies registered UI views of any changes, ensuring the calendar view
+ * remains in sync with the underlying data.
  *
- * Responsibilities:
- * - Initializing and managing Calendar objects from plugin settings.
- * - Fetching, parsing, and storing events in the EventStore.
- * - Providing event data to the UI in a FullCalendar-compatible format.
- * - Handling all CUD (Create, Update, Delete) operations, delegating file I/O
- *   to the appropriate EditableCalendar instance.
- * - Subscribing to Vault changes and updating its internal state.
- * - Notifying registered views (subscribers) of any changes to event data.
- * - Throttling and managing revalidation of remote calendars.
+ * @details
+ * - Initialize and manage `Calendar` objects based on plugin settings.
+ * - Fetch, parse, and store events in the internal `EventStore`.
+ * - Provide event data to the UI in a FullCalendar-compatible format.
+ * - Handle all CUD operations, delegating file I/O to the appropriate `EditableCalendar` instance.
+ * - Subscribe to Vault changes and update internal state accordingly.
+ * - Notify registered subscribers (views) of any changes to event data.
+ * - Throttle and manage revalidation of remote calendars (ICS, CalDAV, etc.).
+ * - Maintain a mapping between persistent event identifiers and session-specific IDs.
+ * - Support recurring event management and override logic.
+ * - Batch and flush updates for efficient UI synchronization.
+ *
+ * @example:
+ * - Acts as the bridge between the source-of-truth for calendars (network or filesystem)
+ *   and the FullCalendar UI plugin.
+ * - Maintains an in-memory cache of all events to be displayed, in a normalized format.
+ * - Provides a public API for querying and mutating events, as well as for view synchronization.
  *
  * @see EventStore.ts
+ * @see RecurringEventManager.ts
  * @see ui/view.ts
+ * @see EditableCalendar
+ * @see RemoteCalendar
  *
  * @license See LICENSE.md
  */
@@ -112,46 +124,34 @@ export type OFCEventSource = {
  * change on disk.
  */
 export default class EventCache {
-  private calendarInfos: CalendarInfo[] = [];
+  // ====================================================================
+  //                         STATE & INITIALIZATION
+  // ====================================================================
+
   private _plugin: FullCalendarPlugin;
-
-  private calendarInitializers: CalendarInitializerMap;
-
-  private recurringEventManager: RecurringEventManager; // <-- ADD THIS LINE
-
   private _store = new EventStore();
+  private calendarInfos: CalendarInfo[] = [];
+  private calendarInitializers: CalendarInitializerMap;
+  private recurringEventManager: RecurringEventManager;
+
   calendars = new Map<string, Calendar>();
-
-  private identifierToSessionIdMap: Map<string, string> = new Map();
-  private identifierMapPromise: Promise<void> | null = null;
-  public get isIdentifierMapReady(): boolean {
-    return this.identifierMapPromise !== null;
-  }
-
   private pkCounter = 0;
-
-  private revalidating = false;
-  public isBulkUpdating = false;
-
-  generateId(): string {
-    return `${this.pkCounter++}`;
-  }
-
-  private updateViewCallbacks: UpdateViewCallback[] = [];
-
   initialized = false;
 
-  lastRevalidation: number = 0;
-
-  public _updateQueue: { toRemove: Set<string>; toAdd: Map<string, CacheEntry> } = {
-    toRemove: new Set(),
-    toAdd: new Map()
-  };
+  public isBulkUpdating = false;
 
   constructor(plugin: FullCalendarPlugin, calendarInitializers: CalendarInitializerMap) {
     this._plugin = plugin;
     this.calendarInitializers = calendarInitializers;
     this.recurringEventManager = new RecurringEventManager(this);
+  }
+
+  get plugin(): FullCalendarPlugin {
+    return this._plugin;
+  }
+
+  get store(): EventStore {
+    return this._store;
   }
 
   /**
@@ -164,7 +164,7 @@ export default class EventCache {
     this.pkCounter = 0;
     this.calendars.clear();
     this._store.clear();
-    this._updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
+    this.updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
     this.resync();
     this.init();
   }
@@ -178,40 +178,6 @@ export default class EventCache {
       .forEach(cal => {
         this.calendars.set(cal.id, cal);
       });
-  }
-
-  /**
-   * Generates a globally-unique, persistent identifier for an event.
-   * This ID is a combination of the calendar's persistent ID and the event's local ID.
-   * @param event The event object.
-   * @param calendarId The persistent ID of the calendar the event belongs to.
-   * @returns A globally-unique ID string, or null if an ID cannot be generated.
-   */
-  public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
-    const calendar = this.calendars.get(calendarId);
-    if (!calendar) {
-      console.warn(`Could not find calendar with ID ${calendarId} to generate global identifier.`);
-      return null;
-    }
-    const localIdentifier = calendar.getLocalIdentifier(event);
-    if (!localIdentifier) {
-      return null;
-    }
-    return `${calendar.id}::${localIdentifier}`;
-  }
-
-  /**
-   * Performs a reverse-lookup to find an event's transient (session-specific) ID
-   * from its persistent, globally-unique identifier.
-   * Ensures the lookup map is populated before attempting to find the ID.
-   * @param globalIdentifier The persistent global ID of the event.
-   * @returns The session-specific ID as a string, or null if not found.
-   */
-  public async getSessionId(globalIdentifier: string): Promise<string | null> {
-    if (this.identifierMapPromise) {
-      await this.identifierMapPromise;
-    }
-    return this.identifierToSessionIdMap.get(globalIdentifier) || null;
   }
 
   /**
@@ -255,11 +221,58 @@ export default class EventCache {
     this.revalidateRemoteCalendars();
   }
 
-  resync(): void {
-    for (const callback of this.updateViewCallbacks) {
-      callback({ type: 'resync' });
-    }
+  // ====================================================================
+  //                         IDENTIFIER MANAGEMENT
+  // ====================================================================
+
+  private identifierToSessionIdMap: Map<string, string> = new Map();
+  private identifierMapPromise: Promise<void> | null = null;
+
+  public get isIdentifierMapReady(): boolean {
+    return this.identifierMapPromise !== null;
   }
+
+  generateId(): string {
+    return `${this.pkCounter++}`;
+  }
+
+  /**
+   * Generates a globally-unique, persistent identifier for an event.
+   * This ID is a combination of the calendar's persistent ID and the event's local ID.
+   * @param event The event object.
+   * @param calendarId The persistent ID of the calendar the event belongs to.
+   * @returns A globally-unique ID string, or null if an ID cannot be generated.
+   */
+  public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
+    const calendar = this.calendars.get(calendarId);
+    if (!calendar) {
+      console.warn(`Could not find calendar with ID ${calendarId} to generate global identifier.`);
+      return null;
+    }
+    const localIdentifier = calendar.getLocalIdentifier(event);
+    if (!localIdentifier) {
+      return null;
+    }
+    return `${calendar.id}::${localIdentifier}`;
+  }
+
+  /**
+   * Performs a reverse-lookup to find an event's transient (session-specific) ID
+   * from its persistent, globally-unique identifier.
+   * Ensures the lookup map is populated before attempting to find the ID.
+   * @param globalIdentifier The persistent global ID of the event.
+   * @returns The session-specific ID as a string, or null if not found.
+   */
+  public async getSessionId(globalIdentifier: string): Promise<string | null> {
+    if (this.identifierMapPromise) {
+      await this.identifierMapPromise;
+    }
+    return this.identifierToSessionIdMap.get(globalIdentifier) || null;
+  }
+
+  // ====================================================================
+  //                         PUBLIC API - EVENT QUERIES
+  // ====================================================================
 
   /**
    * Scans the event store and returns a list of all unique category names.
@@ -344,83 +357,9 @@ export default class EventCache {
     return { calendar, location, event }; // Return event here
   }
 
-  ///
-  // View Callback functions
-  ///
-
-  /**
-   * Register a callback for a view.
-   * @param eventType event type (currently just "update")
-   * @param callback
-   * @returns reference to callback for de-registration.
-   */
-  on(eventType: 'update', callback: UpdateViewCallback) {
-    switch (eventType) {
-      case 'update':
-        this.updateViewCallbacks.push(callback);
-        break;
-    }
-    return callback;
-  }
-
-  /**
-   * De-register a callback for a view.
-   * @param eventType event type
-   * @param callback callback to remove
-   */
-  off(eventType: 'update', callback: UpdateViewCallback) {
-    switch (eventType) {
-      case 'update':
-        this.updateViewCallbacks.remove(callback);
-        break;
-    }
-  }
-
-  /**
-   * Push updates to all subscribers.
-   * @param toRemove IDs of events to remove from the view.
-   * @param toAdd Events to add to the view.
-   */
-  private updateViews(toRemove: string[], toAdd: CacheEntry[]) {
-    const payload = {
-      toRemove,
-      toAdd
-    };
-
-    for (const callback of this.updateViewCallbacks) {
-      callback({ type: 'events', ...payload });
-    }
-  }
-
-  public flushUpdateQueue(toRemove: string[], toAdd: CacheEntry[]): void {
-    if (toRemove.length > 0 || toAdd.length > 0) {
-      this.updateViews(toRemove, toAdd);
-    }
-
-    if (this._updateQueue.toRemove.size === 0 && this._updateQueue.toAdd.size === 0) {
-      return;
-    }
-
-    this.isBulkUpdating = false;
-
-    toRemove = [...this._updateQueue.toRemove];
-    toAdd = [...this._updateQueue.toAdd.values()];
-
-    this.updateViews(toRemove, toAdd);
-
-    // Clear the queue for the next batch of operations.
-    this._updateQueue = { toRemove: new Set(), toAdd: new Map() };
-  }
-
-  private updateCalendar(calendar: OFCEventSource) {
-    for (const callback of this.updateViewCallbacks) {
-      callback({ type: 'calendar', calendar });
-    }
-  }
-
-  ///
-  // Functions to update the cache from the view layer.
-  ///
+  // ====================================================================
+  //                         PUBLIC API - EVENT MUTATIONS
+  // ====================================================================
 
   /**
    * Add an event to a given calendar.
@@ -458,27 +397,13 @@ export default class EventCache {
     const cacheEntry = { event, id, calendarId: calendar.id };
     if (options?.silent) {
       this.isBulkUpdating = true;
-      this._updateQueue.toAdd.set(id, cacheEntry);
+      this.updateQueue.toAdd.set(id, cacheEntry);
     } else {
       this.flushUpdateQueue([], [cacheEntry]);
     }
     return true;
   }
 
-  /**
-   * Deletes an event by its identifier, handling both regular and override events.
-   *
-   * If the event is an override of a recurring event (i.e., a single occurrence with a `recurringEventId`),
-   * this method will attempt to "undo" the override by removing the exception date from the parent recurring event's
-   * `skipDates` array. If the parent recurring event cannot be found (e.g., it was deleted or renamed), only the override
-   * event will be deleted and a warning will be logged.
-   *
-   * The method also removes the event from the internal identifier map, deletes the event data from storage,
-   * and updates the calendar views accordingly.
-   *
-   * @param eventId - The unique identifier of the event to delete.
-   * @returns A promise that resolves when the event has been deleted.
-   */
   async deleteEvent(
     eventId: string,
     options?: { silent?: boolean; force?: boolean }
@@ -498,7 +423,7 @@ export default class EventCache {
     // ====================================================================
     if (event.type === 'single' && event.recurringEventId) {
       const masterLocalIdentifier = event.recurringEventId;
-      const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`; // Use calendar.id
+      const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
       const masterSessionId = await this.getSessionId(globalMasterIdentifier);
 
       if (masterSessionId) {
@@ -523,7 +448,7 @@ export default class EventCache {
     // ====================================================================
 
     // Remove from identifier map
-    const globalIdentifier = this.getGlobalIdentifier(event, calendar.id); // Use calendar.id
+    const globalIdentifier = this.getGlobalIdentifier(event, calendar.id);
     if (globalIdentifier) {
       this.identifierToSessionIdMap.delete(globalIdentifier);
     }
@@ -533,7 +458,7 @@ export default class EventCache {
 
     if (options?.silent) {
       this.isBulkUpdating = true;
-      this._updateQueue.toRemove.add(eventId);
+      this.updateQueue.toRemove.add(eventId);
     } else {
       this.flushUpdateQueue([eventId], []);
     }
@@ -604,8 +529,8 @@ export default class EventCache {
     const cacheEntry = { id: eventId, calendarId: calendar.id, event: newEvent };
     if (options?.silent) {
       this.isBulkUpdating = true;
-      this._updateQueue.toRemove.add(eventId);
-      this._updateQueue.toAdd.set(eventId, cacheEntry);
+      this.updateQueue.toRemove.add(eventId);
+      this.updateQueue.toAdd.set(eventId, cacheEntry);
     } else {
       this.flushUpdateQueue([eventId], [cacheEntry]);
     }
@@ -635,13 +560,6 @@ export default class EventCache {
     return this.updateEventWithId(id, newEvent, options);
   }
 
-  /**
-   * Handles the logic for marking an instance of a recurring event as complete or not.
-   * This uses the "exception and override" strategy.
-   * @param eventId The ID of the event instance clicked in the UI. This could be the parent recurring event or a single-event override.
-   * @param instanceDate The specific date of the instance to modify (e.g., '2023-11-20').
-   * @param isDone The desired completion state.
-   */
   async toggleRecurringInstance(
     eventId: string,
     instanceDate: string,
@@ -690,14 +608,6 @@ export default class EventCache {
     });
   }
 
-  /**
-   * Handles the modification of a single instance of a recurring event.
-   * This is triggered when a user drags or resizes an instance in the calendar view.
-   * It creates an override event and adds an exception to the parent.
-   * @param masterEventId The session ID of the master recurring event.
-   * @param instanceDate The original date of the instance that is being modified.
-   * @param newEventData The new event data for the single-instance override.
-   */
   async modifyRecurringInstance(
     masterEventId: string,
     instanceDate: string,
@@ -711,9 +621,99 @@ export default class EventCache {
     this.flushUpdateQueue([], []);
   }
 
-  ///
-  // Filesystem hooks
-  ///
+  // ====================================================================
+  //                         VIEW SYNCHRONIZATION
+  // ====================================================================
+
+  private updateViewCallbacks: UpdateViewCallback[] = [];
+
+  public updateQueue: { toRemove: Set<string>; toAdd: Map<string, CacheEntry> } = {
+    toRemove: new Set(),
+    toAdd: new Map()
+  };
+
+  /**
+   * Register a callback for a view.
+   * @param eventType event type (currently just "update")
+   * @param callback
+   * @returns reference to callback for de-registration.
+   */
+  on(eventType: 'update', callback: UpdateViewCallback) {
+    switch (eventType) {
+      case 'update':
+        this.updateViewCallbacks.push(callback);
+        break;
+    }
+    return callback;
+  }
+
+  /**
+   * De-register a callback for a view.
+   * @param eventType event type
+   * @param callback callback to remove
+   */
+  off(eventType: 'update', callback: UpdateViewCallback) {
+    switch (eventType) {
+      case 'update':
+        this.updateViewCallbacks.remove(callback);
+        break;
+    }
+  }
+
+  resync(): void {
+    for (const callback of this.updateViewCallbacks) {
+      callback({ type: 'resync' });
+    }
+  }
+
+  /**
+   * Push updates to all subscribers.
+   * @param toRemove IDs of events to remove from the view.
+   * @param toAdd Events to add to the view.
+   */
+  private updateViews(toRemove: string[], toAdd: CacheEntry[]) {
+    const payload = {
+      toRemove,
+      toAdd
+    };
+
+    for (const callback of this.updateViewCallbacks) {
+      callback({ type: 'events', ...payload });
+    }
+  }
+
+  public flushUpdateQueue(toRemove: string[], toAdd: CacheEntry[]): void {
+    if (toRemove.length > 0 || toAdd.length > 0) {
+      this.updateViews(toRemove, toAdd);
+    }
+
+    if (this.updateQueue.toRemove.size === 0 && this.updateQueue.toAdd.size === 0) {
+      return;
+    }
+
+    this.isBulkUpdating = false;
+
+    toRemove = [...this.updateQueue.toRemove];
+    toAdd = [...this.updateQueue.toAdd.values()];
+
+    this.updateViews(toRemove, toAdd);
+
+    // Clear the queue for the next batch of operations.
+    this.updateQueue = { toRemove: new Set(), toAdd: new Map() };
+  }
+
+  private updateCalendar(calendar: OFCEventSource) {
+    for (const callback of this.updateViewCallbacks) {
+      callback({ type: 'calendar', calendar });
+    }
+  }
+
+  // ====================================================================
+  //                         FILESYSTEM & REMOTE HOOKS
+  // ====================================================================
+
+  private revalidating = false;
+  lastRevalidation: number = 0;
 
   /**
    * Deletes all events associated with a given file path from the EventStore
@@ -722,7 +722,7 @@ export default class EventCache {
    * @param path Path of the file that has been deleted.
    */
   deleteEventsAtPath(path: string) {
-    const eventsToDelete = this.store.getEventsInFile({ path });
+    const eventsToDelete = this._store.getEventsInFile({ path });
     for (const storedEvent of eventsToDelete) {
       const calendar = this.calendars.get(storedEvent.calendarId);
       if (calendar) {
@@ -733,7 +733,7 @@ export default class EventCache {
       }
     }
 
-    this.flushUpdateQueue([...this.store.deleteEventsAtPath(path)], []);
+    this.flushUpdateQueue([...this._store.deleteEventsAtPath(path)], []);
   }
 
   /**
@@ -892,13 +892,9 @@ export default class EventCache {
     });
   }
 
-  get plugin(): FullCalendarPlugin {
-    return this._plugin;
-  }
-
-  get store(): EventStore {
-    return this._store;
-  }
+  // ====================================================================
+  //                         TESTING UTILITIES
+  // ====================================================================
 
   get _storeForTest() {
     return this._store;
