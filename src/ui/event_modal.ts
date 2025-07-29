@@ -23,7 +23,7 @@ import * as React from 'react';
 import { EditableCalendar } from '../calendars/EditableCalendar';
 import FullCalendarPlugin from '../main';
 import { OFCEvent } from '../types';
-import { openFileForEvent } from './actions';
+import { openFileForEvent } from '../actions/eventActions';
 import { EditEvent } from './components/EditEvent';
 import ReactModal from './ReactModal';
 import { ConfirmModal } from './modals/ConfirmModal';

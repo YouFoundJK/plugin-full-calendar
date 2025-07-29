@@ -23,11 +23,11 @@ import { Calendar, EventSourceInput } from '@fullcalendar/core';
 import { renderCalendar } from './calendar';
 import FullCalendarPlugin from '../main';
 import { FCError, PLUGIN_SLUG, CalendarInfo } from '../types';
-import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from './interop';
+import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
 import { renderOnboarding } from './onboard';
-import { openFileForEvent } from './actions';
+import { openFileForEvent } from '../actions/eventActions';
 import { launchCreateModal, launchEditModal } from './event_modal';
-import { isTask, toggleTask, unmakeTask } from '../ui/tasks';
+import { isTask, toggleTask, unmakeTask } from '../core/tasks';
 import { UpdateViewCallback } from '../core/EventCache';
 import { activateAnalysisView } from '../chrono_analyser/AnalysisView';
 

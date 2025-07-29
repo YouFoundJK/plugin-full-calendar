@@ -15,7 +15,7 @@
 import { Notice, Plugin, TFile, TFolder, TAbstractFile } from 'obsidian';
 import { CalendarView, FULL_CALENDAR_SIDEBAR_VIEW_TYPE, FULL_CALENDAR_VIEW_TYPE } from './ui/view';
 import { renderCalendar } from './ui/calendar';
-import { toEventInput } from './ui/interop';
+import { toEventInput } from './core/interop';
 import {
   FullCalendarSettingTab,
   ensureCalendarIds,

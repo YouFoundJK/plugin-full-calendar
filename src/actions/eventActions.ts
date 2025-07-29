@@ -1,12 +1,15 @@
 /**
- * @file actions.ts
- * @brief Contains standalone functions for user-initiated actions.
- *
+ * @file eventActions.ts
+ * @module actions/eventActions
  * @description
- * This file defines high-level user actions that can be triggered from various
- * parts of the UI, such as opening the note associated with an event.
- * These functions encapsulate the logic of interacting with both the
- * `EventCache` and the Obsidian workspace.
+ * Provides high-level user action functions for interacting with calendar events,
+ * such as opening the note associated with an event in a new pane. These actions
+ * coordinate between the EventCache and the Obsidian workspace to perform user-initiated
+ * operations from the UI.
+ *
+ * @remarks
+ * Functions in this module are intended to be called from UI components or commands,
+ * encapsulating the logic for manipulating event-related files and views.
  *
  * @license See LICENSE.md
  */

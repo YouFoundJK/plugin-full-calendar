@@ -36,7 +36,7 @@ import RemoteCalendar from '../calendars/RemoteCalendar';
 import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import FullCalendarPlugin from '../main';
 import { FullCalendarSettings } from '../types/settings';
-import { toggleTask } from '../ui/tasks';
+import { toggleTask } from './tasks';
 import { DeleteRecurringModal } from '../ui/modals/DeleteRecurringModal';
 
 export type CalendarInitializerMap = Record<
