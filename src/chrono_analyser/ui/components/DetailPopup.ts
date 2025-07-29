@@ -60,7 +60,9 @@ export class DetailPopup {
         <div class="summary-stat-label">Total Hours</div>
       </div>`;
 
-    this.tableBodyEl.innerHTML = '';
+    // Use .empty() for safe clearing, casting to `any` to satisfy TypeScript
+    (this.tableBodyEl as any).empty();
+
     recordsList.forEach(record => {
       const row = this.tableBodyEl.insertRow();
       row.insertCell().textContent = record.project;
@@ -70,7 +72,16 @@ export class DetailPopup {
       );
       const dateCell = row.insertCell();
       dateCell.textContent = record.date ? Utils.getISODate(record.date) : 'Recurring';
-      row.insertCell().innerHTML = `<span class="file-path-cell" title="${record.path}">${record.path}</span>`;
+
+      // --- MODIFIED: Safe, programmatic creation of the file path cell ---
+      const pathCell = row.insertCell();
+      // HACK: Cast to `any` to access Obsidian's augmented .createSpan() method
+      (pathCell as any).createSpan({
+        cls: 'file-path-cell',
+        text: record.path,
+        attr: { title: record.path }
+      });
+      // --- END MODIFICATION ---
     });
 
     this.overlayEl.classList.add('visible');
