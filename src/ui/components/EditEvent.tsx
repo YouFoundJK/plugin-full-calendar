@@ -166,6 +166,19 @@ export const EditEvent = ({
     }
   }, [titleRef]);
 
+  const selectedCalendar = calendars[calendarIndex];
+  const isDailyNoteCalendar = selectedCalendar.type === 'dailynote';
+  const recurringTooltip = isDailyNoteCalendar
+    ? "Recurring events are not supported in Daily Notes. Please use a 'Full Note' calendar instead."
+    : '';
+
+  useEffect(() => {
+    // If user switches to a daily note calendar, force 'isRecurring' to false.
+    if (isDailyNoteCalendar) {
+      setIsRecurring(false);
+    }
+  }, [isDailyNoteCalendar]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -323,11 +336,12 @@ export const EditEvent = ({
               />{' '}
               All day
             </label>
-            <label>
+            <label title={recurringTooltip} className={isDailyNoteCalendar ? 'is-disabled' : ''}>
               <input
                 type="checkbox"
                 checked={isRecurring}
                 onChange={e => setIsRecurring(e.target.checked)}
+                disabled={isDailyNoteCalendar}
               />{' '}
               Recurring
             </label>
