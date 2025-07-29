@@ -37,7 +37,7 @@ import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import FullCalendarPlugin from '../main';
 import { FullCalendarSettings } from '../types/settings';
 import { toggleTask } from '../ui/tasks';
-import { DeleteRecurringModal } from '../ui/event_modal';
+import { DeleteRecurringModal } from '../ui/modals/DeleteRecurringModal';
 
 export type CalendarInitializerMap = Record<
   CalendarInfo['type'],

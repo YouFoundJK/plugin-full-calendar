@@ -1,22 +1,36 @@
 /**
- * @file settings.tsx
- * @brief Implements the plugin's settings tab UI.
+ * @file SettingsTab.tsx
+ * @brief Implements the Full Calendar plugin's settings tab UI for Obsidian.
  *
  * @description
- * This file defines the `FullCalendarSettingTab` class, which uses Obsidian's
- * `PluginSettingTab` API to build the user-facing settings interface. It
- * combines native Obsidian UI components with the React-based `CalendarSettings`
- * component to manage and persist all plugin configurations.
+ * This file defines the `FullCalendarSettingTab` class, which extends Obsidian's
+ * `PluginSettingTab` to provide a comprehensive settings interface for the plugin.
+ * It includes configuration for calendar sources, initial views, time formats,
+ * timezone handling, category coloring (with bulk modification and cleanup), and
+ * a "What's New" section with a full changelog viewer. The UI combines native
+ * Obsidian components and React-based components for advanced settings management.
+ *
+ * Key features:
+ * - Manage and add calendar sources (local, daily note, iCloud, CalDAV, iCal).
+ * - Configure initial calendar views for desktop and mobile.
+ * - Set week start day, time format, and display timezone.
+ * - Enable/disable category coloring with bulk note modification and cleanup.
+ * - View and manage category color settings.
+ * - "What's New" and full changelog display.
  *
  * @exports FullCalendarSettingTab
  * @exports DEFAULT_SETTINGS
+ * @exports ensureCalendarIds
  *
- * @see components/CalendarSetting.tsx
- *
+ * @see ../components/CalendarSetting.tsx
+ * @see ../components/CategorySetting.tsx
+ * @see ../modals/BulkCategorizeModal.tsx
+ * @see ./changelogData.ts
+ * @see ../ReactModal.tsx
  * @license See LICENSE.md
  */
 
-import FullCalendarPlugin from '../main';
+import FullCalendarPlugin from '../../main';
 import {
   App,
   DropdownComponent,
@@ -31,17 +45,18 @@ import {
 import * as ReactDOM from 'react-dom/client';
 import { createElement, createRef } from 'react';
 
-import ReactModal from './ReactModal';
-import { AddCalendarSource } from './components/AddCalendarSource';
-import { importCalendars } from '../calendars/parsing/caldav/import';
+import ReactModal from '../ReactModal';
+import { AddCalendarSource } from '../components/AddCalendarSource';
+import { importCalendars } from '../../calendars/parsing/caldav/import';
 import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
-import { makeDefaultPartialCalendarSource, CalendarInfo } from '../types/calendar_settings';
-import { CalendarSettings, CalendarSettingsRef } from './components/CalendarSetting';
+import { makeDefaultPartialCalendarSource, CalendarInfo } from '../../types/calendar_settings';
+import { CalendarSettings, CalendarSettingsRef } from '../components/CalendarSetting';
 import { changelogData } from './changelogData';
 import './changelog.css';
-import { CategorySettingsManager } from './components/CategorySetting';
-import { InsightsConfig } from '../chrono_analyser/ui/ui';
-import { generateCalendarId } from '../types/calendar_settings';
+import { CategorySettingsManager } from '../components/CategorySetting';
+import { InsightsConfig } from '../../chrono_analyser/ui/ui';
+import { generateCalendarId } from '../../types/calendar_settings';
+import { BulkCategorizeModal } from '../modals/BulkCategorizeModal';
 
 export interface FullCalendarSettings {
   calendarSources: CalendarInfo[];
@@ -94,90 +109,6 @@ const INITIAL_VIEW_OPTIONS = {
     listWeek: 'List'
   }
 };
-
-// This modal presents the 3 bulk-update choices to the user.
-class BulkCategorizeModal extends Modal {
-  onSubmit: (choice: 'smart' | 'force_folder' | 'force_default', defaultCategory?: string) => void;
-
-  constructor(
-    app: App,
-    onSubmit: (choice: 'smart' | 'force_folder' | 'force_default', defaultCategory?: string) => void
-  ) {
-    super(app);
-    this.onSubmit = onSubmit;
-  }
-
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.createEl('h2', { text: 'Choose a Bulk-Update Method' });
-    contentEl.createEl('p', {
-      text: 'How would you like to automatically categorize existing events in your local calendars? Note that this is a one time operation that will modify your event notes to match the required formatting.'
-    });
-
-    // Option 1: Smart Folder Update
-    new Setting(contentEl)
-      .setName('Use Parent Folder (Smart)')
-      .setDesc(
-        "Use parent folder names as the category for UN-categorized events. Events that already look like 'Category - Title' will be skipped."
-      )
-      .addButton(button =>
-        button
-          .setButtonText('Run Smart Update')
-          .setCta()
-          .onClick(() => {
-            this.onSubmit('smart');
-            this.close();
-          })
-      );
-
-    // Option 2: Forced Folder Update
-    new Setting(contentEl)
-      .setName('Use Parent Folder (Forced)')
-      .setDesc(
-        'PREPENDS the parent folder name to ALL event titles, even if they already have a category. Warning: This creates nested categories.'
-      )
-      .addButton(button =>
-        button
-          .setButtonText('Run Forced Update')
-          .setWarning()
-          .onClick(() => {
-            this.onSubmit('force_folder');
-            this.close();
-          })
-      );
-
-    // Option 3: Forced Default Update
-    let textInput: TextComponent;
-    new Setting(contentEl)
-      .setName('Forced Default Update')
-      .setDesc(
-        'Prepends a category you provide to ALL event titles. If a category already exists, the new one will be added in front (e.g., New - Old - Title).'
-      )
-      .addText(text => {
-        textInput = text;
-        text.setPlaceholder('Enter default category');
-      })
-      .addButton(button =>
-        button
-          .setButtonText('Set Default')
-          .setWarning()
-          .onClick(() => {
-            const categoryValue = textInput.getValue().trim();
-            if (categoryValue === '') {
-              new Notice('Please enter a category name.');
-              return;
-            }
-            this.onSubmit('force_default', categoryValue);
-            this.close();
-          })
-      );
-  }
-
-  onClose() {
-    this.contentEl.empty();
-  }
-}
 
 export function addCalendarButton(
   plugin: FullCalendarPlugin,
@@ -291,6 +222,8 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       // Full Changelog View (Conditional)
       // ====================================================================
       if (showFullChangelog) {
+        // TODO: In a future step, this will be replaced by a call to a dedicated render function.
+        // For now, you can leave this logic here, but know we will extract it.
         const changelogWrapper = containerEl.createDiv('full-calendar-changelog-wrapper');
 
         const header = changelogWrapper.createDiv('full-calendar-changelog-header');

@@ -21,7 +21,7 @@ import {
   ensureCalendarIds,
   DEFAULT_SETTINGS,
   FullCalendarSettings
-} from './ui/settings';
+} from './ui/settings/SettingsTab';
 import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
 import { ObsidianIO } from './ObsidianAdapter';

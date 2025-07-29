@@ -26,97 +26,7 @@ import { OFCEvent } from '../types';
 import { openFileForEvent } from './actions';
 import { EditEvent } from './components/EditEvent';
 import ReactModal from './ReactModal';
-
-class ConfirmModal extends Modal {
-  constructor(
-    app: App,
-    private titleText: string,
-    private bodyText: string,
-    private onConfirm: () => void
-  ) {
-    super(app);
-  }
-
-  onOpen() {
-    this.modalEl.addClass('full-calendar-confirm-modal');
-    const { contentEl } = this;
-    contentEl.createEl('h2', { text: this.titleText });
-    contentEl.createEl('p', { text: this.bodyText });
-
-    new Setting(contentEl)
-      .addButton((btn: ButtonComponent) =>
-        btn
-          .setButtonText('Yes, open parent')
-          .setCta()
-          .onClick(() => {
-            this.close();
-            this.onConfirm();
-          })
-      )
-      .addButton((btn: ButtonComponent) => btn.setButtonText('Cancel').onClick(() => this.close()));
-  }
-
-  onClose() {
-    this.contentEl.empty();
-  }
-}
-
-export class DeleteRecurringModal extends Modal {
-  constructor(
-    app: App,
-    private onPromote: () => void,
-    private onDeleteAll: () => void
-  ) {
-    super(app);
-  }
-
-  onOpen() {
-    this.modalEl.addClass('full-calendar-confirm-modal');
-    const { contentEl } = this;
-    contentEl.createEl('h2', { text: 'Delete Recurring Event' });
-    contentEl.createEl('p', {
-      text: 'This is a recurring event. What would you like to do with all of its future "override" instances (i.e., events that you have dragged or modified)?'
-    });
-
-    new Setting(contentEl)
-      .setName('Promote child events')
-      .setDesc(
-        'Turn all future override events into standalone, single events. They will no longer be linked to this recurring series.'
-      )
-      .addButton((btn: ButtonComponent) =>
-        btn
-          .setButtonText('Promote Children')
-          .setCta()
-          .onClick(() => {
-            this.close();
-            this.onPromote();
-          })
-      );
-
-    new Setting(contentEl)
-      .setName('Delete child events')
-      .setDesc(
-        'Delete all future override events associated with this recurring series. This cannot be undone.'
-      )
-      .addButton((btn: ButtonComponent) =>
-        btn
-          .setButtonText('Delete Everything')
-          .setWarning()
-          .onClick(() => {
-            this.close();
-            this.onDeleteAll();
-          })
-      );
-
-    new Setting(contentEl).addButton((btn: ButtonComponent) =>
-      btn.setButtonText('Cancel').onClick(() => this.close())
-    );
-  }
-
-  onClose() {
-    this.contentEl.empty();
-  }
-}
+import { ConfirmModal } from './modals/ConfirmModal';
 
 export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
   const calendars = [...plugin.cache.calendars.entries()]
@@ -157,6 +67,13 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
   ).open();
 }
 
+/**
+ * @file
+ * Provides the `launchEditModal` function for displaying and handling the event editing modal
+ * in the FullCalendar plugin UI. This modal allows users to edit, move, or delete calendar events,
+ * including handling inherited properties from recurring parent events and category selection.
+ * Integrates with the plugin's cache and settings, and supports error handling and user confirmations.
+ */
 export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
   const eventToEdit = plugin.cache.getEventById(eventId);
   if (!eventToEdit) {
