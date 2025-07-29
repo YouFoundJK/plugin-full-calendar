@@ -38,6 +38,7 @@ import FullCalendarPlugin from '../main';
 import { FullCalendarSettings } from '../types/settings';
 import { toggleTask } from './tasks';
 import { DeleteRecurringModal } from '../ui/modals/DeleteRecurringModal';
+import { RecurringEventManager } from './RecurringEventManager';
 
 export type CalendarInitializerMap = Record<
   CalendarInfo['type'],
@@ -114,11 +115,13 @@ export type OFCEventSource = {
  */
 export default class EventCache {
   private calendarInfos: CalendarInfo[] = [];
-  private plugin: FullCalendarPlugin;
+  private _plugin: FullCalendarPlugin;
 
   private calendarInitializers: CalendarInitializerMap;
 
-  private store = new EventStore();
+  private recurringEventManager: RecurringEventManager; // <-- ADD THIS LINE
+
+  private _store = new EventStore();
   calendars = new Map<string, Calendar>();
 
   private identifierToSessionIdMap: Map<string, string> = new Map();
@@ -148,8 +151,9 @@ export default class EventCache {
   };
 
   constructor(plugin: FullCalendarPlugin, calendarInitializers: CalendarInitializerMap) {
-    this.plugin = plugin;
+    this._plugin = plugin;
     this.calendarInitializers = calendarInitializers;
+    this.recurringEventManager = new RecurringEventManager(this);
   }
 
   /**
@@ -161,7 +165,7 @@ export default class EventCache {
     this.calendarInfos = infos;
     this.pkCounter = 0;
     this.calendars.clear();
-    this.store.clear();
+    this._store.clear();
     this._updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
     this.resync();
     this.init();
@@ -170,7 +174,7 @@ export default class EventCache {
   init() {
     this.calendarInfos
       .flatMap(s => {
-        const cal = this.calendarInitializers[s.type](s, this.plugin.settings);
+        const cal = this.calendarInitializers[s.type](s, this._plugin.settings);
         return cal || [];
       })
       .forEach(cal => {
@@ -199,30 +203,6 @@ export default class EventCache {
   }
 
   /**
-   * Finds all override events that are children of a given master recurring event.
-   * @param masterEventId The session ID of the master recurring event.
-   * @returns An array of StoredEvent objects representing the child overrides.
-   */
-  private findRecurringChildren(masterEventId: string): StoredEvent[] {
-    const masterEventDetails = this.store.getEventDetails(masterEventId);
-    if (!masterEventDetails) return [];
-
-    const { calendarId, event: masterEvent } = masterEventDetails;
-    const calendar = this.calendars.get(calendarId);
-    if (!calendar) return [];
-
-    // The local identifier is what's stored in the child's `recurringEventId` field.
-    const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
-    if (!masterLocalIdentifier) return [];
-
-    return this.store
-      .getAllEvents()
-      .filter(
-        e => e.calendarId === calendar.id && e.event.recurringEventId === masterLocalIdentifier
-      );
-  }
-
-  /**
    * Performs a reverse-lookup to find an event's transient (session-specific) ID
    * from its persistent, globally-unique identifier.
    * Ensures the lookup map is populated before attempting to find the ID.
@@ -246,7 +226,7 @@ export default class EventCache {
     for (const calendar of this.calendars.values()) {
       const results = await calendar.getEvents();
       results.forEach(([event, location]) =>
-        this.store.add({
+        this._store.add({
           calendar,
           location,
           id: event.id || this.generateId(),
@@ -261,7 +241,7 @@ export default class EventCache {
       // Clear the map to ensure a fresh build.
       this.identifierToSessionIdMap.clear();
       // Iterate over every event now in the store.
-      for (const storedEvent of this.store.getAllEvents()) {
+      for (const storedEvent of this._store.getAllEvents()) {
         const globalIdentifier = this.getGlobalIdentifier(
           storedEvent.event,
           storedEvent.calendarId
@@ -291,7 +271,7 @@ export default class EventCache {
     const categories = new Set<string>();
     // Note: We need a way to iterate all events in the store.
     // Let's add a simple iterator to EventStore for this.
-    for (const storedEvent of this.store.getAllEvents()) {
+    for (const storedEvent of this._store.getAllEvents()) {
       if (storedEvent.event.category) {
         categories.add(storedEvent.event.category);
       }
@@ -305,7 +285,7 @@ export default class EventCache {
    */
   getAllEvents(): OFCEventSource[] {
     const result: OFCEventSource[] = [];
-    const eventsByCalendar = this.store.eventsByCalendar;
+    const eventsByCalendar = this._store.eventsByCalendar;
     for (const [calId, calendar] of this.calendars.entries()) {
       const events = eventsByCalendar.get(calId) || [];
       result.push({
@@ -324,7 +304,7 @@ export default class EventCache {
    * @returns
    */
   isEventEditable(id: string): boolean {
-    const calId = this.store.getEventDetails(id)?.calendarId;
+    const calId = this._store.getEventDetails(id)?.calendarId;
     if (!calId) {
       return false;
     }
@@ -333,7 +313,7 @@ export default class EventCache {
   }
 
   getEventById(s: string): OFCEvent | null {
-    return this.store.getEventById(s);
+    return this._store.getEventById(s);
   }
 
   getCalendarById(c: string): Calendar | undefined {
@@ -347,7 +327,7 @@ export default class EventCache {
    * @returns Calendar and location for an event.
    */
   getInfoForEditableEvent(eventId: string) {
-    const details = this.store.getEventDetails(eventId);
+    const details = this._store.getEventDetails(eventId);
     if (!details) {
       throw new Error(`Event ID ${eventId} not present in event store.`);
     }
@@ -464,7 +444,7 @@ export default class EventCache {
       throw new Error(`Cannot add event to a read-only calendar`);
     }
     const location = await calendar.createEvent(event);
-    const id = this.store.add({
+    const id = this._store.add({
       calendar,
       location,
       id: event.id || this.generateId(),
@@ -485,46 +465,6 @@ export default class EventCache {
       this.flushUpdateQueue([], [cacheEntry]);
     }
     return true;
-  }
-
-  async promoteRecurringChildren(masterEventId: string): Promise<void> {
-    const children = this.findRecurringChildren(masterEventId);
-    if (children.length === 0) {
-      // No children to promote, just delete the master.
-      await this.deleteEvent(masterEventId, { force: true });
-      return;
-    }
-
-    new Notice(`Promoting ${children.length} child event(s).`);
-    for (const child of children) {
-      await this.processEvent(
-        child.id,
-        e => ({
-          ...e,
-          recurringEventId: undefined
-        }),
-        { silent: true }
-      );
-    }
-
-    // Now delete the original master event
-    await this.deleteEvent(masterEventId, { force: true, silent: true });
-    this.flushUpdateQueue([], []);
-    new Notice('Recurring event deleted and children promoted.');
-  }
-
-  async deleteAllRecurring(masterEventId: string): Promise<void> {
-    const children = this.findRecurringChildren(masterEventId);
-    new Notice(`Deleting recurring event and its ${children.length} child override(s)...`);
-
-    for (const child of children) {
-      await this.deleteEvent(child.id, { force: true, silent: true });
-    }
-
-    // Finally, delete the master event itself
-    await this.deleteEvent(masterEventId, { force: true, silent: true });
-    this.flushUpdateQueue([], []);
-    new Notice('Successfully deleted recurring event and all children.');
   }
 
   /**
@@ -548,21 +488,10 @@ export default class EventCache {
     const { calendar, location, event } = this.getInfoForEditableEvent(eventId);
 
     // ====================================================================
-    // NEW LOGIC: Intercept deletion of recurring events with children
+    // DELEGATE RECURRING DELETION
     // ====================================================================
-    if (!options?.force) {
-      const isRecurringMaster = event.type === 'recurring' || event.type === 'rrule';
-      if (isRecurringMaster) {
-        const children = this.findRecurringChildren(eventId);
-        if (children.length > 0) {
-          new DeleteRecurringModal(
-            this.plugin.app,
-            () => this.promoteRecurringChildren(eventId),
-            () => this.deleteAllRecurring(eventId)
-          ).open();
-          return; // Stop execution here, let the modal handlers take over.
-        }
-      }
+    if (this.recurringEventManager.handleDelete(eventId, event, options)) {
+      return; // The recurring manager opened a modal and will handle the rest.
     }
     // ====================================================================
 
@@ -571,7 +500,7 @@ export default class EventCache {
     // ====================================================================
     if (event.type === 'single' && event.recurringEventId) {
       const masterLocalIdentifier = event.recurringEventId;
-      const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
+      const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`; // Use calendar.id
       const masterSessionId = await this.getSessionId(globalMasterIdentifier);
 
       if (masterSessionId) {
@@ -596,12 +525,12 @@ export default class EventCache {
     // ====================================================================
 
     // Remove from identifier map
-    const globalIdentifier = this.getGlobalIdentifier(event, calendar.id);
+    const globalIdentifier = this.getGlobalIdentifier(event, calendar.id); // Use calendar.id
     if (globalIdentifier) {
       this.identifierToSessionIdMap.delete(globalIdentifier);
     }
 
-    this.store.delete(eventId);
+    this._store.delete(eventId);
     await calendar.deleteEvent(location);
 
     if (options?.silent) {
@@ -659,8 +588,8 @@ export default class EventCache {
     }
 
     await calendar.modifyEvent({ path, lineNumber }, newEvent, newLocation => {
-      this.store.delete(eventId);
-      this.store.add({
+      this._store.delete(eventId);
+      this._store.add({
         calendar,
         location: newLocation,
         id: eventId,
@@ -700,7 +629,7 @@ export default class EventCache {
     process: (e: OFCEvent) => OFCEvent,
     options?: { silent: boolean }
   ): Promise<boolean> {
-    const event = this.store.getEventById(id);
+    const event = this._store.getEventById(id);
     if (!event) {
       throw new Error('Event does not exist');
     }
@@ -754,8 +683,8 @@ export default class EventCache {
   }
 
   async moveEventToCalendar(eventId: string, newCalendarId: string): Promise<void> {
-    const event = this.store.getEventById(eventId);
-    const details = this.store.getEventDetails(eventId);
+    const event = this._store.getEventById(eventId);
+    const details = this._store.getEventDetails(eventId);
     if (!details || !event) {
       throw new Error(`Tried moving unknown event ID ${eventId} to calendar ${newCalendarId}`);
     }
@@ -782,8 +711,8 @@ export default class EventCache {
     }
 
     await oldCalendar.move(location, newCalendar, newLocation => {
-      this.store.delete(eventId);
-      this.store.add({
+      this._store.delete(eventId);
+      this._store.add({
         calendar: newCalendar,
         location: newLocation,
         id: eventId,
@@ -967,7 +896,7 @@ export default class EventCache {
     const eventsToAdd: CacheEntry[] = [];
 
     for (const calendar of calendars) {
-      const oldEvents = this.store.getEventsInFileAndCalendar(file, calendar);
+      const oldEvents = this._store.getEventsInFileAndCalendar(file, calendar);
       const newEvents = await calendar.getEventsInFile(file);
 
       const oldEventsMapped = oldEvents.map(({ event }) => event);
@@ -988,7 +917,7 @@ export default class EventCache {
 
       const oldSessionIds = oldEvents.map((r: StoredEvent) => r.id);
       oldSessionIds.forEach((id: string) => {
-        this.store.delete(id);
+        this._store.delete(id);
       });
 
       const newEventsWithIds = newEvents.map(([event, location]) => {
@@ -1007,7 +936,7 @@ export default class EventCache {
       });
 
       newEventsWithIds.forEach(({ event, id, location }) => {
-        this.store.add({
+        this._store.add({
           calendar,
           location,
           id,
@@ -1054,7 +983,7 @@ export default class EventCache {
         .revalidate()
         .then(() => calendar.getEvents())
         .then(events => {
-          const deletedEvents = [...this.store.deleteEventsInCalendar(calendar)];
+          const deletedEvents = [...this._store.deleteEventsInCalendar(calendar)];
           const newEvents = events.map(([event, location]) => ({
             event,
             id: event.id || this.generateId(),
@@ -1062,7 +991,7 @@ export default class EventCache {
             calendarId: calendar.id
           }));
           newEvents.forEach(({ event, id, location }) => {
-            this.store.add({
+            this._store.add({
               calendar,
               location,
               id,
@@ -1091,7 +1020,15 @@ export default class EventCache {
     });
   }
 
+  get plugin(): FullCalendarPlugin {
+    return this._plugin;
+  }
+
+  get store(): EventStore {
+    return this._store;
+  }
+
   get _storeForTest() {
-    return this.store;
+    return this._store;
   }
 }
