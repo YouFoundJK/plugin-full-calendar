@@ -449,6 +449,7 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     font-size: var(--font-ui-medium);
     color: var(--text-faint);
     gap: var(--size-4-2);
+    width: 100%;
 }
 
 .chrono-analyser-view .chart-message .error {
