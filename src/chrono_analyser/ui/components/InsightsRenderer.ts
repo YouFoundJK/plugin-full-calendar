@@ -154,9 +154,6 @@ export class InsightsRenderer {
     }
   }
 
-  // --- REMOVED: Unsafe formatDetails function is no longer needed ---
-  // private formatDetails(details: string): string { ... }
-
   private createGraphButton(action: FilterPayload | null): HTMLButtonElement | null {
     if (!action) return null;
     const button = document.createElement('button');

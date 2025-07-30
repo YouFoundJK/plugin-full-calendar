@@ -50,15 +50,19 @@ export class DetailPopup {
         0
       );
 
-    this.statsEl.innerHTML = `
-      <div class="summary-stat">
-        <div class="summary-stat-value">${numSourceFiles}</div>
-        <div class="summary-stat-label">Unique Files</div>
-      </div>
-      <div class="summary-stat">
-        <div class="summary-stat-value">${displayTotalHours.toFixed(2)}</div>
-        <div class="summary-stat-label">Total Hours</div>
-      </div>`;
+    // --- MODIFIED: Safe, programmatic creation of the stats section ---
+    // Use .empty() for safe clearing, casting to `any` to satisfy TypeScript
+    (this.statsEl as any).empty();
+
+    const createStatCard = (value: string, label: string) => {
+      const card = this.statsEl.createDiv({ cls: 'summary-stat' });
+      card.createDiv({ cls: 'summary-stat-value', text: value });
+      card.createDiv({ cls: 'summary-stat-label', text: label });
+    };
+
+    createStatCard(String(numSourceFiles), 'Unique Files');
+    createStatCard(displayTotalHours.toFixed(2), 'Total Hours');
+    // --- END MODIFICATION ---
 
     // Use .empty() for safe clearing, casting to `any` to satisfy TypeScript
     (this.tableBodyEl as any).empty();

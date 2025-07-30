@@ -24,6 +24,6 @@ main.js
 obsidian-dev-vault/
 
 # Others
-src/.*
+src/**/.*
 exported
 .DS_Store
