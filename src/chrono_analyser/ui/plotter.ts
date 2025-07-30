@@ -152,28 +152,18 @@ export function renderSunburstChartDisplay(
 
   if (isNewChartType) {
     Plotly.purge(mainContainerEl);
-    // MODIFIED: Programmatically create the sunburst layout instead of using innerHTML
     const container = mainContainerEl as any;
     container.empty();
-    const wrapper = container.createDiv({
-      attr: {
-        id: 'sunburst-wrapper',
-        style: 'display: flex; flex-direction: row; gap: 15px; width: 100%; height: 100%;'
-      }
-    });
+    const wrapper = container.createDiv({ cls: 'sunburst-wrapper' });
+    wrapper.createDiv({ cls: 'sunburst-chart-div' });
     wrapper.createDiv({
-      attr: { id: 'sunburst-chart-div', style: 'flex-grow: 1; min-width: 0;' }
-    });
-    wrapper.createDiv({
-      attr: {
-        id: 'customLegend',
-        style:
-          'flex-basis: 250px; flex-shrink: 0; overflow-y: auto; padding-left: 10px; border-left: 1px solid var(--background-modifier-border);'
-      }
+      cls: 'custom-legend',
+      attr: { id: 'customLegend' } // Keep ID for now, style with class
     });
   }
-  const chartEl = mainContainerEl.querySelector<HTMLElement>('#sunburst-chart-div');
-  const legendEl = mainContainerEl.querySelector<HTMLElement>('#customLegend');
+
+  const chartEl = mainContainerEl.querySelector<HTMLElement>('.sunburst-chart-div');
+  const legendEl = mainContainerEl.querySelector<HTMLElement>('.custom-legend');
   if (!chartEl || !legendEl) return;
 
   const data: Plotly.Data[] = [
