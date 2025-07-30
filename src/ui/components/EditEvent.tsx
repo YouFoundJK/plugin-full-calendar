@@ -188,8 +188,8 @@ export const EditEvent = ({
               daysOfWeek: daysOfWeek,
               startRecur: date || undefined,
               endRecur: endRecur,
-              isTask: isTask, // <-- ADD THIS LINE
-              skipDates: initialEvent?.type === 'recurring' ? initialEvent.skipDates : [] // <-- ADD THIS LINE
+              isTask: isTask,
+              skipDates: initialEvent?.type === 'recurring' ? initialEvent.skipDates : []
             }
           : {
               type: 'single',
@@ -321,7 +321,7 @@ export const EditEvent = ({
                 type="checkbox"
                 checked={allDay}
                 onChange={e => setAllDay(e.target.checked)}
-                disabled={isChildOverride} // <-- ADD THIS LINE
+                disabled={isChildOverride}
               />{' '}
               All day
             </label>

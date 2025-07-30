@@ -69,7 +69,7 @@ export class UIService {
     this.setupEventListeners();
     this.loadFilterState();
     await this.loadInsightsConfig();
-    this.setupProTips(); // <-- ADD THIS LINE
+    this.setupProTips();
   }
 
   private async loadInsightsConfig() {

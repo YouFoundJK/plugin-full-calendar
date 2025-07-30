@@ -13,7 +13,7 @@ interface InsightRule {
 interface InsightGroups {
   [groupName: string]: {
     rules: InsightRule;
-    persona: 'productivity' | 'wellness' | 'none'; // <-- ADD THIS LINE
+    persona: 'productivity' | 'wellness' | 'none';
   };
 }
 export interface InsightsConfig {
@@ -30,7 +30,7 @@ class AutocompleteComponent {
   private onSelectCallback: (value: string) => void;
   private getDataFunc: () => string[];
   private activeSuggestionIndex = -1;
-  private isSelectionInProgress = false; // <-- ADD THIS LINE
+  private isSelectionInProgress = false;
 
   constructor(
     wrapperEl: HTMLElement,
@@ -73,11 +73,11 @@ class AutocompleteComponent {
             ? suggestions[this.activeSuggestionIndex].textContent!
             : this.inputEl.value;
 
-        this.isSelectionInProgress = true; // <-- ADD THIS LINE
+        this.isSelectionInProgress = true;
         this.onSelectCallback(valueToSubmit);
         this.suggestionsEl.style.display = 'none';
         this.inputEl.blur();
-        this.isSelectionInProgress = false; // <-- ADD THIS LINE
+        this.isSelectionInProgress = false;
         break;
       case 'Escape':
         this.suggestionsEl.style.display = 'none';
@@ -95,7 +95,7 @@ class AutocompleteComponent {
   };
 
   private updateFilteredSuggestions = () => {
-    if (this.isSelectionInProgress) return; // <-- ADD THIS LINE
+    if (this.isSelectionInProgress) return;
     const value = this.inputEl.value.toLowerCase().trim();
     const allData = this.getDataFunc();
     const filteredData =
@@ -115,10 +115,10 @@ class AutocompleteComponent {
 
         div.addEventListener('mousedown', e => {
           e.preventDefault(); // Prevent blur event from firing first
-          this.isSelectionInProgress = true; // <-- ADD THIS LINE
+          this.isSelectionInProgress = true;
           this.onSelectCallback(item);
           this.suggestionsEl.style.display = 'none';
-          this.isSelectionInProgress = false; // <-- ADD THIS LINE
+          this.isSelectionInProgress = false;
         });
 
         this.suggestionsEl.appendChild(div);
