@@ -46,35 +46,43 @@ export function convertEvent(event: OFCEvent, sourceZone: string, targetZone: st
     return { ...event };
   }
 
-  // For debugging specific events from your ICS feed.
-  // if (event.title.includes('PDE II exam')) {
-  //   console.log('--- STAGE 3: Conversion Inputs ---');
-  //   console.log('Event Title:', event.title);
-  //   console.log('Source Zone:', sourceZone);
-  //   console.log('Target Zone:', targetZone);
-  //   console.log('Input Start Time:', event.startTime);
-  //   console.log('----------------------------------');
-  // }
-
   const newEvent = { ...event };
 
   // Only proceed if the event has a time component.
-  if ('startTime' in event && event.startTime) {
-    const dateStr = 'date' in event ? event.date : 'startDate' in event ? event.startDate : null;
-    if (!dateStr) return newEvent; // Cannot proceed without a base date.
+  if (newEvent.startTime) {
+    const startTime = parseTime(newEvent.startTime);
+    // If startTime is invalid, we cannot proceed with any conversion.
+    if (!startTime) {
+      return newEvent;
+    }
 
-    const startTime = parseTime(event.startTime);
-    if (!startTime) return newEvent; // Invalid start time format.
+    const dateStr =
+      'date' in newEvent ? newEvent.date : 'startDate' in newEvent ? newEvent.startDate : null;
+    // Cannot proceed without a base date.
+    if (!dateStr) {
+      return newEvent;
+    }
+
+    /**
+     * Internal helper to create a timezone-aware, absolute DateTime object
+     * from a date string, a time object, and a source zone.
+     */
+    const createAbsoluteDateTime = (dtStr: string, time: DateTime, zone: string): DateTime => {
+      // 1. Read date as UTC to avoid local shifts from the system running the code.
+      // 2. Set the time components from the parsed time object.
+      // 3. Set the zone, interpreting the local time components as being in that zone.
+      return DateTime.fromISO(dtStr, { zone: 'utc' })
+        .set({
+          hour: time.hour,
+          minute: time.minute,
+          second: 0,
+          millisecond: 0
+        })
+        .setZone(zone, { keepLocalTime: true });
+    };
 
     // 1. Create a DateTime object representing the absolute start time in the source zone.
-    const absoluteStart = DateTime.fromISO(dateStr, { zone: 'utc' }) // Read date as UTC to avoid local shifts
-      .set({
-        hour: startTime.hour,
-        minute: startTime.minute,
-        second: 0,
-        millisecond: 0
-      })
-      .setZone(sourceZone, { keepLocalTime: true }); // Then, interpret that time in the source zone.
+    const absoluteStart = createAbsoluteDateTime(dateStr, startTime, sourceZone);
 
     // 2. Convert this absolute time to the target zone.
     const newStartInTarget = absoluteStart.setZone(targetZone);
@@ -92,20 +100,12 @@ export function convertEvent(event: OFCEvent, sourceZone: string, targetZone: st
     newEvent.startTime = newStartInTarget.toFormat('HH:mm');
 
     // Handle end time if it exists
-    if ('endTime' in event && event.endTime) {
-      const endTime = parseTime(event.endTime);
-      const endDateStr = 'endDate' in event && event.endDate ? event.endDate : dateStr;
-
+    if (newEvent.endTime) {
+      const endTime = parseTime(newEvent.endTime);
       if (endTime) {
-        const absoluteEnd = DateTime.fromISO(endDateStr, { zone: 'utc' })
-          .set({
-            hour: endTime.hour,
-            minute: endTime.minute,
-            second: 0,
-            millisecond: 0
-          })
-          .setZone(sourceZone, { keepLocalTime: true });
+        const endDateStr = 'endDate' in newEvent && newEvent.endDate ? newEvent.endDate : dateStr;
 
+        const absoluteEnd = createAbsoluteDateTime(endDateStr, endTime, sourceZone);
         const newEndInTarget = absoluteEnd.setZone(targetZone);
 
         if ('endDate' in newEvent) {
@@ -117,6 +117,18 @@ export function convertEvent(event: OFCEvent, sourceZone: string, targetZone: st
         }
         newEvent.endTime = newEndInTarget.toFormat('HH:mm');
       }
+    }
+
+    // Handle skipDates for recurring events
+    if ('skipDates' in newEvent && newEvent.skipDates.length > 0) {
+      newEvent.skipDates = newEvent.skipDates.map(skipDateStr => {
+        // Create an absolute DateTime for the skipped instance in the SOURCE zone.
+        const skippedInstanceInSource = createAbsoluteDateTime(skipDateStr, startTime, sourceZone);
+        // Convert that absolute moment to the TARGET zone.
+        const skippedInstanceInTarget = skippedInstanceInSource.setZone(targetZone);
+        // Return the new date string for that moment in the target zone.
+        return skippedInstanceInTarget.toISODate()!;
+      });
     }
   }
 
@@ -144,7 +156,6 @@ export async function manageTimezone(plugin: FullCalendarPlugin): Promise<void> 
   } else if (settings.lastSystemTimezone !== systemTimezone) {
     // Case 2: The system timezone has changed since the last time Obsidian was run.
     // This is a critical change. We must update the user's view.
-    const oldDisplayZone = settings.displayTimezone;
     settings.displayTimezone = systemTimezone; // Force reset the display timezone.
     settings.lastSystemTimezone = systemTimezone;
     await plugin.saveData(settings);
