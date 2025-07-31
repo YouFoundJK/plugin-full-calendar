@@ -169,34 +169,36 @@ export function toEventInput(
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Recurring events (timezone-aware & bullet-proof)
+  // -----------------------------------------------------------------------
   if (frontmatter.type === 'recurring') {
     // ====================================================================
     // Timezone-Aware Conversion (Final Version)
     // ====================================================================
+    // The frontmatter object's times are already in the displayTimezone.
+    // We will build a compliant iCalendar string that explicitly states this
+    // timezone context for DTSTART and all EXDATEs.
 
-    // A. Identify zones
-    const displayZone = settings.displayTimezone || DateTime.local().zoneName;
+    // A. Identify zone
+    const displayZone =
+      frontmatter.timezone || settings.displayTimezone || DateTime.local().zoneName;
+    // const displayZone = settings.displayTimezone || DateTime.local().zoneName;
 
-    // B. Create the RRULE string part first.
-    const weekdays = { U: 'SU', M: 'MO', T: 'TU', W: 'WE', R: 'TH', F: 'FR', S: 'SA' };
-    const byday = frontmatter.daysOfWeek.map(c => weekdays[c as keyof typeof weekdays]);
-    let rruleString = `FREQ=WEEKLY;BYDAY=${byday.join(',')}`;
-    if (frontmatter.endRecur) {
-      const until = DateTime.fromISO(frontmatter.endRecur, { zone: displayZone })
-        .endOf('day')
-        .toUTC()
-        .toFormat("yyyyMMdd'T'HHmmss'Z'");
-      rruleString += `;UNTIL=${until}`;
-    }
-
-    // C. Create the timezone-aware DTSTART string.
+    // B. Create the timezone-aware DTSTART value first.
     let dtstart: DateTime;
     const startRecurDate = frontmatter.startRecur || '1970-01-01';
+
+    // For all-day events, DTSTART is a simple date, but for timed events, it must be
+    // a full DateTime interpreted in the displayZone.
     if (frontmatter.allDay) {
+      // NOTE: Even for all-day, we create a full DateTime object to make the
+      // UNTIL calculation below simpler. The final string will be formatted correctly.
       dtstart = DateTime.fromISO(startRecurDate, { zone: displayZone }).startOf('day');
     } else {
       const startTimeDt = parseTime(frontmatter.startTime);
       if (!startTimeDt) return null;
+
       dtstart = DateTime.fromISO(startRecurDate, { zone: displayZone }).set({
         hour: startTimeDt.hours,
         minute: startTimeDt.minutes,
@@ -205,18 +207,42 @@ export function toEventInput(
       });
     }
 
-    const dtstartString = `DTSTART;TZID=${displayZone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
+    // C. Create the RRULE string part, including a timezone-aware UNTIL.
+    const weekdays = { U: 'SU', M: 'MO', T: 'TU', W: 'WE', R: 'TH', F: 'FR', S: 'SA' };
+    const byday = frontmatter.daysOfWeek.map(c => weekdays[c as keyof typeof weekdays]);
+    let rruleString = `FREQ=WEEKLY;BYDAY=${byday.join(',')}`;
 
-    // THE FIX IS HERE: `frontmatter.skipDates` already contains dates correct for the displayZone.
-    // We do not need to perform another conversion. We just need to format them correctly.
-    const exdateStrings = frontmatter.skipDates
+    if (frontmatter.endRecur) {
+      const endLocal = DateTime.fromISO(frontmatter.endRecur, { zone: displayZone }).endOf('day');
+
+      // To determine if UNTIL is valid, find the date of the first actual occurrence.
+      const luxonWeekdayMap = { SU: 7, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+      const weekdayNums = byday.map(code => luxonWeekdayMap[code as keyof typeof luxonWeekdayMap]);
+      const daysToFirst = Math.min(...weekdayNums.map(w => (w - dtstart.weekday + 7) % 7));
+      const firstOccur = dtstart.plus({ days: daysToFirst });
+
+      if (endLocal >= firstOccur.startOf('day')) {
+        const until = endLocal.toUTC().toFormat("yyyyMMdd'T'HHmmss'Z'");
+        rruleString += `;UNTIL=${until}`;
+      }
+    }
+
+    // D. Assemble the final rruleSet string
+
+    // For timed events, DTSTART must include the TZID. For all-day events, it must NOT.
+    const dtstartString = frontmatter.allDay
+      ? `DTSTART;VALUE=DATE:${dtstart.toFormat('yyyyMMdd')}`
+      : `DTSTART;TZID=${displayZone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
+
+    const exdateStrings = (frontmatter.skipDates || [])
       .map((skipDate: string) => {
+        // Correctly handle EXDATE for all-day vs timed events.
         if (frontmatter.allDay) {
-          // For all-day events, the date string is sufficient.
+          // All-day exclusions are simple dates, no timezone.
           const exdateDt = DateTime.fromISO(skipDate, { zone: displayZone }).startOf('day');
-          return `EXDATE;TZID=${displayZone};VALUE=DATE:${exdateDt.toFormat('yyyyMMdd')}`;
+          return `EXDATE;VALUE=DATE:${exdateDt.toFormat('yyyyMMdd')}`;
         } else {
-          // For timed events, combine the pre-converted skipDate with the event's time.
+          // Timed exclusions MUST be in the same timezone context as DTSTART.
           const startTimeDt = parseTime(frontmatter.startTime);
           if (!startTimeDt) return null;
 
@@ -236,6 +262,7 @@ export function toEventInput(
     );
     event.rrule = finalRruleSetString;
 
+    // Add duration for timed events (this part is correct as-is).
     if (!frontmatter.allDay && frontmatter.startTime && frontmatter.endTime) {
       const startTime = parseTime(frontmatter.startTime);
       const endTime = parseTime(frontmatter.endTime);

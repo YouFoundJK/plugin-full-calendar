@@ -94,7 +94,7 @@ export default class FullNoteCalendar extends EditableCalendar {
       return [];
     }
 
-    // MODIFICATION: Conditional Parsing
+    // MODIFICATION: Conditional Parsing for Category Coloring
     let eventData: any = { ...frontmatter };
     const rawTitle = frontmatter.title || file.basename;
 
@@ -176,22 +176,33 @@ export default class FullNoteCalendar extends EditableCalendar {
       throw new Error(`Event at ${path} already exists.`);
     }
 
+    // The incoming event is in the display timezone. It needs to be converted
+    // to its designated source timezone before being written to disk.
     const displayTimezone =
       this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    let eventToWrite = { ...event };
 
-    // MODIFICATION: Conditional Title Construction
+    // If a timezone is not present on the event, it's a new event and should be assigned the display timezone.
+    if (!eventToWrite.timezone) {
+      eventToWrite.timezone = displayTimezone;
+    }
+
+    // If the event's designated timezone is different from the display timezone, convert its times.
+    if (eventToWrite.timezone !== displayTimezone) {
+      eventToWrite = convertEvent(event, displayTimezone, eventToWrite.timezone);
+    }
+
     const titleToWrite = this.settings.enableCategoryColoring
-      ? constructTitle(event.category, event.title)
-      : event.title;
+      ? constructTitle(eventToWrite.category, eventToWrite.title)
+      : eventToWrite.title;
 
-    const eventToCreate = {
-      ...event,
-      title: titleToWrite,
-      timezone: displayTimezone
+    const eventWithFullTitle = {
+      ...eventToWrite,
+      title: titleToWrite
     };
-    delete (eventToCreate as Partial<OFCEvent>).category;
+    delete (eventWithFullTitle as Partial<OFCEvent>).category;
 
-    const newPage = replaceFrontmatter('', newFrontmatter(eventToCreate));
+    const newPage = replaceFrontmatter('', newFrontmatter(eventWithFullTitle));
     const file = await this.app.create(path, newPage);
     return { file, lineNumber: undefined };
   }
