@@ -46,7 +46,11 @@ const basenameFromEvent = (event: OFCEvent, settings: FullCalendarSettings): str
     case 'single':
       return `${event.date} ${sanitizedTitle}`;
     case 'recurring':
-      return `(Every ${event.daysOfWeek.join(',')}) ${sanitizedTitle}`;
+      if (event.daysOfWeek && event.daysOfWeek.length > 0) {
+        return `(Every ${event.daysOfWeek.join(',')}) ${sanitizedTitle}`;
+      }
+      // Placeholder for monthly/yearly logic to be added in Goal 4
+      return `(Recurring) ${sanitizedTitle}`;
     case 'rrule':
       return `(${rrulestr(event.rrule).toText()}) ${sanitizedTitle}`;
   }

@@ -209,7 +209,9 @@ export function toEventInput(
 
     // C. Create the RRULE string part, including a timezone-aware UNTIL.
     const weekdays = { U: 'SU', M: 'MO', T: 'TU', W: 'WE', R: 'TH', F: 'FR', S: 'SA' };
-    const byday = frontmatter.daysOfWeek.map(c => weekdays[c as keyof typeof weekdays]);
+    const byday =
+      frontmatter.daysOfWeek?.map((c: string) => weekdays[c as keyof typeof weekdays]) || [];
+
     let rruleString = `FREQ=WEEKLY;BYDAY=${byday.join(',')}`;
 
     if (frontmatter.endRecur) {
@@ -217,8 +219,12 @@ export function toEventInput(
 
       // To determine if UNTIL is valid, find the date of the first actual occurrence.
       const luxonWeekdayMap = { SU: 7, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
-      const weekdayNums = byday.map(code => luxonWeekdayMap[code as keyof typeof luxonWeekdayMap]);
-      const daysToFirst = Math.min(...weekdayNums.map(w => (w - dtstart.weekday + 7) % 7));
+      const weekdayNums = byday.map(
+        (code: string) => luxonWeekdayMap[code as keyof typeof luxonWeekdayMap]
+      );
+      const daysToFirst = Math.min(
+        ...weekdayNums.map((w: number) => (w - dtstart.weekday + 7) % 7)
+      );
       const firstOccur = dtstart.plus({ days: daysToFirst });
 
       if (endLocal >= firstOccur.startOf('day')) {
@@ -255,7 +261,7 @@ export function toEventInput(
           return `EXDATE;TZID=${displayZone}:${exdateInDisplay.toFormat("yyyyMMdd'T'HHmmss")}`;
         }
       })
-      .flatMap(s => (s ? [s] : []));
+      .flatMap((s: string | null) => (s ? [s] : []));
 
     const finalRruleSetString = [dtstartString, `RRULE:${rruleString}`, ...exdateStrings].join(
       '\n'
@@ -293,7 +299,7 @@ export function toEventInput(
     }
     // NOTE: how exdates are handled does not support events which recur more than once per day.
     const exdate = frontmatter.skipDates
-      .map(d => {
+      .map((d: string) => {
         // Can't do date arithmetic because timezone might change for different exdates due to DST.
         // RRule only has one dtstart that doesn't know about DST/timezone changes.
         // Therefore, just concatenate the date for this exdate and the start time for the event together.
@@ -302,7 +308,7 @@ export function toEventInput(
 
         return `${date}T${time}`;
       })
-      .flatMap(d => (d ? d : []));
+      .flatMap((d: string) => (d ? [d] : []));
 
     event = {
       id,

@@ -104,7 +104,7 @@ export function convertEvent<T extends OFCEvent>(
         newStart.startOf('day').diff(originalStart.startOf('day'), 'days').get('days')
       );
 
-      if (dayShift !== 0) {
+      if (dayShift !== 0 && newEvent.daysOfWeek) {
         const dayMap: Record<string, number> = { U: 0, M: 1, T: 2, W: 3, R: 4, F: 5, S: 6 };
         const reverseDayMap: string[] = ['U', 'M', 'T', 'W', 'R', 'F', 'S'];
 
@@ -113,7 +113,7 @@ export function convertEvent<T extends OFCEvent>(
           if (originalIndex === undefined) return day;
           const newIndex = (originalIndex + dayShift + 7) % 7;
           return reverseDayMap[newIndex];
-        }) as typeof newEvent.daysOfWeek; // Keep this cast
+        }) as typeof newEvent.daysOfWeek;
       }
 
       if (newEvent.endTime) {
@@ -129,6 +129,7 @@ export function convertEvent<T extends OFCEvent>(
       }
       break;
     }
+    // ^^^ END OF REPLACEMENT ^^^
 
     case 'rrule': {
       if (Array.isArray(newEvent.skipDates) && newEvent.skipDates.length) {
