@@ -183,17 +183,11 @@ export function toEventInput(
     // A. Identify zone
     const displayZone =
       frontmatter.timezone || settings.displayTimezone || DateTime.local().zoneName;
-    // const displayZone = settings.displayTimezone || DateTime.local().zoneName;
 
-    // B. Create the timezone-aware DTSTART value first.
     let dtstart: DateTime;
     const startRecurDate = frontmatter.startRecur || '1970-01-01';
 
-    // For all-day events, DTSTART is a simple date, but for timed events, it must be
-    // a full DateTime interpreted in the displayZone.
     if (frontmatter.allDay) {
-      // NOTE: Even for all-day, we create a full DateTime object to make the
-      // UNTIL calculation below simpler. The final string will be formatted correctly.
       dtstart = DateTime.fromISO(startRecurDate, { zone: displayZone }).startOf('day');
     } else {
       const startTimeDt = parseTime(frontmatter.startTime);
@@ -208,26 +202,37 @@ export function toEventInput(
     }
 
     // C. Create the RRULE string part, including a timezone-aware UNTIL.
-    const weekdays = { U: 'SU', M: 'MO', T: 'TU', W: 'WE', R: 'TH', F: 'FR', S: 'SA' };
-    const byday =
-      frontmatter.daysOfWeek?.map((c: string) => weekdays[c as keyof typeof weekdays]) || [];
+    let rruleString: string;
 
-    let rruleString = `FREQ=WEEKLY;BYDAY=${byday.join(',')}`;
+    if (frontmatter.daysOfWeek && frontmatter.daysOfWeek.length > 0) {
+      const weekdays = { U: 'SU', M: 'MO', T: 'TU', W: 'WE', R: 'TH', F: 'FR', S: 'SA' };
+      const byday = frontmatter.daysOfWeek.map((c: string) => weekdays[c as keyof typeof weekdays]);
+      rruleString = `FREQ=WEEKLY;BYDAY=${byday.join(',')}`;
+    } else if (frontmatter.month && frontmatter.dayOfMonth) {
+      rruleString = `FREQ=YEARLY;BYMONTH=${frontmatter.month};BYMONTHDAY=${frontmatter.dayOfMonth}`;
+    } else if (frontmatter.dayOfMonth) {
+      rruleString = `FREQ=MONTHLY;BYMONTHDAY=${frontmatter.dayOfMonth}`;
+    } else {
+      // Invalid recurring event, should have been caught by schema validation.
+      console.error(
+        'Full Calendar: Invalid recurring event frontmatter, cannot generate RRULE.',
+        frontmatter
+      );
+      return null;
+    }
 
     if (frontmatter.endRecur) {
       const endLocal = DateTime.fromISO(frontmatter.endRecur, { zone: displayZone }).endOf('day');
 
       // To determine if UNTIL is valid, find the date of the first actual occurrence.
-      const luxonWeekdayMap = { SU: 7, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
-      const weekdayNums = byday.map(
-        (code: string) => luxonWeekdayMap[code as keyof typeof luxonWeekdayMap]
-      );
-      const daysToFirst = Math.min(
-        ...weekdayNums.map((w: number) => (w - dtstart.weekday + 7) % 7)
-      );
-      const firstOccur = dtstart.plus({ days: daysToFirst });
+      // We can do this by creating a temporary RRuleSet and getting the first occurrence.
+      const tempRule = rrulestr(`RRULE:${rruleString}`, { dtstart: dtstart.toJSDate() });
+      const firstOccurDate = tempRule.after(dtstart.toJSDate(), true);
+      const firstOccur = firstOccurDate
+        ? DateTime.fromJSDate(firstOccurDate, { zone: displayZone })
+        : null;
 
-      if (endLocal >= firstOccur.startOf('day')) {
+      if (firstOccur && endLocal >= firstOccur.startOf('day')) {
         const until = endLocal.toUTC().toFormat("yyyyMMdd'T'HHmmss'Z'");
         rruleString += `;UNTIL=${until}`;
       }
