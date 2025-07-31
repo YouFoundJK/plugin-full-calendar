@@ -198,15 +198,28 @@ export const EditEvent = ({
       completedValue = complete || false;
     }
 
-    let recurringData: Partial<OFCEvent> = {};
-    if (recurrenceType !== 'none') {
-      recurringData = {
+    const timeInfo = allDay
+      ? { allDay: true as const }
+      : { allDay: false as const, startTime: startTime || '', endTime: endTime || null };
+
+    let eventData: Partial<OFCEvent>;
+
+    if (recurrenceType === 'none') {
+      eventData = {
+        type: 'single',
+        date: date || '',
+        endDate: endDate || null,
+        completed: completedValue
+      };
+    } else {
+      const recurringData: Partial<OFCEvent> & { type: 'recurring' } = {
         type: 'recurring',
         startRecur: date || undefined,
         endRecur: endRecur,
         isTask: isTask,
         skipDates: initialEvent?.type === 'recurring' ? initialEvent.skipDates : []
       };
+
       if (recurrenceType === 'weekly') {
         recurringData.daysOfWeek = daysOfWeek as ('U' | 'M' | 'T' | 'W' | 'R' | 'F' | 'S')[];
       } else if (recurrenceType === 'monthly' && date) {
@@ -216,25 +229,17 @@ export const EditEvent = ({
         recurringData.month = dt.month;
         recurringData.dayOfMonth = dt.day;
       }
+      eventData = recurringData;
     }
 
-    await submit(
-      {
-        ...{ title, category: category || undefined },
-        ...(allDay
-          ? { allDay: true }
-          : { allDay: false, startTime: startTime || '', endTime: endTime || null }),
-        ...(recurrenceType !== 'none'
-          ? recurringData
-          : {
-              type: 'single',
-              date: date || '',
-              endDate: endDate || null,
-              completed: completedValue
-            })
-      } as OFCEvent,
-      calendarIndex
-    );
+    const finalEvent = {
+      title,
+      category: category || undefined,
+      ...timeInfo,
+      ...eventData
+    } as OFCEvent;
+
+    await submit(finalEvent, calendarIndex);
   };
 
   return (

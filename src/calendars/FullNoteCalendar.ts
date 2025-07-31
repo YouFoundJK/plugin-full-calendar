@@ -25,6 +25,7 @@ import { convertEvent } from '../core/Timezone';
 import { newFrontmatter, modifyFrontmatterString, replaceFrontmatter } from './frontmatter';
 import { constructTitle, parseTitle } from '../core/categoryParser';
 import FullCalendarPlugin from '../main';
+import { DateTime } from 'luxon';
 
 function sanitizeTitleForFilename(title: string): string {
   // Replace characters that are invalid in filenames on most OSes.
@@ -45,12 +46,21 @@ const basenameFromEvent = (event: OFCEvent, settings: FullCalendarSettings): str
     case undefined:
     case 'single':
       return `${event.date} ${sanitizedTitle}`;
-    case 'recurring':
+    case 'recurring': {
       if (event.daysOfWeek && event.daysOfWeek.length > 0) {
         return `(Every ${event.daysOfWeek.join(',')}) ${sanitizedTitle}`;
       }
-      // Placeholder for monthly/yearly logic to be added in Goal 4
+      if (event.month && event.dayOfMonth) {
+        // Luxon months are 1-based, matching our schema.
+        const monthName = DateTime.fromObject({ month: event.month }).toFormat('MMM');
+        return `(Every year on ${monthName} ${event.dayOfMonth}) ${sanitizedTitle}`;
+      }
+      if (event.dayOfMonth) {
+        return `(Every month on the ${event.dayOfMonth}) ${sanitizedTitle}`;
+      }
+      // Fallback for an invalid recurring event, though schema should prevent this.
       return `(Recurring) ${sanitizedTitle}`;
+    }
     case 'rrule':
       return `(${rrulestr(event.rrule).toText()}) ${sanitizedTitle}`;
   }
