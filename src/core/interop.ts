@@ -174,21 +174,19 @@ export function toEventInput(
   // -----------------------------------------------------------------------
   if (frontmatter.type === 'recurring') {
     // ====================================================================
-    // Timezone-Aware Conversion (Final Version)
+    // Time-zone–aware conversion (fixed version)
     // ====================================================================
-    // The frontmatter object's times are already in the displayTimezone.
-    // We will build a compliant iCalendar string that explicitly states this
-    // timezone context for DTSTART and all EXDATEs.
 
-    // A. Identify zone
+    // 1  Pick the zone
     const displayZone =
       frontmatter.timezone || settings.displayTimezone || DateTime.local().zoneName;
 
-    let dtstart: DateTime;
     const startRecurDate = frontmatter.startRecur || '1970-01-01';
+    let dtstart: DateTime;
 
+    // 2  Build the local start-of-series DateTime
     if (frontmatter.allDay) {
-      dtstart = DateTime.fromISO(startRecurDate, { zone: displayZone }).startOf('day');
+      dtstart = DateTime.fromISO(startRecurDate, { zone: displayZone }).startOf('day'); // 00:00 in displayZone
     } else {
       const startTimeDt = parseTime(frontmatter.startTime);
       if (!startTimeDt) return null;
@@ -201,79 +199,67 @@ export function toEventInput(
       });
     }
 
-    // C. Create the RRULE string part, including a timezone-aware UNTIL.
+    // 3  RRULE string (plus UNTIL if endRecur exists)
     let rruleString: string;
 
-    if (frontmatter.daysOfWeek && frontmatter.daysOfWeek.length > 0) {
+    if (frontmatter.daysOfWeek?.length) {
       const weekdays = { U: 'SU', M: 'MO', T: 'TU', W: 'WE', R: 'TH', F: 'FR', S: 'SA' };
-      const byday = frontmatter.daysOfWeek.map((c: string) => weekdays[c as keyof typeof weekdays]);
+      const byday = frontmatter.daysOfWeek.map((c: keyof typeof weekdays) => weekdays[c]);
       rruleString = `FREQ=WEEKLY;BYDAY=${byday.join(',')}`;
     } else if (frontmatter.month && frontmatter.dayOfMonth) {
       rruleString = `FREQ=YEARLY;BYMONTH=${frontmatter.month};BYMONTHDAY=${frontmatter.dayOfMonth}`;
     } else if (frontmatter.dayOfMonth) {
       rruleString = `FREQ=MONTHLY;BYMONTHDAY=${frontmatter.dayOfMonth}`;
     } else {
-      // Invalid recurring event, should have been caught by schema validation.
-      console.error(
-        'Full Calendar: Invalid recurring event frontmatter, cannot generate RRULE.',
-        frontmatter
-      );
+      console.error('FullCalendar: invalid recurring event frontmatter.', frontmatter);
       return null;
     }
 
     if (frontmatter.endRecur) {
       const endLocal = DateTime.fromISO(frontmatter.endRecur, { zone: displayZone }).endOf('day');
 
-      // To determine if UNTIL is valid, find the date of the first actual occurrence.
-      // We can do this by creating a temporary RRuleSet and getting the first occurrence.
-      const tempRule = rrulestr(`RRULE:${rruleString}`, { dtstart: dtstart.toJSDate() });
-      const firstOccurDate = tempRule.after(dtstart.toJSDate(), true);
-      const firstOccur = firstOccurDate
-        ? DateTime.fromJSDate(firstOccurDate, { zone: displayZone })
-        : null;
+      // Only add UNTIL if it occurs on/after the first generated instance
+      const firstOccurDate = rrulestr(`RRULE:${rruleString}`, {
+        dtstart: dtstart.toJSDate()
+      }).after(dtstart.toJSDate(), true);
 
-      if (firstOccur && endLocal >= firstOccur.startOf('day')) {
-        const until = endLocal.toUTC().toFormat("yyyyMMdd'T'HHmmss'Z'");
-        rruleString += `;UNTIL=${until}`;
+      if (firstOccurDate) {
+        const firstOccur = DateTime.fromJSDate(firstOccurDate, { zone: displayZone });
+        if (endLocal >= firstOccur.startOf('day')) {
+          const until = endLocal.toUTC().toFormat("yyyyMMdd'T'HHmmss'Z'");
+          rruleString += `;UNTIL=${until}`;
+        }
       }
     }
 
-    // D. Assemble the final rruleSet string
+    // 4  DTSTART – always include TZID to avoid floating-date bugs
+    const dtstartString = `DTSTART;TZID=${displayZone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
 
-    // For timed events, DTSTART must include the TZID. For all-day events, it must NOT.
-    const dtstartString = frontmatter.allDay
-      ? `DTSTART;VALUE=DATE:${dtstart.toFormat('yyyyMMdd')}`
-      : `DTSTART;TZID=${displayZone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
-
+    // 5  EXDATEs – also anchored to the same zone
     const exdateStrings = (frontmatter.skipDates || [])
       .map((skipDate: string) => {
-        // Correctly handle EXDATE for all-day vs timed events.
         if (frontmatter.allDay) {
-          // All-day exclusions are simple dates, no timezone.
-          const exdateDt = DateTime.fromISO(skipDate, { zone: displayZone }).startOf('day');
-          return `EXDATE;VALUE=DATE:${exdateDt.toFormat('yyyyMMdd')}`;
+          const exDt = DateTime.fromISO(skipDate, { zone: displayZone }).startOf('day');
+          return `EXDATE;TZID=${displayZone}:${exDt.toFormat("yyyyMMdd'T'HHmmss")}`;
         } else {
-          // Timed exclusions MUST be in the same timezone context as DTSTART.
           const startTimeDt = parseTime(frontmatter.startTime);
           if (!startTimeDt) return null;
 
-          const exdateInDisplay = DateTime.fromISO(skipDate, { zone: displayZone }).set({
+          const exDt = DateTime.fromISO(skipDate, { zone: displayZone }).set({
             hour: startTimeDt.hours,
             minute: startTimeDt.minutes,
             second: 0,
             millisecond: 0
           });
-          return `EXDATE;TZID=${displayZone}:${exdateInDisplay.toFormat("yyyyMMdd'T'HHmmss")}`;
+          return `EXDATE;TZID=${displayZone}:${exDt.toFormat("yyyyMMdd'T'HHmmss")}`;
         }
       })
-      .flatMap((s: string | null) => (s ? [s] : []));
+      .filter(Boolean) as string[];
 
-    const finalRruleSetString = [dtstartString, `RRULE:${rruleString}`, ...exdateStrings].join(
-      '\n'
-    );
-    event.rrule = finalRruleSetString;
+    // 6  Assemble the full iCalendar text
+    event.rrule = [dtstartString, `RRULE:${rruleString}`, ...exdateStrings].join('\n');
 
-    // Add duration for timed events (this part is correct as-is).
+    // 7  Duration for timed events
     if (!frontmatter.allDay && frontmatter.startTime && frontmatter.endTime) {
       const startTime = parseTime(frontmatter.startTime);
       const endTime = parseTime(frontmatter.endTime);
@@ -285,7 +271,14 @@ export function toEventInput(
       }
     }
 
-    event.extendedProps = { ...event.extendedProps, isTask: !!frontmatter.isTask };
+    // 8  Misc. extended props
+    event.extendedProps = {
+      ...event.extendedProps,
+      isTask: !!frontmatter.isTask
+    };
+
+    // Tell FullCalendar it’s all-day when relevant
+    event.allDay = !!frontmatter.allDay;
   } else if (frontmatter.type === 'rrule') {
     const dtstart = (() => {
       if (frontmatter.allDay) {
