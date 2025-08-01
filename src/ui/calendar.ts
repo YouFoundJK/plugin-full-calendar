@@ -252,6 +252,7 @@ export function renderCalendar(
     views,
     resourceAreaHeaderContent: 'Categories',
     resources,
+    resourcesInitiallyExpanded: false,
     firstDay: settings?.firstDay,
     ...(settings?.timeFormat24h && {
       eventTimeFormat: {

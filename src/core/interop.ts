@@ -149,25 +149,28 @@ export function toEventInput(
   settings: FullCalendarSettings,
   calendarId?: string
 ): EventInput | null {
+  const displayTitle = frontmatter.subCategory
+    ? `${frontmatter.subCategory} - ${frontmatter.title}`
+    : frontmatter.title;
+
   let event: EventInput = {
     id,
-    title: frontmatter.title, // Use the clean title for display
+    title: displayTitle,
     allDay: frontmatter.allDay,
     extendedProps: {
       recurringEventId: frontmatter.recurringEventId,
-      category: frontmatter.category
+      category: frontmatter.category,
+      subCategory: frontmatter.subCategory,
+      // Pass the clean title through for the reverse conversion on drop.
+      cleanTitle: frontmatter.title
     }
   };
 
   // If the event has a category, assign it as the resourceId.
-  // This now uses a composite ID for sub-categories.
+  // This now uses a composite ID for sub-categories, defaulting to an "Others" group.
   if (frontmatter.category) {
-    if (frontmatter.subCategory) {
-      (event as any).resourceId = `${frontmatter.category}::${frontmatter.subCategory}`;
-    } else {
-      // If there's no sub-category, assign the event directly to the parent category resource.
-      (event as any).resourceId = frontmatter.category;
-    }
+    const subCategory = frontmatter.subCategory || 'Others';
+    (event as any).resourceId = `${frontmatter.category}::${subCategory}`;
   }
 
   if (settings.enableAdvancedCategorization && frontmatter.category) {
@@ -435,7 +438,7 @@ export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
   const endDate = event.end ? getDate(new Date(event.end.getTime() - 1)) : startDate;
 
   return {
-    title: event.title,
+    title: event.extendedProps.cleanTitle || event.title,
     category,
     subCategory, // Add subCategory here
     recurringEventId: event.extendedProps.recurringEventId,

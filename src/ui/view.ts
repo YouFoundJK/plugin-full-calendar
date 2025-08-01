@@ -153,8 +153,8 @@ export class CalendarView extends ItemView {
             if (!categoryMap.has(category)) {
               categoryMap.set(category, new Set());
             }
-            // Use a special identifier for events that have a category but no sub-category.
-            const sub = subCategory || '__NONE__';
+            // Use "Others" as the sub-category if one is not defined.
+            const sub = subCategory || 'Others';
             categoryMap.get(category)!.add(sub);
           }
         }
@@ -162,8 +162,7 @@ export class CalendarView extends ItemView {
 
       // Now, create the child resources (sub-categories).
       for (const [category, subCategories] of categoryMap.entries()) {
-        // Ensure the parent category exists in the resources array. If not, add it.
-        // This handles events whose categories are not in the settings.
+        // Ensure the parent category exists in the resources array.
         if (!resources.find(r => r.id === category)) {
           resources.push({
             id: category,
@@ -172,11 +171,6 @@ export class CalendarView extends ItemView {
         }
 
         for (const subCategory of subCategories) {
-          if (subCategory === '__NONE__') {
-            // For events with no sub-category, we don't need a visible child resource.
-            // The event will be assigned directly to the parent category's resourceId.
-            continue;
-          }
           resources.push({
             id: `${category}::${subCategory}`, // Composite ID
             title: subCategory,
