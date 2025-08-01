@@ -233,6 +233,11 @@ export class RecurringEventManager {
     if (newEventData.type !== 'single') {
       throw new Error('Cannot create a recurring override from a non-single event.');
     }
+    const { event: masterEventForDebug } = this.cache.getInfoForEditableEvent(masterEventId);
+    console.log('[DEBUG] modifyRecurringInstance:', {
+      masterEventUID: masterEventForDebug.uid,
+      newEventData: JSON.stringify(newEventData, null, 2)
+    });
 
     // NEW LOGIC: Check calendar type and delegate
     const { calendar, event: masterEvent } = this.cache.getInfoForEditableEvent(masterEventId);

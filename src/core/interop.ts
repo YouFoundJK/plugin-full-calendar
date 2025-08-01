@@ -159,10 +159,12 @@ export function toEventInput(
     title: displayTitle,
     allDay: frontmatter.allDay,
     extendedProps: {
+      uid: frontmatter.uid,
       recurringEventId: frontmatter.recurringEventId,
       category: frontmatter.category,
       subCategory: frontmatter.subCategory,
-      cleanTitle: frontmatter.title
+      cleanTitle: frontmatter.title,
+      isShadow: false // Flag to identify the real event
     }
   };
 
@@ -404,6 +406,12 @@ export function toEventInput(
  * @returns An `OFCEvent` object.
  */
 export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
+  console.log('[DEBUG] fromEventApi received:', {
+    id: event.id,
+    title: event.title,
+    extendedProps: event.extendedProps
+  });
+
   let category: string | undefined = event.extendedProps.category;
   let subCategory: string | undefined = event.extendedProps.subCategory;
 
@@ -429,6 +437,7 @@ export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
   const endDate = event.end ? getDate(new Date(event.end.getTime() - 1)) : startDate;
 
   return {
+    uid: event.extendedProps.uid,
     title: event.extendedProps.cleanTitle || event.title,
     category,
     subCategory, // Add subCategory here
