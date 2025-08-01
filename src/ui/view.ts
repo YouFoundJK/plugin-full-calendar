@@ -328,7 +328,15 @@ export class CalendarView extends ItemView {
               if (!this.plugin.cache) {
                 return;
               }
-              await this.plugin.cache.deleteEvent(e.id);
+              const event = this.plugin.cache.getEventById(e.id);
+              // If this is a recurring event, offer to delete only this instance
+              if (event && (event.type === 'recurring' || event.type === 'rrule') && e.start) {
+                const instanceDate =
+                  e.start instanceof Date ? e.start.toISOString().slice(0, 10) : undefined;
+                await this.plugin.cache.deleteEvent(e.id, { instanceDate });
+              } else {
+                await this.plugin.cache.deleteEvent(e.id);
+              }
               new Notice(`Deleted event "${e.title}".`);
             })
           );
