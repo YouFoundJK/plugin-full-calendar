@@ -12,15 +12,18 @@
 
 import { CalendarInfo, OFCEvent } from '../types';
 import { EventResponse } from './Calendar';
-import RemoteCalendar from './RemoteCalendar';
-import { FullCalendarSettings } from '../types/settings';
+import { EditableCalendar, EditableEventResponse, CategoryProvider } from './EditableCalendar';
+import { EventLocation } from '../types';
+import { EventPathLocation } from '../core/EventStore';
+import { TFile } from 'obsidian';
 import FullCalendarPlugin from '../main';
 import { convertEvent } from '../core/Timezone';
 import { validateEvent } from '../types';
 import { makeAuthenticatedRequest } from './parsing/google/request';
 import { fromGoogleEvent } from './parsing/google/parser';
+import { FullCalendarSettings } from '../types/settings';
 
-export default class GoogleCalendar extends RemoteCalendar {
+export default class GoogleCalendar extends EditableCalendar {
   private plugin: FullCalendarPlugin;
   private _name: string;
   private _id: string; // This is the Google Calendar ID.
@@ -48,13 +51,6 @@ export default class GoogleCalendar extends RemoteCalendar {
 
   get name(): string {
     return this._name;
-  }
-
-  async revalidate(): Promise<void> {
-    // For Google Calendar, revalidation is handled on-demand by getEvents,
-    // as the cache has its own logic for when to fetch new data.
-    // This method can be a no-op.
-    return Promise.resolve();
   }
 
   async getEvents(): Promise<EventResponse[]> {
@@ -124,5 +120,46 @@ export default class GoogleCalendar extends RemoteCalendar {
   public getLocalIdentifier(event: OFCEvent): string | null {
     // Google event IDs are persistent and unique, so we use them as the local identifier.
     return event.uid || null;
+  }
+
+  // Add required methods for EditableCalendar compliance
+  // Google Calendar is not file-based, so these are either no-ops or throw errors.
+
+  get directory(): string {
+    return ''; // Not applicable
+  }
+
+  containsPath(path: string): boolean {
+    return false; // Not applicable
+  }
+
+  async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
+    return []; // Not applicable
+  }
+
+  async createEvent(event: OFCEvent): Promise<EventLocation> {
+    throw new Error('Not implemented.');
+  }
+
+  async modifyEvent(
+    location: EventPathLocation,
+    newEvent: OFCEvent,
+    updateCacheWithLocation: (loc: EventLocation) => void
+  ): Promise<void> {
+    throw new Error('Not implemented.');
+  }
+
+  async deleteEvent(location: EventPathLocation): Promise<void> {
+    throw new Error('Not implemented.');
+  }
+
+  async bulkAddCategories(getCategory: CategoryProvider, force: boolean): Promise<void> {
+    // No-op for Google Calendar
+    return;
+  }
+
+  async bulkRemoveCategories(knownCategories: Set<string>): Promise<void> {
+    // No-op for Google Calendar
+    return;
   }
 }
