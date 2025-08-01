@@ -404,13 +404,17 @@ export function toEventInput(
  * @param event The `EventApi` object from FullCalendar.
  * @returns An `OFCEvent` object.
  */
-export function fromEventApi(event: EventApi): OFCEvent {
-  // Use the resource id if present (e.g., after drag/drop in resource view), otherwise fallback to extendedProps.category
-  const category = (event as any).resource?.id || event.extendedProps.category;
+export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
+  // If a new resource is provided, it takes precedence. Otherwise, use the resource
+  // attached to the event, or fall back to the category from extendedProps.
+  const category = newResource || (event as any).resource?.id || event.extendedProps.category;
 
   const isRecurring: boolean = event.extendedProps.daysOfWeek !== undefined;
   const startDate = getDate(event.start as Date);
-  const endDate = getDate(event.end as Date);
+  // Correctly calculate endDate for multi-day events.
+  // FullCalendar's end date is exclusive, so we might need to subtract a day.
+  const endDate = event.end ? getDate(new Date(event.end.getTime() - 1)) : startDate;
+
   return {
     title: event.title,
     category,
@@ -429,7 +433,7 @@ export function fromEventApi(event: EventApi): OFCEvent {
           daysOfWeek: event.extendedProps.daysOfWeek.map((i: number) => DAYS[i]),
           startRecur: event.extendedProps.startRecur && getDate(event.extendedProps.startRecur),
           endRecur: event.extendedProps.endRecur && getDate(event.extendedProps.endRecur),
-          skipDates: [], // Default to empty as exception info is unavailable
+          skipDates: [],
           isTask: event.extendedProps.isTask
         }
       : {

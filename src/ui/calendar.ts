@@ -62,7 +62,7 @@ interface ExtraRenderProps {
   };
 
   select?: (startDate: Date, endDate: Date, allDay: boolean, viewType: string) => Promise<void>;
-  modifyEvent?: (event: EventApi, oldEvent: EventApi) => Promise<boolean>;
+  modifyEvent?: (event: EventApi, oldEvent: EventApi, newResource?: string) => Promise<boolean>;
   eventMouseEnter?: (info: EventHoveringArg) => void;
   firstDay?: number;
   initialView?: { desktop: string; mobile: string };
@@ -97,13 +97,16 @@ export function renderCalendar(
     (async ({
       event,
       oldEvent,
-      revert
+      revert,
+      newResource
     }: {
       event: EventApi;
       oldEvent: EventApi;
       revert: () => void;
+      newResource?: { id: string };
     }) => {
-      const success = await modifyEvent(event, oldEvent);
+      // Extract the string ID from the newResource object
+      const success = await modifyEvent(event, oldEvent, newResource?.id);
       if (!success) {
         revert();
       }

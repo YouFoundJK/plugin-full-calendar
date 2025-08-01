@@ -204,7 +204,7 @@ export class CalendarView extends ItemView {
           }
         }
       },
-      modifyEvent: async (newEvent, oldEvent) => {
+      modifyEvent: async (newEvent, oldEvent, newResource) => {
         try {
           const originalEvent = this.plugin.cache.getEventById(oldEvent.id);
           if (!originalEvent) {
@@ -257,7 +257,7 @@ export class CalendarView extends ItemView {
               throw new Error('Could not determine instance date from recurring event.');
             }
 
-            const modifiedEvent = fromEventApi(newEvent);
+            const modifiedEvent = fromEventApi(newEvent, newResource);
             await this.plugin.cache.modifyRecurringInstance(
               oldEvent.id,
               instanceDate,
@@ -270,7 +270,7 @@ export class CalendarView extends ItemView {
             // Let it update normally.
             const didModify = await this.plugin.cache.updateEventWithId(
               oldEvent.id,
-              fromEventApi(newEvent)
+              fromEventApi(newEvent, newResource)
             );
             return !!didModify;
           }
