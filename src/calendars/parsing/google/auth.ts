@@ -75,16 +75,38 @@ function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
   }
   server = http.createServer(async (req, res) => {
     try {
-      if (!req.url) throw new Error('No URL in request');
+      if (!req.url) {
+        // No URL, so we can't do anything. Just end the request.
+        res.end();
+        return;
+      }
+
+      // Only process requests to the /callback path. Ignore others like /favicon.ico
+      if (!req.url.startsWith('/callback')) {
+        res.writeHead(204); // "No Content" response
+        res.end();
+        return;
+      }
+
+      console.log('[Full Calendar Google Auth] Received callback. Full request URL:', req.url);
+      const queryParams = url.parse(req.url, true).query;
+      console.log('[Full Calendar Google Auth] Parsed Query Parameters:', queryParams);
+
       const { code, state } = url.parse(req.url, true).query;
-      if (typeof code !== 'string' || typeof state !== 'string')
+
+      if (typeof code !== 'string' || typeof state !== 'string') {
         throw new Error('Invalid callback parameters');
+      }
+
       res.end('Authentication successful! Please return to Obsidian.');
+
       if (server) {
         server.close();
         server = null;
       }
+
       await exchangeCodeForToken(code, state, plugin);
+      // Refresh the settings tab if it's open
       plugin.settingsTab?.display();
     } catch (e) {
       console.error('Error handling Google Auth callback:', e);

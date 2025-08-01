@@ -742,7 +742,7 @@ class SelectGoogleCalendarsModal extends Modal {
   plugin: FullCalendarPlugin;
   calendars: any[];
   onSubmit: (selected: CalendarInfo[]) => void;
-  selection: Set<string>;
+  googleCalendarSelection: Set<string>;
 
   constructor(
     plugin: FullCalendarPlugin,
@@ -753,10 +753,18 @@ class SelectGoogleCalendarsModal extends Modal {
     this.plugin = plugin;
     this.calendars = calendars;
     this.onSubmit = onSubmit;
-    this.selection = new Set();
+    this.googleCalendarSelection = new Set();
+    console.log(
+      '[DEBUG] Modal Constructor: this.googleCalendarSelection is',
+      this.googleCalendarSelection
+    );
   }
 
   onOpen() {
+    console.log(
+      '[DEBUG] Modal onOpen: this.googleCalendarSelection is',
+      this.googleCalendarSelection
+    );
     const { contentEl } = this;
     contentEl.createEl('h2', { text: 'Select Google Calendars to Add' });
 
@@ -768,7 +776,6 @@ class SelectGoogleCalendarsModal extends Modal {
 
     this.calendars.forEach(cal => {
       if (!cal.id || existingGoogleCalendarIds.has(cal.id)) {
-        // Don't show calendars that are already added or don't have an ID
         return;
       }
 
@@ -777,11 +784,29 @@ class SelectGoogleCalendarsModal extends Modal {
         .setDesc(cal.description || '')
         .addToggle(toggle =>
           toggle.onChange(value => {
+            console.log(`[DEBUG] Toggle changed for calendar: ${cal.summary}`);
+            console.log('[DEBUG] Value is:', value);
+            console.log(
+              '[DEBUG] BEFORE operation, this.googleCalendarSelection is:',
+              this.googleCalendarSelection
+            );
+            console.log(
+              '[DEBUG] Type of this.googleCalendarSelection is:',
+              typeof this.googleCalendarSelection,
+              'Is it a Set?',
+              this.googleCalendarSelection instanceof Set
+            );
+
             if (value) {
-              this.selection.add(cal.id);
+              this.googleCalendarSelection.add(cal.id);
             } else {
-              this.selection.delete(cal.id);
+              this.googleCalendarSelection.delete(cal.id);
             }
+
+            console.log(
+              '[DEBUG] AFTER operation, this.googleCalendarSelection is now:',
+              this.googleCalendarSelection
+            );
           })
         );
     });
@@ -795,16 +820,16 @@ class SelectGoogleCalendarsModal extends Modal {
           const existingColors = this.plugin.settings.calendarSources.map(s => s.color);
 
           const selectedCalendars = this.calendars
-            .filter(cal => this.selection.has(cal.id))
+            .filter(cal => this.googleCalendarSelection.has(cal.id))
             .map(cal => {
               const newColor = getNextColor(existingColors);
               existingColors.push(newColor);
 
               const newCalendar: Extract<CalendarInfo, { type: 'google' }> = {
                 type: 'google',
-                id: cal.id, // Google Calendar ID
+                id: cal.id,
                 name: cal.summary,
-                color: cal.backgroundColor || newColor // Use Google's color if available
+                color: cal.backgroundColor || newColor
               };
               return newCalendar;
             });
