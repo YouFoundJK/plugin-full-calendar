@@ -30,6 +30,7 @@ import FullNoteCalendar from './calendars/FullNoteCalendar';
 import DailyNoteCalendar from './calendars/DailyNoteCalendar';
 import ICSCalendar from './calendars/ICSCalendar';
 import CalDAVCalendar from './calendars/CalDAVCalendar';
+import GoogleCalendar from './calendars/GoogleCalendar';
 import { manageTimezone } from './core/Timezone';
 import { CategorizationManager } from './core/CategorizationManager';
 import { exchangeCodeForToken } from './calendars/parsing/google/auth';
@@ -54,8 +55,7 @@ export default class FullCalendarPlugin extends Plugin {
     caldav: (info, settings) =>
       info.type === 'caldav' ? new CalDAVCalendar(info, settings) : null,
     google: (info, settings) =>
-      // Placeholder for now. This will be implemented in a future step.
-      null,
+      info.type === 'google' ? new GoogleCalendar(this, info, settings) : null,
     FOR_TEST_ONLY: () => null
   });
 
