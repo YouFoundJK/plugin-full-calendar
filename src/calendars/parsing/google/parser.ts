@@ -13,7 +13,7 @@
 import { DateTime } from 'luxon';
 import { OFCEvent } from '../../../types';
 import { FullCalendarSettings } from '../../../types/settings';
-import { parseTitle } from '../../../core/categoryParser';
+import { parseTitle, constructTitle } from '../../../core/categoryParser';
 import { rrulestr } from 'rrule';
 
 /**
@@ -117,4 +117,89 @@ export function fromGoogleEvent(gEvent: any, settings: FullCalendarSettings): OF
   };
 
   return { ...eventData, ...singleEvent } as OFCEvent;
+}
+
+/**
+ * Transforms an OFCEvent into a Google Calendar API-compatible JSON object.
+ *
+ * @param event The internal OFCEvent to convert.
+ * @returns A JSON object ready to be sent to the Google Calendar API.
+ */
+export function toGoogleEvent(event: OFCEvent): object {
+  const gEvent: any = {};
+
+  // 1. Summary (Title)
+  gEvent.summary = constructTitle(event.category, event.subCategory, event.title);
+
+  // 2. ID for updates
+  if (event.uid) {
+    gEvent.id = event.uid;
+  }
+
+  // 3. Recurrence
+  if (event.type === 'rrule' && event.rrule) {
+    // Note: This only handles the main RRULE string for now.
+    // EXDATEs would also go in this array if we were to support them on write.
+    gEvent.recurrence = [`RRULE:${event.rrule}`];
+  }
+
+  // 4. Time / Date
+  if (event.allDay === false) {
+    // Timed Event
+    const timeZone = event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    let startDate: string | undefined;
+    let endDate: string | undefined;
+
+    // Type Guard to access properties like `date` and `startDate`
+    if (event.type === 'single') {
+      startDate = event.date;
+      endDate = event.endDate || undefined;
+    } else if (event.type === 'rrule') {
+      startDate = event.startDate;
+      // rrule events in this system don't have an end date for the start/end properties.
+    }
+    // Note: 'recurring' type doesn't have a single start/end date, it has startRecur/endRecur
+    // which is handled by the rrule property above.
+
+    if (!startDate) {
+      throw new Error('Cannot create a timed Google event without a start date.');
+    }
+
+    const startDateTime = DateTime.fromISO(`${startDate}T${event.startTime}`);
+    gEvent.start = {
+      dateTime: startDateTime.toISO(),
+      timeZone: timeZone
+    };
+
+    if (event.endTime) {
+      const endDateTime = DateTime.fromISO(`${endDate || startDate}T${event.endTime}`);
+      gEvent.end = {
+        dateTime: endDateTime.toISO(),
+        timeZone: timeZone
+      };
+    }
+    // If no endTime is provided, the Google API will use a default duration, which is acceptable.
+  } else {
+    // All-Day Event
+    if (event.type !== 'single') {
+      // For now, only single all-day events are supported for writing.
+      // Recurring all-day events would need more complex RRULE generation.
+      throw new Error('Cannot create a recurring all-day Google event yet.');
+    }
+
+    gEvent.start = {
+      date: event.date
+    };
+
+    // For all-day events, Google's end date is exclusive.
+    // So for a single day event "2023-01-01", the end date must be "2023-01-02".
+    // For a multi-day event ending on "2023-01-03", the end date must be "2023-01-04".
+    const inclusiveEndDate = event.endDate || event.date;
+    const exclusiveEndDate = DateTime.fromISO(inclusiveEndDate).plus({ days: 1 }).toISODate();
+    gEvent.end = {
+      date: exclusiveEndDate
+    };
+  }
+
+  return gEvent;
 }
