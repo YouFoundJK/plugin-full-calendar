@@ -24,7 +24,8 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SCOPES =
   'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
 
-const MOBILE_REDIRECT_URI = 'https://obsidian-full-calendar-google-auth.vercel.app/callback';
+const MOBILE_REDIRECT_URI =
+  'https://youfoundjk.github.io/plugin-full-calendar/google-auth-callback.html';
 const DESKTOP_REDIRECT_URI = 'http://127.0.0.1:42813/callback';
 
 const PUBLIC_CLIENT_ID = '783376961232-v90b17gr1mj1s2mnmdauvkp77u6htpke.apps.googleusercontent.com';
