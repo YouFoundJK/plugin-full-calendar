@@ -241,10 +241,15 @@ export default class FullNoteCalendar extends EditableCalendar {
   }
 
   async modifyEvent(
-    location: EventPathLocation,
-    event: OFCEvent,
+    oldEvent: OFCEvent,
+    newEvent: OFCEvent,
+    location: EventPathLocation | null,
     updateCacheWithLocation: (loc: EventLocation) => void
   ): Promise<void> {
+    if (!location) {
+      throw new Error('FullNoteCalendar.modifyEvent requires a file location.');
+    }
+    const event = newEvent;
     const { path } = location;
     const file = this.app.getFileByPath(path);
     if (!file) {
@@ -314,7 +319,11 @@ export default class FullNoteCalendar extends EditableCalendar {
     await this.app.rename(file, newPath);
   }
 
-  deleteEvent({ path, lineNumber }: EventPathLocation): Promise<void> {
+  async deleteEvent(event: OFCEvent, location: EventPathLocation | null): Promise<void> {
+    if (!location) {
+      throw new Error('FullNoteCalendar.deleteEvent requires a file location.');
+    }
+    const { path, lineNumber } = location;
     if (lineNumber !== undefined) {
       throw new Error('Note calendar cannot handle inline events.');
     }

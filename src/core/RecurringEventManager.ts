@@ -300,15 +300,21 @@ export class RecurringEventManager {
         recurringEventId: newParentIdentifier
       };
 
-      await childCalendar.modifyEvent(childLocation, updatedChildEvent, newChildLocation => {
-        this.cache.store.delete(childStoredEvent.id);
-        this.cache.store.add({
-          calendar: childCalendar,
-          location: newChildLocation,
-          id: childStoredEvent.id,
-          event: updatedChildEvent
-        });
-      });
+      // We pass the child's own data as the "old event"
+      await childCalendar.modifyEvent(
+        childEvent,
+        updatedChildEvent,
+        childLocation,
+        newChildLocation => {
+          this.cache.store.delete(childStoredEvent.id);
+          this.cache.store.add({
+            calendar: childCalendar,
+            location: newChildLocation,
+            id: childStoredEvent.id,
+            event: updatedChildEvent
+          });
+        }
+      );
 
       this.cache.isBulkUpdating = true;
       this.cache.updateQueue.toRemove.add(childStoredEvent.id);

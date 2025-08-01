@@ -162,15 +162,35 @@ export default class GoogleCalendar extends EditableCalendar {
   }
 
   async modifyEvent(
-    location: EventPathLocation,
+    oldEvent: OFCEvent,
     newEvent: OFCEvent,
-    updateCacheWithLocation: (loc: EventLocation) => void
+    location: EventPathLocation | null,
+    updateCacheWithLocation: (loc: EventLocation | null) => void
   ): Promise<void> {
-    throw new Error('Not implemented.');
+    const eventId = newEvent.uid || oldEvent.uid;
+    if (!eventId) {
+      throw new Error('Cannot modify a Google event without a UID/ID.');
+    }
+    const url = new URL(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+        this.identifier
+      )}/events/${encodeURIComponent(eventId)}`
+    );
+    const body = toGoogleEvent(newEvent);
+    await makeAuthenticatedRequest(this.plugin, url.toString(), 'PUT', body);
+    updateCacheWithLocation(null);
   }
 
-  async deleteEvent(location: EventPathLocation): Promise<void> {
-    throw new Error('Not implemented.');
+  async deleteEvent(event: OFCEvent, location: EventPathLocation | null): Promise<void> {
+    if (!event.uid) {
+      throw new Error('Cannot delete a Google event without a UID.');
+    }
+    const url = new URL(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+        this.identifier
+      )}/events/${encodeURIComponent(event.uid)}`
+    );
+    await makeAuthenticatedRequest(this.plugin, url.toString(), 'DELETE');
   }
 
   async bulkAddCategories(getCategory: CategoryProvider, force: boolean): Promise<void> {

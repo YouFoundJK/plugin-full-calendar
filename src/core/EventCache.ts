@@ -342,7 +342,7 @@ export default class EventCache {
     if (!details) {
       throw new Error(`Event ID ${eventId} not present in event store.`);
     }
-    const { calendarId, location, event } = details; // Extract event here
+    const { calendarId, location, event } = details;
     const calendar = this.calendars.get(calendarId);
     if (!calendar) {
       throw new Error(`Calendar ID ${calendarId} is not registered.`);
@@ -351,10 +351,7 @@ export default class EventCache {
       // console.warn("Cannot modify event of type " + calendar.type);
       throw new Error(`Read-only events cannot be modified.`);
     }
-    if (!location) {
-      throw new Error(`Event with ID ${eventId} does not have a location in the Vault.`);
-    }
-    return { calendar, location, event }; // Return event here
+    return { calendar, location, event };
   }
 
   // ====================================================================
@@ -456,7 +453,7 @@ export default class EventCache {
     }
 
     this._store.delete(eventId);
-    await calendar.deleteEvent(location);
+    await calendar.deleteEvent(event, location);
 
     if (options?.silent) {
       this.isBulkUpdating = true;
@@ -504,15 +501,12 @@ export default class EventCache {
       }
     }
 
-    const { path, lineNumber } = oldLocation;
-
     // Remove old identifier
     const oldGlobalIdentifier = this.getGlobalIdentifier(oldEvent, calendar.id);
     if (oldGlobalIdentifier) {
       this.identifierToSessionIdMap.delete(oldGlobalIdentifier);
     }
-
-    await calendar.modifyEvent({ path, lineNumber }, newEvent, newLocation => {
+    await calendar.modifyEvent(oldEvent, newEvent, oldLocation, newLocation => {
       this._store.delete(eventId);
       this._store.add({
         calendar,
