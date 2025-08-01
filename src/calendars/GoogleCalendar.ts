@@ -22,6 +22,7 @@ import { validateEvent } from '../types';
 import { makeAuthenticatedRequest } from './parsing/google/request';
 import { fromGoogleEvent, toGoogleEvent } from './parsing/google/parser';
 import { FullCalendarSettings } from '../types/settings';
+import { DateTime } from 'luxon';
 
 export default class GoogleCalendar extends EditableCalendar {
   private plugin: FullCalendarPlugin;
@@ -201,5 +202,85 @@ export default class GoogleCalendar extends EditableCalendar {
   async bulkRemoveCategories(knownCategories: Set<string>): Promise<void> {
     // No-op for Google Calendar
     return;
+  }
+
+  /**
+   * Creates an "exception" event for a recurring series.
+   * This is used when a user modifies a single instance of a recurring event.
+   */
+  async createInstanceOverride(
+    masterEvent: OFCEvent,
+    instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<OFCEvent> {
+    if (!masterEvent.uid) {
+      throw new Error('Cannot override an instance of a recurring event that has no master UID.');
+    }
+    if (newEventData.allDay === false) {
+      // The API requires the *original* start time of the instance we are overriding.
+      // ADD a type guard here.
+      if (masterEvent.allDay === false) {
+        const originalStartTime = {
+          dateTime: DateTime.fromISO(`${instanceDate}T${masterEvent.startTime}`).toISO(),
+          timeZone: masterEvent.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
+
+        const body = {
+          ...toGoogleEvent(newEventData),
+          recurringEventId: masterEvent.uid,
+          originalStartTime: originalStartTime
+        };
+
+        const newGEvent = await makeAuthenticatedRequest(
+          this.plugin,
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.identifier)}/events`,
+          'POST',
+          body
+        );
+
+        const finalEvent = fromGoogleEvent(newGEvent, this.settings);
+        if (!finalEvent) {
+          throw new Error('Could not parse Google API response after creating instance override.');
+        }
+        return finalEvent;
+      }
+    }
+    // Note: Overriding all-day events is more complex and not supported in this initial implementation.
+    throw new Error(
+      'Modifying a single instance of an all-day recurring event is not yet supported for Google Calendars.'
+    );
+  }
+
+  /**
+   * Cancels a single instance of a recurring event.
+   * In the Google API, this means creating an exception event with a "cancelled" status.
+   */
+  async cancelInstance(parentEvent: OFCEvent, instanceDate: string): Promise<void> {
+    if (!parentEvent.uid) {
+      throw new Error('Cannot cancel an instance of a recurring event that has no master UID.');
+    }
+
+    const eventId = parentEvent.uid;
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+      this.identifier
+    )}/events/${encodeURIComponent(eventId)}/instances`;
+
+    // First, find the specific instanceId from the parent event.
+    const instances = await makeAuthenticatedRequest(this.plugin, url);
+    const instance = instances.items.find((inst: any) => {
+      const instDate = inst.start.date || inst.start.dateTime.slice(0, 10);
+      return instDate === instanceDate;
+    });
+
+    if (!instance) {
+      throw new Error(`Could not find instance of recurring event on ${instanceDate} to cancel.`);
+    }
+
+    // Now, cancel that specific instance using its own ID.
+    const cancelUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+      this.identifier
+    )}/events/${encodeURIComponent(instance.id)}`;
+
+    await makeAuthenticatedRequest(this.plugin, cancelUrl, 'POST', { status: 'cancelled' });
   }
 }

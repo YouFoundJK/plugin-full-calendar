@@ -18,6 +18,7 @@ import EventCache from './EventCache';
 import { StoredEvent } from './EventStore';
 import { OFCEvent } from '../types';
 import { DeleteRecurringModal } from '../ui/modals/DeleteRecurringModal';
+import GoogleCalendar from '../calendars/GoogleCalendar';
 
 /**
  * Manages all complex business logic related to recurring events.
@@ -113,8 +114,11 @@ export class RecurringEventManager {
       return false;
     }
 
+    const { calendar } = this.cache.getInfoForEditableEvent(eventId); // Get calendar info
+    const isGoogle = calendar instanceof GoogleCalendar; // Check if it's a Google Calendar
+
     const children = this.findRecurringChildren(eventId);
-    // If instanceDate is provided, show the delete-instance option
+    // If instanceDate is provided, or if there are local children, show the modal.
     if (children.length > 0 || options?.instanceDate) {
       new DeleteRecurringModal(
         this.cache.plugin.app,
@@ -122,18 +126,24 @@ export class RecurringEventManager {
         () => this.deleteAllRecurring(eventId),
         options?.instanceDate
           ? async () => {
-              // Append the date to skipDates for this master event
-              await this.cache.processEvent(eventId, e => {
-                if (e.type !== 'recurring' && e.type !== 'rrule') return e;
-                const skipDates = e.skipDates?.includes(options.instanceDate!)
-                  ? e.skipDates
-                  : [...(e.skipDates || []), options.instanceDate!];
-                return { ...e, skipDates };
-              });
-              this.cache.flushUpdateQueue([], []);
+              // This logic is now split: local calendars add to skipDates,
+              // Google calendars trigger a cancelInstance call.
+              if (calendar instanceof GoogleCalendar) {
+                await this.cache.deleteEvent(eventId, { instanceDate: options.instanceDate });
+              } else {
+                await this.cache.processEvent(eventId, e => {
+                  if (e.type !== 'recurring' && e.type !== 'rrule') return e;
+                  const skipDates = e.skipDates?.includes(options.instanceDate!)
+                    ? e.skipDates
+                    : [...(e.skipDates || []), options.instanceDate!];
+                  return { ...e, skipDates };
+                });
+                this.cache.flushUpdateQueue([], []);
+              }
             }
           : undefined,
-        options?.instanceDate
+        options?.instanceDate,
+        isGoogle
       ).open();
       return true; // Deletion is handled by the modal, stop further processing.
     }
@@ -223,6 +233,21 @@ export class RecurringEventManager {
     if (newEventData.type !== 'single') {
       throw new Error('Cannot create a recurring override from a non-single event.');
     }
+
+    // NEW LOGIC: Check calendar type and delegate
+    const { calendar, event: masterEvent } = this.cache.getInfoForEditableEvent(masterEventId);
+    if (calendar instanceof GoogleCalendar) {
+      const newExceptionEvent = await calendar.createInstanceOverride(
+        masterEvent,
+        instanceDate,
+        newEventData
+      );
+      // Add the new exception to the cache silently. The caller is responsible for the UI update.
+      await this.cache.addEvent(calendar.id, newExceptionEvent, { silent: true });
+      return;
+    }
+    // END NEW LOGIC
+
     await this._createRecurringOverride(masterEventId, instanceDate, newEventData);
   }
 
