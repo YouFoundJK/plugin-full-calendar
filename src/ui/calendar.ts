@@ -253,6 +253,17 @@ export function renderCalendar(
     resourceAreaHeaderContent: 'Categories',
     resources,
     resourcesInitiallyExpanded: false,
+
+    // Prevent dropping events onto parent category rows
+    eventAllow: (dropInfo, draggedEvent) => {
+      // <-- ADD THIS BLOCK
+      // dropInfo.resource is the resource that the event is being dropped on
+      if (dropInfo.resource?.extendedProps?.isParent) {
+        return false; // Disallow drop on parent
+      }
+      return true; // Allow drop on children (or in non-resource views)
+    },
+
     firstDay: settings?.firstDay,
     ...(settings?.timeFormat24h && {
       eventTimeFormat: {

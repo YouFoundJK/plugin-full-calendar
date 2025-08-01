@@ -148,12 +148,12 @@ export function toEventInput(
   frontmatter: OFCEvent,
   settings: FullCalendarSettings,
   calendarId?: string
-): EventInput | null {
+): EventInput | EventInput[] | null {
   const displayTitle = frontmatter.subCategory
     ? `${frontmatter.subCategory} - ${frontmatter.title}`
     : frontmatter.title;
 
-  let event: EventInput = {
+  let baseEvent: EventInput = {
     id,
     title: displayTitle,
     allDay: frontmatter.allDay,
@@ -161,32 +161,24 @@ export function toEventInput(
       recurringEventId: frontmatter.recurringEventId,
       category: frontmatter.category,
       subCategory: frontmatter.subCategory,
-      // Pass the clean title through for the reverse conversion on drop.
-      cleanTitle: frontmatter.title
+      cleanTitle: frontmatter.title,
+      isShadow: false // Flag to identify the real event
     }
   };
 
-  // If the event has a category, assign it as the resourceId.
-  // This now uses a composite ID for sub-categories, defaulting to an "Others" group.
-  if (frontmatter.category) {
-    const subCategory = frontmatter.subCategory || 'Others';
-    (event as any).resourceId = `${frontmatter.category}::${subCategory}`;
-  }
-
+  // Assign category-level coloring
   if (settings.enableAdvancedCategorization && frontmatter.category) {
     const categorySetting = (settings.categorySettings || []).find(
       (c: any) => c.name === frontmatter.category
     );
     if (categorySetting) {
       const { color, textColor } = getCalendarColors(categorySetting.color);
-      event.color = color;
-      event.textColor = textColor;
+      baseEvent.color = color;
+      baseEvent.textColor = textColor;
     }
   }
 
-  // -----------------------------------------------------------------------
-  // Recurring events (timezone-aware & bullet-proof)
-  // -----------------------------------------------------------------------
+  // --- Main Event Logic (largely the same, but populates baseEvent) ---
   if (frontmatter.type === 'recurring') {
     // ====================================================================
     // Time-zone–aware conversion (fixed version)
@@ -272,7 +264,7 @@ export function toEventInput(
       .filter(Boolean) as string[];
 
     // 6  Assemble the full iCalendar text
-    event.rrule = [dtstartString, `RRULE:${rruleString}`, ...exdateStrings].join('\n');
+    baseEvent.rrule = [dtstartString, `RRULE:${rruleString}`, ...exdateStrings].join('\n');
 
     // 7  Duration for timed events
     if (!frontmatter.allDay && frontmatter.startTime && frontmatter.endTime) {
@@ -281,19 +273,19 @@ export function toEventInput(
       if (startTime && endTime) {
         const duration = endTime.minus(startTime);
         if (duration.as('milliseconds') > 0) {
-          event.duration = duration.toFormat('hh:mm');
+          baseEvent.duration = duration.toFormat('hh:mm');
         }
       }
     }
 
     // 8  Misc. extended props
-    event.extendedProps = {
-      ...event.extendedProps,
+    baseEvent.extendedProps = {
+      ...baseEvent.extendedProps,
       isTask: !!frontmatter.isTask
     };
 
     // Tell FullCalendar it’s all-day when relevant
-    event.allDay = !!frontmatter.allDay;
+    baseEvent.allDay = !!frontmatter.allDay;
   } else if (frontmatter.type === 'rrule') {
     const dtstart = (() => {
       if (frontmatter.allDay) {
@@ -323,7 +315,7 @@ export function toEventInput(
       })
       .flatMap((d: string) => (d ? [d] : []));
 
-    event = {
+    baseEvent = {
       id,
       title: frontmatter.title,
       allDay: frontmatter.allDay,
@@ -331,7 +323,7 @@ export function toEventInput(
         dtstart: dtstart.toJSDate()
       }).toString(),
       exdate,
-      extendedProps: { ...event.extendedProps, isTask: !!frontmatter.isTask } // Added line
+      extendedProps: { ...baseEvent.extendedProps, isTask: !!frontmatter.isTask } // Added line
     };
 
     if (!frontmatter.allDay) {
@@ -340,7 +332,7 @@ export function toEventInput(
         const endTime = parseTime(frontmatter.endTime);
         const duration = endTime?.minus(startTime);
         if (duration) {
-          event.duration = duration.toISOTime({
+          baseEvent.duration = duration.toISOTime({
             includePrefix: false,
             suppressMilliseconds: true,
             suppressSeconds: true
@@ -362,15 +354,12 @@ export function toEventInput(
         }
       }
 
-      event = {
-        ...event,
-        start,
-        end,
-        extendedProps: {
-          ...event.extendedProps,
-          isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
-          taskCompleted: frontmatter.completed
-        }
+      baseEvent.start = start;
+      baseEvent.end = end;
+      baseEvent.extendedProps = {
+        ...baseEvent.extendedProps,
+        isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
+        taskCompleted: frontmatter.completed
       };
     } else {
       const isLocalCalendar = calendarId?.startsWith('local::');
@@ -388,20 +377,37 @@ export function toEventInput(
         adjustedEndDate = frontmatter.endDate;
       }
 
-      event = {
-        ...event,
-        start: frontmatter.date,
-        end: adjustedEndDate,
-        extendedProps: {
-          ...event.extendedProps,
-          isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
-          taskCompleted: frontmatter.completed
-        }
+      baseEvent.start = frontmatter.date;
+      baseEvent.end = adjustedEndDate;
+      baseEvent.extendedProps = {
+        ...baseEvent.extendedProps,
+        isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
+        taskCompleted: frontmatter.completed
       };
     }
   }
 
-  return event;
+  // --- NEW AGGREGATION LOGIC ---
+  if (frontmatter.category) {
+    const subCategory = frontmatter.subCategory || 'Others';
+    baseEvent.resourceId = `${frontmatter.category}::${subCategory}`;
+
+    // Create a non-interactive "shadow" event for the parent row.
+    const shadowEvent: EventInput = {
+      ...baseEvent,
+      id: `${id}-shadow`,
+      resourceId: frontmatter.category,
+      display: 'background',
+      interactive: false,
+      extendedProps: {
+        ...baseEvent.extendedProps,
+        isShadow: true
+      }
+    };
+    return [baseEvent, shadowEvent];
+  }
+
+  return baseEvent;
 }
 
 /**

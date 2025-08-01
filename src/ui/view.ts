@@ -87,12 +87,11 @@ export class CalendarView extends ItemView {
    * Also calculates the correct text color for event backgrounds.
    */
   translateSources() {
-    const settings = this.plugin.settings; // Get settings
+    const settings = this.plugin.settings;
     return this.plugin.cache.getAllEvents().map(
       ({ events, editable, color, id }): EventSourceInput => ({
         id,
-        // Pass settings to toEventInput
-        events: events.flatMap(e => toEventInput(e.id, e.event, settings, id) || []),
+        events: events.flatMap(e => toEventInput(e.id, e.event, settings, id) || []), // <-- Use flatMap
         editable,
         ...getCalendarColors(color)
       })
@@ -131,16 +130,22 @@ export class CalendarView extends ItemView {
 
     // Generate the list of resources for the timeline view.
     // This now builds a hierarchical structure for categories and sub-categories.
-    const resources: { id: string; title: string; parentId?: string; eventColor?: string }[] = [];
+    const resources: {
+      id: string;
+      title: string;
+      parentId?: string;
+      eventColor?: string;
+      extendedProps?: any;
+    }[] = [];
     if (this.plugin.settings.enableAdvancedCategorization) {
       // First, add top-level resources for each category from settings.
-      // This ensures that categories appear even if they have no events yet.
       const categorySettings = this.plugin.settings.categorySettings || [];
       categorySettings.forEach(cat => {
         resources.push({
           id: cat.name,
           title: cat.name,
-          eventColor: cat.color
+          eventColor: cat.color,
+          extendedProps: { isParent: true }
         });
       });
 
@@ -153,7 +158,6 @@ export class CalendarView extends ItemView {
             if (!categoryMap.has(category)) {
               categoryMap.set(category, new Set());
             }
-            // Use "Others" as the sub-category if one is not defined.
             const sub = subCategory || 'Others';
             categoryMap.get(category)!.add(sub);
           }
@@ -166,13 +170,14 @@ export class CalendarView extends ItemView {
         if (!resources.find(r => r.id === category)) {
           resources.push({
             id: category,
-            title: category
+            title: category,
+            extendedProps: { isParent: true }
           });
         }
 
         for (const subCategory of subCategories) {
           resources.push({
-            id: `${category}::${subCategory}`, // Composite ID
+            id: `${category}::${subCategory}`,
             title: subCategory,
             parentId: category
           });
