@@ -148,7 +148,8 @@ export function toEventInput(
   frontmatter: OFCEvent,
   settings: FullCalendarSettings,
   calendarId?: string
-): EventInput | EventInput[] | null {
+): EventInput | null {
+  // MODIFICATION: Return type is now EventInput | null
   const displayTitle = frontmatter.subCategory
     ? `${frontmatter.subCategory} - ${frontmatter.title}`
     : frontmatter.title;
@@ -161,8 +162,7 @@ export function toEventInput(
       recurringEventId: frontmatter.recurringEventId,
       category: frontmatter.category,
       subCategory: frontmatter.subCategory,
-      cleanTitle: frontmatter.title,
-      isShadow: false // Flag to identify the real event
+      cleanTitle: frontmatter.title
     }
   };
 
@@ -176,6 +176,10 @@ export function toEventInput(
       baseEvent.color = color;
       baseEvent.textColor = textColor;
     }
+
+    // NEW: Assign resource ID for timeline view
+    const subCategoryName = frontmatter.subCategory || '__NONE__';
+    baseEvent.resourceId = `${frontmatter.category}::${subCategoryName}`;
   }
 
   // --- Main Event Logic (largely the same, but populates baseEvent) ---
@@ -387,26 +391,7 @@ export function toEventInput(
     }
   }
 
-  // --- NEW AGGREGATION LOGIC ---
-  if (frontmatter.category) {
-    const subCategory = frontmatter.subCategory || 'Others';
-    baseEvent.resourceId = `${frontmatter.category}::${subCategory}`;
-
-    // Create a non-interactive "shadow" event for the parent row.
-    const shadowEvent: EventInput = {
-      ...baseEvent,
-      id: `${id}-shadow`,
-      resourceId: frontmatter.category,
-      display: 'background',
-      interactive: false,
-      extendedProps: {
-        ...baseEvent.extendedProps,
-        isShadow: true
-      }
-    };
-    return [baseEvent, shadowEvent];
-  }
-
+  // REMOVED SHADOW EVENT LOGIC
   return baseEvent;
 }
 
