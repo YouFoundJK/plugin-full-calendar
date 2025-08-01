@@ -104,7 +104,7 @@ export const getInlineEventFromLine = (
 
   const hasInlineFields = Object.keys(attrs).length > 0;
 
-  if (!settings.enableCategoryColoring && !hasInlineFields) {
+  if (!settings.enableAdvancedCategorization && !hasInlineFields) {
     return null;
   }
 
@@ -115,7 +115,7 @@ export const getInlineEventFromLine = (
   }
 
   let eventData: any = {};
-  if (settings.enableCategoryColoring) {
+  if (settings.enableAdvancedCategorization) {
     const { category, title } = parseTitle(rawTitle);
     eventData.title = title.trim(); // Trim the final components
     eventData.category = category ? category.trim() : undefined; // Trim the final components
@@ -182,7 +182,9 @@ const makeListItem = (
     return null;
   })();
 
-  const titleToWrite = settings.enableCategoryColoring ? constructTitle(category, title) : title;
+  const titleToWrite = settings.enableAdvancedCategorization
+    ? constructTitle(category, title)
+    : title;
 
   const attrs: Partial<OFCEvent> = { ...data };
   delete attrs['completed'];
@@ -531,7 +533,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
 
     const removalSettings: FullCalendarSettings = {
       ...this.settings,
-      enableCategoryColoring: true
+      enableAdvancedCategorization: true
     };
 
     const processor = async (file: TFile) => {

@@ -10,6 +10,9 @@ For example, if you have a "Work" category with a blue color, an event titled `W
     - `❌ Incorrect: Work-Project Sync` (no spaces)
     - `❌ Incorrect: Work -Project Sync` (no space after dash)
 
+!!! important "Choice of this format"
+    Its easy to question why such a view implemetation and why not just add another category property to the event. This is done to make it compactible with REMOTE calenders most of them doesnt have a category property. Because current cateorization works on parsing the title it will still work for all calenders as long as the user follows it up! 
+
 ## Enabling Category Coloring
 
 This feature can perform a one-time, permanent modification of your event notes to add categories to titles. **It is highly recommended to back up your vault before enabling this feature.**

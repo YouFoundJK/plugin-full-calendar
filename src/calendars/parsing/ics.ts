@@ -71,7 +71,7 @@ function icsToOFC(input: ical.Event, settings: FullCalendarSettings): OFCEvent {
   const summary = input.summary || '';
 
   let eventData: any = {};
-  if (settings.enableCategoryColoring) {
+  if (settings.enableAdvancedCategorization) {
     const { category, title } = parseTitle(summary);
     eventData.title = title;
     eventData.category = category;

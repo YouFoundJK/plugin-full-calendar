@@ -129,6 +129,13 @@ export class CalendarView extends ItemView {
       return;
     }
 
+    // Generate the list of resources from category settings.
+    const resources = (this.plugin.settings.categorySettings || []).map(cat => ({
+      id: cat.name,
+      title: cat.name,
+      eventColor: cat.color
+    }));
+
     const sources: EventSourceInput[] = this.translateSources();
 
     if (this.fullCalendarView) {
@@ -139,6 +146,8 @@ export class CalendarView extends ItemView {
       // timeZone:
       //   this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone, // <-- ADD THIS LINE
       forceNarrow: this.inSidebar,
+      resources,
+      enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
       customButtons: {
         analysis: {
           text: 'Analysis',

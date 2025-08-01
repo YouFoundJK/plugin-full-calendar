@@ -38,7 +38,7 @@ function sanitizeTitleForFilename(title: string): string {
 
 const basenameFromEvent = (event: OFCEvent, settings: FullCalendarSettings): string => {
   // Use the full, constructed title for the filename IF the feature is enabled.
-  const fullTitle = settings.enableCategoryColoring
+  const fullTitle = settings.enableAdvancedCategorization
     ? constructTitle(event.category, event.title)
     : event.title;
   const sanitizedTitle = sanitizeTitleForFilename(fullTitle);
@@ -112,7 +112,7 @@ export default class FullNoteCalendar extends EditableCalendar {
     let eventData: any = { ...frontmatter };
     const rawTitle = frontmatter.title || file.basename;
 
-    if (this.settings.enableCategoryColoring) {
+    if (this.settings.enableAdvancedCategorization) {
       const { category, title } = parseTitle(rawTitle);
       eventData.title = title;
       eventData.category = category;
@@ -206,7 +206,7 @@ export default class FullNoteCalendar extends EditableCalendar {
       eventToWrite = convertEvent(event, displayTimezone, eventToWrite.timezone);
     }
 
-    const titleToWrite = this.settings.enableCategoryColoring
+    const titleToWrite = this.settings.enableAdvancedCategorization
       ? constructTitle(eventToWrite.category, eventToWrite.title)
       : eventToWrite.title;
 
@@ -261,7 +261,7 @@ export default class FullNoteCalendar extends EditableCalendar {
     eventToWrite.timezone = fileTimezone;
 
     // MODIFICATION: Conditional Title Construction
-    const titleToWrite = this.settings.enableCategoryColoring
+    const titleToWrite = this.settings.enableAdvancedCategorization
       ? constructTitle(eventToWrite.category, eventToWrite.title)
       : eventToWrite.title;
 

@@ -14,8 +14,8 @@ describe('DailyNoteCalendar', () => {
 
   describe('getInlineEventFromLine', () => {
     // Create settings objects for testing
-    const settingsWithCategory = { ...DEFAULT_SETTINGS, enableCategoryColoring: true };
-    const settingsWithoutCategory = { ...DEFAULT_SETTINGS, enableCategoryColoring: false };
+    const settingsWithCategory = { ...DEFAULT_SETTINGS, enableAdvancedCategorization: true };
+    const settingsWithoutCategory = { ...DEFAULT_SETTINGS, enableAdvancedCategorization: false };
 
     const MOCK_GLOBALS = { date: '2023-01-01', type: 'single' as const };
 
