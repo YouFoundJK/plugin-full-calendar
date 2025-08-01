@@ -129,12 +129,62 @@ export class CalendarView extends ItemView {
       return;
     }
 
-    // Generate the list of resources from category settings.
-    const resources = (this.plugin.settings.categorySettings || []).map(cat => ({
-      id: cat.name,
-      title: cat.name,
-      eventColor: cat.color
-    }));
+    // Generate the list of resources for the timeline view.
+    // This now builds a hierarchical structure for categories and sub-categories.
+    const resources: { id: string; title: string; parentId?: string; eventColor?: string }[] = [];
+    if (this.plugin.settings.enableAdvancedCategorization) {
+      // First, add top-level resources for each category from settings.
+      // This ensures that categories appear even if they have no events yet.
+      const categorySettings = this.plugin.settings.categorySettings || [];
+      categorySettings.forEach(cat => {
+        resources.push({
+          id: cat.name,
+          title: cat.name,
+          eventColor: cat.color
+        });
+      });
+
+      // Build a map of categories to their sub-categories from actual events in the cache.
+      const categoryMap = new Map<string, Set<string>>();
+      for (const source of this.plugin.cache.getAllEvents()) {
+        for (const cachedEvent of source.events) {
+          const { category, subCategory } = cachedEvent.event;
+          if (category) {
+            if (!categoryMap.has(category)) {
+              categoryMap.set(category, new Set());
+            }
+            // Use a special identifier for events that have a category but no sub-category.
+            const sub = subCategory || '__NONE__';
+            categoryMap.get(category)!.add(sub);
+          }
+        }
+      }
+
+      // Now, create the child resources (sub-categories).
+      for (const [category, subCategories] of categoryMap.entries()) {
+        // Ensure the parent category exists in the resources array. If not, add it.
+        // This handles events whose categories are not in the settings.
+        if (!resources.find(r => r.id === category)) {
+          resources.push({
+            id: category,
+            title: category
+          });
+        }
+
+        for (const subCategory of subCategories) {
+          if (subCategory === '__NONE__') {
+            // For events with no sub-category, we don't need a visible child resource.
+            // The event will be assigned directly to the parent category's resourceId.
+            continue;
+          }
+          resources.push({
+            id: `${category}::${subCategory}`, // Composite ID
+            title: subCategory,
+            parentId: category
+          });
+        }
+      }
+    }
 
     const sources: EventSourceInput[] = this.translateSources();
 

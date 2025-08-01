@@ -160,9 +160,14 @@ export function toEventInput(
   };
 
   // If the event has a category, assign it as the resourceId.
-  // The resource's `id` will match the category name.
+  // This now uses a composite ID for sub-categories.
   if (frontmatter.category) {
-    (event as any).resourceId = frontmatter.category;
+    if (frontmatter.subCategory) {
+      (event as any).resourceId = `${frontmatter.category}::${frontmatter.subCategory}`;
+    } else {
+      // If there's no sub-category, assign the event directly to the parent category resource.
+      (event as any).resourceId = frontmatter.category;
+    }
   }
 
   if (settings.enableAdvancedCategorization && frontmatter.category) {
@@ -405,9 +410,23 @@ export function toEventInput(
  * @returns An `OFCEvent` object.
  */
 export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
-  // If a new resource is provided, it takes precedence. Otherwise, use the resource
-  // attached to the event, or fall back to the category from extendedProps.
-  const category = newResource || (event as any).resource?.id || event.extendedProps.category;
+  let category: string | undefined = event.extendedProps.category;
+  let subCategory: string | undefined = event.extendedProps.subCategory;
+
+  const resourceId = newResource || (event as any).resource?.id;
+
+  if (resourceId) {
+    const parts = resourceId.split('::');
+    if (parts.length === 2) {
+      // This is a sub-category resource, e.g., "Work::Project"
+      category = parts[0];
+      subCategory = parts[1] === '__NONE__' ? undefined : parts[1];
+    } else {
+      // This is a top-level category resource, e.g., "Work"
+      category = resourceId;
+      subCategory = undefined; // Dropped on a parent, so it has no sub-category.
+    }
+  }
 
   const isRecurring: boolean = event.extendedProps.daysOfWeek !== undefined;
   const startDate = getDate(event.start as Date);
@@ -418,6 +437,7 @@ export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
   return {
     title: event.title,
     category,
+    subCategory, // Add subCategory here
     recurringEventId: event.extendedProps.recurringEventId,
     ...(event.allDay
       ? { allDay: true }
@@ -433,7 +453,7 @@ export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
           daysOfWeek: event.extendedProps.daysOfWeek.map((i: number) => DAYS[i]),
           startRecur: event.extendedProps.startRecur && getDate(event.extendedProps.startRecur),
           endRecur: event.extendedProps.endRecur && getDate(event.extendedProps.endRecur),
-          skipDates: [],
+          skipDates: [], // Default to empty as exception info is unavailable
           isTask: event.extendedProps.isTask
         }
       : {
