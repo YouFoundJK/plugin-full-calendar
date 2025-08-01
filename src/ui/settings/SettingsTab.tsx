@@ -279,11 +279,17 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       // Standard Settings View
       // ====================================================================
 
+      const desktopViewOptions: { [key: string]: string } = { ...INITIAL_VIEW_OPTIONS.DESKTOP };
+      if (this.plugin.settings.enableAdvancedCategorization) {
+        desktopViewOptions['resourceTimelineWeek'] = 'Timeline Week';
+        desktopViewOptions['resourceTimelineDay'] = 'Timeline Day';
+      }
+
       new Setting(containerEl)
         .setName('Desktop initial view')
         .setDesc('Choose the initial view range on desktop devices.')
         .addDropdown(dropdown => {
-          Object.entries(INITIAL_VIEW_OPTIONS.DESKTOP).forEach(([value, display]) => {
+          Object.entries(desktopViewOptions).forEach(([value, display]) => {
             dropdown.addOption(value, display);
           });
           dropdown.setValue(this.plugin.settings.initialView.desktop);
@@ -645,4 +651,28 @@ export function ensureCalendarIds(sources: any[]): { updated: boolean; sources: 
   });
 
   return { updated, sources: updatedSources as CalendarInfo[] };
+}
+
+/**
+ * Ensures that the initial desktop view is valid. If advanced categorization is
+ * disabled, but a timeline view is selected, it resets the view to a safe
+ * default to prevent crashes.
+ * @param settings The FullCalendarSettings object.
+ * @returns The corrected settings object.
+ */
+export function sanitizeInitialView(settings: FullCalendarSettings): FullCalendarSettings {
+  if (
+    !settings.enableAdvancedCategorization &&
+    settings.initialView.desktop.startsWith('resourceTimeline')
+  ) {
+    new Notice('Timeline view is disabled. Resetting default desktop view to "Week".', 5000);
+    return {
+      ...settings,
+      initialView: {
+        ...settings.initialView,
+        desktop: 'timeGridWeek'
+      }
+    };
+  }
+  return settings;
 }

@@ -29,6 +29,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import googleCalendarPlugin from '@fullcalendar/google-calendar';
 import iCalendarPlugin from '@fullcalendar/icalendar';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
+import { Menu } from 'obsidian';
 
 // There is an issue with FullCalendar RRule support around Daylight Saving Time boundaries
 // which is fixed by this monkeypatch:
@@ -115,40 +116,29 @@ export function renderCalendar(
   // Only show resource timeline views if category coloring is enabled
   const showResourceViews = !!enableAdvancedCategorization;
 
+  // Group the standard and timeline views together with a space.
+  // This tells FullCalendar to render them as a single, connected button group.
+  const viewButtonGroup = ['views', showResourceViews ? 'timeline' : null]
+    .filter(Boolean)
+    .join(',');
+
+  // The comma between 'analysis' and the view group creates the visual separation.
+  const rightToolbarGroup = [!isNarrow ? 'analysis' : null, viewButtonGroup]
+    .filter(Boolean)
+    .join(' ');
+
   const headerToolbar = !isNarrow
     ? {
         left: 'prev,next today',
         center: 'title',
-        right: [
-          'analysis',
-          showResourceViews ? 'resourceTimelineWeek,resourceTimelineDay' : null,
-          'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
-        ]
-          .filter(Boolean)
-          .join(',')
+        right: rightToolbarGroup
       }
-    : !isMobile
-      ? {
-          right: 'today,prev,next',
-          left: [
-            'analysis',
-            showResourceViews ? 'resourceTimelineDay' : null,
-            'timeGrid3Days,timeGridDay,listWeek'
-          ]
-            .filter(Boolean)
-            .join(',')
-        }
-      : false;
+    : false; // On narrow views (including mobile), the header is empty.
 
-  const footerToolbar = isMobile
+  const footerToolbar = isNarrow
     ? {
-        right: 'today,prev,next',
-        left: [
-          showResourceViews ? 'resourceTimelineDay' : null,
-          'timeGrid3Days,timeGridDay,listWeek'
-        ]
-          .filter(Boolean)
-          .join(',')
+        left: 'today,prev,next',
+        right: rightToolbarGroup // Analysis is already filtered out for narrow views.
       }
     : false;
 
@@ -178,11 +168,64 @@ export function renderCalendar(
     };
   }
 
+  const customButtonConfig: any = customButtons || {};
+
+  // Always add the "Views" dropdown
+  customButtonConfig.views = {
+    text: 'View ▾',
+    click: (ev: MouseEvent) => {
+      const menu = new Menu();
+
+      const views = isNarrow
+        ? {
+            timeGrid3Days: '3 Days',
+            timeGridDay: 'Day',
+            listWeek: 'List'
+          }
+        : {
+            dayGridMonth: 'Month',
+            timeGridWeek: 'Week',
+            timeGridDay: 'Day',
+            listWeek: 'List'
+          };
+
+      for (const [viewName, viewLabel] of Object.entries(views)) {
+        menu.addItem(item =>
+          item.setTitle(viewLabel).onClick(() => {
+            cal.changeView(viewName);
+          })
+        );
+      }
+      menu.showAtMouseEvent(ev);
+    }
+  };
+
+  // Conditionally add the "Timeline" dropdown
+  if (showResourceViews) {
+    customButtonConfig.timeline = {
+      text: 'Timeline ▾',
+      click: (ev: MouseEvent) => {
+        const menu = new Menu();
+        menu.addItem(item =>
+          item.setTitle('Timeline Week').onClick(() => {
+            cal.changeView('resourceTimelineWeek');
+          })
+        );
+        menu.addItem(item =>
+          item.setTitle('Timeline Day').onClick(() => {
+            cal.changeView('resourceTimelineDay');
+          })
+        );
+        menu.showAtMouseEvent(ev);
+      }
+    };
+  }
+
   // FullCalendar Premium open-source license key (GPLv3 projects)
   // See: https://fullcalendar.io/license for details
   const cal = new Calendar(containerEl, {
     schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source',
-    customButtons: customButtons,
+    customButtons: customButtonConfig,
     // timeZone: settings?.timeZone,
     plugins: [
       // View plugins
