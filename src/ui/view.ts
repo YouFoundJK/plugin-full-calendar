@@ -140,7 +140,7 @@ export class CalendarView extends ItemView {
     if (this.plugin.settings.enableAdvancedCategorization) {
       // First, add top-level resources for each category from settings.
       const categorySettings = this.plugin.settings.categorySettings || [];
-      categorySettings.forEach(cat => {
+      categorySettings.forEach((cat: { name: string; color: string }) => {
         resources.push({
           id: cat.name,
           title: cat.name,

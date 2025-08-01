@@ -19,7 +19,6 @@
  * - "What's New" and full changelog display.
  *
  * @exports FullCalendarSettingTab
- * @exports DEFAULT_SETTINGS
  * @exports ensureCalendarIds
  *
  * @see ../components/CalendarSetting.tsx
@@ -57,42 +56,7 @@ import { CategorySettingsManager } from '../components/CategorySetting';
 import { InsightsConfig } from '../../chrono_analyser/ui/ui';
 import { generateCalendarId } from '../../types/calendar_settings';
 import { BulkCategorizeModal } from '../modals/BulkCategorizeModal';
-
-export interface FullCalendarSettings {
-  calendarSources: CalendarInfo[];
-  defaultCalendar: number;
-  firstDay: number;
-  initialView: {
-    desktop: string;
-    mobile: string;
-  };
-  timeFormat24h: boolean;
-  dailyNotesTimezone: 'local' | 'strict';
-  clickToCreateEventFromMonthView: boolean;
-  displayTimezone: string | null;
-  lastSystemTimezone: string | null;
-  enableAdvancedCategorization: boolean;
-  chrono_analyser_config: InsightsConfig | null;
-  categorySettings: { name: string; color: string }[];
-}
-
-export const DEFAULT_SETTINGS: FullCalendarSettings = {
-  calendarSources: [],
-  defaultCalendar: 0,
-  firstDay: 0,
-  initialView: {
-    desktop: 'timeGridWeek',
-    mobile: 'timeGrid3Days'
-  },
-  timeFormat24h: false,
-  dailyNotesTimezone: 'local',
-  clickToCreateEventFromMonthView: true,
-  displayTimezone: null,
-  lastSystemTimezone: null,
-  enableAdvancedCategorization: false,
-  chrono_analyser_config: null,
-  categorySettings: []
-};
+import { FullCalendarSettings } from '../../types/settings';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -132,7 +96,8 @@ export function addCalendarButton(
           dailynote: 'Daily Note',
           icloud: 'iCloud',
           caldav: 'CalDAV',
-          ical: 'Remote (.ics format)'
+          ical: 'Remote (.ics format)',
+          google: 'Google Calendar'
         }))
     )
     .addExtraButton(button => {
