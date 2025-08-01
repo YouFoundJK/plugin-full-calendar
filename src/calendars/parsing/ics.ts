@@ -72,14 +72,15 @@ function icsToOFC(input: ical.Event, settings: FullCalendarSettings): OFCEvent {
 
   let eventData: any = {};
   if (settings.enableAdvancedCategorization) {
-    const { category, title } = parseTitle(summary);
+    const { category, subCategory, title } = parseTitle(summary);
     eventData.title = title;
     eventData.category = category;
+    eventData.subCategory = subCategory;
   } else {
     eventData.title = summary;
   }
 
-  // ... (rest of the function now uses `eventData.title` instead of `title`)
+  // The rest of the function now uses `eventData`
   const startDate = icalTimeToLuxon(input.startDate);
   const endDate = input.endDate ? icalTimeToLuxon(input.endDate) : startDate;
   const uid = input.uid; // Extract the UID here.
@@ -106,6 +107,7 @@ function icsToOFC(input: ical.Event, settings: FullCalendarSettings): OFCEvent {
       uid, // Added
       title: eventData.title,
       category: eventData.category,
+      subCategory: eventData.subCategory, // <-- ADD THIS
       id: `ics::${uid}::${getLuxonDate(startDate)}::recurring`,
       rrule: rrule.toString(),
       skipDates: exdates.flatMap(d => (d ? [d] : [])),
@@ -128,6 +130,7 @@ function icsToOFC(input: ical.Event, settings: FullCalendarSettings): OFCEvent {
       uid, // Added
       title: eventData.title,
       category: eventData.category,
+      subCategory: eventData.subCategory, // <-- AND ADD THIS
       date: date!,
       endDate: date !== finalEndDate ? finalEndDate || null : null,
       timezone,
