@@ -401,6 +401,15 @@ export class CalendarView extends ItemView {
       // Get settings once to pass down to the parsers
       const settings = this.plugin.settings;
       if (payload.type === 'resync') {
+        if (this.fullCalendarView) {
+          this.fullCalendarView.setOption('firstDay', this.plugin.settings.firstDay);
+          this.fullCalendarView.setOption(
+            'eventTimeFormat',
+            this.plugin.settings.timeFormat24h
+              ? { hour: '2-digit', minute: '2-digit', hour12: false }
+              : { hour: 'numeric', minute: '2-digit', hour12: true }
+          );
+        }
         this.fullCalendarView?.removeAllEventSources();
         const sources = this.translateSources();
         sources.forEach(source => this.fullCalendarView?.addEventSource(source));
