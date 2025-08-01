@@ -22,7 +22,7 @@ import { DateTime } from 'luxon';
 import { Calendar, EventSourceInput } from '@fullcalendar/core';
 import { renderCalendar } from './calendar';
 import FullCalendarPlugin from '../main';
-import { FCError, PLUGIN_SLUG, CalendarInfo } from '../types';
+import { PLUGIN_SLUG, CalendarInfo } from '../types';
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
 import { renderOnboarding } from './onboard';
 import { openFileForEvent } from '../actions/eventActions';
