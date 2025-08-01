@@ -16,6 +16,8 @@ You can find the full documentation [here](https://youfoundjk.github.io/plugin-f
 
 The FullCalendar library is released under the [MIT license](https://github.com/fullcalendar/fullcalendar/blob/master/LICENSE.txt) by [Adam Shaw](https://github.com/arshaw). It's an awesome piece of work, and it would not have been possible to make something like this plugin so easily without it.
 
+[![Support me on Ko-Fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/youfoundjk)
+
 ### Installation
 
 You can also head over to the [releases page](https://github.com/YouFoundJK/plugin-full-calendar/releases/latest) and unzip the latest release inside of the `.obsidian/plugins` directory inside your vault.
