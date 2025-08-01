@@ -185,7 +185,7 @@ export default class FullNoteCalendar extends EditableCalendar {
     return events;
   }
 
-  async createEvent(event: OFCEvent): Promise<EventLocation> {
+  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation]> {
     const path = normalizePath(`${this.directory}/${filenameForEvent(event, this.settings)}`);
     if (this.app.getAbstractFileByPath(path)) {
       throw new Error(`Event at ${path} already exists.`);
@@ -220,7 +220,8 @@ export default class FullNoteCalendar extends EditableCalendar {
 
     const newPage = replaceFrontmatter('', newFrontmatter(eventWithFullTitle));
     const file = await this.app.create(path, newPage);
-    return { file, lineNumber: undefined };
+    const location = { file, lineNumber: undefined };
+    return [event, location];
   }
 
   getNewLocation(location: EventPathLocation, event: OFCEvent): EventLocation {

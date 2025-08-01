@@ -387,7 +387,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
     return (await Promise.all(files.map(f => this.getEventsInFile(f)))).flat();
   }
 
-  async createEvent(event: OFCEvent): Promise<EventLocation> {
+  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation]> {
     if (event.type !== 'single' && event.type !== undefined)
       throw new Error('Cannot create a recurring event in a daily note.');
 
@@ -424,7 +424,8 @@ export default class DailyNoteCalendar extends EditableCalendar {
       );
       return [page, lineNumber] as [string, number];
     });
-    return { file, lineNumber };
+    const location = { file, lineNumber };
+    return [event, location];
   }
 
   private getConcreteLocation({ path, lineNumber }: EventPathLocation): {

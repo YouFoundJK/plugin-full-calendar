@@ -20,7 +20,7 @@ import FullCalendarPlugin from '../main';
 import { convertEvent } from '../core/Timezone';
 import { validateEvent } from '../types';
 import { makeAuthenticatedRequest } from './parsing/google/request';
-import { fromGoogleEvent } from './parsing/google/parser';
+import { fromGoogleEvent, toGoogleEvent } from './parsing/google/parser';
 import { FullCalendarSettings } from '../types/settings';
 
 export default class GoogleCalendar extends EditableCalendar {
@@ -137,8 +137,28 @@ export default class GoogleCalendar extends EditableCalendar {
     return []; // Not applicable
   }
 
-  async createEvent(event: OFCEvent): Promise<EventLocation> {
-    throw new Error('Not implemented.');
+  async createEvent(event: OFCEvent): Promise<[OFCEvent, null]> {
+    const url = new URL(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.identifier)}/events`
+    );
+    const body = toGoogleEvent(event);
+
+    const createdGEvent = await makeAuthenticatedRequest(this.plugin, url.toString(), 'POST', body);
+
+    if (!createdGEvent) {
+      throw new Error(
+        'Failed to create Google Calendar event. The API returned an empty response.'
+      );
+    }
+
+    // Parse the API response back into our internal format.
+    const finalEvent = fromGoogleEvent(createdGEvent, this.settings);
+    if (!finalEvent) {
+      throw new Error("Could not parse the event returned by Google's API after creation.");
+    }
+
+    // For a remote calendar, the location is null, but we return the authoritative event.
+    return [finalEvent, null];
   }
 
   async modifyEvent(

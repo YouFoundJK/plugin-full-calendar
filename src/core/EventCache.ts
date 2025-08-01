@@ -377,24 +377,26 @@ export default class EventCache {
       throw new Error(`Calendar ID ${calendarId} is not registered.`);
     }
     if (!(calendar instanceof EditableCalendar)) {
-      // console.error(`Event cannot be added to non-editable calendar of type ${calendar.type}`);
       throw new Error(`Cannot add event to a read-only calendar`);
     }
-    const location = await calendar.createEvent(event);
+
+    // UPDATED LOGIC
+    const [finalEvent, location] = await calendar.createEvent(event);
     const id = this._store.add({
       calendar,
       location,
-      id: event.id || this.generateId(),
-      event
+      id: finalEvent.id || this.generateId(),
+      event: finalEvent // Use the event returned by the calendar
     });
+    // END UPDATED LOGIC
 
     // Update identifier map
-    const globalIdentifier = this.getGlobalIdentifier(event, calendarId);
+    const globalIdentifier = this.getGlobalIdentifier(finalEvent, calendarId);
     if (globalIdentifier) {
       this.identifierToSessionIdMap.set(globalIdentifier, id);
     }
 
-    const cacheEntry = { event, id, calendarId: calendar.id };
+    const cacheEntry = { event: finalEvent, id, calendarId: calendar.id };
     if (options?.silent) {
       this.isBulkUpdating = true;
       this.updateQueue.toAdd.set(id, cacheEntry);
