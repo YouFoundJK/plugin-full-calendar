@@ -12,6 +12,8 @@
 
 import { Platform, requestUrl, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
+import * as http from 'http';
+import * as url from 'url';
 
 // =================================================================================================
 // CONSTANTS
@@ -32,6 +34,7 @@ const PUBLIC_CLIENT_ID = '783376961232-v90b17gr1mj1s2mnmdauvkp77u6htpke.apps.goo
 // =================================================================================================
 
 let pkce: { verifier: string; state: string } | null = null;
+let server: http.Server | null = null;
 
 // =================================================================================================
 // PKCE HELPER FUNCTIONS
@@ -64,15 +67,51 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
   return base64urlencode(hashed);
 }
 
+function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
+  if (server) {
+    window.open(authUrl);
+    return;
+  }
+  server = http.createServer(async (req, res) => {
+    try {
+      if (!req.url) throw new Error('No URL in request');
+      const { code, state } = url.parse(req.url, true).query;
+      if (typeof code !== 'string' || typeof state !== 'string')
+        throw new Error('Invalid callback parameters');
+      res.end('Authentication successful! Please return to Obsidian.');
+      if (server) {
+        server.close();
+        server = null;
+      }
+      await exchangeCodeForToken(code, state, plugin);
+      plugin.settingsTab?.display();
+    } catch (e) {
+      console.error('Error handling Google Auth callback:', e);
+      res.end('Authentication failed. Please check the console in Obsidian and try again.');
+      if (server) {
+        server.close();
+        server = null;
+      }
+    }
+  });
+  server.listen(42813, () => {
+    window.open(authUrl);
+  });
+}
+
 // =================================================================================================
 // EXPORTED AUTHENTICATION FUNCTIONS
 // =================================================================================================
 
+/**
+ * Kicks off the Google OAuth 2.0 flow.
+ */
 export async function startGoogleLogin(plugin: FullCalendarPlugin): Promise<void> {
   const state = generateRandomString(16);
   const verifier = generateRandomString(128);
   const challenge = await generateCodeChallenge(verifier);
 
+  // Store the verifier and state to be used in the callback.
   pkce = { verifier, state };
 
   const { settings } = plugin;
@@ -99,7 +138,11 @@ export async function startGoogleLogin(plugin: FullCalendarPlugin): Promise<void
   });
 
   const authUrl = `${AUTH_URL}?${params.toString()}`;
-  window.open(authUrl);
+  if (isMobile) {
+    window.open(authUrl);
+  } else {
+    startDesktopLogin(plugin, authUrl);
+  }
 }
 
 export async function exchangeCodeForToken(
