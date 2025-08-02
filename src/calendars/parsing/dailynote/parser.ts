@@ -30,9 +30,10 @@ type AddToHeadingProps = {
   headingText: string;
 };
 
-export const fieldRegex = /\[([^\]]+):: ?([^\]]+)\]/g;
+export const fieldRegex = /\s*\[.*?\]\s*/g;
 export const listRegex = /^(\s*)\-\s+(\[(.)\]\s+)?/;
 const checkboxRegex = /^\s*\-\s+\[(.)\]\s+/;
+const inlineFieldRegex = /\[([^\]]+):: ?([^\]]+)\]/g;
 
 // INTERNAL HELPERS
 // =================================================================================================
@@ -131,26 +132,47 @@ const makeListItem = (
 // =================================================================================================
 
 export function getInlineAttributes(s: string): Record<string, string | boolean> {
-  return Object.fromEntries(Array.from(s.matchAll(fieldRegex)).map(m => [m[1], parseBool(m[2])]));
+  return Object.fromEntries(
+    Array.from(s.matchAll(inlineFieldRegex)).map(m => [m[1], parseBool(m[2])])
+  );
 }
 
 export const getInlineEventFromLine = (
-  line: string,
+  text: string,
   globals: Partial<OFCEvent>
 ): OFCEvent | null => {
-  const attributes = getInlineAttributes(line);
-  const rawTitle = line.replace(listRegex, '').replace(fieldRegex, '');
+  const attrs = getInlineAttributes(text);
 
-  const title = rawTitle;
+  const hasInlineFields = Object.keys(attrs).length > 0;
+  if (!hasInlineFields) {
+    return null;
+  }
 
-  const event = {
-    title,
-    allDay: !attributes.startTime,
+  const titleWithExtraSpaces = text.replace(listRegex, '').replace(fieldRegex, '');
+  const rawTitle = titleWithExtraSpaces.replace(/\s+/g, ' ').trim();
+
+  if (!rawTitle && !hasInlineFields) {
+    return null;
+  }
+
+  let eventData: any = {};
+  eventData.title = rawTitle;
+
+  const allDay = !('startTime' in attrs && !!attrs.startTime);
+
+  const attrsForValidation = {
+    ...eventData,
+    completed: checkboxTodo(text),
     ...globals,
-    ...attributes
+    ...attrs,
+    allDay,
   };
 
-  return validateEvent(event);
+  if (!attrsForValidation.date) {
+    attrsForValidation.date = '1970-01-01';
+  }
+
+  return validateEvent(attrsForValidation);
 };
 
 export function getAllInlineEventsFromFile(
