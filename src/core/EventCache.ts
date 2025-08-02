@@ -323,13 +323,9 @@ export default class EventCache {
   ): Promise<void> {
     const { calendar, location, event } = this.getInfoForEditableEvent(eventId);
 
-    // ====================================================================
-    // DELEGATE RECURRING DELETION
-    // ====================================================================
     if (this.recurringEventManager.handleDelete(eventId, event, options)) {
       return; // The recurring manager opened a modal and will handle the rest.
     }
-    // ====================================================================
 
     // ====================================================================
     // "Undo Override" Logic
@@ -361,7 +357,6 @@ export default class EventCache {
     // ====================================================================
 
     this.identifierManager.removeMapping(event, calendar.id);
-
     this._store.delete(eventId);
     await calendar.deleteEvent(event, location);
 
@@ -398,23 +393,14 @@ export default class EventCache {
       event: oldEvent
     } = this.getInfoForEditableEvent(eventId);
 
-    if (oldEvent.type === 'recurring' || oldEvent.type === 'rrule') {
-      const oldLocalIdentifier = calendar.getLocalIdentifier(oldEvent);
-      const newLocalIdentifier = calendar.getLocalIdentifier(newEvent);
-      if (oldLocalIdentifier && newLocalIdentifier && oldLocalIdentifier !== newLocalIdentifier) {
-        await this.recurringEventManager.updateRecurringChildren(
-          calendar.id,
-          oldLocalIdentifier,
-          newLocalIdentifier,
-          newEvent // Pass `newEvent` to the helper
-        );
-      }
-    }
+    await this.recurringEventManager.handleUpdate(oldEvent, newEvent, calendar.id);
 
+    // Remove old identifier
     this.identifierManager.removeMapping(oldEvent, calendar.id);
+
     await calendar.modifyEvent(oldEvent, newEvent, oldLocation, newLocation => {
-      this._store.delete(eventId);
-      this._store.add({
+      this.store.delete(eventId);
+      this.store.add({
         calendar,
         location: newLocation,
         id: eventId,
@@ -422,6 +408,7 @@ export default class EventCache {
       });
     });
 
+    // Add new identifier
     this.identifierManager.addMapping(newEvent, calendar.id, eventId);
 
     const cacheEntry = { id: eventId, calendarId: calendar.id, event: newEvent };
@@ -450,7 +437,7 @@ export default class EventCache {
     process: (e: OFCEvent) => OFCEvent,
     options?: { silent: boolean }
   ): Promise<boolean> {
-    const event = this._store.getEventById(id);
+    const event = this.store.getEventById(id);
     if (!event) {
       throw new Error('Event does not exist');
     }
