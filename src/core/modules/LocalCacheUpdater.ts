@@ -18,6 +18,7 @@ import EventCache, { CacheEntry } from '../EventCache';
 import { StoredEvent } from '../EventStore';
 import { EditableCalendar } from '../../calendars/EditableCalendar';
 import { OFCEvent, validateEvent } from '../../types';
+import { IdentifierManager } from './IdentifierManager';
 
 /**
  * Compares two arrays of OFCEvents to see if they are different.
@@ -43,9 +44,11 @@ const eventsAreDifferent = (oldEvents: OFCEvent[], newEvents: OFCEvent[]): boole
 
 export class LocalCacheUpdater {
   private cache: EventCache;
+  private identifierManager: IdentifierManager;
 
-  constructor(cache: EventCache) {
+  constructor(cache: EventCache, identifierManager: IdentifierManager) {
     this.cache = cache;
+    this.identifierManager = identifierManager;
   }
 
   /**
@@ -60,10 +63,7 @@ export class LocalCacheUpdater {
     for (const storedEvent of eventsToDelete) {
       const calendar = this.cache.calendars.get(storedEvent.calendarId);
       if (calendar) {
-        const globalIdentifier = this.cache.getGlobalIdentifier(storedEvent.event, calendar.id);
-        if (globalIdentifier) {
-          this.cache.identifierToSessionIdMap.delete(globalIdentifier);
-        }
+        this.identifierManager.removeMapping(storedEvent.event, calendar.id);
       }
     }
 
@@ -109,10 +109,7 @@ export class LocalCacheUpdater {
       }
 
       for (const oldStoredEvent of oldEvents) {
-        const globalIdentifier = this.cache.getGlobalIdentifier(oldStoredEvent.event, calendar.id);
-        if (globalIdentifier) {
-          this.cache.identifierToSessionIdMap.delete(globalIdentifier);
-        }
+        this.identifierManager.removeMapping(oldStoredEvent.event, calendar.id);
       }
 
       const oldSessionIds = oldEvents.map((r: StoredEvent) => r.id);
@@ -123,10 +120,7 @@ export class LocalCacheUpdater {
 
       const newEventsWithIds = newEvents.map(([event, location]) => {
         const newSessionId = event.id || this.cache.generateId();
-        const globalIdentifier = this.cache.getGlobalIdentifier(event, calendar.id);
-        if (globalIdentifier) {
-          this.cache.identifierToSessionIdMap.set(globalIdentifier, newSessionId);
-        }
+        this.identifierManager.addMapping(event, calendar.id, newSessionId);
         return {
           event,
           id: newSessionId,
