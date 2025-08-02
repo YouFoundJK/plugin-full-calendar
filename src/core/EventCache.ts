@@ -47,6 +47,7 @@ import { FullCalendarSettings } from '../types/settings';
 import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import { RecurringEventManager } from './modules/RecurringEventManager';
 import { RemoteCacheUpdater } from './modules/RemoteCacheUpdater';
+import { LocalCacheUpdater } from './modules/LocalCacheUpdater';
 import { EditableCalendar } from '../calendars/EditableCalendar';
 import { CalendarInfo, OFCEvent, validateEvent } from '../types';
 
@@ -67,32 +68,6 @@ export type UpdateViewCallback = (
     | { type: 'calendar'; calendar: OFCEventSource }
     | { type: 'resync' }
 ) => void;
-
-// TODO: Write tests for this function.
-export const eventsAreDifferent = (oldEvents: OFCEvent[], newEvents: OFCEvent[]): boolean => {
-  oldEvents.sort((a, b) => a.title.localeCompare(b.title));
-  newEvents.sort((a, b) => a.title.localeCompare(b.title));
-
-  // validateEvent() will normalize the representation of default fields in events.
-  oldEvents = oldEvents.flatMap(e => validateEvent(e) || []);
-  newEvents = newEvents.flatMap(e => validateEvent(e) || []);
-
-  // console.debug('comparing events', oldEvents, newEvents);
-
-  if (oldEvents.length !== newEvents.length) {
-    return true;
-  }
-
-  const unmatchedEvents = oldEvents
-    .map((e, i) => ({ oldEvent: e, newEvent: newEvents[i] }))
-    .filter(({ oldEvent, newEvent }) => !equal(oldEvent, newEvent));
-
-  if (unmatchedEvents.length > 0) {
-    // console.debug('unmached events when comparing', unmatchedEvents);
-  }
-
-  return unmatchedEvents.length > 0;
-};
 
 export type CachedEvent = Pick<StoredEvent, 'event' | 'id'>;
 
@@ -129,6 +104,7 @@ export default class EventCache {
   private calendarInitializers: CalendarInitializerMap;
   private recurringEventManager: RecurringEventManager;
   private remoteUpdater: RemoteCacheUpdater;
+  private localUpdater: LocalCacheUpdater; // <-- ADD THIS LINE
 
   calendars = new Map<string, Calendar>();
   private pkCounter = 0;
@@ -141,6 +117,7 @@ export default class EventCache {
     this.calendarInitializers = calendarInitializers;
     this.recurringEventManager = new RecurringEventManager(this);
     this.remoteUpdater = new RemoteCacheUpdater(this);
+    this.localUpdater = new LocalCacheUpdater(this); // <-- ADD THIS LINE
   }
 
   get plugin(): FullCalendarPlugin {
@@ -221,7 +198,7 @@ export default class EventCache {
   //                         IDENTIFIER MANAGEMENT
   // ====================================================================
 
-  private identifierToSessionIdMap: Map<string, string> = new Map();
+  public identifierToSessionIdMap: Map<string, string> = new Map(); // <-- CHANGE TO PUBLIC
   private identifierMapPromise: Promise<void> | null = null;
 
   public get isIdentifierMapReady(): boolean {
@@ -711,18 +688,7 @@ export default class EventCache {
    * @param path Path of the file that has been deleted.
    */
   deleteEventsAtPath(path: string) {
-    const eventsToDelete = this._store.getEventsInFile({ path });
-    for (const storedEvent of eventsToDelete) {
-      const calendar = this.calendars.get(storedEvent.calendarId);
-      if (calendar) {
-        const globalIdentifier = this.getGlobalIdentifier(storedEvent.event, calendar.id);
-        if (globalIdentifier) {
-          this.identifierToSessionIdMap.delete(globalIdentifier);
-        }
-      }
-    }
-
-    this.flushUpdateQueue([...this._store.deleteEventsAtPath(path)], []);
+    this.localUpdater.handleFileDelete(path);
   }
 
   /**
@@ -736,80 +702,7 @@ export default class EventCache {
    * a file is updated multiple times in quick succession.
    */
   async fileUpdated(file: TFile): Promise<void> {
-    if (this.isBulkUpdating) {
-      // <-- ADD THIS CHECK
-      // console.debug('Bulk update in progress, ignoring file update for', file.path);
-      return;
-    }
-    // console.debug('fileUpdated() called for file', file.path);
-
-    // Get all calendars that contain events stored in this file.
-    const calendars = [...this.calendars.values()].flatMap(c =>
-      c instanceof EditableCalendar && c.containsPath(file.path) ? c : []
-    );
-
-    // If no calendars exist, return early.
-    if (calendars.length === 0) {
-      return;
-    }
-
-    const idsToRemove: string[] = [];
-    const eventsToAdd: CacheEntry[] = [];
-
-    for (const calendar of calendars) {
-      const oldEvents = this._store.getEventsInFileAndCalendar(file, calendar);
-      const newEvents = await calendar.getEventsInFile(file);
-
-      const oldEventsMapped = oldEvents.map(({ event }) => event);
-      const newEventsMapped = newEvents.map(([event, _]) => event);
-      const eventsHaveChanged = eventsAreDifferent(oldEventsMapped, newEventsMapped);
-
-      if (!eventsHaveChanged) {
-        return;
-      }
-
-      // Remove old identifiers
-      for (const oldStoredEvent of oldEvents) {
-        const globalIdentifier = this.getGlobalIdentifier(oldStoredEvent.event, calendar.id);
-        if (globalIdentifier) {
-          this.identifierToSessionIdMap.delete(globalIdentifier);
-        }
-      }
-
-      const oldSessionIds = oldEvents.map((r: StoredEvent) => r.id);
-      oldSessionIds.forEach((id: string) => {
-        this._store.delete(id);
-      });
-
-      const newEventsWithIds = newEvents.map(([event, location]) => {
-        const newSessionId = event.id || this.generateId();
-        // Add new identifiers
-        const globalIdentifier = this.getGlobalIdentifier(event, calendar.id);
-        if (globalIdentifier) {
-          this.identifierToSessionIdMap.set(globalIdentifier, newSessionId);
-        }
-        return {
-          event,
-          id: newSessionId,
-          location,
-          calendarId: calendar.id
-        };
-      });
-
-      newEventsWithIds.forEach(({ event, id, location }) => {
-        this._store.add({
-          calendar,
-          location,
-          id,
-          event
-        });
-      });
-
-      idsToRemove.push(...oldSessionIds);
-      eventsToAdd.push(...newEventsWithIds);
-    }
-
-    this.flushUpdateQueue(idsToRemove, eventsToAdd);
+    this.localUpdater.handleFileUpdate(file);
   }
 
   /**
