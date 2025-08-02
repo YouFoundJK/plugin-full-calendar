@@ -20,6 +20,7 @@ import { HeadingInput } from './forms/HeadingInput';
 import { PasswordInput } from './forms/PasswordInput';
 import { UrlInput } from './forms/UrlInput';
 import { UsernameInput } from './forms/UsernameInput';
+import { ChangeListener } from './forms/common';
 
 interface AddCalendarProps {
   source: Partial<CalendarInfo>;
@@ -35,11 +36,8 @@ export const AddCalendarSource = ({ source, directories, headings, submit }: Add
   const [submitting, setSubmitingState] = useState(false);
   const [submitText, setSubmitText] = useState(isCalDAV ? 'Import Calendars' : 'Add Calendar');
 
-  function makeChangeListener<T extends Partial<CalendarInfo>>(
-    fromString: (val: string) => T
-  ): React.ChangeEventHandler<HTMLInputElement | HTMLSelectElement> {
-    return e => setSettingState(fromString(e.target.value));
-  }
+  const makeChangeListener: ChangeListener = fromString => e =>
+    setSettingState({ ...setting, ...fromString(e.target.value) });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

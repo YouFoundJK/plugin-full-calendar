@@ -4,11 +4,15 @@ import * as React from 'react';
 import { CalendarInfo } from '../../../types';
 import { BasicProps, SourceWith } from './common';
 
+interface HeadingInputProps<T extends Partial<CalendarInfo>> extends BasicProps<T> {
+  headings: string[];
+}
+
 export function HeadingInput<T extends Partial<CalendarInfo>>({
   source,
   changeListener,
   headings
-}: BasicProps<T> & { headings: string[] }) {
+}: HeadingInputProps<T>) {
   let sourceWithHeading = source as SourceWith<T, { heading: undefined }>;
   return (
     <div className="setting-item">

@@ -15,8 +15,7 @@
 import { Notice } from 'obsidian';
 import * as React from 'react';
 import { CalendarInfo } from '../../types';
-
-type SourceWith<T extends Partial<CalendarInfo>, K> = T extends K ? T : never;
+import { SourceWith } from './forms/common';
 
 interface BasicProps<T extends Partial<CalendarInfo>> {
   source: T;
