@@ -43,10 +43,10 @@ import { Notice, TFile } from 'obsidian';
 import FullCalendarPlugin from '../main';
 import { Calendar } from '../calendars/Calendar';
 import EventStore, { StoredEvent } from './EventStore';
-import RemoteCalendar from '../calendars/RemoteCalendar';
 import { FullCalendarSettings } from '../types/settings';
 import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import { RecurringEventManager } from './modules/RecurringEventManager';
+import { RemoteCacheUpdater } from './modules/RemoteCacheUpdater';
 import { EditableCalendar } from '../calendars/EditableCalendar';
 import { CalendarInfo, OFCEvent, validateEvent } from '../types';
 
@@ -67,11 +67,6 @@ export type UpdateViewCallback = (
     | { type: 'calendar'; calendar: OFCEventSource }
     | { type: 'resync' }
 ) => void;
-
-const SECOND = 1000;
-const MINUTE = 60 * SECOND;
-
-const MILLICONDS_BETWEEN_REVALIDATIONS = 5 * MINUTE;
 
 // TODO: Write tests for this function.
 export const eventsAreDifferent = (oldEvents: OFCEvent[], newEvents: OFCEvent[]): boolean => {
@@ -133,6 +128,7 @@ export default class EventCache {
   private calendarInfos: CalendarInfo[] = [];
   private calendarInitializers: CalendarInitializerMap;
   private recurringEventManager: RecurringEventManager;
+  private remoteUpdater: RemoteCacheUpdater;
 
   calendars = new Map<string, Calendar>();
   private pkCounter = 0;
@@ -144,6 +140,7 @@ export default class EventCache {
     this._plugin = plugin;
     this.calendarInitializers = calendarInitializers;
     this.recurringEventManager = new RecurringEventManager(this);
+    this.remoteUpdater = new RemoteCacheUpdater(this);
   }
 
   get plugin(): FullCalendarPlugin {
@@ -158,7 +155,6 @@ export default class EventCache {
    * Flush the cache and initialize calendars from the initializer map.
    */
   reset(infos: CalendarInfo[]): void {
-    this.lastRevalidation = 0;
     this.initialized = false;
     this.calendarInfos = infos;
     this.pkCounter = 0;
@@ -698,7 +694,7 @@ export default class EventCache {
     this.updateQueue = { toRemove: new Set(), toAdd: new Map() };
   }
 
-  private updateCalendar(calendar: OFCEventSource) {
+  public updateCalendar(calendar: OFCEventSource) {
     for (const callback of this.updateViewCallbacks) {
       callback({ type: 'calendar', calendar });
     }
@@ -707,9 +703,6 @@ export default class EventCache {
   // ====================================================================
   //                         FILESYSTEM & REMOTE HOOKS
   // ====================================================================
-
-  private revalidating = false;
-  lastRevalidation: number = 0;
 
   /**
    * Deletes all events associated with a given file path from the EventStore
@@ -830,62 +823,7 @@ export default class EventCache {
    * excessive network requests.
    */
   revalidateRemoteCalendars(force = false) {
-    if (this.revalidating) {
-      console.warn('Revalidation already in progress.');
-      return;
-    }
-    const now = Date.now();
-
-    if (!force && now - this.lastRevalidation < MILLICONDS_BETWEEN_REVALIDATIONS) {
-      // console.debug('Last revalidation was too soon.');
-      return;
-    }
-
-    const remoteCalendars = [...this.calendars.values()].flatMap(c =>
-      c instanceof RemoteCalendar ? c : []
-    );
-
-    this.revalidating = true;
-    const promises = remoteCalendars.map(calendar => {
-      return calendar
-        .revalidate()
-        .then(() => calendar.getEvents())
-        .then(events => {
-          const deletedEvents = [...this._store.deleteEventsInCalendar(calendar)];
-          const newEvents = events.map(([event, location]) => ({
-            event,
-            id: event.id || this.generateId(),
-            location,
-            calendarId: calendar.id
-          }));
-          newEvents.forEach(({ event, id, location }) => {
-            this._store.add({
-              calendar,
-              location,
-              id,
-              event
-            });
-          });
-          this.updateCalendar({
-            id: calendar.id,
-            editable: false,
-            color: calendar.color,
-            events: newEvents
-          });
-        });
-    });
-    Promise.allSettled(promises).then(results => {
-      this.revalidating = false;
-      this.lastRevalidation = Date.now();
-      // console.debug('All remote calendars have been fetched.');
-      const errors = results.flatMap(result => (result.status === 'rejected' ? result.reason : []));
-      if (errors.length > 0) {
-        new Notice('A remote calendar failed to load. Check the console for more details.');
-        errors.forEach(reason => {
-          console.error(`Revalidation failed with reason: ${reason}`);
-        });
-      }
-    });
+    this.remoteUpdater.revalidate(force);
   }
 
   // ====================================================================
