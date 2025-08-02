@@ -46,10 +46,9 @@ import EventStore, { StoredEvent } from './EventStore';
 import RemoteCalendar from '../calendars/RemoteCalendar';
 import { FullCalendarSettings } from '../types/settings';
 import FullNoteCalendar from '../calendars/FullNoteCalendar';
-import { RecurringEventManager } from './RecurringEventManager';
+import { RecurringEventManager } from './modules/RecurringEventManager';
 import { EditableCalendar } from '../calendars/EditableCalendar';
 import { CalendarInfo, OFCEvent, validateEvent } from '../types';
-import GoogleCalendar from '../calendars/GoogleCalendar';
 
 export type CalendarInitializerMap = Record<
   CalendarInfo['type'],

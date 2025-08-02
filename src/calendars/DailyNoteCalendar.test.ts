@@ -1,5 +1,5 @@
+import { DEFAULT_SETTINGS } from '../types/settings';
 import { getInlineAttributes, getInlineEventFromLine } from './parsing/dailynote/parser';
-import { DEFAULT_SETTINGS } from '../types/settings'; // <-- IMPORT DEFAULTS
 
 describe('DailyNoteCalendar', () => {
   describe('getInlineAttributes', () => {

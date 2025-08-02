@@ -15,7 +15,7 @@
  */
 
 import moment from 'moment';
-import { TFile, CachedMetadata, HeadingCache, ListItemCache, Loc, Pos } from 'obsidian';
+import { TFile } from 'obsidian';
 import {
   appHasDailyNotesPluginLoaded,
   createDailyNote,
@@ -24,15 +24,7 @@ import {
   getDailyNoteSettings,
   getDateFromFile
 } from 'obsidian-daily-notes-interface';
-import { EventPathLocation } from '../core/EventStore';
-import { ObsidianInterface } from '../ObsidianAdapter';
-import { OFCEvent, EventLocation, CalendarInfo, validateEvent } from '../types';
-import { EventResponse } from './Calendar';
-import { EditableCalendar, EditableEventResponse, CategoryProvider } from './EditableCalendar';
-import { FullCalendarSettings } from '../types/settings';
-import { convertEvent } from '../core/Timezone';
-import { constructTitle, parseTitle } from '../core/categoryParser';
-import FullCalendarPlugin from '../main';
+
 import {
   getAllInlineEventsFromFile,
   getInlineEventFromLine,
@@ -42,6 +34,15 @@ import {
   listRegex,
   fieldRegex
 } from './parsing/dailynote/parser';
+import FullCalendarPlugin from '../main';
+import { EventResponse } from './Calendar';
+import { convertEvent } from './utils/Timezone';
+import { EventPathLocation } from '../core/EventStore';
+import { ObsidianInterface } from '../ObsidianAdapter';
+import { FullCalendarSettings } from '../types/settings';
+import { OFCEvent, EventLocation, CalendarInfo } from '../types';
+import { constructTitle, parseTitle } from './parsing/categoryParser';
+import { EditableCalendar, EditableEventResponse, CategoryProvider } from './EditableCalendar';
 
 export default class DailyNoteCalendar extends EditableCalendar {
   app: ObsidianInterface;

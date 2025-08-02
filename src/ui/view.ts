@@ -16,19 +16,22 @@
  * @license See LICENSE.md
  */
 
-import './overrides.css';
-import { ItemView, Menu, Notice, WorkspaceLeaf } from 'obsidian';
 import { DateTime } from 'luxon';
+
+import { ItemView, Menu, Notice, WorkspaceLeaf } from 'obsidian';
+
 import { Calendar, EventSourceInput, EventInput } from '@fullcalendar/core';
-import { renderCalendar } from './calendar';
+
+import './overrides.css';
 import FullCalendarPlugin from '../main';
-import { PLUGIN_SLUG, CalendarInfo } from '../types';
-import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
+import { renderCalendar } from './calendar';
 import { renderOnboarding } from './onboard';
-import { openFileForEvent } from '../actions/eventActions';
-import { launchCreateModal, launchEditModal } from './event_modal';
-import { isTask, toggleTask, unmakeTask } from '../core/tasks';
+import { PLUGIN_SLUG, CalendarInfo } from '../types';
 import { UpdateViewCallback } from '../core/EventCache';
+import { openFileForEvent } from '../actions/eventActions';
+import { isTask, toggleTask, unmakeTask } from '../actions/tasks';
+import { launchCreateModal, launchEditModal } from './event_modal';
+import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
 
 export const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
 export const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';

@@ -30,21 +30,21 @@ import ReactModal from '../ReactModal';
 import * as ReactDOM from 'react-dom/client';
 import { createElement, createRef } from 'react';
 
-import { AddCalendarSource } from '../components/AddCalendarSource';
-import { importCalendars } from '../../calendars/parsing/caldav/import';
-import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
-import { makeDefaultPartialCalendarSource, CalendarInfo } from '../../types/calendar_settings';
-import { CalendarSettingsRef } from '../components/CalendarSetting';
-import { generateCalendarId } from '../../types/calendar_settings';
-import { FullCalendarSettings } from '../../types/settings';
-import { fetchGoogleCalendarList } from '../../calendars/parsing/google/api';
 import { getNextColor } from '../colors';
+import { FullCalendarSettings } from '../../types/settings';
+import { generateCalendarId } from '../../types/calendar_settings';
+import { CalendarSettingsRef } from './components/CalendarSetting';
+import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
+import { importCalendars } from '../../calendars/parsing/caldav/import';
+import { AddCalendarSource } from '../modals/components/AddCalendarSource';
+import { fetchGoogleCalendarList } from '../../calendars/parsing/google/api';
+import { makeDefaultPartialCalendarSource, CalendarInfo } from '../../types/calendar_settings';
 
 // Import the new section renderers
-import { renderGeneralSettings } from './sections/renderGeneral';
-import { renderCategorizationSettings } from './sections/renderCategorization';
 import { renderGoogleSettings } from './sections/renderGoogle';
+import { renderGeneralSettings } from './sections/renderGeneral';
 import { renderCalendarManagement } from './sections/renderCalendars';
+import { renderCategorizationSettings } from './sections/renderCategorization';
 
 // Import the new React components
 import './changelog.css';

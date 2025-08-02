@@ -4,12 +4,12 @@
  * @license See LICENSE.md
  */
 
-import { Setting, Modal, Notice } from 'obsidian';
-import * as ReactDOM from 'react-dom/client';
 import { createElement } from 'react';
+import { Setting, Modal } from 'obsidian';
+import * as ReactDOM from 'react-dom/client';
 import FullCalendarPlugin from '../../../main';
-import { CategorySettingsManager } from '../../components/CategorySetting';
 import { BulkCategorizeModal } from '../../modals/BulkCategorizeModal';
+import { CategorySettingsManager } from '../components/CategorySetting';
 
 export function renderCategorizationSettings(
   containerEl: HTMLElement,

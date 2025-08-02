@@ -13,12 +13,13 @@
  */
 
 import { Notice } from 'obsidian';
-import { toggleTask } from './tasks';
-import EventCache from './EventCache';
-import { StoredEvent } from './EventStore';
-import { OFCEvent } from '../types';
-import { DeleteRecurringModal } from '../ui/modals/DeleteRecurringModal';
-import GoogleCalendar from '../calendars/GoogleCalendar';
+
+import { OFCEvent } from '../../types';
+import EventCache from '../EventCache';
+import { StoredEvent } from '../EventStore';
+import { toggleTask } from '../../actions/tasks';
+import GoogleCalendar from '../../calendars/GoogleCalendar';
+import { DeleteRecurringModal } from '../../ui/modals/DeleteRecurringModal';
 
 /**
  * Manages all complex business logic related to recurring events.
