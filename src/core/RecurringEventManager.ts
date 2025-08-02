@@ -235,7 +235,7 @@ export class RecurringEventManager {
       newEventData: JSON.stringify(newEventData, null, 2)
     });
 
-    // NEW LOGIC: Check calendar type and delegate
+    // Check calendar type and delegate
     const { calendar, event: masterEvent } = this.cache.getInfoForEditableEvent(masterEventId);
     if (calendar instanceof GoogleCalendar) {
       const newExceptionEvent = await calendar.createInstanceOverride(
@@ -245,9 +245,22 @@ export class RecurringEventManager {
       );
       // Add the new exception to the cache silently. The caller is responsible for the UI update.
       await this.cache.addEvent(calendar.id, newExceptionEvent, { silent: true });
+
+      // Now, update the in-memory master event to hide the original instance date.
+      await this.cache.processEvent(
+        masterEventId,
+        e => {
+          if (e.type !== 'recurring' && e.type !== 'rrule') return e;
+          const skipDates = e.skipDates.includes(instanceDate)
+            ? e.skipDates
+            : [...e.skipDates, instanceDate];
+          return { ...e, skipDates };
+        },
+        { silent: true }
+      );
+
       return;
     }
-    // END NEW LOGIC
 
     await this._createRecurringOverride(masterEventId, instanceDate, newEventData);
   }

@@ -754,17 +754,9 @@ class SelectGoogleCalendarsModal extends Modal {
     this.calendars = calendars;
     this.onSubmit = onSubmit;
     this.googleCalendarSelection = new Set();
-    console.log(
-      '[DEBUG] Modal Constructor: this.googleCalendarSelection is',
-      this.googleCalendarSelection
-    );
   }
 
   onOpen() {
-    console.log(
-      '[DEBUG] Modal onOpen: this.googleCalendarSelection is',
-      this.googleCalendarSelection
-    );
     const { contentEl } = this;
     contentEl.createEl('h2', { text: 'Select Google Calendars to Add' });
 
@@ -784,29 +776,11 @@ class SelectGoogleCalendarsModal extends Modal {
         .setDesc(cal.description || '')
         .addToggle(toggle =>
           toggle.onChange(value => {
-            console.log(`[DEBUG] Toggle changed for calendar: ${cal.summary}`);
-            console.log('[DEBUG] Value is:', value);
-            console.log(
-              '[DEBUG] BEFORE operation, this.googleCalendarSelection is:',
-              this.googleCalendarSelection
-            );
-            console.log(
-              '[DEBUG] Type of this.googleCalendarSelection is:',
-              typeof this.googleCalendarSelection,
-              'Is it a Set?',
-              this.googleCalendarSelection instanceof Set
-            );
-
             if (value) {
               this.googleCalendarSelection.add(cal.id);
             } else {
               this.googleCalendarSelection.delete(cal.id);
             }
-
-            console.log(
-              '[DEBUG] AFTER operation, this.googleCalendarSelection is now:',
-              this.googleCalendarSelection
-            );
           })
         );
     });

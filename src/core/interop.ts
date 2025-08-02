@@ -406,12 +406,6 @@ export function toEventInput(
  * @returns An `OFCEvent` object.
  */
 export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
-  console.log('[DEBUG] fromEventApi received:', {
-    id: event.id,
-    title: event.title,
-    extendedProps: event.extendedProps
-  });
-
   let category: string | undefined = event.extendedProps.category;
   let subCategory: string | undefined = event.extendedProps.subCategory;
 

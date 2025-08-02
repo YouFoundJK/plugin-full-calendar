@@ -88,9 +88,9 @@ function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
         return;
       }
 
-      console.log('[Full Calendar Google Auth] Received callback. Full request URL:', req.url);
+      // console.log('[Full Calendar Google Auth] Received callback. Full request URL:', req.url);
       const queryParams = url.parse(req.url, true).query;
-      console.log('[Full Calendar Google Auth] Parsed Query Parameters:', queryParams);
+      // console.log('[Full Calendar Google Auth] Parsed Query Parameters:', queryParams);
 
       const { code, state } = url.parse(req.url, true).query;
 
