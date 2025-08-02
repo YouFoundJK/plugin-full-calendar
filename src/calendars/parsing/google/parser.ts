@@ -24,6 +24,21 @@ import { rrulestr } from 'rrule';
  * @returns An OFCEvent object, or null if the input is invalid.
  */
 export function fromGoogleEvent(gEvent: any, settings: FullCalendarSettings): OFCEvent | null {
+  // START DEBUG BLOCK
+  if (gEvent.status === 'cancelled') {
+    console.log('[DEBUG] GOOGLE PARSER: Found a cancelled event instance. Full data:', gEvent);
+    console.log(`[DEBUG] GOOGLE PARSER: Master Event UID: ${gEvent.recurringEventId}`);
+    console.log(`[DEBUG] GOOGLE PARSER: Original Start Time Object:`, gEvent.originalStartTime);
+  }
+  // END DEBUG BLOCK
+
+  if (gEvent.status === 'cancelled') {
+    // This is an exception marker for a deleted instance of a recurring event.
+    // Its information is already incorporated into the master event's `exdates`.
+    // We should not display it as a separate event.
+    return null;
+  }
+
   if (!gEvent.id || !gEvent.summary || (!gEvent.start && !gEvent.end)) {
     // Not a valid event.
     return null;

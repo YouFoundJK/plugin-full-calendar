@@ -410,21 +410,6 @@ export default class EventCache {
   ): Promise<void> {
     const { calendar, location, event } = this.getInfoForEditableEvent(eventId);
 
-    // Intercept instance deletion for Google Calendar
-    if (options?.instanceDate && calendar instanceof GoogleCalendar) {
-      try {
-        await calendar.cancelInstance(event, options.instanceDate);
-        // After cancelling, we must trigger a full resync for this calendar
-        // to ensure the view updates correctly.
-        this.plugin.cache.revalidateRemoteCalendars(true);
-        new Notice('Deleted single instance of recurring Google event.');
-      } catch (e) {
-        if (e instanceof Error) new Notice(e.message);
-        console.error(e);
-      }
-      return; // Stop further processing
-    }
-
     // ====================================================================
     // DELEGATE RECURRING DELETION
     // ====================================================================

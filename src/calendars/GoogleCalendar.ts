@@ -75,23 +75,67 @@ export default class GoogleCalendar extends EditableCalendar {
       );
       url.searchParams.set('timeMin', timeMin.toISOString());
       url.searchParams.set('timeMax', timeMax.toISOString());
-      url.searchParams.set('singleEvents', 'true'); // Expands recurring events
-      url.searchParams.set('orderBy', 'startTime');
+      url.searchParams.set('singleEvents', 'false'); // Expands recurring events
+      // url.searchParams.set('orderBy', 'startTime');
       url.searchParams.set('maxResults', '2500');
 
       const data = await makeAuthenticatedRequest(this.plugin, url.toString());
+
+      // START DEBUG BLOCK
+      if (Array.isArray(data.items)) {
+        const hasCancelled = data.items.some((item: any) => item.status === 'cancelled');
+        if (hasCancelled) {
+          console.log(
+            `[DEBUG] GOOGLE CALENDAR (${this.name}): API returned a list containing a cancelled event. Full list:`,
+            data.items
+          );
+        }
+      }
+      // END DEBUG BLOCK
 
       if (!data.items || !Array.isArray(data.items)) {
         console.warn(`No items in Google Calendar response for ${this.name}.`);
         return [];
       }
 
+      // START OF NEW LOGIC
+      // Pre-process to find all cancellations and map them to their parent event.
+      const cancellations = new Map<string, Set<string>>();
+      for (const gEvent of data.items) {
+        if (gEvent.status === 'cancelled' && gEvent.recurringEventId && gEvent.originalStartTime) {
+          const parentId = gEvent.recurringEventId;
+          if (!cancellations.has(parentId)) {
+            cancellations.set(parentId, new Set());
+          }
+          const cancelledDate = DateTime.fromISO(gEvent.originalStartTime.dateTime, {
+            zone: gEvent.originalStartTime.timeZone || 'utc'
+          }).toISODate();
+          if (cancelledDate) {
+            cancellations.get(parentId)!.add(cancelledDate);
+          }
+        }
+      }
+      // END OF NEW LOGIC
+
       return data.items
         .map((gEvent: any) => {
-          const parsedEvent = fromGoogleEvent(gEvent, this.settings);
+          let parsedEvent = fromGoogleEvent(gEvent, this.settings);
           if (!parsedEvent) {
             return null;
           }
+
+          // START OF NEW LOGIC
+          if (
+            (parsedEvent.type === 'rrule' || parsedEvent.type === 'recurring') &&
+            parsedEvent.uid &&
+            cancellations.has(parsedEvent.uid)
+          ) {
+            const datesToSkip = cancellations.get(parsedEvent.uid)!;
+            parsedEvent.skipDates = [
+              ...new Set([...(parsedEvent.skipDates || []), ...datesToSkip])
+            ];
+          }
+          // END OF NEW LOGIC
 
           const validatedEvent = validateEvent(parsedEvent);
           if (!validatedEvent) {
@@ -168,17 +212,51 @@ export default class GoogleCalendar extends EditableCalendar {
     location: EventPathLocation | null,
     updateCacheWithLocation: (loc: EventLocation | null) => void
   ): Promise<void> {
-    const eventId = newEvent.uid || oldEvent.uid;
-    if (!eventId) {
-      throw new Error('Cannot modify a Google event without a UID/ID.');
-    }
-    const url = new URL(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-        this.identifier
-      )}/events/${encodeURIComponent(eventId)}`
+    // This is the "write" operation. We need to determine if this is a true modification
+    // or if it's a "delete instance" operation disguised as a modification.
+
+    const newSkipDates = new Set(
+      newEvent.type === 'rrule' || newEvent.type === 'recurring' ? newEvent.skipDates : []
     );
-    const body = toGoogleEvent(newEvent);
-    await makeAuthenticatedRequest(this.plugin, url.toString(), 'PUT', body);
+    const oldSkipDates = new Set(
+      oldEvent.type === 'rrule' || oldEvent.type === 'recurring' ? oldEvent.skipDates : []
+    );
+
+    let cancelledDate: string | undefined;
+
+    // A cancellation is detected if a date exists in the new skipDates set but not in the old one.
+    if (newSkipDates.size > oldSkipDates.size) {
+      for (const date of newSkipDates) {
+        if (!oldSkipDates.has(date)) {
+          cancelledDate = date;
+          break; // Found the newly cancelled date
+        }
+      }
+    }
+
+    if (cancelledDate) {
+      // We have identified this modification as a "cancel instance" request.
+      // We will call the specific `cancelInstance` API endpoint.
+      await this.cancelInstance(oldEvent, cancelledDate);
+    } else {
+      // This is a standard event modification (e.g., title change, time change).
+      // We will proceed with the normal PUT request to update the event.
+      const eventId = newEvent.uid || oldEvent.uid;
+      if (!eventId) {
+        throw new Error('Cannot modify a Google event without a UID/ID.');
+      }
+      const url = new URL(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+          this.identifier
+        )}/events/${encodeURIComponent(eventId)}`
+      );
+      const body = toGoogleEvent(newEvent);
+      await makeAuthenticatedRequest(this.plugin, url.toString(), 'PUT', body);
+    }
+
+    // CRITICAL: In both cases (cancellation or modification), we must call this
+    // callback to confirm to the EventCache that the operation is complete
+    // and that the new event data should be committed to the in-memory store.
     updateCacheWithLocation(null);
   }
 
@@ -260,27 +338,42 @@ export default class GoogleCalendar extends EditableCalendar {
       throw new Error('Cannot cancel an instance of a recurring event that has no master UID.');
     }
 
-    const eventId = parentEvent.uid;
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      this.identifier
-    )}/events/${encodeURIComponent(eventId)}/instances`;
+    const body: any = {
+      recurringEventId: parentEvent.uid,
+      status: 'cancelled'
+    };
 
-    // First, find the specific instanceId from the parent event.
-    const instances = await makeAuthenticatedRequest(this.plugin, url);
-    const instance = instances.items.find((inst: any) => {
-      const instDate = inst.start.date || inst.start.dateTime.slice(0, 10);
-      return instDate === instanceDate;
-    });
+    let startTimeObject: any;
 
-    if (!instance) {
-      throw new Error(`Could not find instance of recurring event on ${instanceDate} to cancel.`);
+    if (parentEvent.allDay) {
+      startTimeObject = {
+        date: instanceDate
+      };
+    } else {
+      const timeZone = parentEvent.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const startTime = (parentEvent as any).startTime || '00:00'; // Cast to access startTime
+      const isoDateTime = DateTime.fromISO(`${instanceDate}T${startTime}`, {
+        zone: timeZone
+      }).toISO();
+
+      startTimeObject = {
+        dateTime: isoDateTime,
+        timeZone: timeZone
+      };
     }
 
-    // Now, cancel that specific instance using its own ID.
-    const cancelUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      this.identifier
-    )}/events/${encodeURIComponent(instance.id)}`;
+    // THE FIX: The API requires start and end times for the exception event itself,
+    // even for a cancellation. They should match the original start time.
+    body.originalStartTime = startTimeObject;
+    body.start = startTimeObject;
+    body.end = startTimeObject;
 
-    await makeAuthenticatedRequest(this.plugin, cancelUrl, 'POST', { status: 'cancelled' });
+    // A cancellation is a *new* event that marks an old one as cancelled.
+    // So we POST to the main events endpoint.
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+      this.identifier
+    )}/events`;
+
+    await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
   }
 }

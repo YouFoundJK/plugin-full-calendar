@@ -114,11 +114,11 @@ export class RecurringEventManager {
       return false;
     }
 
-    const { calendar } = this.cache.getInfoForEditableEvent(eventId); // Get calendar info
-    const isGoogle = calendar instanceof GoogleCalendar; // Check if it's a Google Calendar
+    const { calendar } = this.cache.getInfoForEditableEvent(eventId);
+    const isGoogle = calendar instanceof GoogleCalendar;
 
     const children = this.findRecurringChildren(eventId);
-    // If instanceDate is provided, or if there are local children, show the modal.
+
     if (children.length > 0 || options?.instanceDate) {
       new DeleteRecurringModal(
         this.cache.plugin.app,
@@ -126,20 +126,16 @@ export class RecurringEventManager {
         () => this.deleteAllRecurring(eventId),
         options?.instanceDate
           ? async () => {
-              // This logic is now split: local calendars add to skipDates,
-              // Google calendars trigger a cancelInstance call.
-              if (calendar instanceof GoogleCalendar) {
-                await this.cache.deleteEvent(eventId, { instanceDate: options.instanceDate });
-              } else {
-                await this.cache.processEvent(eventId, e => {
-                  if (e.type !== 'recurring' && e.type !== 'rrule') return e;
-                  const skipDates = e.skipDates?.includes(options.instanceDate!)
-                    ? e.skipDates
-                    : [...(e.skipDates || []), options.instanceDate!];
-                  return { ...e, skipDates };
-                });
-                this.cache.flushUpdateQueue([], []);
-              }
+              // This GENERIC logic now correctly triggers the "modifyEvent" flow for ALL calendar types.
+              // The calendar-specific implementation (in GoogleCalendar.ts) will handle the rest.
+              await this.cache.processEvent(eventId, e => {
+                if (e.type !== 'recurring' && e.type !== 'rrule') return e;
+                const skipDates = e.skipDates?.includes(options.instanceDate!)
+                  ? e.skipDates
+                  : [...(e.skipDates || []), options.instanceDate!];
+                return { ...e, skipDates };
+              });
+              this.cache.flushUpdateQueue([], []);
             }
           : undefined,
         options?.instanceDate,

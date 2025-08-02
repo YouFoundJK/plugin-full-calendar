@@ -63,6 +63,12 @@ export async function makeAuthenticatedRequest(
       body: body ? JSON.stringify(body) : undefined
     });
 
+    if (response.status === 204) {
+      // Successful request with no content (e.g., a DELETE request).
+      // Return a truthy value to indicate success without trying to parse JSON.
+      return true;
+    }
+
     return response.json;
   } catch (e: any) {
     console.error('Google API Request Failed:', {
