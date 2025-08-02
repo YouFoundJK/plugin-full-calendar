@@ -59,3 +59,5 @@ nav:
     - Advanced:
           - Dataview Integration: advanced/dataview.md
           - Data Integrity and File Modifications: advanced/data_integrity.md
+          - Privacy Policy: privacy-policy.md
+          - Terms of Service: terms-of-service.md

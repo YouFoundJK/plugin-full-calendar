@@ -200,18 +200,26 @@ export async function exchangeCodeForToken(
     body.append('client_secret', settings.googleClientSecret);
   }
 
+  // --- vvv ADD THIS LOGGING BLOCK vvv ---
+  const requestOptions = {
+    method: 'POST' as const,
+    url: TOKEN_URL,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+    throw: false // Keep this
+  };
+  console.log(
+    '[Full Calendar Google Auth] Making token exchange request with options:',
+    requestOptions
+  );
+  // --- ^^^ END OF LOGGING BLOCK ^^^ ---
+
   console.log('[Full Calendar Google Auth] Preparing to exchange code for token.');
   console.log('[Full Calendar Google Auth] Request URL:', TOKEN_URL);
   console.log('[Full Calendar Google Auth] Request Body:', body.toString());
 
   try {
-    const response = await requestUrl({
-      method: 'POST',
-      url: TOKEN_URL,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-      throw: false // Keep this
-    });
+    const response = await requestUrl(requestOptions); // MODIFIED: Use the logged options object
 
     console.log('[Full Calendar Google Auth] Raw Token Exchange Response:', {
       status: response.status,
