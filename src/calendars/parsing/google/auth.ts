@@ -83,11 +83,6 @@ function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
         return;
       }
 
-      // --- vvv ADD THIS LOG vvv ---
-      const queryParams = url.parse(req.url, true).query;
-      console.log('[Full Calendar Google Auth] Parsed Query Parameters:', queryParams);
-      // --- ^^^ END OF LOG ^^^ ---
-
       const { code, state } = url.parse(req.url, true).query;
 
       if (typeof code !== 'string' || typeof state !== 'string') {

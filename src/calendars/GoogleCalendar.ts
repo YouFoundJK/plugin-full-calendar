@@ -82,18 +82,6 @@ export default class GoogleCalendar extends EditableCalendar {
 
       const data = await makeAuthenticatedRequest(this.plugin, url.toString());
 
-      // START DEBUG BLOCK
-      if (Array.isArray(data.items)) {
-        const hasCancelled = data.items.some((item: any) => item.status === 'cancelled');
-        if (hasCancelled) {
-          console.log(
-            `[DEBUG] GOOGLE CALENDAR (${this.name}): API returned a list containing a cancelled event. Full list:`,
-            data.items
-          );
-        }
-      }
-      // END DEBUG BLOCK
-
       if (!data.items || !Array.isArray(data.items)) {
         console.warn(`No items in Google Calendar response for ${this.name}.`);
         return [];
@@ -214,7 +202,7 @@ export default class GoogleCalendar extends EditableCalendar {
     newEvent: OFCEvent,
     location: EventPathLocation | null,
     updateCacheWithLocation: (loc: EventLocation | null) => void
-  ): Promise<void> {
+  ): Promise<{ isDirty: boolean }> {
     // This is the "write" operation. We need to determine if this is a true modification
     // or if it's a "delete instance" operation disguised as a modification.
 
@@ -261,6 +249,7 @@ export default class GoogleCalendar extends EditableCalendar {
     // callback to confirm to the EventCache that the operation is complete
     // and that the new event data should be committed to the in-memory store.
     updateCacheWithLocation(null);
+    return { isDirty: false };
   }
 
   async deleteEvent(event: OFCEvent, location: EventPathLocation | null): Promise<void> {

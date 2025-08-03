@@ -112,7 +112,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
     newEvent: OFCEvent,
     location: EventPathLocation | null,
     updateCacheWithLocation: (loc: EventLocation) => void
-  ): Promise<void> {
+  ): Promise<{ isDirty: boolean }> {
     if (!location) {
       throw new Error('DailyNoteCalendar.modifyEvent requires a file location.');
     }
@@ -143,14 +143,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
     const oldDate = getDateFromFile(file as any, 'day')?.format('YYYY-MM-DD');
     if (!oldDate) throw new Error(`Could not get date from file at path ${file.path}`);
 
-    console.log(
-      `[DEBUG DailyNoteCalendar.ts] modifyEvent: oldDate is ${oldDate}, newEvent.date is ${newEvent.date}.`
-    );
-
     if (newEvent.date !== oldDate) {
-      console.log(
-        `[DEBUG DailyNoteCalendar.ts] Event date has changed. Moving event from ${file.path} to a new daily note.`
-      );
       // ... Logic to move event to a new file
       const m = moment(eventToWrite.date);
       let newFile = getDailyNote(m, getAllDailyNotes()) as TFile;
@@ -170,19 +163,12 @@ export default class DailyNoteCalendar extends EditableCalendar {
             { heading: headingInfo, item: eventToWrite, headingText: this.heading },
             this.settings
           );
-          console.log(
-            `[DEBUG DailyNoteCalendar.ts] Calling updateCacheWithLocation with new location:`,
-            { file: newFile.path, lineNumber: newLn }
-          );
           updateCacheWithLocation({ file: newFile, lineNumber: newLn });
           return page;
         });
         return lines.join('\n');
       });
     } else {
-      console.log(
-        `[DEBUG DailyNoteCalendar.ts] Event date is the same. Modifying in place in file ${file.path}.`
-      );
       updateCacheWithLocation({ file, lineNumber });
       await this.app.rewrite(file, contents => {
         const lines = contents.split('\n');
@@ -192,6 +178,8 @@ export default class DailyNoteCalendar extends EditableCalendar {
         return lines.join('\n');
       });
     }
+
+    return { isDirty: true };
   }
 
   // RESTORED getEvents
