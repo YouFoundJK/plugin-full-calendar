@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS } from '../types/settings';
-import { getInlineEventFromLine } from './parsing/dailynote/parser';
+import { getInlineEventFromLine } from './parsing/dailynote/parser_dailyN';
 import { enhanceEvent } from './parsing/categoryParser';
 import { OFCEvent } from '../types';
 

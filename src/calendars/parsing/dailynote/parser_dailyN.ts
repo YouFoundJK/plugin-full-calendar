@@ -165,7 +165,7 @@ export const getInlineEventFromLine = (
     completed: checkboxTodo(text),
     ...globals,
     ...attrs,
-    allDay,
+    allDay
   };
 
   if (!attrsForValidation.date) {

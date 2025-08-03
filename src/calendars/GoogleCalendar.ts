@@ -20,7 +20,7 @@ import { convertEvent } from './utils/Timezone';
 import { EventPathLocation } from '../core/EventStore';
 import { FullCalendarSettings } from '../types/settings';
 import { makeAuthenticatedRequest } from './parsing/google/request';
-import { fromGoogleEvent, toGoogleEvent } from './parsing/google/parser';
+import { fromGoogleEvent, toGoogleEvent } from './parsing/google/parser_gcal';
 import { CalendarInfo, OFCEvent, EventLocation, validateEvent } from '../types';
 import { EditableCalendar, EditableEventResponse, CategoryProvider } from './EditableCalendar';
 import { enhanceEvent } from './parsing/categoryParser';
