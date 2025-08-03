@@ -197,6 +197,12 @@ export default class GoogleCalendar extends EditableCalendar {
     return [finalEvent, null];
   }
 
+  async checkForDuplicate(event: OFCEvent): Promise<boolean> {
+    // For Google Calendar, we can't easily check for duplicates without making API calls
+    // and Google Calendar allows duplicate events by design, so we return false
+    return false;
+  }
+
   async modifyEvent(
     oldEvent: OFCEvent,
     newEvent: OFCEvent,

@@ -230,6 +230,28 @@ export default class DailyNoteCalendar extends EditableCalendar {
     return [event, location];
   }
 
+  async checkForDuplicate(event: OFCEvent): Promise<boolean> {
+    if (event.type !== 'single' && event.type !== undefined) {
+      return false; // Can't create recurring events anyway
+    }
+
+    const m = moment(event.date);
+    const file = getDailyNote(m, getAllDailyNotes()) as TFile;
+    if (!file) return false; // No daily note exists for this date
+
+    try {
+      const events = await this.getEventsInFile(file);
+      // Check if any existing event has the same title
+      const duplicateExists = events.some(([existingEvent]) => {
+        return existingEvent.title === event.title;
+      });
+      return duplicateExists;
+    } catch (error) {
+      // If we can't read the file, assume no duplicate
+      return false;
+    }
+  }
+
   private getConcreteLocation({ path, lineNumber }: EventPathLocation): {
     file: TFile;
     lineNumber: number;
