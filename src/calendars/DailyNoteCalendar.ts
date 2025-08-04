@@ -78,7 +78,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
   }
 
   async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
-    const date = getDateFromFile(file as any, 'day')?.format('YYYY-MM-DD');
+    const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
     const cache = this.app.getMetadata(file);
     if (!cache) return [];
     const listItems = getListsUnderHeading(this.heading, cache);
@@ -140,7 +140,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
 
     // The rest of the file modification logic remains the same...
     const { file, lineNumber } = this.getConcreteLocation(location);
-    const oldDate = getDateFromFile(file as any, 'day')?.format('YYYY-MM-DD');
+    const oldDate = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
     if (!oldDate) throw new Error(`Could not get date from file at path ${file.path}`);
 
     if (newEvent.date !== oldDate) {

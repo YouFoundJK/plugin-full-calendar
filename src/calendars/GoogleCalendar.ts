@@ -344,7 +344,9 @@ export default class GoogleCalendar extends EditableCalendar {
       };
     } else {
       const timeZone = parentEvent.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const startTime = (parentEvent as any).startTime || '00:00'; // Cast to access startTime
+      // Type-safe access to startTime - only available when allDay is false
+      const startTime =
+        !parentEvent.allDay && 'startTime' in parentEvent ? parentEvent.startTime : '00:00';
       const isoDateTime = DateTime.fromISO(`${instanceDate}T${startTime}`, {
         zone: timeZone
       }).toISO();

@@ -410,7 +410,13 @@ export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
   let category: string | undefined = event.extendedProps.category;
   let subCategory: string | undefined = event.extendedProps.subCategory;
 
-  const resourceId = newResource || (event as any).resource?.id;
+  // Check for resource ID safely - resource property may be added by FullCalendar resource plugin
+  const resourceId =
+    newResource ||
+    (() => {
+      const eventWithResource = event as EventApi & { resource?: { id: string } };
+      return eventWithResource.resource?.id;
+    })();
 
   if (resourceId) {
     const parts = resourceId.split('::');

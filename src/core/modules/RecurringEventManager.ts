@@ -217,19 +217,39 @@ export class RecurringEventManager {
 
     // Destructure the master event to inherit common properties (like title, category, etc.)
     // while explicitly excluding properties that ONLY apply to recurring definitions.
-    const {
-      // recurring type props
-      daysOfWeek,
-      startRecur,
-      endRecur,
-      // rrule type props
-      rrule,
-      startDate,
-      // props for both recurring types
-      skipDates,
-      // The rest of the properties will be inherited.
-      ...parentPropsToInherit
-    } = masterEvent as any; // Cast to `any` to easily destructure props from a union type.
+    let parentPropsToInherit: Partial<OFCEvent>;
+    
+    if (masterEvent.type === 'recurring') {
+      const {
+        daysOfWeek,
+        startRecur,
+        endRecur,
+        skipDates,
+        ...otherProps
+      } = masterEvent;
+      parentPropsToInherit = otherProps;
+    } else if (masterEvent.type === 'rrule') {
+      const {
+        rrule,
+        startDate,
+        skipDates,
+        ...otherProps
+      } = masterEvent;
+      parentPropsToInherit = otherProps;
+    } else {
+      // For single events, just exclude the specific recurring properties
+      const {
+        // These properties won't exist but TypeScript will be happy
+        daysOfWeek: _daysOfWeek,
+        startRecur: _startRecur,
+        endRecur: _endRecur,
+        rrule: _rrule,
+        startDate: _startDate,
+        skipDates: _skipDates,
+        ...otherProps
+      } = masterEvent as any;
+      parentPropsToInherit = otherProps;
+    }
 
     const finalOverrideEvent: OFCEvent = {
       ...parentPropsToInherit,
