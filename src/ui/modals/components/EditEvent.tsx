@@ -80,6 +80,7 @@ interface EditEventProps {
   initialEvent?: Partial<OFCEvent>;
   availableCategories?: string[];
   enableCategory: boolean; // <-- ADD NEW PROP
+  enableBackgroundEvents?: boolean; // <-- ADD NEW PROP
   open?: () => Promise<void>;
   deleteEvent?: () => Promise<void>;
   onAttemptEditInherited?: () => void; // Add this new prop
@@ -110,6 +111,7 @@ export const EditEvent = ({
   defaultCalendarIndex,
   availableCategories = [],
   enableCategory, // <-- GET NEW PROP
+  enableBackgroundEvents = false, // <-- GET NEW PROP
   onAttemptEditInherited // <-- GET NEW PROP
 }: EditEventProps) => {
   const isChildOverride = !!initialEvent?.recurringEventId;
@@ -161,6 +163,9 @@ export const EditEvent = ({
   );
   const [endRecur, setEndRecur] = useState(
     initialEvent?.type === 'recurring' ? initialEvent.endRecur : undefined
+  );
+  const [display, setDisplay] = useState<'auto' | 'block' | 'list-item' | 'background' | 'inverse-background' | 'none'>(
+    initialEvent?.display || 'auto'
   );
 
   const titleRef = useRef<HTMLInputElement>(null);
@@ -228,6 +233,7 @@ export const EditEvent = ({
     const finalEvent = {
       title,
       category: category || undefined,
+      display: display !== 'auto' ? display : undefined,
       ...timeInfo,
       ...eventData
     } as OFCEvent;
@@ -286,6 +292,33 @@ export const EditEvent = ({
                 placeholder="Category (optional)"
                 readOnly={isChildOverride} // Change `disabled` to `readOnly`
               />
+            </div>
+          </div>
+        )}
+
+        {enableBackgroundEvents && (
+          <div className="setting-item">
+            <div className="setting-item-info">
+              <div className="setting-item-name">Display</div>
+              <div className="setting-item-description">
+                Choose how this event appears on the calendar
+              </div>
+            </div>
+            <div
+              className={`setting-item-control ${isChildOverride ? 'is-override-disabled' : ''}`}
+              onClick={isChildOverride ? onAttemptEditInherited : undefined}
+              title={isChildOverride ? disabledTooltip : ''}
+            >
+              <select
+                value={display}
+                onChange={e => setDisplay(e.target.value as typeof display)}
+                disabled={isChildOverride}
+              >
+                <option value="auto">Normal event</option>
+                <option value="background">Background event</option>
+                <option value="inverse-background">Inverse background</option>
+                <option value="none">Hidden</option>
+              </select>
             </div>
           </div>
         )}

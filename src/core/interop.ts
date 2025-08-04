@@ -166,7 +166,9 @@ export function toEventInput(
       subCategory: frontmatter.subCategory,
       cleanTitle: frontmatter.title,
       isShadow: false // Flag to identify the real event
-    }
+    },
+    // Support for background events and other display types
+    ...(frontmatter.display && { display: frontmatter.display })
   };
 
   // Assign category-level coloring

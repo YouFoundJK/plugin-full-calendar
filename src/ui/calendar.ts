@@ -73,6 +73,7 @@ interface ExtraRenderProps {
   toggleTask?: (event: EventApi, isComplete: boolean) => Promise<boolean>;
   forceNarrow?: boolean;
   resources?: { id: string; title: string; eventColor?: string }[];
+  businessHours?: boolean | object; // Support for business hours
   // timeZone?: string;
 }
 
@@ -92,7 +93,8 @@ export function renderCalendar(
     toggleTask,
     customButtons,
     resources,
-    enableAdvancedCategorization
+    enableAdvancedCategorization,
+    businessHours
   } = settings || {};
   const modifyEventCallback =
     modifyEvent &&
@@ -254,6 +256,9 @@ export function renderCalendar(
     resourceAreaHeaderContent: 'Categories',
     resources,
     resourcesInitiallyExpanded: false,
+
+    // Business hours configuration
+    ...(businessHours && { businessHours }),
 
     // Prevent dropping events onto parent category rows
     eventAllow: (dropInfo, draggedEvent) => {

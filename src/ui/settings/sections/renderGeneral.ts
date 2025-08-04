@@ -118,6 +118,77 @@ export function renderGeneralSettings(containerEl: HTMLElement, plugin: FullCale
       });
     });
 
+  // Business Hours Settings
+  new Setting(containerEl)
+    .setName('Enable business hours')
+    .setDesc('Highlight your working hours in time-grid views to distinguish work time from personal time.')
+    .addToggle(toggle => {
+      toggle.setValue(plugin.settings.businessHours.enabled);
+      toggle.onChange(async val => {
+        plugin.settings.businessHours.enabled = val;
+        await plugin.saveSettings();
+      });
+    });
+
+  if (plugin.settings.businessHours.enabled) {
+    new Setting(containerEl)
+      .setName('Business days')
+      .setDesc('Select which days of the week are business days.')
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('1,2,3,4,5', 'Monday - Friday')
+          .addOption('0,1,2,3,4,5,6', 'Every day')
+          .addOption('1,2,3,4', 'Monday - Thursday')
+          .addOption('2,3,4,5,6', 'Tuesday - Saturday');
+        
+        const currentDays = plugin.settings.businessHours.daysOfWeek.join(',');
+        dropdown.setValue(currentDays);
+        dropdown.onChange(async value => {
+          plugin.settings.businessHours.daysOfWeek = value.split(',').map(Number);
+          await plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Business hours start time')
+      .setDesc('When your working day begins (format: HH:mm)')
+      .addText(text => {
+        text.setValue(plugin.settings.businessHours.startTime);
+        text.onChange(async value => {
+          // Basic validation for time format
+          if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
+            plugin.settings.businessHours.startTime = value;
+            await plugin.saveSettings();
+          }
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Business hours end time')
+      .setDesc('When your working day ends (format: HH:mm)')
+      .addText(text => {
+        text.setValue(plugin.settings.businessHours.endTime);
+        text.onChange(async value => {
+          // Basic validation for time format
+          if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
+            plugin.settings.businessHours.endTime = value;
+            await plugin.saveSettings();
+          }
+        });
+      });
+  }
+
+  new Setting(containerEl)
+    .setName('Enable background events')
+    .setDesc('Allow events to be displayed as background elements for things like vacations, focus time, or class schedules.')
+    .addToggle(toggle => {
+      toggle.setValue(plugin.settings.enableBackgroundEvents);
+      toggle.onChange(async val => {
+        plugin.settings.enableBackgroundEvents = val;
+        await plugin.saveSettings();
+      });
+    });
+
   new Setting(containerEl)
     .setName('Click on a day in month view to create event')
     .setDesc('Switch off to open day view on click instead.')

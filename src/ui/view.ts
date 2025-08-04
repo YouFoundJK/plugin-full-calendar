@@ -206,6 +206,13 @@ export class CalendarView extends ItemView {
       forceNarrow: this.inSidebar,
       resources,
       enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
+      businessHours: this.plugin.settings.businessHours.enabled
+        ? {
+            daysOfWeek: this.plugin.settings.businessHours.daysOfWeek,
+            startTime: this.plugin.settings.businessHours.startTime,
+            endTime: this.plugin.settings.businessHours.endTime
+          }
+        : false,
       customButtons: {
         analysis: {
           text: 'Analysis',

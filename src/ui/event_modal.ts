@@ -50,6 +50,7 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
       defaultCalendarIndex: 0,
       availableCategories,
       enableCategory: plugin.settings.enableAdvancedCategorization,
+      enableBackgroundEvents: plugin.settings.enableBackgroundEvents,
       submit: async (data, calendarIndex) => {
         const calendarId = calendars[calendarIndex].id;
         try {
@@ -123,6 +124,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
       defaultCalendarIndex: calIdx, // <-- RESTORED THIS PROP
       availableCategories,
       enableCategory: plugin.settings.enableAdvancedCategorization,
+      enableBackgroundEvents: plugin.settings.enableBackgroundEvents,
       submit: async (data, calendarIndex) => {
         try {
           if (calendarIndex !== calIdx) {
