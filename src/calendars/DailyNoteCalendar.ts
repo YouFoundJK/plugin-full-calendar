@@ -146,8 +146,8 @@ export default class DailyNoteCalendar extends EditableCalendar {
     if (newEvent.date !== oldDate) {
       // ... Logic to move event to a new file
       const m = moment(eventToWrite.date);
-      let newFile = getDailyNote(m, getAllDailyNotes()) as TFile;
-      if (!newFile) newFile = (await createDailyNote(m)) as TFile;
+      let newFile = getDailyNote(m, getAllDailyNotes());
+      if (!newFile) newFile = await createDailyNote(m);
       await this.app.read(newFile);
       const metadata = this.app.getMetadata(newFile);
       if (!metadata) throw new Error('No metadata for file ' + newFile.path);
@@ -185,7 +185,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
   // RESTORED getEvents
   async getEvents(): Promise<EventResponse[]> {
     const notes = getAllDailyNotes();
-    const files = Object.values(notes) as TFile[];
+    const files = Object.values(notes);
     return (await Promise.all(files.map(f => this.getEventsInFile(f)))).flat();
   }
 
@@ -212,8 +212,8 @@ export default class DailyNoteCalendar extends EditableCalendar {
     }
 
     const m = moment(eventToCreate.date);
-    let file = getDailyNote(m, getAllDailyNotes()) as TFile;
-    if (!file) file = (await createDailyNote(m)) as TFile;
+    let file = getDailyNote(m, getAllDailyNotes());
+    if (!file) file = await createDailyNote(m);
     const metadata = await this.app.waitForMetadata(file);
     const headingInfo = metadata.headings?.find(h => h.heading == this.heading);
     if (!headingInfo)
@@ -266,7 +266,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
   }
 
   async bulkAddCategories(getCategory: CategoryProvider, force: boolean): Promise<void> {
-    const allNotes = Object.values(getAllDailyNotes()) as TFile[];
+    const allNotes = Object.values(getAllDailyNotes());
 
     const processor = async (file: TFile) => {
       await this.app.rewrite(file, content => {
@@ -346,7 +346,7 @@ export default class DailyNoteCalendar extends EditableCalendar {
       categoriesToRemove.add(name);
     }
 
-    const allNotes = Object.values(getAllDailyNotes()) as TFile[];
+    const allNotes = Object.values(getAllDailyNotes());
 
     const removalSettings: FullCalendarSettings = {
       ...this.settings,
