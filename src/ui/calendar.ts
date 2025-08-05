@@ -94,6 +94,15 @@ export function renderCalendar(
     resources,
     enableAdvancedCategorization
   } = settings || {};
+  
+  // Wrap eventClick to ignore shadow events
+  const wrappedEventClick = eventClick && ((info: any) => {
+    // Ignore clicks on shadow events
+    if (info.event.extendedProps.isShadow) {
+      return;
+    }
+    return eventClick(info);
+  });
   const modifyEventCallback =
     modifyEvent &&
     (async ({
@@ -279,7 +288,7 @@ export function renderCalendar(
       }
     }),
     eventSources,
-    eventClick,
+    eventClick: wrappedEventClick,
 
     selectable: select && true,
     selectMirror: select && true,
@@ -297,6 +306,13 @@ export function renderCalendar(
     eventMouseEnter,
 
     eventDidMount: ({ event, el, textColor }) => {
+      // Don't add context menu or checkboxes to shadow events
+      if (event.extendedProps.isShadow) {
+        el.style.pointerEvents = 'none';
+        el.style.cursor = 'default';
+        return;
+      }
+
       el.addEventListener('contextmenu', e => {
         e.preventDefault();
         openContextMenuForEvent && openContextMenuForEvent(event, e);
