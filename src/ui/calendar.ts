@@ -94,15 +94,17 @@ export function renderCalendar(
     resources,
     enableAdvancedCategorization
   } = settings || {};
-  
+
   // Wrap eventClick to ignore shadow events
-  const wrappedEventClick = eventClick && ((info: any) => {
-    // Ignore clicks on shadow events
-    if (info.event.extendedProps.isShadow) {
-      return;
-    }
-    return eventClick(info);
-  });
+  const wrappedEventClick =
+    eventClick &&
+    ((info: any) => {
+      // Ignore clicks on shadow events
+      if (info.event.extendedProps.isShadow) {
+        return;
+      }
+      return eventClick(info);
+    });
   const modifyEventCallback =
     modifyEvent &&
     (async ({

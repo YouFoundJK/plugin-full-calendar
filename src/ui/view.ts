@@ -90,7 +90,7 @@ export class CalendarView extends ItemView {
    */
   generateShadowEvents(mainEvents: EventInput[]): EventInput[] {
     const shadowEvents: EventInput[] = [];
-    
+
     // Only generate shadow events if advanced categorization is enabled
     if (!this.plugin.settings.enableAdvancedCategorization) {
       return shadowEvents;
@@ -117,7 +117,7 @@ export class CalendarView extends ItemView {
         shadowEvents.push(shadowEvent);
       }
     }
-    
+
     return shadowEvents;
   }
 
@@ -128,8 +128,9 @@ export class CalendarView extends ItemView {
    */
   translateSources() {
     const settings = this.plugin.settings;
-    const sources = this.plugin.cache.getAllEvents().map(
-      ({ events, editable, color, id }): EventSourceInput => {
+    const sources = this.plugin.cache
+      .getAllEvents()
+      .map(({ events, editable, color, id }): EventSourceInput => {
         const mainEvents = events
           .map((e: CachedEvent) => toEventInput(e.id, e.event, settings, id))
           .filter((e): e is EventInput => !!e);
@@ -143,8 +144,7 @@ export class CalendarView extends ItemView {
           editable,
           ...getCalendarColors(color)
         };
-      }
-    );
+      });
     return sources;
   }
 
@@ -584,9 +584,13 @@ export class CalendarView extends ItemView {
           if (eventInput) {
             // Add the main event
             const addedEvent = this.fullCalendarView?.addEvent(eventInput, calendarId);
-            
+
             // Also add shadow event if this is a subcategory event
-            if (this.plugin.settings.enableAdvancedCategorization && eventInput.resourceId && eventInput.resourceId.includes('::')) {
+            if (
+              this.plugin.settings.enableAdvancedCategorization &&
+              eventInput.resourceId &&
+              eventInput.resourceId.includes('::')
+            ) {
               const shadowEvents = this.generateShadowEvents([eventInput]);
               shadowEvents.forEach(shadowEvent => {
                 this.fullCalendarView?.addEvent(shadowEvent, calendarId);
@@ -600,15 +604,14 @@ export class CalendarView extends ItemView {
         } = payload;
         // console.debug('replacing calendar with id', payload.calendar);
         this.fullCalendarView?.getEventSourceById(id)?.remove();
-        
+
         const mainEvents = events.flatMap(
-          ({ id: eventId, event }: CachedEvent) =>
-            toEventInput(eventId, event, settings, id) || []
+          ({ id: eventId, event }: CachedEvent) => toEventInput(eventId, event, settings, id) || []
         );
-        
+
         // Generate shadow events for the calendar
         const shadowEvents = this.generateShadowEvents(mainEvents);
-        
+
         this.fullCalendarView?.addEventSource({
           id,
           events: [...mainEvents, ...shadowEvents],

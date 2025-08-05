@@ -7,11 +7,11 @@ import { EventInput } from '@fullcalendar/core';
 
 // Extract the shadow events logic for testing
 function generateShadowEvents(
-  mainEvents: EventInput[], 
+  mainEvents: EventInput[],
   enableAdvancedCategorization: boolean
 ): EventInput[] {
   const shadowEvents: EventInput[] = [];
-  
+
   // Only generate shadow events if advanced categorization is enabled
   if (!enableAdvancedCategorization) {
     return shadowEvents;
@@ -38,12 +38,11 @@ function generateShadowEvents(
       shadowEvents.push(shadowEvent);
     }
   }
-  
+
   return shadowEvents;
 }
 
 describe('Shadow Events Functionality', () => {
-
   test('should generate shadow events for subcategory events', () => {
     const mainEvents: EventInput[] = [
       {
@@ -84,17 +83,17 @@ describe('Shadow Events Functionality', () => {
     const shadowEvents = generateShadowEvents(mainEvents, true);
 
     expect(shadowEvents).toHaveLength(3);
-    
+
     expect(shadowEvents[0].id).toBe('event1-shadow');
     expect(shadowEvents[0].resourceId).toBe('Work');
-    expect(shadowEvents[0].extendedProps.isShadow).toBe(true);
-    expect(shadowEvents[0].extendedProps.originalEventId).toBe('event1');
+    expect(shadowEvents[0].extendedProps?.isShadow).toBe(true);
+    expect(shadowEvents[0].extendedProps?.originalEventId).toBe('event1');
     expect(shadowEvents[0].className).toBe('fc-event-shadow');
     expect(shadowEvents[0].editable).toBe(false);
 
     expect(shadowEvents[1].id).toBe('event2-shadow');
     expect(shadowEvents[1].resourceId).toBe('Work');
-    
+
     expect(shadowEvents[2].id).toBe('event3-shadow');
     expect(shadowEvents[2].resourceId).toBe('Personal');
   });
@@ -159,7 +158,7 @@ describe('Shadow Events Functionality', () => {
     const shadowEvents = generateShadowEvents(mainEvents, true);
 
     expect(shadowEvents).toHaveLength(1);
-    
+
     const shadowEvent = shadowEvents[0];
     expect(shadowEvent.title).toBe('Meeting');
     expect(shadowEvent.start).toBe('2024-01-01T10:00:00');
@@ -167,9 +166,9 @@ describe('Shadow Events Functionality', () => {
     expect(shadowEvent.color).toBe('#ff0000');
     expect(shadowEvent.textColor).toBe('#ffffff');
     expect(shadowEvent.allDay).toBe(false);
-    expect(shadowEvent.extendedProps.customProp).toBe('test');
-    expect(shadowEvent.extendedProps.category).toBe('Work');
-    expect(shadowEvent.extendedProps.subCategory).toBe('Project1');
+    expect(shadowEvent.extendedProps?.customProp).toBe('test');
+    expect(shadowEvent.extendedProps?.category).toBe('Work');
+    expect(shadowEvent.extendedProps?.subCategory).toBe('Project1');
   });
 
   test('should handle events without resourceId', () => {
