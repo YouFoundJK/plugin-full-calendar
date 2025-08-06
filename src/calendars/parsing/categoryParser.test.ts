@@ -94,7 +94,7 @@ describe('enhanceEvent', () => {
 });
 
 describe('Title Initialization Logic for EditEvent Component', () => {
-  it('should show full constructed title when enableCategory is true', () => {
+  it('should show subcategory and title when enableCategory is true', () => {
     const enableCategory = true;
     const initialEvent = {
       title: 'Meeting',
@@ -104,10 +104,10 @@ describe('Title Initialization Logic for EditEvent Component', () => {
 
     // This simulates the logic from EditEvent.tsx line 144-148
     const title = enableCategory 
-      ? constructTitle(initialEvent?.category, initialEvent?.subCategory, initialEvent?.title || '')
+      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
       : initialEvent?.title || '';
 
-    expect(title).toBe('Work - Important - Meeting');
+    expect(title).toBe('Important - Meeting');
   });
 
   it('should show just title when enableCategory is false', () => {
@@ -120,7 +120,7 @@ describe('Title Initialization Logic for EditEvent Component', () => {
 
     // This simulates the logic from EditEvent.tsx line 144-148
     const title = enableCategory 
-      ? constructTitle(initialEvent?.category, initialEvent?.subCategory, initialEvent?.title || '')
+      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
       : initialEvent?.title || '';
 
     expect(title).toBe('Meeting');
@@ -136,9 +136,25 @@ describe('Title Initialization Logic for EditEvent Component', () => {
 
     // This simulates the logic from EditEvent.tsx line 144-148
     const title = enableCategory 
-      ? constructTitle(initialEvent?.category, initialEvent?.subCategory, initialEvent?.title || '')
+      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
       : initialEvent?.title || '';
 
     expect(title).toBe('Important - Meeting');
+  });
+
+  it('should show just title when no subcategory and enableCategory is true', () => {
+    const enableCategory = true;
+    const initialEvent = {
+      title: 'Meeting',
+      category: 'Work',
+      subCategory: undefined
+    };
+
+    // This simulates the logic from EditEvent.tsx line 144-148
+    const title = enableCategory 
+      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
+      : initialEvent?.title || '';
+
+    expect(title).toBe('Meeting');
   });
 });

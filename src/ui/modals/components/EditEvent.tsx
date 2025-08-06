@@ -143,7 +143,7 @@ export const EditEvent = ({
   );
   const [title, setTitle] = useState(
     enableCategory 
-      ? constructTitle(initialEvent?.category, initialEvent?.subCategory, initialEvent?.title || '')
+      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
       : initialEvent?.title || ''
   );
   const [category, setCategory] = useState(initialEvent?.category || '');
