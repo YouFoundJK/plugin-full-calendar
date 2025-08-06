@@ -85,6 +85,176 @@ export class CalendarView extends ItemView {
   }
 
   /**
+   * Switch to a specific workspace by ID.
+   * @param workspaceId - The workspace ID to switch to, or null for default view
+   */
+  async switchToWorkspace(workspaceId: string | null) {
+    this.plugin.settings.activeWorkspace = workspaceId;
+    await this.plugin.saveSettings();
+    await this.onOpen(); // Re-render the calendar with new settings
+  }
+
+  /**
+   * Get the currently active workspace settings, if any.
+   */
+  getActiveWorkspace() {
+    if (!this.plugin.settings.activeWorkspace) return null;
+    return (
+      this.plugin.settings.workspaces.find(w => w.id === this.plugin.settings.activeWorkspace) ||
+      null
+    );
+  }
+
+  /**
+   * Apply workspace settings to override default settings.
+   */
+  applyWorkspaceSettings(settings: any) {
+    const workspace = this.getActiveWorkspace();
+    if (!workspace) return settings;
+
+    const workspaceSettings = { ...settings };
+
+    // Apply view overrides
+    if (workspace.defaultView?.desktop || workspace.defaultView?.mobile) {
+      workspaceSettings.initialView = {
+        desktop: workspace.defaultView.desktop || settings.initialView?.desktop,
+        mobile: workspace.defaultView.mobile || settings.initialView?.mobile
+      };
+    }
+
+    // Apply business hours override
+    if (workspace.showBusinessHours !== undefined) {
+      workspaceSettings.businessHours = workspace.showBusinessHours;
+    }
+
+    return workspaceSettings;
+  }
+
+  /**
+   * Filter calendar sources based on workspace settings.
+   */
+  filterCalendarSources(sources: any[]) {
+    const workspace = this.getActiveWorkspace();
+    if (!workspace) return sources;
+
+    return sources.filter(source => {
+      // If hidden calendars are specified, hide those calendars
+      if (workspace.hiddenCalendars?.includes(source.id)) {
+        return false;
+      }
+
+      // If visible calendars are specified, only show those calendars
+      if (workspace.visibleCalendars && workspace.visibleCalendars.length > 0) {
+        return workspace.visibleCalendars.includes(source.id);
+      }
+
+      return true;
+    });
+  }
+
+  /**
+   * Filter events by category based on workspace settings.
+   */
+  filterEventsByCategory(events: EventInput[]): EventInput[] {
+    const workspace = this.getActiveWorkspace();
+    if (!workspace?.categoryFilter) return events;
+
+    const { mode, categories } = workspace.categoryFilter;
+
+    return events.filter(event => {
+      // Extract category from event (checking different possible formats)
+      const category =
+        event.extendedProps?.category ||
+        event.extendedProps?.originalEvent?.category ||
+        event.resourceId; // For timeline events
+
+      if (!category) {
+        // Events without categories - include based on filter mode
+        return mode === 'hide'; // If hiding categories, include uncategorized events
+      }
+
+      // For subcategories (format: "Category::Subcategory"), use the parent category
+      const mainCategory = category.includes('::') ? category.split('::')[0] : category;
+
+      if (mode === 'show-only') {
+        return categories.includes(mainCategory);
+      } else {
+        // mode === 'hide'
+        return !categories.includes(mainCategory);
+      }
+    });
+  }
+
+  /**
+   * Get the text to display in the workspace switcher button.
+   */
+  getWorkspaceSwitcherText(): string {
+    const activeWorkspace = this.getActiveWorkspace();
+    if (!activeWorkspace) {
+      return 'Workspace ▾';
+    }
+
+    // Truncate long workspace names for UI
+    const name =
+      activeWorkspace.name.length > 12
+        ? activeWorkspace.name.substring(0, 12) + '...'
+        : activeWorkspace.name;
+
+    return `${activeWorkspace.icon ? activeWorkspace.icon + ' ' : ''}${name} ▾`;
+  }
+
+  /**
+   * Show the workspace switcher dropdown menu.
+   */
+  showWorkspaceSwitcher(ev: MouseEvent) {
+    const menu = new Menu();
+
+    // Default view option
+    menu.addItem(item => {
+      item
+        .setTitle('Default View')
+        .setIcon(this.plugin.settings.activeWorkspace === null ? 'check' : '')
+        .onClick(async () => {
+          await this.switchToWorkspace(null);
+        });
+    });
+
+    if (this.plugin.settings.workspaces.length > 0) {
+      menu.addSeparator();
+
+      // Workspace options
+      this.plugin.settings.workspaces.forEach(workspace => {
+        menu.addItem(item => {
+          item
+            .setTitle(workspace.name)
+            .setIcon(
+              this.plugin.settings.activeWorkspace === workspace.id ? 'check' : workspace.icon || ''
+            )
+            .onClick(async () => {
+              await this.switchToWorkspace(workspace.id);
+            });
+        });
+      });
+    }
+
+    menu.addSeparator();
+
+    // Manage workspaces option
+    menu.addItem(item => {
+      item
+        .setTitle('Manage Workspaces...')
+        .setIcon('settings')
+        .onClick(() => {
+          // Open settings tab to workspaces section
+          this.plugin.settingsTab?.display();
+          // Note: We could add logic to scroll to workspaces section if needed
+        });
+    });
+
+    menu.showAtMouseEvent(ev);
+  }
+
+  /**
    * Generates shadow events for parent categories in timeline views.
    * Shadow events provide visual aggregation of child subcategory events.
    */
@@ -177,22 +347,28 @@ export class CalendarView extends ItemView {
    */
   translateSources() {
     const settings = this.plugin.settings;
-    const sources = this.plugin.cache
-      .getAllEvents()
-      .map(({ events, editable, color, id }): EventSourceInput => {
-        const mainEvents = events
-          .map((e: CachedEvent) => toEventInput(e.id, e.event, settings, id))
-          .filter((e): e is EventInput => !!e);
+    let allSources = this.plugin.cache.getAllEvents();
 
-        // Don't include shadow events in translateSources - they will be added
-        // dynamically when switching to timeline views
-        return {
-          id,
-          events: mainEvents,
-          editable,
-          ...getCalendarColors(color)
-        };
-      });
+    // Apply workspace filtering if active
+    allSources = this.filterCalendarSources(allSources);
+
+    const sources = allSources.map(({ events, editable, color, id }): EventSourceInput => {
+      const mainEvents = events
+        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings, id))
+        .filter((e): e is EventInput => !!e);
+
+      // Apply workspace category filtering
+      const filteredEvents = this.filterEventsByCategory(mainEvents);
+
+      // Don't include shadow events in translateSources - they will be added
+      // dynamically when switching to timeline views
+      return {
+        id,
+        events: filteredEvents,
+        editable,
+        ...getCalendarColors(color)
+      };
+    });
     return sources;
   }
 
@@ -313,6 +489,9 @@ export class CalendarView extends ItemView {
       currentViewType = newViewType;
     };
 
+    // Apply workspace settings
+    const workspaceSettings = this.applyWorkspaceSettings(this.plugin.settings);
+
     this.fullCalendarView = renderCalendar(calendarEl, sources, {
       // timeZone:
       //   this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone, // <-- ADD THIS LINE
@@ -320,7 +499,12 @@ export class CalendarView extends ItemView {
       resources,
       enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
       onViewChange: handleViewChange,
-      businessHours: this.plugin.settings.businessHours.enabled
+      initialView: workspaceSettings.initialView, // Use workspace-aware initial view
+      businessHours: (
+        workspaceSettings.businessHours !== undefined
+          ? workspaceSettings.businessHours
+          : this.plugin.settings.businessHours.enabled
+      )
         ? {
             daysOfWeek: this.plugin.settings.businessHours.daysOfWeek,
             startTime: this.plugin.settings.businessHours.startTime,
@@ -328,6 +512,12 @@ export class CalendarView extends ItemView {
           }
         : false,
       customButtons: {
+        workspace: {
+          text: this.getWorkspaceSwitcherText(),
+          click: (ev?: MouseEvent) => {
+            if (ev) this.showWorkspaceSwitcher(ev);
+          }
+        },
         analysis: {
           text: 'Analysis',
           click: async () => {
@@ -477,7 +667,6 @@ export class CalendarView extends ItemView {
         } catch (e) {}
       },
       firstDay: this.plugin.settings.firstDay,
-      initialView: this.plugin.settings.initialView,
       timeFormat24h: this.plugin.settings.timeFormat24h,
       openContextMenuForEvent: async (e, mouseEvent) => {
         const menu = new Menu();

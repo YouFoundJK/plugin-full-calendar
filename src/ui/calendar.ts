@@ -59,7 +59,7 @@ interface ExtraRenderProps {
   customButtons?: {
     [key: string]: {
       text: string;
-      click: () => void | Promise<void>;
+      click: (ev?: MouseEvent) => void | Promise<void>;
     };
   };
 
@@ -138,6 +138,9 @@ export function renderCalendar(
     .filter(Boolean)
     .join(',');
 
+  // Add workspace button to the left side of toolbar when not narrow
+  const leftToolbarGroup = !isNarrow ? 'workspace prev,next today' : 'prev,next today';
+
   // The comma between 'analysis' and the view group creates the visual separation.
   const rightToolbarGroup = [!isNarrow ? 'analysis' : null, viewButtonGroup]
     .filter(Boolean)
@@ -145,7 +148,7 @@ export function renderCalendar(
 
   const headerToolbar = !isNarrow
     ? {
-        left: 'prev,next today',
+        left: leftToolbarGroup,
         center: 'title',
         right: rightToolbarGroup
       }
