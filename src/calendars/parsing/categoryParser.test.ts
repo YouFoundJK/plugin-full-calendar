@@ -3,7 +3,7 @@
  * @brief Tests for categoryParser utility functions
  */
 
-import { constructTitle, parseTitle, enhanceEvent } from './categoryParser';
+import { constructTitle, parseTitle, parseSubcategoryTitle, enhanceEvent } from './categoryParser';
 import { OFCEvent } from '../../types';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from '../../types/settings';
 
@@ -26,6 +26,40 @@ describe('constructTitle', () => {
   it('should return "Category - SubCategory - Title" when both provided', () => {
     const result = constructTitle('Work', 'Important', 'Meeting');
     expect(result).toBe('Work - Important - Meeting');
+  });
+});
+
+describe('parseSubcategoryTitle', () => {
+  it('should parse "SubCategory - Title" format', () => {
+    const result = parseSubcategoryTitle('Important - Meeting');
+    expect(result).toEqual({
+      subCategory: 'Important',
+      title: 'Meeting'
+    });
+  });
+
+  it('should handle title only (no subcategory)', () => {
+    const result = parseSubcategoryTitle('Meeting');
+    expect(result).toEqual({
+      subCategory: undefined,
+      title: 'Meeting'
+    });
+  });
+
+  it('should handle title with multiple dashes', () => {
+    const result = parseSubcategoryTitle('Important - Meeting - Discussion');
+    expect(result).toEqual({
+      subCategory: 'Important',
+      title: 'Meeting - Discussion'
+    });
+  });
+
+  it('should handle empty subcategory', () => {
+    const result = parseSubcategoryTitle(' - Meeting');
+    expect(result).toEqual({
+      subCategory: undefined,
+      title: ' - Meeting'
+    });
   });
 });
 
@@ -93,68 +127,68 @@ describe('enhanceEvent', () => {
   });
 });
 
-describe('Title Initialization Logic for EditEvent Component', () => {
-  it('should show subcategory and title when enableCategory is true', () => {
+describe('Title Parsing Logic for EditEvent Component', () => {
+  it('should use parseSubcategoryTitle when enableCategory is true', () => {
     const enableCategory = true;
-    const initialEvent = {
-      title: 'Meeting',
-      category: 'Work',
-      subCategory: 'Important'
-    };
+    const titleInput = 'Important - Meeting';
 
-    // This simulates the logic from EditEvent.tsx line 144-148
-    const title = enableCategory 
-      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
-      : initialEvent?.title || '';
+    // This simulates the logic from EditEvent.tsx handleSubmit
+    let parsedSubCategory: string | undefined;
+    let parsedTitle: string;
 
-    expect(title).toBe('Important - Meeting');
+    if (enableCategory) {
+      const parsed = parseSubcategoryTitle(titleInput);
+      parsedSubCategory = parsed.subCategory;
+      parsedTitle = parsed.title;
+    } else {
+      const parsed = parseTitle(titleInput);
+      parsedSubCategory = parsed.subCategory;
+      parsedTitle = parsed.title;
+    }
+
+    expect(parsedSubCategory).toBe('Important');
+    expect(parsedTitle).toBe('Meeting');
   });
 
-  it('should show just title when enableCategory is false', () => {
+  it('should use parseTitle when enableCategory is false', () => {
     const enableCategory = false;
-    const initialEvent = {
+    const titleInput = 'Important - Meeting';
+
+    // This simulates the logic from EditEvent.tsx handleSubmit
+    let parsedSubCategory: string | undefined;
+    let parsedTitle: string;
+
+    if (enableCategory) {
+      const parsed = parseSubcategoryTitle(titleInput);
+      parsedSubCategory = parsed.subCategory;
+      parsedTitle = parsed.title;
+    } else {
+      const parsed = parseTitle(titleInput);
+      parsedSubCategory = parsed.subCategory;
+      parsedTitle = parsed.title;
+    }
+
+    expect(parsedSubCategory).toBe(undefined); // parseTitle treats this as "Category - Title"
+    expect(parsedTitle).toBe('Meeting');
+  });
+
+  it('should preserve subcategory when round-tripping through edit modal', () => {
+    // Start with an event that has category, subcategory, and title
+    const originalEvent = {
       title: 'Meeting',
       category: 'Work',
       subCategory: 'Important'
     };
 
-    // This simulates the logic from EditEvent.tsx line 144-148
-    const title = enableCategory 
-      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
-      : initialEvent?.title || '';
+    // Simulate how EditEvent initializes the title input when enableCategory=true
+    const titleInput = constructTitle(undefined, originalEvent.subCategory, originalEvent.title);
+    expect(titleInput).toBe('Important - Meeting');
 
-    expect(title).toBe('Meeting');
-  });
-
-  it('should handle subcategory without category when enableCategory is true', () => {
-    const enableCategory = true;
-    const initialEvent = {
-      title: 'Meeting',
-      category: undefined,
-      subCategory: 'Important'
-    };
-
-    // This simulates the logic from EditEvent.tsx line 144-148
-    const title = enableCategory 
-      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
-      : initialEvent?.title || '';
-
-    expect(title).toBe('Important - Meeting');
-  });
-
-  it('should show just title when no subcategory and enableCategory is true', () => {
-    const enableCategory = true;
-    const initialEvent = {
-      title: 'Meeting',
-      category: 'Work',
-      subCategory: undefined
-    };
-
-    // This simulates the logic from EditEvent.tsx line 144-148
-    const title = enableCategory 
-      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
-      : initialEvent?.title || '';
-
-    expect(title).toBe('Meeting');
+    // Simulate how EditEvent parses the title input on submit when enableCategory=true
+    const parsed = parseSubcategoryTitle(titleInput);
+    
+    // The final event should preserve the original subcategory
+    expect(parsed.subCategory).toBe('Important');
+    expect(parsed.title).toBe('Meeting');
   });
 });
