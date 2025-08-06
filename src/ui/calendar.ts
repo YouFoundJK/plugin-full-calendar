@@ -73,6 +73,7 @@ interface ExtraRenderProps {
   toggleTask?: (event: EventApi, isComplete: boolean) => Promise<boolean>;
   forceNarrow?: boolean;
   resources?: { id: string; title: string; eventColor?: string }[];
+  onViewChange?: () => void; // Add view change callback
   // timeZone?: string;
 }
 
@@ -92,7 +93,8 @@ export function renderCalendar(
     toggleTask,
     customButtons,
     resources,
-    enableAdvancedCategorization
+    enableAdvancedCategorization,
+    onViewChange
   } = settings || {};
 
   // Wrap eventClick to ignore shadow events
@@ -355,6 +357,8 @@ export function renderCalendar(
         }
       }
     },
+
+    viewDidMount: onViewChange,
 
     longPressDelay: 250
   });

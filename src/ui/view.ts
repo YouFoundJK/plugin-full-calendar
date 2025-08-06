@@ -88,11 +88,18 @@ export class CalendarView extends ItemView {
    * Generates shadow events for parent categories in timeline views.
    * Shadow events provide visual aggregation of child subcategory events.
    */
-  generateShadowEvents(mainEvents: EventInput[]): EventInput[] {
+  generateShadowEvents(mainEvents: EventInput[], forceTimeline = false): EventInput[] {
     const shadowEvents: EventInput[] = [];
 
     // Only generate shadow events if advanced categorization is enabled
     if (!this.plugin.settings.enableAdvancedCategorization) {
+      return shadowEvents;
+    }
+
+    // Only generate shadow events if we're in a timeline view
+    // During initial load, forceTimeline can be used to include shadows for timeline views
+    const currentView = this.fullCalendarView?.view?.type;
+    if (!forceTimeline && currentView && !currentView.includes('resourceTimeline')) {
       return shadowEvents;
     }
 
@@ -122,6 +129,48 @@ export class CalendarView extends ItemView {
   }
 
   /**
+   * Adds shadow events to the current view (for timeline views)
+   */
+  addShadowEventsToView() {
+    if (!this.plugin.settings.enableAdvancedCategorization || !this.fullCalendarView) {
+      return;
+    }
+
+    // Get all events from each source and generate shadow events
+    for (const source of this.plugin.cache.getAllEvents()) {
+      const { events, id: calendarId } = source;
+      const settings = this.plugin.settings;
+
+      const mainEvents = events
+        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings, calendarId))
+        .filter((e): e is EventInput => !!e);
+
+      const shadowEvents = this.generateShadowEvents(mainEvents, true);
+
+      shadowEvents.forEach(shadowEvent => {
+        this.fullCalendarView?.addEvent(shadowEvent, calendarId);
+      });
+    }
+  }
+
+  /**
+   * Removes shadow events from the current view
+   */
+  removeShadowEventsFromView() {
+    if (!this.fullCalendarView) {
+      return;
+    }
+
+    // Find and remove all shadow events
+    const allEvents = this.fullCalendarView.getEvents();
+    allEvents.forEach(event => {
+      if (event.extendedProps.isShadow) {
+        event.remove();
+      }
+    });
+  }
+
+  /**
    * Translates event data from the `EventCache` into the `EventSourceInput`
    * format required by the FullCalendar library.
    * Also calculates the correct text color for event backgrounds.
@@ -135,12 +184,11 @@ export class CalendarView extends ItemView {
           .map((e: CachedEvent) => toEventInput(e.id, e.event, settings, id))
           .filter((e): e is EventInput => !!e);
 
-        // Always include shadow events (they'll only be visible in timeline views due to resourceId)
-        const shadowEvents = this.generateShadowEvents(mainEvents);
-
+        // Don't include shadow events in translateSources - they will be added
+        // dynamically when switching to timeline views
         return {
           id,
-          events: [...mainEvents, ...shadowEvents],
+          events: mainEvents,
           editable,
           ...getCalendarColors(color)
         };
@@ -245,12 +293,33 @@ export class CalendarView extends ItemView {
       this.fullCalendarView.destroy();
       this.fullCalendarView = null;
     }
+    // Add view change handler to manage shadow events for timeline views
+    let currentViewType = '';
+    const handleViewChange = () => {
+      const newViewType = this.fullCalendarView?.view?.type || '';
+      const wasTimeline = currentViewType.includes('resourceTimeline');
+      const isTimeline = newViewType.includes('resourceTimeline');
+
+      if (wasTimeline !== isTimeline) {
+        // View type changed between timeline and non-timeline
+        if (isTimeline) {
+          // Switched to timeline view - add shadow events
+          this.addShadowEventsToView();
+        } else {
+          // Switched from timeline view - remove shadow events
+          this.removeShadowEventsFromView();
+        }
+      }
+      currentViewType = newViewType;
+    };
+
     this.fullCalendarView = renderCalendar(calendarEl, sources, {
       // timeZone:
       //   this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone, // <-- ADD THIS LINE
       forceNarrow: this.inSidebar,
       resources,
       enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
+      onViewChange: handleViewChange,
       customButtons: {
         analysis: {
           text: 'Analysis',
@@ -499,6 +568,12 @@ export class CalendarView extends ItemView {
     // }
     // // ===============================================
 
+    // Initialize shadow events if starting in timeline view
+    currentViewType = this.fullCalendarView?.view?.type || '';
+    if (currentViewType.includes('resourceTimeline')) {
+      this.addShadowEventsToView();
+    }
+
     // @ts-ignore
     window.fc = this.fullCalendarView;
 
@@ -526,6 +601,12 @@ export class CalendarView extends ItemView {
         this.fullCalendarView?.removeAllEventSources();
         const sources = this.translateSources();
         sources.forEach(source => this.fullCalendarView?.addEventSource(source));
+
+        // Re-add shadow events if in timeline view
+        const currentViewType = this.fullCalendarView?.view?.type || '';
+        if (currentViewType.includes('resourceTimeline')) {
+          this.addShadowEventsToView();
+        }
         // // this.fullCalendarView?.removeAllEventSources();
         // // const sources = this.translateSources();
         // // sources.forEach(source => this.fullCalendarView?.addEventSource(source));
@@ -585,13 +666,15 @@ export class CalendarView extends ItemView {
             // Add the main event
             const addedEvent = this.fullCalendarView?.addEvent(eventInput, calendarId);
 
-            // Also add shadow event if this is a subcategory event
+            // Also add shadow event if this is a subcategory event and we're in timeline view
+            const currentViewType = this.fullCalendarView?.view?.type || '';
             if (
+              currentViewType.includes('resourceTimeline') &&
               this.plugin.settings.enableAdvancedCategorization &&
               eventInput.resourceId &&
               eventInput.resourceId.includes('::')
             ) {
-              const shadowEvents = this.generateShadowEvents([eventInput]);
+              const shadowEvents = this.generateShadowEvents([eventInput], true);
               shadowEvents.forEach(shadowEvent => {
                 this.fullCalendarView?.addEvent(shadowEvent, calendarId);
               });
@@ -609,8 +692,11 @@ export class CalendarView extends ItemView {
           ({ id: eventId, event }: CachedEvent) => toEventInput(eventId, event, settings, id) || []
         );
 
-        // Generate shadow events for the calendar
-        const shadowEvents = this.generateShadowEvents(mainEvents);
+        // Only include shadow events if in timeline view
+        const currentViewType = this.fullCalendarView?.view?.type || '';
+        const shadowEvents = currentViewType.includes('resourceTimeline')
+          ? this.generateShadowEvents(mainEvents, true)
+          : [];
 
         this.fullCalendarView?.addEventSource({
           id,

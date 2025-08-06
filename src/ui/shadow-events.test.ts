@@ -8,12 +8,18 @@ import { EventInput } from '@fullcalendar/core';
 // Extract the shadow events logic for testing
 function generateShadowEvents(
   mainEvents: EventInput[],
-  enableAdvancedCategorization: boolean
+  enableAdvancedCategorization: boolean,
+  forceTimeline = true // For tests, we force timeline behavior
 ): EventInput[] {
   const shadowEvents: EventInput[] = [];
 
   // Only generate shadow events if advanced categorization is enabled
   if (!enableAdvancedCategorization) {
+    return shadowEvents;
+  }
+
+  // For tests, we assume timeline view when forceTimeline is true
+  if (!forceTimeline) {
     return shadowEvents;
   }
 
@@ -132,6 +138,26 @@ describe('Shadow Events Functionality', () => {
     ];
 
     const shadowEvents = generateShadowEvents(mainEvents, false);
+
+    expect(shadowEvents).toHaveLength(0);
+  });
+
+  test('should not generate shadow events when not in timeline view', () => {
+    const mainEvents: EventInput[] = [
+      {
+        id: 'event1',
+        title: 'Meeting',
+        resourceId: 'Work::Project1',
+        start: '2024-01-01T10:00:00',
+        end: '2024-01-01T11:00:00',
+        extendedProps: {
+          category: 'Work',
+          subCategory: 'Project1'
+        }
+      }
+    ];
+
+    const shadowEvents = generateShadowEvents(mainEvents, true, false);
 
     expect(shadowEvents).toHaveLength(0);
   });
