@@ -142,7 +142,9 @@ export const EditEvent = ({
     initialEvent?.allDay === false ? initialEvent.endTime || '' : ''
   );
   const [title, setTitle] = useState(
-    constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
+    enableCategory 
+      ? constructTitle(initialEvent?.category, initialEvent?.subCategory, initialEvent?.title || '')
+      : initialEvent?.title || ''
   );
   const [category, setCategory] = useState(initialEvent?.category || '');
   // const [isRecurring, setIsRecurring] = useState(initialEvent?.type === 'recurring' || false);
