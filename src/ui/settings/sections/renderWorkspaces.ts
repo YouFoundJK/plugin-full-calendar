@@ -101,12 +101,8 @@ export function renderWorkspaceSettings(
             });
         });
     });
-  } else {
-    const emptyState = workspaceSection.createEl('div', { cls: 'workspace-empty-state' });
-    emptyState.createEl('p', { 
-      text: 'No workspaces created yet. Create your first workspace to get started with custom calendar views.' 
-    });
   }
+  // Note: Empty state removed as requested - only show workspace list if there are workspaces
 }
 
 function getWorkspaceDescription(workspace: WorkspaceSettings): string {
@@ -121,10 +117,6 @@ function getWorkspaceDescription(workspace: WorkspaceSettings): string {
   
   if (workspace.visibleCalendars?.length) {
     parts.push(`Shows ${workspace.visibleCalendars.length} calendar(s)`);
-  }
-  
-  if (workspace.hiddenCalendars?.length) {
-    parts.push(`Hides ${workspace.hiddenCalendars.length} calendar(s)`);
   }
   
   if (workspace.categoryFilter?.categories.length) {

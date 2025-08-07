@@ -6,7 +6,7 @@
 
 import { Modal, Setting, DropdownComponent, TextComponent, ToggleComponent } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
-import { WorkspaceSettings, generateWorkspaceId } from '../../../types/settings';
+import { WorkspaceSettings, generateWorkspaceId, BusinessHoursSettings } from '../../../types/settings';
 
 export class WorkspaceModal extends Modal {
   plugin: FullCalendarPlugin;
@@ -16,14 +16,13 @@ export class WorkspaceModal extends Modal {
   
   // Form state
   private nameInput!: TextComponent;
-  private iconInput!: TextComponent;
   private desktopViewDropdown!: DropdownComponent;
   private mobileViewDropdown!: DropdownComponent;
   private defaultDateInput!: TextComponent;
   private visibleCalendarsContainer!: HTMLElement;
-  private hiddenCalendarsContainer!: HTMLElement;
   private categoryFilterContainer!: HTMLElement;
   private businessHoursToggle!: ToggleComponent;
+  private businessHoursContainer!: HTMLElement;
   private timelineExpandedToggle!: ToggleComponent;
 
   constructor(
@@ -73,19 +72,6 @@ export class WorkspaceModal extends Modal {
           .setValue(this.workspace.name || '')
           .onChange(value => {
             this.workspace.name = value;
-          });
-      });
-
-    // Workspace icon (optional)
-    new Setting(section)
-      .setName('Icon (optional)')
-      .setDesc('Obsidian icon name for visual identification')
-      .addText(text => {
-        this.iconInput = text;
-        text.setPlaceholder('e.g., briefcase, home, star')
-          .setValue(this.workspace.icon || '')
-          .onChange(value => {
-            this.workspace.icon = value || undefined;
           });
       });
   }
@@ -179,55 +165,51 @@ export class WorkspaceModal extends Modal {
       .setClass('workspace-calendar-filter');
 
     this.visibleCalendarsContainer = section.createEl('div', { cls: 'workspace-calendar-checkboxes' });
-    this.renderCalendarCheckboxes(this.visibleCalendarsContainer, calendars, 'visible');
-
-    // Hidden calendars
-    new Setting(section)
-      .setName('Hidden calendars')
-      .setDesc('Select which calendars to hide (takes precedence over visible)')
-      .setClass('workspace-calendar-filter');
-
-    this.hiddenCalendarsContainer = section.createEl('div', { cls: 'workspace-calendar-checkboxes' });
-    this.renderCalendarCheckboxes(this.hiddenCalendarsContainer, calendars, 'hidden');
+    this.renderCalendarCheckboxes(this.visibleCalendarsContainer, calendars);
   }
 
   private renderCalendarCheckboxes(
     container: HTMLElement,
-    calendars: any[],
-    type: 'visible' | 'hidden'
+    calendars: any[]
   ) {
-    const selectedIds = type === 'visible' 
-      ? (this.workspace.visibleCalendars || [])
-      : (this.workspace.hiddenCalendars || []);
+    const selectedIds = this.workspace.visibleCalendars || [];
 
     calendars.forEach(calendar => {
       const checkboxContainer = container.createEl('div', { cls: 'workspace-checkbox-item' });
       
+      // Generate a meaningful display name based on calendar type
+      let displayName = calendar.name;
+      if (!displayName) {
+        switch (calendar.type) {
+          case 'local':
+            displayName = `Local: ${calendar.directory}`;
+            break;
+          case 'dailynote':
+            displayName = `Daily Notes: ${calendar.heading}`;
+            break;
+          case 'ical':
+            displayName = `ICS: ${new URL(calendar.url).hostname}`;
+            break;
+          default:
+            displayName = `${calendar.type} Calendar`;
+        }
+      }
+      
       new Setting(checkboxContainer)
-        .setName(calendar.name || 'Unnamed Calendar')
+        .setName(displayName)
         .addToggle(toggle => {
           toggle.setValue(selectedIds.includes(calendar.id));
           toggle.onChange(checked => {
-            const currentList = type === 'visible' 
-              ? (this.workspace.visibleCalendars || [])
-              : (this.workspace.hiddenCalendars || []);
+            const currentList = this.workspace.visibleCalendars || [];
               
             if (checked) {
               if (!currentList.includes(calendar.id)) {
                 const newList = [...currentList, calendar.id];
-                if (type === 'visible') {
-                  this.workspace.visibleCalendars = newList;
-                } else {
-                  this.workspace.hiddenCalendars = newList;
-                }
+                this.workspace.visibleCalendars = newList;
               }
             } else {
               const newList = currentList.filter(id => id !== calendar.id);
-              if (type === 'visible') {
-                this.workspace.visibleCalendars = newList.length > 0 ? newList : undefined;
-              } else {
-                this.workspace.hiddenCalendars = newList.length > 0 ? newList : undefined;
-              }
+              this.workspace.visibleCalendars = newList.length > 0 ? newList : undefined;
             }
           });
         });
@@ -316,18 +298,29 @@ export class WorkspaceModal extends Modal {
     // Business hours override
     new Setting(section)
       .setName('Override business hours')
-      .setDesc('Show or hide business hours for this workspace only')
-      .addDropdown(dropdown => {
-        dropdown.addOption('', 'Use default setting');
-        dropdown.addOption('true', 'Show business hours');
-        dropdown.addOption('false', 'Hide business hours');
-        
-        const currentValue = this.workspace.showBusinessHours;
-        dropdown.setValue(currentValue === undefined ? '' : currentValue.toString());
-        dropdown.onChange(value => {
-          this.workspace.showBusinessHours = value === '' ? undefined : value === 'true';
+      .setDesc('Enable custom business hours for this workspace')
+      .addToggle(toggle => {
+        this.businessHoursToggle = toggle;
+        const hasOverride = !!this.workspace.businessHours;
+        toggle.setValue(hasOverride);
+        toggle.onChange(value => {
+          if (value) {
+            // Initialize with default business hours if enabling
+            this.workspace.businessHours = {
+              enabled: true,
+              daysOfWeek: [1, 2, 3, 4, 5], // Monday to Friday
+              startTime: '09:00',
+              endTime: '17:00'
+            };
+          } else {
+            this.workspace.businessHours = undefined;
+          }
+          this.renderBusinessHoursDetails();
         });
       });
+
+    this.businessHoursContainer = section.createEl('div', { cls: 'workspace-business-hours-details' });
+    this.renderBusinessHoursDetails();
 
     // Timeline expanded
     if (this.plugin.settings.enableAdvancedCategorization) {
@@ -345,6 +338,77 @@ export class WorkspaceModal extends Modal {
             this.workspace.timelineExpanded = value === '' ? undefined : value === 'true';
           });
         });
+    }
+  }
+
+  private renderBusinessHoursDetails() {
+    this.businessHoursContainer.empty();
+    
+    if (!this.workspace.businessHours) return;
+
+    // Enabled toggle
+    new Setting(this.businessHoursContainer)
+      .setName('Enable business hours')
+      .setDesc('Show business hours highlighting in this workspace')
+      .addToggle(toggle => {
+        toggle.setValue(this.workspace.businessHours?.enabled || false);
+        toggle.onChange(value => {
+          if (this.workspace.businessHours) {
+            this.workspace.businessHours.enabled = value;
+          }
+        });
+      })
+      .settingEl.addClass('fc-indented-setting');
+
+    if (this.workspace.businessHours.enabled) {
+      // Business days
+      new Setting(this.businessHoursContainer)
+        .setName('Business days')
+        .setDesc('Select which days of the week are business days')
+        .addDropdown(dropdown => {
+          dropdown
+            .addOption('1,2,3,4,5', 'Monday - Friday')
+            .addOption('0,1,2,3,4,5,6', 'Every day')
+            .addOption('1,2,3,4', 'Monday - Thursday')
+            .addOption('2,3,4,5,6', 'Tuesday - Saturday');
+
+          const currentDays = this.workspace.businessHours?.daysOfWeek.join(',') || '1,2,3,4,5';
+          dropdown.setValue(currentDays);
+          dropdown.onChange(value => {
+            if (this.workspace.businessHours) {
+              this.workspace.businessHours.daysOfWeek = value.split(',').map(Number);
+            }
+          });
+        })
+        .settingEl.addClass('fc-indented-setting');
+
+      // Start time
+      new Setting(this.businessHoursContainer)
+        .setName('Business hours start time')
+        .setDesc('When your working day begins (format: HH:mm)')
+        .addText(text => {
+          text.setValue(this.workspace.businessHours?.startTime || '09:00');
+          text.onChange(value => {
+            if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value) && this.workspace.businessHours) {
+              this.workspace.businessHours.startTime = value;
+            }
+          });
+        })
+        .settingEl.addClass('fc-indented-setting');
+
+      // End time
+      new Setting(this.businessHoursContainer)
+        .setName('Business hours end time')
+        .setDesc('When your working day ends (format: HH:mm)')
+        .addText(text => {
+          text.setValue(this.workspace.businessHours?.endTime || '17:00');
+          text.onChange(value => {
+            if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value) && this.workspace.businessHours) {
+              this.workspace.businessHours.endTime = value;
+            }
+          });
+        })
+        .settingEl.addClass('fc-indented-setting');
     }
   }
 

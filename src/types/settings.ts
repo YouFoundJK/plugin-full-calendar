@@ -10,7 +10,6 @@ export interface BusinessHoursSettings {
 export interface WorkspaceSettings {
   id: string;
   name: string;
-  icon?: string; // Obsidian icon name
 
   // View Configuration
   defaultView?: {
@@ -21,14 +20,13 @@ export interface WorkspaceSettings {
 
   // Source & Content Filtering
   visibleCalendars?: string[]; // Calendar IDs to show (if empty, show all)
-  hiddenCalendars?: string[]; // Calendar IDs to hide (takes precedence over visible)
   categoryFilter?: {
     mode: 'show-only' | 'hide'; // Filter mode
     categories: string[]; // List of categories to show/hide
   };
 
   // Appearance Overrides
-  showBusinessHours?: boolean; // Override global business hours setting
+  businessHours?: BusinessHoursSettings; // Override global business hours setting
   timelineExpanded?: boolean; // Timeline categories expanded by default
 }
 
@@ -102,13 +100,11 @@ export function createDefaultWorkspace(name: string): WorkspaceSettings {
   return {
     id: generateWorkspaceId(),
     name: name,
-    icon: undefined,
     defaultView: undefined,
     defaultDate: undefined,
     visibleCalendars: undefined,
-    hiddenCalendars: undefined,
     categoryFilter: undefined,
-    showBusinessHours: undefined,
+    businessHours: undefined,
     timelineExpanded: undefined
   };
 }

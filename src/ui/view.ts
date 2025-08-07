@@ -123,8 +123,8 @@ export class CalendarView extends ItemView {
     }
 
     // Apply business hours override
-    if (workspace.showBusinessHours !== undefined) {
-      workspaceSettings.businessHours = workspace.showBusinessHours;
+    if (workspace.businessHours !== undefined) {
+      workspaceSettings.businessHours = workspace.businessHours;
     }
 
     return workspaceSettings;
@@ -138,11 +138,6 @@ export class CalendarView extends ItemView {
     if (!workspace) return sources;
 
     return sources.filter(source => {
-      // If hidden calendars are specified, hide those calendars
-      if (workspace.hiddenCalendars?.includes(source.id)) {
-        return false;
-      }
-
       // If visible calendars are specified, only show those calendars
       if (workspace.visibleCalendars && workspace.visibleCalendars.length > 0) {
         return workspace.visibleCalendars.includes(source.id);
@@ -200,7 +195,7 @@ export class CalendarView extends ItemView {
         ? activeWorkspace.name.substring(0, 12) + '...'
         : activeWorkspace.name;
 
-    return `${activeWorkspace.icon ? activeWorkspace.icon + ' ' : ''}${name} ▾`;
+    return `${name} ▾`;
   }
 
   /**
@@ -228,7 +223,7 @@ export class CalendarView extends ItemView {
           item
             .setTitle(workspace.name)
             .setIcon(
-              this.plugin.settings.activeWorkspace === workspace.id ? 'check' : workspace.icon || ''
+              this.plugin.settings.activeWorkspace === workspace.id ? 'check' : ''
             )
             .onClick(async () => {
               await this.switchToWorkspace(workspace.id);
@@ -236,20 +231,6 @@ export class CalendarView extends ItemView {
         });
       });
     }
-
-    menu.addSeparator();
-
-    // Manage workspaces option
-    menu.addItem(item => {
-      item
-        .setTitle('Manage Workspaces...')
-        .setIcon('settings')
-        .onClick(() => {
-          // Open settings tab to workspaces section
-          this.plugin.settingsTab?.display();
-          // Note: We could add logic to scroll to workspaces section if needed
-        });
-    });
 
     menu.showAtMouseEvent(ev);
   }
@@ -414,7 +395,22 @@ export class CalendarView extends ItemView {
     if (this.plugin.settings.enableAdvancedCategorization) {
       // First, add top-level resources for each category from settings.
       const categorySettings = this.plugin.settings.categorySettings || [];
-      categorySettings.forEach((cat: { name: string; color: string }) => {
+      
+      // Apply workspace category filtering to resources if active
+      const workspace = this.getActiveWorkspace();
+      const filteredCategorySettings = workspace?.categoryFilter 
+        ? categorySettings.filter(cat => {
+            const { mode, categories } = workspace.categoryFilter!;
+            if (mode === 'show-only') {
+              return categories.includes(cat.name);
+            } else {
+              // mode === 'hide'
+              return !categories.includes(cat.name);
+            }
+          })
+        : categorySettings;
+      
+      filteredCategorySettings.forEach((cat: { name: string; color: string }) => {
         resources.push({
           id: cat.name,
           title: cat.name,
@@ -425,10 +421,26 @@ export class CalendarView extends ItemView {
 
       // Build a map of categories to their sub-categories from actual events in the cache.
       const categoryMap = new Map<string, Set<string>>();
-      for (const source of this.plugin.cache.getAllEvents()) {
+      
+      // Apply source filtering first
+      let allSources = this.plugin.cache.getAllEvents();
+      allSources = this.filterCalendarSources(allSources);
+      
+      for (const source of allSources) {
         for (const cachedEvent of source.events) {
           const { category, subCategory } = cachedEvent.event;
           if (category) {
+            // Apply workspace category filtering
+            if (workspace?.categoryFilter) {
+              const { mode, categories } = workspace.categoryFilter;
+              if (mode === 'show-only' && !categories.includes(category)) {
+                continue; // Skip this category
+              }
+              if (mode === 'hide' && categories.includes(category)) {
+                continue; // Skip this category
+              }
+            }
+            
             if (!categoryMap.has(category)) {
               categoryMap.set(category, new Set());
             }
@@ -500,17 +512,17 @@ export class CalendarView extends ItemView {
       enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
       onViewChange: handleViewChange,
       initialView: workspaceSettings.initialView, // Use workspace-aware initial view
-      businessHours: (
-        workspaceSettings.businessHours !== undefined
-          ? workspaceSettings.businessHours
-          : this.plugin.settings.businessHours.enabled
-      )
-        ? {
-            daysOfWeek: this.plugin.settings.businessHours.daysOfWeek,
-            startTime: this.plugin.settings.businessHours.startTime,
-            endTime: this.plugin.settings.businessHours.endTime
-          }
-        : false,
+      businessHours: (() => {
+        // Use workspace business hours if set, otherwise use global settings
+        const businessHours = workspaceSettings.businessHours || this.plugin.settings.businessHours;
+        return businessHours.enabled
+          ? {
+              daysOfWeek: businessHours.daysOfWeek,
+              startTime: businessHours.startTime,
+              endTime: businessHours.endTime
+            }
+          : false;
+      })(),
       customButtons: {
         workspace: {
           text: this.getWorkspaceSwitcherText(),

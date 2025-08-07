@@ -72,27 +72,29 @@ describe('Workspace functionality', () => {
     const workspace: WorkspaceSettings = {
       id: generateWorkspaceId(),
       name: 'Full Workspace',
-      icon: 'briefcase',
       defaultView: {
         desktop: 'timeGridWeek',
         mobile: 'timeGridDay'
       },
       defaultDate: 'today',
       visibleCalendars: ['cal1', 'cal2'],
-      hiddenCalendars: ['cal3'],
       categoryFilter: {
         mode: 'show-only',
         categories: ['Work', 'Important']
       },
-      showBusinessHours: true,
+      businessHours: {
+        enabled: true,
+        daysOfWeek: [1, 2, 3, 4, 5],
+        startTime: '09:00',
+        endTime: '17:00'
+      },
       timelineExpanded: false
     };
 
     expect(workspace.name).toBe('Full Workspace');
-    expect(workspace.icon).toBe('briefcase');
     expect(workspace.defaultView?.desktop).toBe('timeGridWeek');
     expect(workspace.visibleCalendars).toContain('cal1');
     expect(workspace.categoryFilter?.mode).toBe('show-only');
-    expect(workspace.showBusinessHours).toBe(true);
+    expect(workspace.businessHours?.enabled).toBe(true);
   });
 });

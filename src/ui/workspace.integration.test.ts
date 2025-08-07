@@ -41,8 +41,8 @@ class MockCalendarView {
     }
 
     // Apply business hours override
-    if (workspace.showBusinessHours !== undefined) {
-      workspaceSettings.businessHours = workspace.showBusinessHours;
+    if (workspace.businessHours !== undefined) {
+      workspaceSettings.businessHours = workspace.businessHours;
     }
 
     return workspaceSettings;
@@ -53,11 +53,6 @@ class MockCalendarView {
     if (!workspace) return sources;
 
     return sources.filter(source => {
-      // If hidden calendars are specified, hide those calendars
-      if (workspace.hiddenCalendars?.includes(source.id)) {
-        return false;
-      }
-
       // If visible calendars are specified, only show those calendars
       if (workspace.visibleCalendars && workspace.visibleCalendars.length > 0) {
         return workspace.visibleCalendars.includes(source.id);
@@ -127,19 +122,23 @@ describe('Workspace Integration Tests', () => {
 
   test('should apply business hours override', () => {
     const workspace = createDefaultWorkspace('Work Workspace');
-    workspace.showBusinessHours = true;
+    workspace.businessHours = {
+      enabled: true,
+      daysOfWeek: [1, 2, 3, 4, 5],
+      startTime: '09:00',
+      endTime: '17:00'
+    };
 
     mockPlugin.settings.workspaces = [workspace];
     mockPlugin.settings.activeWorkspace = workspace.id;
 
     const settings = mockView.applyWorkspaceSettings(mockPlugin.settings);
-    expect(settings.businessHours).toBe(true);
+    expect(settings.businessHours?.enabled).toBe(true);
   });
 
   test('should filter calendar sources', () => {
     const workspace = createDefaultWorkspace('Filtered Workspace');
     workspace.visibleCalendars = ['cal1', 'cal2'];
-    workspace.hiddenCalendars = ['cal3'];
 
     mockPlugin.settings.workspaces = [workspace];
     mockPlugin.settings.activeWorkspace = workspace.id;
@@ -210,19 +209,22 @@ describe('Workspace Integration Tests', () => {
     const workspace: WorkspaceSettings = {
       id: 'complex_workspace',
       name: 'Complex Workspace',
-      icon: 'briefcase',
       defaultView: {
         desktop: 'resourceTimelineWeek',
         mobile: 'listWeek'
       },
       defaultDate: 'today',
       visibleCalendars: ['work_cal', 'project_cal'],
-      hiddenCalendars: ['personal_cal'],
       categoryFilter: {
         mode: 'show-only',
         categories: ['Work', 'Project']
       },
-      showBusinessHours: true,
+      businessHours: {
+        enabled: true,
+        daysOfWeek: [1, 2, 3, 4, 5],
+        startTime: '09:00',
+        endTime: '17:00'
+      },
       timelineExpanded: true
     };
 
@@ -233,7 +235,7 @@ describe('Workspace Integration Tests', () => {
     const settings = mockView.applyWorkspaceSettings(mockPlugin.settings);
     expect(settings.initialView.desktop).toBe('resourceTimelineWeek');
     expect(settings.initialView.mobile).toBe('listWeek');
-    expect(settings.businessHours).toBe(true);
+    expect(settings.businessHours?.enabled).toBe(true);
 
     // Test calendar filtering
     const sources = [
