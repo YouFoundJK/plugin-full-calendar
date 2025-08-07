@@ -361,6 +361,7 @@ export class WorkspaceModal extends Modal {
         toggle.onChange(value => {
           if (this.workspace.businessHours) {
             this.workspace.businessHours.enabled = value;
+            this.renderBusinessHoursDetails(); // Re-render to show/hide dependent settings
           }
         });
       })
