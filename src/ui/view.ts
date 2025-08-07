@@ -222,9 +222,7 @@ export class CalendarView extends ItemView {
         menu.addItem(item => {
           item
             .setTitle(workspace.name)
-            .setIcon(
-              this.plugin.settings.activeWorkspace === workspace.id ? 'check' : ''
-            )
+            .setIcon(this.plugin.settings.activeWorkspace === workspace.id ? 'check' : '')
             .onClick(async () => {
               await this.switchToWorkspace(workspace.id);
             });
@@ -395,10 +393,10 @@ export class CalendarView extends ItemView {
     if (this.plugin.settings.enableAdvancedCategorization) {
       // First, add top-level resources for each category from settings.
       const categorySettings = this.plugin.settings.categorySettings || [];
-      
+
       // Apply workspace category filtering to resources if active
       const workspace = this.getActiveWorkspace();
-      const filteredCategorySettings = workspace?.categoryFilter 
+      const filteredCategorySettings = workspace?.categoryFilter
         ? categorySettings.filter(cat => {
             const { mode, categories } = workspace.categoryFilter!;
             if (mode === 'show-only') {
@@ -409,7 +407,7 @@ export class CalendarView extends ItemView {
             }
           })
         : categorySettings;
-      
+
       filteredCategorySettings.forEach((cat: { name: string; color: string }) => {
         resources.push({
           id: cat.name,
@@ -421,11 +419,11 @@ export class CalendarView extends ItemView {
 
       // Build a map of categories to their sub-categories from actual events in the cache.
       const categoryMap = new Map<string, Set<string>>();
-      
+
       // Apply source filtering first
       let allSources = this.plugin.cache.getAllEvents();
       allSources = this.filterCalendarSources(allSources);
-      
+
       for (const source of allSources) {
         for (const cachedEvent of source.events) {
           const { category, subCategory } = cachedEvent.event;
@@ -440,7 +438,7 @@ export class CalendarView extends ItemView {
                 continue; // Skip this category
               }
             }
-            
+
             if (!categoryMap.has(category)) {
               categoryMap.set(category, new Set());
             }
