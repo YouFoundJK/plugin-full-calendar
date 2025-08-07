@@ -68,6 +68,11 @@ class MockCalendarView {
 
     const { mode, categories } = workspace.categoryFilter;
 
+    // If 'show-only' mode is selected but no categories are chosen, don't apply filtering
+    if (mode === 'show-only' && categories.length === 0) {
+      return events;
+    }
+
     return events.filter(event => {
       const category =
         event.extendedProps?.category ||
@@ -254,5 +259,29 @@ describe('Workspace Integration Tests', () => {
     ];
     const filteredEvents = mockView.filterEventsByCategory(events);
     expect(filteredEvents.map(e => e.id)).toEqual(['1', '3']);
+  });
+
+  test('should not filter events when show-only mode has no categories selected', () => {
+    // This tests the fix for the bug where show-only mode with no categories would filter out all events
+    const workspace = createDefaultWorkspace('Empty Show-Only Workspace');
+    workspace.categoryFilter = {
+      mode: 'show-only',
+      categories: [] // No categories selected
+    };
+
+    mockPlugin.settings.workspaces = [workspace];
+    mockPlugin.settings.activeWorkspace = workspace.id;
+
+    const events = [
+      { id: '1', extendedProps: { category: 'Work' } },
+      { id: '2', extendedProps: { category: 'Personal' } },
+      { id: '3', extendedProps: {} } // No category
+    ];
+
+    const filteredEvents = mockView.filterEventsByCategory(events);
+
+    // Should return all events when show-only has no categories selected
+    expect(filteredEvents).toHaveLength(3);
+    expect(filteredEvents.map(e => e.id)).toEqual(['1', '2', '3']);
   });
 });

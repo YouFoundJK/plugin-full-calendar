@@ -156,6 +156,11 @@ export class CalendarView extends ItemView {
 
     const { mode, categories } = workspace.categoryFilter;
 
+    // If 'show-only' mode is selected but no categories are chosen, don't apply filtering
+    if (mode === 'show-only' && categories.length === 0) {
+      return events;
+    }
+
     return events.filter(event => {
       // Extract category from event (checking different possible formats)
       const category =
@@ -399,6 +404,10 @@ export class CalendarView extends ItemView {
       const filteredCategorySettings = workspace?.categoryFilter
         ? categorySettings.filter(cat => {
             const { mode, categories } = workspace.categoryFilter!;
+            // If 'show-only' mode is selected but no categories are chosen, don't apply filtering
+            if (mode === 'show-only' && categories.length === 0) {
+              return true;
+            }
             if (mode === 'show-only') {
               return categories.includes(cat.name);
             } else {
@@ -431,10 +440,12 @@ export class CalendarView extends ItemView {
             // Apply workspace category filtering
             if (workspace?.categoryFilter) {
               const { mode, categories } = workspace.categoryFilter;
-              if (mode === 'show-only' && !categories.includes(category)) {
+              // If 'show-only' mode is selected but no categories are chosen, don't apply filtering
+              if (mode === 'show-only' && categories.length === 0) {
+                // Don't filter - include all categories
+              } else if (mode === 'show-only' && !categories.includes(category)) {
                 continue; // Skip this category
-              }
-              if (mode === 'hide' && categories.includes(category)) {
+              } else if (mode === 'hide' && categories.includes(category)) {
                 continue; // Skip this category
               }
             }

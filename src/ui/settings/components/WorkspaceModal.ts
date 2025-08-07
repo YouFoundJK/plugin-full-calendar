@@ -179,7 +179,7 @@ export class WorkspaceModal extends Modal {
       
       // Generate a meaningful display name based on calendar type
       let displayName = calendar.name;
-      if (!displayName) {
+      if (!displayName || displayName.trim() === '') {
         switch (calendar.type) {
           case 'local':
             displayName = `Local: ${calendar.directory}`;
@@ -189,6 +189,12 @@ export class WorkspaceModal extends Modal {
             break;
           case 'ical':
             displayName = `ICS: ${new URL(calendar.url).hostname}`;
+            break;
+          case 'caldav':
+            displayName = `CalDAV: ${new URL(calendar.url).hostname}`;
+            break;
+          case 'google':
+            displayName = `Google Calendar`;
             break;
           default:
             displayName = `${calendar.type} Calendar`;
