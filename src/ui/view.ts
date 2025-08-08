@@ -85,6 +85,184 @@ export class CalendarView extends ItemView {
   }
 
   /**
+   * Switch to a specific workspace by ID.
+   * @param workspaceId - The workspace ID to switch to, or null for default view
+   */
+  async switchToWorkspace(workspaceId: string | null) {
+    this.plugin.settings.activeWorkspace = workspaceId;
+    await this.plugin.saveSettings();
+    await this.onOpen(); // Re-render the calendar with new settings
+  }
+
+  /**
+   * Get the currently active workspace settings, if any.
+   */
+  getActiveWorkspace() {
+    if (!this.plugin.settings.activeWorkspace) return null;
+    return (
+      this.plugin.settings.workspaces.find(w => w.id === this.plugin.settings.activeWorkspace) ||
+      null
+    );
+  }
+
+  /**
+   * Apply workspace settings to override default settings.
+   */
+  applyWorkspaceSettings(settings: any) {
+    const workspace = this.getActiveWorkspace();
+    if (!workspace) return settings;
+
+    const workspaceSettings = { ...settings };
+
+    // Apply view overrides
+    if (workspace.defaultView?.desktop || workspace.defaultView?.mobile) {
+      workspaceSettings.initialView = {
+        desktop: workspace.defaultView.desktop || settings.initialView?.desktop,
+        mobile: workspace.defaultView.mobile || settings.initialView?.mobile
+      };
+    }
+
+    // Apply business hours override
+    if (workspace.businessHours !== undefined) {
+      workspaceSettings.businessHours = workspace.businessHours;
+    }
+
+    return workspaceSettings;
+  }
+
+  /**
+   * Filter calendar sources based on workspace settings.
+   * - Normalizes IDs to strings for reliable comparisons
+   * - If a selection exists but nothing matches, fall back to all sources
+   */
+  filterCalendarSources(sources: any[]) {
+    const workspace = this.getActiveWorkspace();
+    if (!workspace) return sources;
+
+    const selected = (workspace.visibleCalendars ?? []).map(String);
+    if (selected.length === 0) return sources;
+
+    const selectedSet = new Set(selected);
+    const filtered = sources.filter(source => selectedSet.has(String(source.id)));
+
+    if (filtered.length === 0) {
+      console.warn(
+        'Full Calendar: No sources matched visibleCalendars. Falling back to all sources.'
+      );
+      return sources;
+    }
+    return filtered;
+  }
+
+  /**
+   * Filter events by category based on workspace settings.
+   */
+  filterEventsByCategory(events: EventInput[]): EventInput[] {
+    // Only apply when advanced categorization is enabled
+    if (!this.plugin.settings.enableAdvancedCategorization) {
+      return events;
+    }
+
+    const workspace = this.getActiveWorkspace();
+    if (!workspace?.categoryFilter) return events;
+
+    const { mode, categories } = workspace.categoryFilter;
+
+    // If 'show-only' mode is selected but no categories are chosen, don't apply filtering
+    if (mode === 'show-only' && categories.length === 0) {
+      return events;
+    }
+
+    const knownCategories = new Set(this.plugin.settings.categorySettings?.map(c => c.name) ?? []);
+
+    return events.filter(event => {
+      // Extract category from event (checking different possible formats)
+      const fromExtended =
+        event.extendedProps?.category || event.extendedProps?.originalEvent?.category;
+
+      let category: string | undefined = fromExtended;
+
+      // Only consider resourceId as a category if it clearly represents a category:
+      // - contains "::" (Category::Subcategory), or
+      // - exactly matches a known category name
+      if (!category && typeof event.resourceId === 'string') {
+        const rid = event.resourceId;
+        if (rid.includes('::') || knownCategories.has(rid)) {
+          category = rid;
+        }
+      }
+
+      if (!category) {
+        // Events without categories - include based on filter mode
+        return mode === 'hide'; // If hiding categories, include uncategorized events
+      }
+
+      // For subcategories (format: "Category::Subcategory"), use the parent category
+      const mainCategory = category.includes('::') ? category.split('::')[0] : category;
+
+      if (mode === 'show-only') {
+        return categories.includes(mainCategory);
+      } else {
+        // mode === 'hide'
+        return !categories.includes(mainCategory);
+      }
+    });
+  }
+
+  /**
+   * Get the text to display in the workspace switcher button.
+   */
+  getWorkspaceSwitcherText(): string {
+    const activeWorkspace = this.getActiveWorkspace();
+    if (!activeWorkspace) {
+      return 'Workspace ▾';
+    }
+
+    // Truncate long workspace names for UI
+    const name =
+      activeWorkspace.name.length > 12
+        ? activeWorkspace.name.substring(0, 12) + '...'
+        : activeWorkspace.name;
+
+    return `${name} ▾`;
+  }
+
+  /**
+   * Show the workspace switcher dropdown menu.
+   */
+  showWorkspaceSwitcher(ev: MouseEvent) {
+    const menu = new Menu();
+
+    // Default view option
+    menu.addItem(item => {
+      item
+        .setTitle('Default View')
+        .setIcon(this.plugin.settings.activeWorkspace === null ? 'check' : '')
+        .onClick(async () => {
+          await this.switchToWorkspace(null);
+        });
+    });
+
+    if (this.plugin.settings.workspaces.length > 0) {
+      menu.addSeparator();
+
+      // Workspace options
+      this.plugin.settings.workspaces.forEach(workspace => {
+        menu.addItem(item => {
+          item
+            .setTitle(workspace.name)
+            .setIcon(this.plugin.settings.activeWorkspace === workspace.id ? 'check' : '')
+            .onClick(async () => {
+              await this.switchToWorkspace(workspace.id);
+            });
+        });
+      });
+    }
+
+    menu.showAtMouseEvent(ev);
+  }
+
+  /**
    * Generates shadow events for parent categories in timeline views.
    * Shadow events provide visual aggregation of child subcategory events.
    */
@@ -177,22 +355,28 @@ export class CalendarView extends ItemView {
    */
   translateSources() {
     const settings = this.plugin.settings;
-    const sources = this.plugin.cache
-      .getAllEvents()
-      .map(({ events, editable, color, id }): EventSourceInput => {
-        const mainEvents = events
-          .map((e: CachedEvent) => toEventInput(e.id, e.event, settings, id))
-          .filter((e): e is EventInput => !!e);
+    let allSources = this.plugin.cache.getAllEvents();
 
-        // Don't include shadow events in translateSources - they will be added
-        // dynamically when switching to timeline views
-        return {
-          id,
-          events: mainEvents,
-          editable,
-          ...getCalendarColors(color)
-        };
-      });
+    // Apply workspace filtering if active
+    allSources = this.filterCalendarSources(allSources);
+
+    const sources = allSources.map(({ events, editable, color, id }): EventSourceInput => {
+      const mainEvents = events
+        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings, id))
+        .filter((e): e is EventInput => !!e);
+
+      // Apply workspace category filtering
+      const filteredEvents = this.filterEventsByCategory(mainEvents);
+
+      // Don't include shadow events in translateSources - they will be added
+      // dynamically when switching to timeline views
+      return {
+        id,
+        events: filteredEvents,
+        editable,
+        ...getCalendarColors(color)
+      };
+    });
     return sources;
   }
 
@@ -238,7 +422,26 @@ export class CalendarView extends ItemView {
     if (this.plugin.settings.enableAdvancedCategorization) {
       // First, add top-level resources for each category from settings.
       const categorySettings = this.plugin.settings.categorySettings || [];
-      categorySettings.forEach((cat: { name: string; color: string }) => {
+
+      // Apply workspace category filtering to resources if active
+      const workspace = this.getActiveWorkspace();
+
+      // Helper: determine if a category should be visible in the current workspace
+      const isCategoryVisible = (name: string) => {
+        if (!workspace?.categoryFilter) return true;
+        const { mode, categories } = workspace.categoryFilter;
+        // If 'show-only' mode is selected but no categories are chosen, don't apply filtering
+        if (mode === 'show-only' && categories.length === 0) return true;
+        if (mode === 'show-only') return categories.includes(name);
+        // mode === 'hide'
+        return !categories.includes(name);
+      };
+
+      const filteredCategorySettings = workspace?.categoryFilter
+        ? categorySettings.filter(cat => isCategoryVisible(cat.name))
+        : categorySettings;
+
+      filteredCategorySettings.forEach((cat: { name: string; color: string }) => {
         resources.push({
           id: cat.name,
           title: cat.name,
@@ -249,10 +452,20 @@ export class CalendarView extends ItemView {
 
       // Build a map of categories to their sub-categories from actual events in the cache.
       const categoryMap = new Map<string, Set<string>>();
-      for (const source of this.plugin.cache.getAllEvents()) {
+
+      // Apply source filtering first
+      let allSources = this.plugin.cache.getAllEvents();
+      allSources = this.filterCalendarSources(allSources);
+
+      for (const source of allSources) {
         for (const cachedEvent of source.events) {
           const { category, subCategory } = cachedEvent.event;
           if (category) {
+            // Apply workspace category filtering
+            if (!isCategoryVisible(category)) {
+              continue; // Skip categories not visible in this workspace
+            }
+
             if (!categoryMap.has(category)) {
               categoryMap.set(category, new Set());
             }
@@ -266,6 +479,11 @@ export class CalendarView extends ItemView {
 
       // Now, create the child resources (sub-categories).
       for (const [category, subCategories] of categoryMap.entries()) {
+        // Skip categories hidden by the workspace
+        if (!isCategoryVisible(category)) {
+          continue;
+        }
+
         // Ensure the parent category exists in the resources array.
         if (!resources.find(r => r.id === category)) {
           resources.push({
@@ -313,6 +531,9 @@ export class CalendarView extends ItemView {
       currentViewType = newViewType;
     };
 
+    // Apply workspace settings
+    const workspaceSettings = this.applyWorkspaceSettings(this.plugin.settings);
+
     this.fullCalendarView = renderCalendar(calendarEl, sources, {
       // timeZone:
       //   this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone, // <-- ADD THIS LINE
@@ -320,14 +541,25 @@ export class CalendarView extends ItemView {
       resources,
       enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
       onViewChange: handleViewChange,
-      businessHours: this.plugin.settings.businessHours.enabled
-        ? {
-            daysOfWeek: this.plugin.settings.businessHours.daysOfWeek,
-            startTime: this.plugin.settings.businessHours.startTime,
-            endTime: this.plugin.settings.businessHours.endTime
-          }
-        : false,
+      initialView: workspaceSettings.initialView, // Use workspace-aware initial view
+      businessHours: (() => {
+        // Use workspace business hours if set, otherwise use global settings
+        const businessHours = workspaceSettings.businessHours || this.plugin.settings.businessHours;
+        return businessHours.enabled
+          ? {
+              daysOfWeek: businessHours.daysOfWeek,
+              startTime: businessHours.startTime,
+              endTime: businessHours.endTime
+            }
+          : false;
+      })(),
       customButtons: {
+        workspace: {
+          text: this.getWorkspaceSwitcherText(),
+          click: (ev?: MouseEvent) => {
+            if (ev) this.showWorkspaceSwitcher(ev);
+          }
+        },
         analysis: {
           text: 'Analysis',
           click: async () => {
@@ -477,7 +709,6 @@ export class CalendarView extends ItemView {
         } catch (e) {}
       },
       firstDay: this.plugin.settings.firstDay,
-      initialView: this.plugin.settings.initialView,
       timeFormat24h: this.plugin.settings.timeFormat24h,
       openContextMenuForEvent: async (e, mouseEvent) => {
         const menu = new Menu();
@@ -670,6 +901,18 @@ export class CalendarView extends ItemView {
           // Pass settings to toEventInput
           const eventInput = toEventInput(id, event, settings, calendarId);
           if (eventInput) {
+            // Respect workspace source filtering: skip if calendar is not selected
+            const workspace = this.getActiveWorkspace();
+            const selected = (workspace?.visibleCalendars ?? []).map(String);
+            if (selected.length > 0 && !new Set(selected).has(String(calendarId))) {
+              return; // Do not add events from hidden calendars
+            }
+
+            // Apply workspace category filtering
+            if (this.filterEventsByCategory([eventInput]).length === 0) {
+              return; // Filtered out by category rules
+            }
+
             // Add the main event
             const addedEvent = this.fullCalendarView?.addEvent(eventInput, calendarId);
 
@@ -695,19 +938,29 @@ export class CalendarView extends ItemView {
         // console.debug('replacing calendar with id', payload.calendar);
         this.fullCalendarView?.getEventSourceById(id)?.remove();
 
+        // Respect workspace source filtering: if hidden, ensure it's removed and skip re-adding
+        const workspace = this.getActiveWorkspace();
+        const selected = (workspace?.visibleCalendars ?? []).map(String);
+        if (selected.length > 0 && !new Set(selected).has(String(id))) {
+          return; // Do not re-add hidden calendar source
+        }
+
         const mainEvents = events.flatMap(
           ({ id: eventId, event }: CachedEvent) => toEventInput(eventId, event, settings, id) || []
         );
 
+        // Apply workspace category filtering
+        const filteredMainEvents = this.filterEventsByCategory(mainEvents);
+
         // Only include shadow events if in timeline view
         const currentViewType = this.fullCalendarView?.view?.type || '';
         const shadowEvents = currentViewType.includes('resourceTimeline')
-          ? this.generateShadowEvents(mainEvents, true)
+          ? this.generateShadowEvents(filteredMainEvents, true)
           : [];
 
         this.fullCalendarView?.addEventSource({
           id,
-          events: [...mainEvents, ...shadowEvents],
+          events: [...filteredMainEvents, ...shadowEvents],
           editable,
           ...getCalendarColors(color)
         });

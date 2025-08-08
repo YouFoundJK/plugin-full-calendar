@@ -46,6 +46,7 @@ import { renderGeneralSettings } from './sections/renderGeneral';
 import { renderCalendarManagement } from './sections/renderCalendars';
 import { renderCategorizationSettings } from './sections/renderCategorization';
 import { renderAppearanceSettings } from './sections/renderAppearance';
+import { renderWorkspaceSettings } from './sections/renderWorkspaces';
 
 // Import the new React components
 import './changelog.css';
@@ -202,6 +203,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
   private _renderMainSettings(): void {
     renderGeneralSettings(this.containerEl, this.plugin, () => this.display());
     renderAppearanceSettings(this.containerEl, this.plugin, () => this.display());
+    renderWorkspaceSettings(this.containerEl, this.plugin, () => this.display());
     renderCategorizationSettings(this.containerEl, this.plugin, () => this.display());
     renderWhatsNew(this.containerEl, () => {
       this.showFullChangelog = true;
