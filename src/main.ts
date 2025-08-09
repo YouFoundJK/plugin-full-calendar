@@ -12,11 +12,8 @@
  * @license See LICENSE.md
  */
 
-import {
-  FullCalendarSettingTab,
-  ensureCalendarIds,
-  sanitizeInitialView
-} from './ui/settings/SettingsTab';
+import { FullCalendarSettingTab } from './ui/settings/SettingsTab';
+import { ensureCalendarIds, sanitizeInitialView } from './ui/settings/utilsSettings';
 import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
 import { toEventInput } from './core/interop';

@@ -251,7 +251,8 @@ export function renderCalendar(
       dayGridPlugin,
       timeGridPlugin,
       listPlugin,
-      resourceTimelinePlugin,
+      // Only include the heavy scheduler plugin when needed
+      ...(showResourceViews ? ([resourceTimelinePlugin] as const) : ([] as const)),
       // Drag + drop and editing
       interactionPlugin,
       // Remote sources
@@ -269,9 +270,11 @@ export function renderCalendar(
     headerToolbar,
     footerToolbar,
     views,
-    resourceAreaHeaderContent: 'Categories',
-    resources,
-    resourcesInitiallyExpanded: false,
+    ...(showResourceViews && {
+      resourceAreaHeaderContent: 'Categories',
+      resources,
+      resourcesInitiallyExpanded: false
+    }),
 
     // Business hours configuration
     ...(businessHours && { businessHours }),
