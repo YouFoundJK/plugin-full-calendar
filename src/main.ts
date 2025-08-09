@@ -31,6 +31,7 @@ import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
 import { ProviderRegistry } from './core/ProviderRegistry';
 import { ICSProvider } from './providers/ics/ICSProvider';
 import { CalDAVProvider } from './providers/caldav/CalDAVProvider';
+import { GoogleProvider } from './providers/google/GoogleProvider';
 
 // Inline the view type constants to avoid loading the heavy view module at startup
 const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
@@ -122,6 +123,7 @@ export default class FullCalendarPlugin extends Plugin {
     );
     this.providerRegistry.register(new ICSProvider(this.settings));
     this.providerRegistry.register(new CalDAVProvider(this.settings));
+    this.providerRegistry.register(new GoogleProvider(this));
 
     this.categorizationManager = new CategorizationManager(this);
     await this.loadSettings();

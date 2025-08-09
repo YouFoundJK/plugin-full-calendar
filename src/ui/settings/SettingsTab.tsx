@@ -85,127 +85,29 @@ export function addCalendarButton(
       button.setIcon('plus-with-circle');
       button.onClick(async () => {
         const sourceType = dropdown.getValue();
+        const providerType = sourceType === 'icloud' ? 'caldav' : sourceType;
 
-        if (
-          sourceType === 'local' ||
-          sourceType === 'dailynote' ||
-          sourceType === 'ical' ||
-          sourceType === 'caldav' ||
-          sourceType === 'icloud'
-        ) {
-          const providerType = sourceType === 'icloud' ? 'caldav' : sourceType;
-          const provider = plugin.providerRegistry.getProvider(providerType);
-          if (!provider) {
-            new Notice(`${providerType} provider is not registered.`);
-            return;
-          }
-
-          const ConfigComponent = provider.getConfigurationComponent();
-          let modal = new ReactModal(plugin.app, async () => {
-            const existingCalendarColors = plugin.settings.calendarSources.map(s => s.color);
-            const initialConfig =
-              sourceType === 'icloud' ? { url: 'https://caldav.icloud.com' } : {};
-
-            let newConfigSource: Partial<any> = {
-              provider: providerType,
-              color: getNextColor(existingCalendarColors),
-              config: initialConfig,
-              type: providerType
-            };
-
-            const usedDirectories = (
-              listUsedDirectories
-                ? listUsedDirectories
-                : () =>
-                    plugin.settings.calendarSources
-                      .map((s: CalendarInfo) => s.type === 'local' && s.directory)
-                      .filter((s): s is string => !!s)
-            )();
-            let headings: string[] = [];
-            let { template } = getDailyNoteSettings();
-
-            if (template) {
-              if (!template.endsWith('.md')) {
-                template += '.md';
-              }
-              const file = plugin.app.vault.getAbstractFileByPath(template);
-              if (file instanceof TFile) {
-                headings =
-                  plugin.app.metadataCache.getFileCache(file)?.headings?.map(h => h.heading) || [];
-              }
-            }
-
-            // Construct the full context object
-            const context: ProviderConfigContext = {
-              allDirectories: directories.filter(dir => usedDirectories.indexOf(dir) === -1),
-              usedDirectories: usedDirectories,
-              headings: headings
-            };
-
-            return createElement(ConfigComponent, {
-              config: newConfigSource.config,
-              onConfigChange: newConfig => {
-                newConfigSource.config = newConfig;
-              },
-              // Pass the complete context object here
-              context: context,
-              onSave: finalConfigs => {
-                const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
-                configs.forEach(finalConfig => {
-                  const finalSource = {
-                    color: (finalConfig as any).color || newConfigSource.color,
-                    provider: providerType,
-                    config: finalConfig,
-                    type: providerType,
-                    name: (finalConfig as any).name,
-                    id: ''
-                  };
-                  submitCallback(finalSource as unknown as CalendarInfo);
-                });
-                modal.close();
-              },
-              onClose: () => modal.close()
-            });
-          });
-          modal.open();
+        const provider = plugin.providerRegistry.getProvider(providerType);
+        if (!provider) {
+          // This path should ideally not be hit if dropdown options are aligned with registered providers.
+          new Notice(`${providerType} provider is not registered.`);
           return;
         }
 
-        if (sourceType === 'google') {
-          if (!plugin.settings.googleAuth?.refreshToken) {
-            new Notice('Please connect your Google Account first.');
-            return;
-          }
-
-          try {
-            const calendars = await fetchGoogleCalendarList(plugin);
-            new SelectGoogleCalendarsModal(plugin, calendars, selected => {
-              selected.forEach(cal => submitCallback(cal));
-            }).open();
-          } catch (e: any) {
-            new Notice(`Error fetching calendar list: ${e.message}`);
-            console.error(e);
-          }
-          return;
-        }
-
+        const ConfigComponent = provider.getConfigurationComponent();
         let modal = new ReactModal(plugin.app, async () => {
           await plugin.loadSettings();
-          const usedDirectories = (
-            listUsedDirectories
-              ? listUsedDirectories
-              : () =>
-                  plugin.settings.calendarSources
-                    .map((s: CalendarInfo) => s.type === 'local' && s.directory)
-                    .filter((s): s is string => !!s)
-          )();
+
+          const usedDirectories = listUsedDirectories ? listUsedDirectories() : [];
+          const directories = plugin.app.vault
+            .getAllLoadedFiles()
+            .filter((f): f is TFolder => f instanceof TFolder)
+            .map(f => f.path);
+
           let headings: string[] = [];
           let { template } = getDailyNoteSettings();
-
           if (template) {
-            if (!template.endsWith('.md')) {
-              template += '.md';
-            }
+            if (!template.endsWith('.md')) template += '.md';
             const file = plugin.app.vault.getAbstractFileByPath(template);
             if (file instanceof TFile) {
               headings =
@@ -215,38 +117,52 @@ export function addCalendarButton(
 
           const existingCalendarColors = plugin.settings.calendarSources.map(s => s.color);
 
-          return createElement(AddCalendarSource, {
-            source: makeDefaultPartialCalendarSource(
-              dropdown.getValue() as CalendarInfo['type'],
-              existingCalendarColors
-            ),
-            directories: directories.filter(dir => usedDirectories.indexOf(dir) === -1),
-            headings,
-            submit: async (source: CalendarInfo) => {
-              if (source.type === 'caldav') {
-                try {
-                  const existingIds = plugin.settings.calendarSources.map(s => s.id);
-                  let sources = await importCalendars(
-                    {
-                      type: 'basic',
-                      username: source.username,
-                      password: source.password
-                    },
-                    source.url,
-                    existingIds
-                  );
-                  sources.forEach(source => submitCallback(source));
-                } catch (e) {
-                  if (e instanceof Error) {
-                    new Notice(e.message);
-                  }
-                }
-              } else {
-                submitCallback(source);
-              }
+          const initialConfig = sourceType === 'icloud' ? { url: 'https://caldav.icloud.com' } : {};
+
+          // Base props for all provider components
+          const componentProps: any = {
+            config: initialConfig,
+            context: {
+              allDirectories: directories.filter(dir => usedDirectories.indexOf(dir) === -1),
+              usedDirectories: usedDirectories,
+              headings: headings
+            },
+            onClose: () => modal.close(),
+            onSave: (finalConfigs: any | any[]) => {
+              // `any` to handle single or array return
+              const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
+
+              configs.forEach((finalConfig: any) => {
+                const newColor = getNextColor(existingCalendarColors);
+                existingCalendarColors.push(newColor);
+
+                const finalSource = {
+                  // FIX: This object is the new format, which is okay.
+                  // The `submitCallback` will add it to settings.
+                  // The adapter and legacy classes will handle parsing it.
+                  provider: providerType,
+                  config: finalConfig,
+                  type: providerType,
+                  name:
+                    finalConfig.name ||
+                    (finalConfig as any).directory ||
+                    `Daily note under "${(finalConfig as any).heading}"`,
+                  id: '', // Will be generated by ensureCalendarIds
+                  // Use color from provider (Google/CalDAV) or generate a new one.
+                  color: finalConfig.color || newColor
+                };
+                submitCallback(finalSource as unknown as CalendarInfo);
+              });
               modal.close();
             }
-          });
+          };
+
+          // Add provider-specific props
+          if (providerType === 'google') {
+            componentProps.plugin = plugin;
+          }
+
+          return createElement(ConfigComponent, componentProps);
         });
         modal.open();
       });
