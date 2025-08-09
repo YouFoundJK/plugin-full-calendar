@@ -37,6 +37,7 @@ import { importCalendars } from '../../calendars/parsing/caldav/import';
 import { AddCalendarSource } from '../modals/components/AddCalendarSource';
 import { fetchGoogleCalendarList } from '../../calendars/parsing/google/api';
 import { makeDefaultPartialCalendarSource, CalendarInfo } from '../../types/calendar_settings';
+import { ProviderRegistry } from '../../core/ProviderRegistry';
 
 // Import the new section renderers
 import { renderGoogleSettings } from './sections/renderGoogle';
@@ -171,10 +172,12 @@ export class FullCalendarSettingTab extends PluginSettingTab {
   private showFullChangelog = false;
   private calendarSettingsRef: React.RefObject<CalendarSettingsRef | null> =
     createRef<CalendarSettingsRef>();
+  registry: ProviderRegistry;
 
-  constructor(app: App, plugin: FullCalendarPlugin) {
+  constructor(app: App, plugin: FullCalendarPlugin, registry: ProviderRegistry) {
     super(app, plugin);
     this.plugin = plugin;
+    this.registry = registry;
   }
 
   display(): void {

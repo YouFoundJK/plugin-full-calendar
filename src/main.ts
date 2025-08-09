@@ -26,6 +26,7 @@ import { Notice, Plugin, TFile, App } from 'obsidian';
 import { CategorizationManager } from './core/CategorizationManager';
 import type { CalendarView } from './ui/view';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
+import { ProviderRegistry } from './core/ProviderRegistry';
 
 // Inline the view type constants to avoid loading the heavy view module at startup
 const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
@@ -36,6 +37,7 @@ export default class FullCalendarPlugin extends Plugin {
   categorizationManager!: CategorizationManager;
   isMobile: boolean = false;
   settingsTab?: LazySettingsTab;
+  providerRegistry!: ProviderRegistry;
 
   // To parse `data.json` file.`
   cache: EventCache = new EventCache(this, {
@@ -166,7 +168,8 @@ export default class FullCalendarPlugin extends Plugin {
       await this.activateView();
     });
 
-    this.settingsTab = new LazySettingsTab(this.app, this);
+    this.providerRegistry = new ProviderRegistry();
+    this.settingsTab = new LazySettingsTab(this.app, this, this.providerRegistry);
     this.addSettingTab(this.settingsTab);
 
     // Commands visible in the command palette
