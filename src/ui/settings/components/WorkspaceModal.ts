@@ -6,6 +6,7 @@
 
 import { Modal, Setting, DropdownComponent, TextComponent, ToggleComponent } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
+import { buildSettingsToRuntimeIdMap, getRuntimeCalendarId } from '../../settings/utilsSettings';
 import {
   WorkspaceSettings,
   generateWorkspaceId,
@@ -180,6 +181,7 @@ export class WorkspaceModal extends Modal {
 
   private renderCalendarCheckboxes(container: HTMLElement, calendars: any[]) {
     const selectedIds = (this.workspace.visibleCalendars || []).map(String);
+    const idMap = buildSettingsToRuntimeIdMap(this.plugin.settings.calendarSources);
 
     calendars.forEach(calendar => {
       const checkboxContainer = container.createEl('div', { cls: 'workspace-checkbox-item' });
@@ -195,10 +197,18 @@ export class WorkspaceModal extends Modal {
             displayName = `Daily Notes: ${calendar.heading}`;
             break;
           case 'ical':
-            displayName = `ICS: ${new URL(calendar.url).hostname}`;
+            try {
+              displayName = `ICS: ${new URL(calendar.url).hostname}`;
+            } catch (_) {
+              displayName = 'ICS Calendar';
+            }
             break;
           case 'caldav':
-            displayName = `CalDAV: ${new URL(calendar.url).hostname}`;
+            try {
+              displayName = `CalDAV: ${new URL(calendar.url).hostname}`;
+            } catch (_) {
+              displayName = 'CalDAV Calendar';
+            }
             break;
           case 'google':
             displayName = `Google Calendar`;
@@ -209,18 +219,23 @@ export class WorkspaceModal extends Modal {
       }
 
       new Setting(checkboxContainer).setName(displayName).addToggle(toggle => {
-        const calId = String(calendar.id);
-        toggle.setValue(selectedIds.includes(calId));
+        // Prefer runtime id for selection, fallback to settings id
+        const runtimeId = getRuntimeCalendarId(calendar);
+        const settingsId = String(calendar.id);
+        const currentId = selectedIds.find(id => id === runtimeId || id === settingsId);
+        toggle.setValue(!!currentId);
         toggle.onChange(checked => {
           const currentList = (this.workspace.visibleCalendars || []).map(String);
+          const idToUse = runtimeId; // Store runtime ids going forward
 
           if (checked) {
-            if (!currentList.includes(calId)) {
-              const newList = [...currentList, calId];
+            if (!currentList.includes(idToUse)) {
+              const newList = [...currentList, idToUse];
               this.workspace.visibleCalendars = newList;
             }
           } else {
-            const newList = currentList.filter(id => id !== calId);
+            // Remove both potential forms to keep data clean
+            const newList = currentList.filter(id => id !== idToUse && id !== settingsId);
             this.workspace.visibleCalendars = newList.length > 0 ? newList : undefined;
           }
         });
@@ -239,32 +254,35 @@ export class WorkspaceModal extends Modal {
       return;
     }
 
+    // Ensure there is always a category filter object; empty selection means show all
+    if (!this.workspace.categoryFilter) {
+      this.workspace.categoryFilter = { mode: 'show-only', categories: [] };
+    }
+
     // Category filter mode
     new Setting(section)
       .setName('Category filter mode')
       .setDesc('Choose how to filter categories')
       .addDropdown(dropdown => {
-        dropdown.addOption('', 'No category filter');
         dropdown.addOption('show-only', 'Show only selected categories');
         dropdown.addOption('hide', 'Hide selected categories');
 
-        dropdown.setValue(this.workspace.categoryFilter?.mode || '');
+        dropdown.setValue(this.workspace.categoryFilter?.mode ?? 'show-only');
         dropdown.onChange(value => {
-          if (value) {
-            if (!this.workspace.categoryFilter) {
-              this.workspace.categoryFilter = {
-                mode: value as 'show-only' | 'hide',
-                categories: []
-              };
-            } else {
-              this.workspace.categoryFilter.mode = value as 'show-only' | 'hide';
-            }
-          } else {
-            this.workspace.categoryFilter = undefined;
-          }
+          // Mode is always defined now; empty categories means show-all implicitly
+          this.workspace.categoryFilter = this.workspace.categoryFilter || {
+            mode: 'show-only',
+            categories: []
+          };
+          this.workspace.categoryFilter.mode = value as 'show-only' | 'hide';
           this.renderCategoryCheckboxes();
         });
       });
+
+    // Hint for selection semantics
+    new Setting(section)
+      .setName('Categories')
+      .setDesc('Select categories to include/exclude (leave empty to show all)');
 
     this.categoryFilterContainer = section.createEl('div', {
       cls: 'workspace-category-checkboxes'
@@ -274,8 +292,10 @@ export class WorkspaceModal extends Modal {
 
   private renderCategoryCheckboxes() {
     this.categoryFilterContainer.empty();
-
-    if (!this.workspace.categoryFilter) return;
+    // Ensure filter object exists so checkboxes always render
+    if (!this.workspace.categoryFilter) {
+      this.workspace.categoryFilter = { mode: 'show-only', categories: [] };
+    }
 
     const categories = this.plugin.settings.categorySettings;
     if (categories.length === 0) {
@@ -295,13 +315,13 @@ export class WorkspaceModal extends Modal {
         toggle.onChange(checked => {
           if (!this.workspace.categoryFilter) return;
 
-          const currentCategories = this.workspace.categoryFilter.categories || [];
+          const current = this.workspace.categoryFilter.categories || [];
           if (checked) {
-            if (!currentCategories.includes(category.name)) {
-              this.workspace.categoryFilter.categories = [...currentCategories, category.name];
+            if (!current.includes(category.name)) {
+              this.workspace.categoryFilter.categories = [...current, category.name];
             }
           } else {
-            this.workspace.categoryFilter.categories = currentCategories.filter(
+            this.workspace.categoryFilter.categories = current.filter(
               name => name !== category.name
             );
           }
@@ -453,10 +473,14 @@ export class WorkspaceModal extends Modal {
           if (this.validateWorkspace()) {
             // Normalize data before persisting to avoid runtime mismatches
             if (this.workspace.visibleCalendars?.length) {
-              this.workspace.visibleCalendars = this.workspace.visibleCalendars.map(String);
+              // Normalize to runtime ids for consistency
+              const idMap = buildSettingsToRuntimeIdMap(this.plugin.settings.calendarSources);
+              this.workspace.visibleCalendars = this.workspace.visibleCalendars
+                .map(String)
+                .map(id => idMap.get(id) || id);
             }
-            if (this.workspace.categoryFilter?.categories?.length) {
-              const deduped = Array.from(new Set(this.workspace.categoryFilter.categories));
+            if (this.workspace.categoryFilter) {
+              const deduped = Array.from(new Set(this.workspace.categoryFilter.categories || []));
               this.workspace.categoryFilter.categories = deduped;
             }
 
