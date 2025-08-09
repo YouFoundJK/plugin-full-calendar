@@ -46,36 +46,65 @@ export default class FullCalendarPlugin extends Plugin {
 
   // To parse `data.json` file.`
   cache: EventCache = new EventCache(this, {
-    local: (info, settings) =>
-      info.type === 'local'
-        ? new (require('./calendars/FullNoteCalendar').default)(
-            new ObsidianIO(this.app),
-            this,
-            info,
-            settings
-          )
-        : null,
-    dailynote: (info, settings) =>
-      info.type === 'dailynote'
-        ? new (require('./calendars/DailyNoteCalendar').default)(
-            new ObsidianIO(this.app),
-            this,
-            info,
-            settings
-          )
-        : null,
-    ical: (info, settings) =>
-      info.type === 'ical'
-        ? new (require('./calendars/ICSCalendar').default)(info, settings)
-        : null,
-    caldav: (info, settings) =>
-      info.type === 'caldav'
-        ? new (require('./calendars/CalDAVCalendar').default)(info, settings)
-        : null,
-    google: (info, settings) =>
-      info.type === 'google'
-        ? new (require('./calendars/GoogleCalendar').default)(this, info, settings)
-        : null,
+    local: (info, settings) => {
+      const provider = this.providerRegistry.getProvider('local');
+      if (!provider) return null;
+      return new (require('./core/ProviderAdapter').ProviderAdapter)(
+        provider,
+        (info as any).config,
+        info,
+        settings
+      );
+    },
+    dailynote: (info, settings) => {
+      const provider = this.providerRegistry.getProvider('dailynote');
+      if (!provider) return null;
+      return new (require('./core/ProviderAdapter').ProviderAdapter)(
+        provider,
+        (info as any).config,
+        info,
+        settings
+      );
+    },
+    ical: (info, settings) => {
+      const provider = this.providerRegistry.getProvider('ical');
+      if (!provider) return null;
+      // Wrap in a RemoteCalendar that delegates to the adapter
+      const adapter = new (require('./core/ProviderAdapter').ProviderAdapter)(
+        provider,
+        (info as any).config,
+        info,
+        settings
+      );
+      const remote = new (require('./calendars/RemoteCalendar').default)(info, settings);
+      remote.getEvents = adapter.getEvents.bind(adapter);
+      remote.revalidate = adapter.revalidate.bind(adapter);
+      return remote;
+    },
+    caldav: (info, settings) => {
+      const provider = this.providerRegistry.getProvider('caldav');
+      if (!provider) return null;
+      const adapter = new (require('./core/ProviderAdapter').ProviderAdapter)(
+        provider,
+        (info as any).config,
+        info,
+        settings
+      );
+      const remote = new (require('./calendars/RemoteCalendar').default)(info, settings);
+      remote.getEvents = adapter.getEvents.bind(adapter);
+      remote.revalidate = adapter.revalidate.bind(adapter);
+      return remote;
+    },
+    google: (info, settings) => {
+      const provider = this.providerRegistry.getProvider('google');
+      if (!provider) return null;
+      return new (require('./core/ProviderAdapter').ProviderAdapter)(
+        provider,
+        (info as any).config,
+        info,
+        settings
+      );
+    },
     FOR_TEST_ONLY: () => null
   });
 
@@ -287,6 +316,49 @@ export default class FullCalendarPlugin extends Plugin {
    */
   async loadSettings() {
     let loadedSettings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+
+    // MIGRATION BLOCK
+    let needsSave = false;
+    const migratedSources = loadedSettings.calendarSources.map((s: any) => {
+      if (s.config) return s; // Already in new format, skip.
+
+      needsSave = true;
+      const config: any = {};
+      const name =
+        s.name || s.directory || (s.heading ? `Daily note under "${s.heading}"` : undefined);
+
+      // Move legacy properties into a config object
+      config.directory = s.directory;
+      config.heading = s.heading;
+      config.url = s.url;
+      config.homeUrl = s.homeUrl;
+      config.username = s.username;
+      config.password = s.password;
+      // For Google, the top-level ID is the calendar's identifier, which goes in the config.
+      if (s.type === 'google') {
+        config.id = s.id;
+        config.name = s.name;
+      }
+
+      // Clean up undefined properties from the config object
+      Object.keys(config).forEach(key => config[key] === undefined && delete config[key]);
+
+      return {
+        id: s.id, // This is the stable settings ID, e.g., "local_1"
+        type: s.type,
+        config: config,
+        color: s.color,
+        name: name
+      };
+    });
+
+    if (needsSave) {
+      loadedSettings.calendarSources = migratedSources;
+      new Notice('Full Calendar has updated your calendar settings to a new provider format.');
+      // We will save later in the method, no need to save here.
+    }
+
+    loadedSettings.calendarSources = migratedSources; // Ensure settings object has migrated sources
 
     // Sanitize settings using pure functions
     loadedSettings = sanitizeInitialView(loadedSettings);
