@@ -85,7 +85,7 @@ export function addCalendarButton(
       button.onClick(async () => {
         const sourceType = dropdown.getValue();
 
-        if (sourceType === 'local' || sourceType === 'dailynote') {
+        if (sourceType === 'local' || sourceType === 'dailynote' || sourceType === 'ical') {
           const provider = plugin.providerRegistry.getProvider(sourceType);
           if (!provider) {
             new Notice(`${sourceType} provider is not registered.`);
@@ -95,19 +95,6 @@ export function addCalendarButton(
           const ConfigComponent = provider.getConfigurationComponent();
           let modal = new ReactModal(plugin.app, async () => {
             await plugin.loadSettings();
-            const usedDirectories = listUsedDirectories ? listUsedDirectories() : [];
-
-            let headings: string[] = [];
-            let { template } = getDailyNoteSettings();
-            if (template) {
-              if (!template.endsWith('.md')) template += '.md';
-              const file = plugin.app.vault.getAbstractFileByPath(template);
-              if (file instanceof TFile) {
-                headings =
-                  plugin.app.metadataCache.getFileCache(file)?.headings?.map(h => h.heading) || [];
-              }
-            }
-
             const existingCalendarColors = plugin.settings.calendarSources.map(s => s.color);
 
             let newConfigSource: Partial<any> = {
@@ -123,18 +110,15 @@ export function addCalendarButton(
                 newConfigSource.config = newConfig;
               },
               context: {
-                allDirectories: directories.filter(dir => usedDirectories.indexOf(dir) === -1),
-                usedDirectories: usedDirectories,
-                headings: headings
+                allDirectories: [],
+                usedDirectories: [],
+                headings: []
               },
               onSave: finalConfig => {
                 const finalSource = {
                   ...newConfigSource,
                   config: finalConfig,
-                  name:
-                    sourceType === 'local'
-                      ? (finalConfig as any).directory
-                      : `Daily note under "${(finalConfig as any).heading}"`,
+                  name: `Remote Calendar (${(finalConfig as any).url})`,
                   id: ''
                 };
                 submitCallback(finalSource as unknown as CalendarInfo);
