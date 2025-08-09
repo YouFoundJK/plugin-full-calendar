@@ -8,13 +8,15 @@ interface DailyNoteConfigComponentProps {
   onConfigChange: (newConfig: Partial<DailyNoteProviderConfig>) => void;
   context: ProviderConfigContext;
   onSave: (finalConfig: DailyNoteProviderConfig) => void;
+  onClose?: () => void; // Add prop
 }
 
 export const DailyNoteConfigComponent: React.FC<DailyNoteConfigComponentProps> = ({
   config,
   onConfigChange,
   context,
-  onSave
+  onSave,
+  onClose // Destructure prop
 }) => {
   const [heading, setHeading] = React.useState(config.heading || '');
   const [isSubmitting, setIsSubmitting] = React.useState(false);

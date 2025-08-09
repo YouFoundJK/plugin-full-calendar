@@ -38,6 +38,7 @@ import { AddCalendarSource } from '../modals/components/AddCalendarSource';
 import { fetchGoogleCalendarList } from '../../calendars/parsing/google/api';
 import { makeDefaultPartialCalendarSource, CalendarInfo } from '../../types/calendar_settings';
 import { ProviderRegistry } from '../../core/ProviderRegistry';
+import { ProviderConfigContext } from '../../providers/typesProvider';
 
 // Import the new section renderers
 import { renderGoogleSettings } from './sections/renderGoogle';
@@ -85,23 +86,60 @@ export function addCalendarButton(
       button.onClick(async () => {
         const sourceType = dropdown.getValue();
 
-        if (sourceType === 'local' || sourceType === 'dailynote' || sourceType === 'ical') {
-          const provider = plugin.providerRegistry.getProvider(sourceType);
+        if (
+          sourceType === 'local' ||
+          sourceType === 'dailynote' ||
+          sourceType === 'ical' ||
+          sourceType === 'caldav' ||
+          sourceType === 'icloud'
+        ) {
+          const providerType = sourceType === 'icloud' ? 'caldav' : sourceType;
+          const provider = plugin.providerRegistry.getProvider(providerType);
           if (!provider) {
-            new Notice(`${sourceType} provider is not registered.`);
+            new Notice(`${providerType} provider is not registered.`);
             return;
           }
 
           const ConfigComponent = provider.getConfigurationComponent();
           let modal = new ReactModal(plugin.app, async () => {
-            await plugin.loadSettings();
             const existingCalendarColors = plugin.settings.calendarSources.map(s => s.color);
+            const initialConfig =
+              sourceType === 'icloud' ? { url: 'https://caldav.icloud.com' } : {};
 
             let newConfigSource: Partial<any> = {
-              provider: sourceType,
+              provider: providerType,
               color: getNextColor(existingCalendarColors),
-              config: {},
-              type: sourceType
+              config: initialConfig,
+              type: providerType
+            };
+
+            const usedDirectories = (
+              listUsedDirectories
+                ? listUsedDirectories
+                : () =>
+                    plugin.settings.calendarSources
+                      .map((s: CalendarInfo) => s.type === 'local' && s.directory)
+                      .filter((s): s is string => !!s)
+            )();
+            let headings: string[] = [];
+            let { template } = getDailyNoteSettings();
+
+            if (template) {
+              if (!template.endsWith('.md')) {
+                template += '.md';
+              }
+              const file = plugin.app.vault.getAbstractFileByPath(template);
+              if (file instanceof TFile) {
+                headings =
+                  plugin.app.metadataCache.getFileCache(file)?.headings?.map(h => h.heading) || [];
+              }
+            }
+
+            // Construct the full context object
+            const context: ProviderConfigContext = {
+              allDirectories: directories.filter(dir => usedDirectories.indexOf(dir) === -1),
+              usedDirectories: usedDirectories,
+              headings: headings
             };
 
             return createElement(ConfigComponent, {
@@ -109,21 +147,24 @@ export function addCalendarButton(
               onConfigChange: newConfig => {
                 newConfigSource.config = newConfig;
               },
-              context: {
-                allDirectories: [],
-                usedDirectories: [],
-                headings: []
-              },
-              onSave: finalConfig => {
-                const finalSource = {
-                  ...newConfigSource,
-                  config: finalConfig,
-                  name: `Remote Calendar (${(finalConfig as any).url})`,
-                  id: ''
-                };
-                submitCallback(finalSource as unknown as CalendarInfo);
+              // Pass the complete context object here
+              context: context,
+              onSave: finalConfigs => {
+                const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
+                configs.forEach(finalConfig => {
+                  const finalSource = {
+                    color: (finalConfig as any).color || newConfigSource.color,
+                    provider: providerType,
+                    config: finalConfig,
+                    type: providerType,
+                    name: (finalConfig as any).name,
+                    id: ''
+                  };
+                  submitCallback(finalSource as unknown as CalendarInfo);
+                });
                 modal.close();
-              }
+              },
+              onClose: () => modal.close()
             });
           });
           modal.open();

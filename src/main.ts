@@ -30,6 +30,7 @@ import type { CalendarView } from './ui/view';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
 import { ProviderRegistry } from './core/ProviderRegistry';
 import { ICSProvider } from './providers/ics/ICSProvider';
+import { CalDAVProvider } from './providers/caldav/CalDAVProvider';
 
 // Inline the view type constants to avoid loading the heavy view module at startup
 const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
@@ -120,6 +121,7 @@ export default class FullCalendarPlugin extends Plugin {
       new DailyNoteProvider(new ObsidianIO(this.app), this, this.settings)
     );
     this.providerRegistry.register(new ICSProvider(this.settings));
+    this.providerRegistry.register(new CalDAVProvider(this.settings));
 
     this.categorizationManager = new CategorizationManager(this);
     await this.loadSettings();

@@ -6,12 +6,14 @@ interface ICSConfigComponentProps {
   config: Partial<ICSProviderConfig>;
   onConfigChange: (newConfig: Partial<ICSProviderConfig>) => void;
   onSave: (finalConfig: ICSProviderConfig) => void;
+  onClose?: () => void; // Add prop
 }
 
 export const ICSConfigComponent: React.FC<ICSConfigComponentProps> = ({
   config,
   onConfigChange,
-  onSave
+  onSave,
+  onClose // Destructure prop
 }) => {
   const [url, setUrl] = React.useState(config.url || '');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
