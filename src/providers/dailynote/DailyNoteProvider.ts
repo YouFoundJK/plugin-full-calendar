@@ -143,6 +143,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
   async updateEvent(
     handle: EventHandle,
+    oldEventData: OFCEvent, // <-- ADD THIS PARAMETER (it will be unused)
     newEventData: OFCEvent,
     config: DailyNoteProviderConfig
   ): Promise<EventLocation | null> {

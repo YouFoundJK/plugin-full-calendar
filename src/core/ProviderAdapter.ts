@@ -91,7 +91,7 @@ export class ProviderAdapter<TConfig> extends EditableCalendar {
       location: { lineNumber: location.lineNumber }
     };
 
-    const newLocation = await this.provider.updateEvent(handle, newEvent, this.config);
+    const newLocation = await this.provider.updateEvent(handle, oldEvent, newEvent, this.config);
     updateCacheWithLocation(newLocation);
 
     return { isDirty: true };

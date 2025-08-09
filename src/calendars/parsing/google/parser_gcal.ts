@@ -155,6 +155,23 @@ export function toGoogleEvent(event: OFCEvent): object {
     gEvent.recurrence = recurrence;
   }
 
+  // Handle Overrides (Exceptions)
+  if (event.recurringEventId && event.type === 'single') {
+    gEvent.recurringEventId = event.recurringEventId;
+    const timeZone = event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (event.allDay === false) {
+      const originalStartTime = DateTime.fromISO(`${event.date}T${event.startTime}`);
+      gEvent.originalStartTime = {
+        dateTime: originalStartTime.toISO(),
+        timeZone: timeZone
+      };
+    } else {
+      gEvent.originalStartTime = {
+        date: event.date
+      };
+    }
+  }
+
   // 3. Time / Date
   if (event.allDay === false) {
     // Timed Event

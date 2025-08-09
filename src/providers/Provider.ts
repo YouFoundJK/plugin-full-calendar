@@ -20,6 +20,7 @@ export interface CalendarProvider<TConfig> {
   createEvent(event: OFCEvent, config: TConfig): Promise<[OFCEvent, EventLocation | null]>;
   updateEvent(
     handle: EventHandle,
+    oldEventData: OFCEvent, // <-- ADD THIS PARAMETER
     newEventData: OFCEvent,
     config: TConfig
   ): Promise<EventLocation | null>;

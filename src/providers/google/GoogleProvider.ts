@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
@@ -5,12 +6,10 @@ import { enhanceEvent } from '../../calendars/parsing/categoryParser';
 import { convertEvent } from '../../calendars/utils/Timezone';
 import { fromGoogleEvent, toGoogleEvent } from '../../calendars/parsing/google/parser_gcal';
 import { makeAuthenticatedRequest } from '../../calendars/parsing/google/request';
-import { EditableEventResponse } from '../../calendars/EditableCalendar';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { GoogleProviderConfig } from './typesGCal';
-import { DateTime } from 'luxon';
 
 export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   private plugin: FullCalendarPlugin;
@@ -48,18 +47,46 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
       );
       url.searchParams.set('timeMin', timeMin.toISOString());
       url.searchParams.set('timeMax', timeMax.toISOString());
-      url.searchParams.set('singleEvents', 'true');
+      url.searchParams.set('singleEvents', 'false');
       url.searchParams.set('maxResults', '2500');
 
       const data = await makeAuthenticatedRequest(this.plugin, url.toString());
       if (!data.items || !Array.isArray(data.items)) return [];
 
+      const cancellations = new Map<string, Set<string>>();
+      for (const gEvent of data.items) {
+        if (gEvent.status === 'cancelled' && gEvent.recurringEventId && gEvent.originalStartTime) {
+          const parentId = gEvent.recurringEventId;
+          if (!cancellations.has(parentId)) {
+            cancellations.set(parentId, new Set());
+          }
+          const cancelledDate = DateTime.fromISO(gEvent.originalStartTime.dateTime, {
+            zone: gEvent.originalStartTime.timeZone || 'utc'
+          }).toISODate();
+          if (cancelledDate) {
+            cancellations.get(parentId)!.add(cancelledDate);
+          }
+        }
+      }
+
       return data.items
         .map((gEvent: any) => {
           let rawEvent = fromGoogleEvent(gEvent);
           if (!rawEvent) return null;
+          let parsedEvent = enhanceEvent(rawEvent, this.plugin.settings);
 
-          const validated = validateEvent(enhanceEvent(rawEvent, this.plugin.settings));
+          if (
+            (parsedEvent.type === 'rrule' || parsedEvent.type === 'recurring') &&
+            parsedEvent.uid &&
+            cancellations.has(parsedEvent.uid)
+          ) {
+            const datesToSkip = cancellations.get(parsedEvent.uid)!;
+            parsedEvent.skipDates = [
+              ...new Set([...(parsedEvent.skipDates || []), ...datesToSkip])
+            ];
+          }
+
+          const validated = validateEvent(parsedEvent);
           if (!validated) return null;
 
           let translated = validated;
@@ -79,7 +106,9 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     event: OFCEvent,
     config: GoogleProviderConfig
   ): Promise<[OFCEvent, EventLocation | null]> {
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(config.id)}/events`;
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+      config.id
+    )}/events`;
     const body = toGoogleEvent(event);
     const createdGEvent = await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
 
@@ -91,23 +120,86 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
 
   async updateEvent(
     handle: EventHandle,
+    oldEventData: OFCEvent,
     newEventData: OFCEvent,
     config: GoogleProviderConfig
   ): Promise<EventLocation | null> {
-    const eventId = handle.persistentId;
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(config.id)}/events/${encodeURIComponent(eventId)}`;
-    const body = toGoogleEvent(newEventData);
-    await makeAuthenticatedRequest(this.plugin, url, 'PUT', body);
+    const newSkipDates = new Set(
+      newEventData.type === 'rrule' || newEventData.type === 'recurring'
+        ? newEventData.skipDates
+        : []
+    );
+    const oldSkipDates = new Set(
+      oldEventData.type === 'rrule' || oldEventData.type === 'recurring'
+        ? oldEventData.skipDates
+        : []
+    );
+    let cancelledDate: string | undefined;
+    if (newSkipDates.size > oldSkipDates.size) {
+      for (const date of newSkipDates) {
+        if (!oldSkipDates.has(date)) {
+          cancelledDate = date;
+          break;
+        }
+      }
+    }
+
+    if (cancelledDate) {
+      await this.cancelInstance(oldEventData, cancelledDate, config);
+    } else {
+      const eventId = handle.persistentId;
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+        config.id
+      )}/events/${encodeURIComponent(eventId)}`;
+      const body = toGoogleEvent(newEventData);
+      await makeAuthenticatedRequest(this.plugin, url, 'PUT', body);
+    }
     return null;
   }
 
   async deleteEvent(handle: EventHandle, config: GoogleProviderConfig): Promise<void> {
     const eventId = handle.persistentId;
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(config.id)}/events/${encodeURIComponent(eventId)}`;
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+      config.id
+    )}/events/${encodeURIComponent(eventId)}`;
     await makeAuthenticatedRequest(this.plugin, url, 'DELETE');
   }
 
+  private async cancelInstance(
+    parentEvent: OFCEvent,
+    instanceDate: string,
+    config: GoogleProviderConfig
+  ): Promise<void> {
+    if (!parentEvent.uid) {
+      throw new Error('Cannot cancel an instance of a recurring event that has no master UID.');
+    }
+    const body: any = {
+      recurringEventId: parentEvent.uid,
+      status: 'cancelled'
+    };
+    let startTimeObject: any;
+    if (parentEvent.allDay) {
+      startTimeObject = { date: instanceDate };
+    } else {
+      const timeZone = parentEvent.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const startTime =
+        !parentEvent.allDay && 'startTime' in parentEvent ? parentEvent.startTime : '00:00';
+      const isoDateTime = DateTime.fromISO(`${instanceDate}T${startTime}`, {
+        zone: timeZone
+      }).toISO();
+      startTimeObject = { dateTime: isoDateTime, timeZone: timeZone };
+    }
+    body.originalStartTime = startTimeObject;
+    body.start = startTimeObject;
+    body.end = startTimeObject;
+
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+      config.id
+    )}/events`;
+    await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
+  }
+
   getConfigurationComponent(): FCReactComponent<any> {
-    return () => null; // Placeholder for now
+    return () => null;
   }
 }

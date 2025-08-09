@@ -162,6 +162,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
   async updateEvent(
     handle: EventHandle,
+    oldEventData: OFCEvent, // <-- ADD THIS PARAMETER (it will be unused)
     newEventData: OFCEvent,
     config: FullNoteProviderConfig
   ): Promise<EventLocation | null> {

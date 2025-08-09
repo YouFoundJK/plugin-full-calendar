@@ -68,6 +68,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
 
   async updateEvent(
     handle: EventHandle,
+    oldEventData: OFCEvent, // <-- ADD THIS
     newEventData: OFCEvent,
     config: ICSProviderConfig
   ): Promise<EventLocation | null> {

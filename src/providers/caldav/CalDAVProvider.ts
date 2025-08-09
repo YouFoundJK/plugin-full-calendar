@@ -74,6 +74,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
 
   async updateEvent(
     handle: EventHandle,
+    oldEventData: OFCEvent,
     newEventData: OFCEvent,
     config: CalDAVProviderConfig
   ): Promise<EventLocation | null> {
