@@ -15,6 +15,7 @@ export type EventHandle = {
 export type ProviderConfigContext = {
   allDirectories: string[];
   usedDirectories: string[];
+  headings: string[];
 };
 
 /**

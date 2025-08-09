@@ -19,6 +19,7 @@ import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
 import { toEventInput } from './core/interop';
 import { FullNoteProvider } from './providers/fullnote/FullNoteProvider';
+import { DailyNoteProvider } from './providers/dailynote/DailyNoteProvider';
 import { ObsidianIO } from './ObsidianAdapter';
 import { renderCalendar } from './ui/calendar';
 import { manageTimezone } from './calendars/utils/Timezone';
@@ -112,8 +113,11 @@ export default class FullCalendarPlugin extends Plugin {
     this.isMobile = (this.app as App & { isMobile: boolean }).isMobile;
     this.providerRegistry = new ProviderRegistry();
 
-    // Register the FullNoteProvider
+    // Register the providers
     this.providerRegistry.register(new FullNoteProvider(new ObsidianIO(this.app), this));
+    this.providerRegistry.register(
+      new DailyNoteProvider(new ObsidianIO(this.app), this, this.settings)
+    );
 
     this.categorizationManager = new CategorizationManager(this);
     await this.loadSettings();
