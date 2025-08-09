@@ -26,6 +26,13 @@ export interface CalendarProvider<TConfig> {
   ): Promise<EventLocation | null>;
   deleteEvent(handle: EventHandle, config: TConfig): Promise<void>;
 
+  createInstanceOverride(
+    masterEventHandle: EventHandle,
+    instanceDate: string,
+    newEventData: OFCEvent,
+    config: TConfig
+  ): Promise<[OFCEvent, EventLocation | null]>;
+
   getConfigurationComponent(): FCReactComponent<{
     config: Partial<TConfig>;
     onConfigChange: (newConfig: Partial<TConfig>) => void;

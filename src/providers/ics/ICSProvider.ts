@@ -79,6 +79,15 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
     throw new Error('Cannot delete an event on a read-only ICS calendar.');
   }
 
+  async createInstanceOverride(
+    masterEventHandle: EventHandle,
+    instanceDate: string,
+    newEventData: OFCEvent,
+    config: ICSProviderConfig
+  ): Promise<[OFCEvent, EventLocation | null]> {
+    throw new Error(`Cannot create a recurring event override on a read-only calendar.`);
+  }
+
   getConfigurationComponent(): FCReactComponent<any> {
     return ICSConfigComponent;
   }

@@ -199,6 +199,47 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
   }
 
+  async createInstanceOverride(
+    masterEventHandle: EventHandle,
+    instanceDate: string,
+    newEventData: OFCEvent,
+    config: GoogleProviderConfig
+  ): Promise<[OFCEvent, EventLocation | null]> {
+    const masterEvent = this.plugin.cache.getEventById(masterEventHandle.persistentId);
+    if (!masterEvent) {
+      throw new Error('Master event not found in cache for override creation.');
+    }
+
+    if (newEventData.allDay === false && masterEvent.allDay === false) {
+      const originalStartTime = {
+        dateTime: DateTime.fromISO(`${instanceDate}T${masterEvent.startTime}`).toISO(),
+        timeZone: masterEvent.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
+
+      const body = {
+        ...toGoogleEvent(newEventData),
+        recurringEventId: masterEvent.uid,
+        originalStartTime: originalStartTime
+      };
+
+      const newGEvent = await makeAuthenticatedRequest(
+        this.plugin,
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(config.id)}/events`,
+        'POST',
+        body
+      );
+
+      const rawEvent = fromGoogleEvent(newGEvent);
+      if (!rawEvent) {
+        throw new Error('Could not parse Google API response after creating instance override.');
+      }
+      return [enhanceEvent(rawEvent, this.plugin.settings), null];
+    }
+    throw new Error(
+      'Modifying a single instance of an all-day recurring event is not yet supported for Google Calendars.'
+    );
+  }
+
   getConfigurationComponent(): FCReactComponent<any> {
     return () => null;
   }

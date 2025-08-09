@@ -420,4 +420,13 @@ export default class DailyNoteCalendar extends EditableCalendar {
     }
     return null;
   }
+
+  createInstanceOverride(
+    masterEvent: OFCEvent,
+    instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<[OFCEvent, EventLocation | null]> {
+    // This is a placeholder for legacy class compatibility and will not be called in the new architecture.
+    throw new Error('createInstanceOverride is not implemented for legacy calendar classes.');
+  }
 }

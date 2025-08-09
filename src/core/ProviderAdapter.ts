@@ -1,10 +1,15 @@
 import { TFile } from 'obsidian';
-import { EditableCalendar, EditableEventResponse } from '../calendars/EditableCalendar';
+import {
+  EditableCalendar,
+  EditableEventResponse,
+  CategoryProvider
+} from '../calendars/EditableCalendar';
 import { FullCalendarSettings } from '../types/settings';
 import { CalendarInfo, OFCEvent, EventLocation } from '../types';
 import { CalendarProvider } from '../providers/Provider';
 import { EventPathLocation } from './EventStore';
 import { EventHandle } from '../providers/typesProvider';
+import { GoogleProvider } from '../providers/google/GoogleProvider';
 
 /**
  * An adapter that makes a new, generic CalendarProvider look and act like a
@@ -28,13 +33,25 @@ export class ProviderAdapter<TConfig> extends EditableCalendar {
     this.info = info;
   }
 
+  // === Abstract Property Implementations ===
+
   get identifier(): string {
     // The identifier is part of the config and depends on the provider type.
-    // The adapter needs to know how to extract it.
     if (this.info.type === 'local') {
       return (this.config as any).directory;
     }
-    // Add other cases as we migrate more providers
+    if (this.info.type === 'dailynote') {
+      return (this.config as any).heading;
+    }
+    if (this.info.type === 'ical') {
+      return (this.config as any).url;
+    }
+    if (this.info.type === 'caldav') {
+      return (this.config as any).homeUrl;
+    }
+    if (this.info.type === 'google') {
+      return (this.config as any).id;
+    }
     return this.info.id;
   }
 
@@ -42,37 +59,38 @@ export class ProviderAdapter<TConfig> extends EditableCalendar {
     return this.info.type;
   }
 
-  get id(): string {
-    return this.info.id;
-  }
-
   get name(): string {
-    // FIX: Derive name safely. Use provider's display name or identifier.
-    // The 'name' property is not guaranteed on all CalendarInfo types.
+    // Name is stored directly on the CalendarInfo object during migration/creation.
     return (this.info as any).name || this.provider.displayName || this.identifier;
   }
 
   get directory(): string {
+    // Only local-type calendars have a directory.
     return (this.config as any).directory || '';
   }
 
-  // === Bridged Methods (Implement ALL abstract methods) ===
+  // === Bridged Method Implementations ===
 
   async getEvents(): Promise<EditableEventResponse[]> {
     const events = await this.provider.getEvents(this.config);
+    // The legacy EditableCalendar expects a location, so filter out remote-only events.
     return events.filter((response): response is EditableEventResponse => response[1] !== null);
   }
 
-  // FIX: Provide concrete implementation for all abstract methods.
-  // These can be simple pass-throughs or stubs if not directly used by the legacy path.
-
+  // This is a temporary, inefficient bridge for the legacy file watcher.
+  // It will be removed when the EventCache is refactored.
   async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
-    // This is not strictly needed by the legacy cache update logic, which re-fetches
-    // everything from a calendar. We can return an empty array.
-    return [];
+    const allEvents = await this.provider.getEvents(this.config);
+    return allEvents.filter(
+      (response): response is EditableEventResponse =>
+        response[1] !== null && response[1].file.path === file.path
+    );
   }
 
   async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
+    if (!this.provider.getCapabilities(this.config).canCreate) {
+      throw new Error(`Calendar of type "${this.provider.type}" does not support creating events.`);
+    }
     return this.provider.createEvent(event, this.config);
   }
 
@@ -82,31 +100,62 @@ export class ProviderAdapter<TConfig> extends EditableCalendar {
     location: EventPathLocation | null,
     updateCacheWithLocation: (loc: EventLocation | null) => void
   ): Promise<{ isDirty: boolean }> {
-    if (!location) {
-      throw new Error('ProviderAdapter requires a location to generate an EventHandle.');
+    if (!this.provider.getCapabilities(this.config).canEdit) {
+      throw new Error(`Calendar of type "${this.provider.type}" does not support editing events.`);
     }
+    const handle = this.provider.getEventHandle(oldEvent, this.config);
+    if (!handle) {
+      throw new Error(
+        `ProviderAdapter: Could not generate a persistent handle for the event being modified.`
+      );
+    }
+    // For Google, we may need special logic.
+    if (this.provider instanceof GoogleProvider) {
+      const gProvider = this.provider as GoogleProvider;
+      const gConfig = this.config as any;
 
-    const handle: EventHandle = {
-      persistentId: location.path,
-      location: { lineNumber: location.lineNumber }
-    };
+      const newSkipDates = new Set(
+        newEvent.type === 'rrule' || newEvent.type === 'recurring' ? newEvent.skipDates : []
+      );
+      const oldSkipDates = new Set(
+        oldEvent.type === 'rrule' || oldEvent.type === 'recurring' ? oldEvent.skipDates : []
+      );
+
+      let cancelledDate: string | undefined;
+
+      if (newSkipDates.size > oldSkipDates.size) {
+        for (const date of newSkipDates) {
+          if (!oldSkipDates.has(date)) {
+            cancelledDate = date;
+            break;
+          }
+        }
+      }
+      if (cancelledDate) {
+        // @ts-ignore
+        await gProvider.cancelInstance(oldEvent, cancelledDate, gConfig);
+        updateCacheWithLocation(null);
+        return { isDirty: false };
+      }
+    }
 
     const newLocation = await this.provider.updateEvent(handle, oldEvent, newEvent, this.config);
     updateCacheWithLocation(newLocation);
-
+    // Assume dirty for any provider that can be edited, as they are likely file-based.
+    // The cache will handle UI updates correctly regardless.
     return { isDirty: true };
   }
 
   async deleteEvent(event: OFCEvent, location: EventPathLocation | null): Promise<void> {
-    if (!location) {
+    if (!this.provider.getCapabilities(this.config).canDelete) {
+      throw new Error(`Calendar of type "${this.provider.type}" does not support deleting events.`);
+    }
+    const handle = this.provider.getEventHandle(event, this.config);
+    if (!handle) {
       throw new Error(
-        'ProviderAdapter requires a location to generate an EventHandle for deletion.'
+        `ProviderAdapter: Could not generate a persistent handle for the event being deleted.`
       );
     }
-    const handle: EventHandle = {
-      persistentId: location.path,
-      location: { lineNumber: location.lineNumber }
-    };
     return this.provider.deleteEvent(handle, this.config);
   }
 
@@ -116,16 +165,37 @@ export class ProviderAdapter<TConfig> extends EditableCalendar {
   }
 
   async checkForDuplicate(event: OFCEvent): Promise<boolean> {
-    // For now, we can assume providers handle this internally or we can add it to the interface later.
+    // Delegate to provider if it has a specific implementation, otherwise default to false.
+    if ('checkForDuplicate' in this.provider) {
+      // @ts-ignore
+      return this.provider.checkForDuplicate(event, this.config);
+    }
     return false;
   }
 
-  async bulkAddCategories(): Promise<void> {
-    // This logic will be handled by the provider directly when called from CategorizationManager
-    // The adapter does not need to implement it for the EventCache's purposes.
+  async createInstanceOverride(
+    masterEvent: OFCEvent,
+    instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<[OFCEvent, EventLocation | null]> {
+    const handle = this.provider.getEventHandle(masterEvent, this.config);
+    if (!handle) {
+      throw new Error('ProviderAdapter could not generate a handle for the master event.');
+    }
+    return this.provider.createInstanceOverride(handle, instanceDate, newEventData, this.config);
   }
 
+  // Bulk operations are not part of the EditableCalendar abstract class,
+  // so they are not needed here for the adapter to function with the EventCache.
+  // The CategorizationManager will interact with providers directly.
+  async bulkAddCategories(): Promise<void> {
+    throw new Error(
+      'bulkAddCategories should be called on the provider directly, not the adapter.'
+    );
+  }
   async bulkRemoveCategories(): Promise<void> {
-    // Same as above.
+    throw new Error(
+      'bulkRemoveCategories should be called on the provider directly, not the adapter.'
+    );
   }
 }

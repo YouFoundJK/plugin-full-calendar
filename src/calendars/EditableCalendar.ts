@@ -100,6 +100,19 @@ export abstract class EditableCalendar extends Calendar {
   ): Promise<{ isDirty: boolean }>;
 
   /**
+   * Creates a single-instance override for a recurring event.
+   * @param masterEvent The master recurring event object.
+   * @param instanceDate The original date of the instance being modified.
+   * @param newEventData The new event data for the override.
+   * @returns A tuple containing the authoritative new override event and its location.
+   */
+  abstract createInstanceOverride(
+    masterEvent: OFCEvent,
+    instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<[OFCEvent, EventLocation | null]>;
+
+  /**
    * Optional: Returns a list of category names that are derived from this
    * calendar's configuration, such as its folder path.
    * This is used during de-categorization to identify all possible categories to remove.

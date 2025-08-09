@@ -423,4 +423,13 @@ export default class FullNoteCalendar extends EditableCalendar {
   public getLocalIdentifier(event: OFCEvent): string | null {
     return basenameFromEvent(event, this.settings);
   }
+
+  createInstanceOverride(
+    masterEvent: OFCEvent,
+    instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<[OFCEvent, EventLocation | null]> {
+    // This is a placeholder for legacy class compatibility and will not be called in the new architecture.
+    throw new Error('createInstanceOverride is not implemented for legacy calendar classes.');
+  }
 }

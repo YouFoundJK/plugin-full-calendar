@@ -288,7 +288,7 @@ export default class GoogleCalendar extends EditableCalendar {
     masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent
-  ): Promise<OFCEvent> {
+  ): Promise<[OFCEvent, EventLocation | null]> {
     if (!masterEvent.uid) {
       throw new Error('Cannot override an instance of a recurring event that has no master UID.');
     }
@@ -319,7 +319,7 @@ export default class GoogleCalendar extends EditableCalendar {
           throw new Error('Could not parse Google API response after creating instance override.');
         }
         const finalEvent = enhanceEvent(rawEvent, this.settings);
-        return finalEvent;
+        return [finalEvent, null];
       }
     }
     // Note: Overriding all-day events is more complex and not supported in this initial implementation.

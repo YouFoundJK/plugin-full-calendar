@@ -230,6 +230,7 @@ class TestEditable extends EditableCalendar {
   getEventsInFile = jest.fn();
 
   createEvent = jest.fn();
+  createInstanceOverride = jest.fn();
 
   checkForDuplicate = jest.fn(async () => false);
 

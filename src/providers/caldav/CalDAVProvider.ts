@@ -85,6 +85,15 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
     throw new Error('Deleting events on a CalDAV calendar is not yet supported.');
   }
 
+  async createInstanceOverride(
+    masterEventHandle: EventHandle,
+    instanceDate: string,
+    newEventData: OFCEvent,
+    config: CalDAVProviderConfig
+  ): Promise<[OFCEvent, EventLocation | null]> {
+    throw new Error(`Cannot create a recurring event override on a read-only calendar.`);
+  }
+
   getConfigurationComponent(): FCReactComponent<any> {
     return () => null;
   }

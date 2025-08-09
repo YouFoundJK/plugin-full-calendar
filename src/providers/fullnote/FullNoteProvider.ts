@@ -299,6 +299,30 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     );
   }
 
+  async createInstanceOverride(
+    masterEventHandle: EventHandle,
+    instanceDate: string, // Unused for FullNote, but part of the contract
+    newEventData: OFCEvent,
+    config: FullNoteProviderConfig
+  ): Promise<[OFCEvent, EventLocation | null]> {
+    const masterEvent = this.plugin.cache.getEventById(masterEventHandle.persistentId);
+    if (!masterEvent) {
+      throw new Error('Master event not found in cache for override creation.');
+    }
+    const masterLocalId = this.getEventHandle(masterEvent, config)?.persistentId;
+    if (!masterLocalId) {
+      throw new Error('Could not get persistent ID for master event.');
+    }
+
+    const overrideEventData: OFCEvent = {
+      ...newEventData,
+      recurringEventId: masterLocalId
+    };
+
+    // Use the existing createEvent logic to handle file creation and timezone conversion
+    return this.createEvent(overrideEventData, config);
+  }
+
   getConfigurationComponent(): FCReactComponent<any> {
     return FullNoteConfigComponent;
   }

@@ -339,35 +339,47 @@ export class RecurringEventManager {
       throw new Error('Cannot create a recurring override from a non-single event.');
     }
 
-    // Check calendar type and delegate
     const { calendar, event: masterEvent } = this.cache.getInfoForEditableEvent(masterEventId);
-    if (calendar instanceof GoogleCalendar) {
-      const newExceptionEvent = await calendar.createInstanceOverride(
-        masterEvent,
-        instanceDate,
-        newEventData
-      );
-      // Add the new exception to the cache silently. The caller is responsible for the UI update.
-      await this.cache.addEvent(calendar.id, newExceptionEvent, { silent: true });
-
-      // Now, update the in-memory master event to hide the original instance date.
-      await this.cache.processEvent(
-        masterEventId,
-        e => {
-          if (e.type !== 'recurring' && e.type !== 'rrule') return e;
-          const skipDates = e.skipDates.includes(instanceDate)
-            ? e.skipDates
-            : [...e.skipDates, instanceDate];
-          return { ...e, skipDates };
-        },
-        { silent: true }
-      );
-
-      return;
+    if (!(calendar instanceof GoogleCalendar)) {
+      throw new Error('Cannot modify an instance on a non-editable calendar.');
     }
 
-    await this._createRecurringOverride(masterEventId, instanceDate, newEventData);
+    // 1. Delegate override creation to the calendar (which will be our adapter).
+    const [authoritativeOverrideEvent, overrideLocation] = await calendar.createInstanceOverride(
+      masterEvent,
+      instanceDate,
+      newEventData
+    );
 
+    // 2. Add the new override event to the cache silently.
+    const overrideId = this.cache.generateId();
+    this.cache.store.add({
+      calendar,
+      location: overrideLocation,
+      id: overrideId,
+      event: authoritativeOverrideEvent
+    });
+    this.cache.updateQueue.toAdd.set(overrideId, {
+      id: overrideId,
+      calendarId: calendar.id,
+      event: authoritativeOverrideEvent
+    });
+    this.cache.isBulkUpdating = true; // Prevent immediate flushes
+
+    // 3. Update the master event to skip the instance date, also silently.
+    await this.cache.processEvent(
+      masterEventId,
+      e => {
+        if (e.type !== 'recurring' && e.type !== 'rrule') return e;
+        const skipDates = e.skipDates.includes(instanceDate)
+          ? e.skipDates
+          : /* INF: */ [...e.skipDates, instanceDate];
+        return { ...e, skipDates };
+      },
+      { silent: true }
+    );
+
+    // 4. Flush both atomic changes to the UI.
     this.cache.flushUpdateQueue([], []);
   }
 
