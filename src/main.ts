@@ -12,7 +12,8 @@
  * @license See LICENSE.md
  */
 
-import { FullCalendarSettingTab } from './ui/settings/SettingsTab';
+import { LazySettingsTab } from './ui/settings/LazySettingsTab';
+import type { FullCalendarSettingTab } from './ui/settings/SettingsTab';
 import { ensureCalendarIds, sanitizeInitialView } from './ui/settings/utilsSettings';
 import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
@@ -34,7 +35,7 @@ export default class FullCalendarPlugin extends Plugin {
   settings: FullCalendarSettings = DEFAULT_SETTINGS;
   categorizationManager!: CategorizationManager;
   isMobile: boolean = false;
-  settingsTab?: FullCalendarSettingTab;
+  settingsTab?: LazySettingsTab;
 
   // To parse `data.json` file.`
   cache: EventCache = new EventCache(this, {
@@ -165,7 +166,7 @@ export default class FullCalendarPlugin extends Plugin {
       await this.activateView();
     });
 
-    this.settingsTab = new FullCalendarSettingTab(this.app, this);
+    this.settingsTab = new LazySettingsTab(this.app, this);
     this.addSettingTab(this.settingsTab);
 
     // Commands visible in the command palette
@@ -244,7 +245,7 @@ export default class FullCalendarPlugin extends Plugin {
         const { exchangeCodeForToken } = await import('./calendars/parsing/google/auth');
         await exchangeCodeForToken(params.code, params.state, this);
         if (this.settingsTab) {
-          this.settingsTab.display();
+          await this.settingsTab.display();
         }
       } else {
         new Notice('Google authentication failed. Please try again.');
