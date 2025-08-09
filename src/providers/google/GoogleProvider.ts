@@ -243,4 +243,9 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   getConfigurationComponent(): FCReactComponent<any> {
     return () => null;
   }
+
+  async revalidate(config: GoogleProviderConfig): Promise<void> {
+    // This method's existence signals to the adapter that this is a remote-style provider.
+    // The actual fetching is always done in getEvents.
+  }
 }

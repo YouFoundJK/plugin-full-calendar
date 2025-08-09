@@ -88,6 +88,11 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
     throw new Error(`Cannot create a recurring event override on a read-only calendar.`);
   }
 
+  async revalidate(config: ICSProviderConfig): Promise<void> {
+    // This method's existence signals to the adapter that this is a remote-style provider.
+    // The actual fetching is always done in getEvents.
+  }
+
   getConfigurationComponent(): FCReactComponent<any> {
     return ICSConfigComponent;
   }

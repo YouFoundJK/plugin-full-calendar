@@ -133,4 +133,10 @@ export abstract class EditableCalendar extends Calendar {
    * @param knownCategories A set of all category names to look for and remove.
    */
   abstract bulkRemoveCategories(knownCategories: Set<string>): Promise<void>;
+
+  /**
+   * Optional: If this calendar is also a remote calendar, this method should
+   * be implemented to refresh its data from the source.
+   */
+  revalidate?(): Promise<void>;
 }

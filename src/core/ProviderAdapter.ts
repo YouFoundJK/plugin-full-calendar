@@ -185,17 +185,32 @@ export class ProviderAdapter<TConfig> extends EditableCalendar {
     return this.provider.createInstanceOverride(handle, instanceDate, newEventData, this.config);
   }
 
-  // Bulk operations are not part of the EditableCalendar abstract class,
-  // so they are not needed here for the adapter to function with the EventCache.
-  // The CategorizationManager will interact with providers directly.
-  async bulkAddCategories(): Promise<void> {
-    throw new Error(
-      'bulkAddCategories should be called on the provider directly, not the adapter.'
-    );
+  // Bulk operations for CategorizationManager.
+  // These are not part of the abstract class but are checked for with `instanceof EditableCalendar`.
+  // We must implement them to delegate to the underlying provider.
+
+  async bulkAddCategories(getCategory: CategoryProvider, force: boolean): Promise<void> {
+    // Check if the provider actually implements this method before calling.
+    if ('bulkAddCategories' in this.provider) {
+      // @ts-ignore
+      return this.provider.bulkAddCategories(getCategory, force, this.config);
+    }
+    // If the provider (e.g., Google) doesn't support it, do nothing. This is the correct behavior.
   }
-  async bulkRemoveCategories(): Promise<void> {
-    throw new Error(
-      'bulkRemoveCategories should be called on the provider directly, not the adapter.'
-    );
+
+  async bulkRemoveCategories(knownCategories: Set<string>): Promise<void> {
+    if ('bulkRemoveCategories' in this.provider) {
+      // @ts-ignore
+      return this.provider.bulkRemoveCategories(knownCategories, this.config);
+    }
+  }
+
+  async revalidate(): Promise<void> {
+    // A provider is "remote" if it has a revalidate method.
+    // We will add this method to our remote providers.
+    if ('revalidate' in this.provider && typeof (this.provider as any).revalidate === 'function') {
+      // The revalidate method on providers can be a no-op, its existence is the key.
+      await (this.provider as any).revalidate(this.config);
+    }
   }
 }

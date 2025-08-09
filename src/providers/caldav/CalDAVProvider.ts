@@ -94,6 +94,11 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
     throw new Error(`Cannot create a recurring event override on a read-only calendar.`);
   }
 
+  async revalidate(config: CalDAVProviderConfig): Promise<void> {
+    // This method's existence signals to the adapter that this is a remote-style provider.
+    // The actual fetching is always done in getEvents.
+  }
+
   getConfigurationComponent(): FCReactComponent<any> {
     return () => null;
   }
