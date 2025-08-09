@@ -20,7 +20,7 @@ import { DateTime } from 'luxon';
 
 import { ItemView, Menu, Notice, WorkspaceLeaf } from 'obsidian';
 
-import { Calendar, EventSourceInput, EventInput } from '@fullcalendar/core';
+import type { Calendar, EventSourceInput, EventInput } from '@fullcalendar/core';
 
 import './overrides.css';
 import FullCalendarPlugin from '../main';
@@ -28,9 +28,7 @@ import { renderCalendar } from './calendar';
 import { renderOnboarding } from './onboard';
 import { PLUGIN_SLUG, CalendarInfo } from '../types';
 import { UpdateViewCallback, CachedEvent } from '../core/EventCache';
-import { openFileForEvent } from '../actions/eventActions';
-import { isTask, toggleTask, unmakeTask } from '../actions/tasks';
-import { launchCreateModal, launchEditModal } from './event_modal';
+// Lazy-import heavy modules at point of use to reduce initial load time
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
 
 export const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
@@ -65,6 +63,9 @@ export class CalendarView extends ItemView {
   inSidebar: boolean;
   fullCalendarView: Calendar | null = null;
   callback: UpdateViewCallback | null = null;
+  private timelineResources:
+    | { id: string; title: string; parentId?: string; eventColor?: string; extendedProps?: any }[]
+    | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: FullCalendarPlugin, inSidebar = false) {
     super(leaf);
@@ -369,6 +370,82 @@ export class CalendarView extends ItemView {
   }
 
   /**
+   * Lazily build resources for timeline views based on current settings and cache.
+   */
+  private buildTimelineResources(): {
+    id: string;
+    title: string;
+    parentId?: string;
+    eventColor?: string;
+    extendedProps?: any;
+  }[] {
+    const resources: {
+      id: string;
+      title: string;
+      parentId?: string;
+      eventColor?: string;
+      extendedProps?: any;
+    }[] = [];
+    if (!this.plugin.settings.enableAdvancedCategorization) {
+      return resources;
+    }
+
+    const categorySettings = this.plugin.settings.categorySettings || [];
+    const workspace = this.getActiveWorkspace();
+
+    const isCategoryVisible = (name: string) => {
+      if (!workspace?.categoryFilter) return true;
+      const { mode, categories } = workspace.categoryFilter;
+      if (mode === 'show-only' && categories.length === 0) return true;
+      if (mode === 'show-only') return categories.includes(name);
+      return !categories.includes(name);
+    };
+
+    const filteredCategorySettings = workspace?.categoryFilter
+      ? categorySettings.filter(cat => isCategoryVisible(cat.name))
+      : categorySettings;
+
+    filteredCategorySettings.forEach((cat: { name: string; color: string }) => {
+      resources.push({
+        id: cat.name,
+        title: cat.name,
+        eventColor: cat.color,
+        extendedProps: { isParent: true }
+      });
+    });
+
+    const categoryMap = new Map<string, Set<string>>();
+    let allSources = this.plugin.cache.getAllEvents();
+    allSources = this.filterCalendarSources(allSources);
+    for (const source of allSources) {
+      for (const cachedEvent of source.events) {
+        const { category, subCategory } = cachedEvent.event;
+        if (category) {
+          if (!isCategoryVisible(category)) continue;
+          if (!categoryMap.has(category)) categoryMap.set(category, new Set());
+          const sub = subCategory || '__NONE__';
+          categoryMap.get(category)!.add(sub);
+        }
+      }
+    }
+
+    for (const [category, subCategories] of categoryMap.entries()) {
+      if (!isCategoryVisible(category)) continue;
+      if (!resources.find(r => r.id === category)) {
+        resources.push({ id: category, title: category, extendedProps: { isParent: true } });
+      }
+      for (const subCategory of subCategories) {
+        resources.push({
+          id: `${category}::${subCategory}`,
+          title: subCategory === '__NONE__' ? '(none)' : subCategory,
+          parentId: category
+        });
+      }
+    }
+    return resources;
+  }
+
+  /**
    * Removes shadow events from the current view
    */
   removeShadowEventsFromView() {
@@ -447,100 +524,7 @@ export class CalendarView extends ItemView {
       return;
     }
 
-    // Generate the list of resources for the timeline view.
-    // This now builds a hierarchical structure for categories and sub-categories.
-    const resources: {
-      id: string;
-      title: string;
-      parentId?: string;
-      eventColor?: string;
-      extendedProps?: any;
-    }[] = [];
-    if (this.plugin.settings.enableAdvancedCategorization) {
-      // First, add top-level resources for each category from settings.
-      const categorySettings = this.plugin.settings.categorySettings || [];
-
-      // Apply workspace category filtering to resources if active
-      const workspace = this.getActiveWorkspace();
-
-      // Helper: determine if a category should be visible in the current workspace
-      const isCategoryVisible = (name: string) => {
-        if (!workspace?.categoryFilter) return true;
-        const { mode, categories } = workspace.categoryFilter;
-        // If 'show-only' mode is selected but no categories are chosen, don't apply filtering
-        if (mode === 'show-only' && categories.length === 0) return true;
-        if (mode === 'show-only') return categories.includes(name);
-        // mode === 'hide'
-        return !categories.includes(name);
-      };
-
-      const filteredCategorySettings = workspace?.categoryFilter
-        ? categorySettings.filter(cat => isCategoryVisible(cat.name))
-        : categorySettings;
-
-      filteredCategorySettings.forEach((cat: { name: string; color: string }) => {
-        resources.push({
-          id: cat.name,
-          title: cat.name,
-          eventColor: cat.color,
-          extendedProps: { isParent: true }
-        });
-      });
-
-      // Build a map of categories to their sub-categories from actual events in the cache.
-      const categoryMap = new Map<string, Set<string>>();
-
-      // Apply source filtering first
-      let allSources = this.plugin.cache.getAllEvents();
-      allSources = this.filterCalendarSources(allSources);
-
-      for (const source of allSources) {
-        for (const cachedEvent of source.events) {
-          const { category, subCategory } = cachedEvent.event;
-          if (category) {
-            // Apply workspace category filtering
-            if (!isCategoryVisible(category)) {
-              continue; // Skip categories not visible in this workspace
-            }
-
-            if (!categoryMap.has(category)) {
-              categoryMap.set(category, new Set());
-            }
-            // START MODIFICATION
-            const sub = subCategory || '__NONE__';
-            categoryMap.get(category)!.add(sub);
-            // END MODIFICATION
-          }
-        }
-      }
-
-      // Now, create the child resources (sub-categories).
-      for (const [category, subCategories] of categoryMap.entries()) {
-        // Skip categories hidden by the workspace
-        if (!isCategoryVisible(category)) {
-          continue;
-        }
-
-        // Ensure the parent category exists in the resources array.
-        if (!resources.find(r => r.id === category)) {
-          resources.push({
-            id: category,
-            title: category,
-            extendedProps: { isParent: true }
-          });
-        }
-
-        for (const subCategory of subCategories) {
-          // START MODIFICATION
-          resources.push({
-            id: `${category}::${subCategory}`,
-            title: subCategory === '__NONE__' ? '(none)' : subCategory,
-            parentId: category
-          });
-          // END MODIFICATION
-        }
-      }
-    }
+    // Defer building timeline resources until timeline view is active
 
     const sources: EventSourceInput[] = this.translateSources();
 
@@ -548,7 +532,7 @@ export class CalendarView extends ItemView {
       this.fullCalendarView.destroy();
       this.fullCalendarView = null;
     }
-    // Add view change handler to manage shadow events for timeline views
+    // Add view change handler to manage shadow events and lazy resources for timeline views
     let currentViewType = '';
     const handleViewChange = () => {
       const newViewType = this.fullCalendarView?.view?.type || '';
@@ -558,6 +542,12 @@ export class CalendarView extends ItemView {
       if (wasTimeline !== isTimeline) {
         // View type changed between timeline and non-timeline
         if (isTimeline) {
+          // Lazily build and apply resources the first time we enter a timeline view
+          if (!this.timelineResources) {
+            this.timelineResources = this.buildTimelineResources();
+            this.fullCalendarView?.setOption('resources', this.timelineResources);
+            this.fullCalendarView?.setOption('resourcesInitiallyExpanded', false);
+          }
           // Switched to timeline view - add shadow events
           this.addShadowEventsToView();
         } else {
@@ -571,11 +561,11 @@ export class CalendarView extends ItemView {
     // Apply workspace settings
     const workspaceSettings = this.applyWorkspaceSettings(this.plugin.settings);
 
-    this.fullCalendarView = renderCalendar(calendarEl, sources, {
+    this.fullCalendarView = await renderCalendar(calendarEl, sources, {
       // timeZone:
       //   this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone, // <-- ADD THIS LINE
       forceNarrow: this.inSidebar,
-      resources,
+      // resources added lazily when entering timeline view
       enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
       onViewChange: handleViewChange,
       initialView: workspaceSettings.initialView, // Use workspace-aware initial view
@@ -617,8 +607,10 @@ export class CalendarView extends ItemView {
       eventClick: async info => {
         try {
           if (info.jsEvent.getModifierState('Control') || info.jsEvent.getModifierState('Meta')) {
+            const { openFileForEvent } = await import('../actions/eventActions');
             await openFileForEvent(this.plugin.cache, this.app, info.event.id);
           } else {
+            const { launchEditModal } = await import('./event_modal');
             launchEditModal(this.plugin, info.event.id);
           }
         } catch (e) {
@@ -640,6 +632,7 @@ export class CalendarView extends ItemView {
         const partialEvent = dateEndpointsToFrontmatter(start, end, allDay);
         try {
           if (this.plugin.settings.clickToCreateEventFromMonthView || viewType !== 'dayGridMonth') {
+            const { launchCreateModal } = await import('./event_modal');
             launchCreateModal(this.plugin, partialEvent);
           } else {
             this.fullCalendarView?.changeView('timeGridDay');
@@ -758,16 +751,17 @@ export class CalendarView extends ItemView {
         }
 
         if (this.plugin.cache.isEventEditable(e.id)) {
-          if (!isTask(event)) {
+          const tasks = await import('../actions/tasks');
+          if (!tasks.isTask(event)) {
             menu.addItem(item =>
               item.setTitle('Turn into task').onClick(async () => {
-                await this.plugin.cache.processEvent(e.id, e => toggleTask(e, false));
+                await this.plugin.cache.processEvent(e.id, e => tasks.toggleTask(e, false));
               })
             );
           } else {
             menu.addItem(item =>
               item.setTitle('Remove checkbox').onClick(async () => {
-                await this.plugin.cache.processEvent(e.id, unmakeTask);
+                await this.plugin.cache.processEvent(e.id, tasks.unmakeTask);
               })
             );
           }
@@ -777,7 +771,9 @@ export class CalendarView extends ItemView {
               if (!this.plugin.cache) {
                 return;
               }
-              openFileForEvent(this.plugin.cache, this.app, e.id);
+              import('../actions/eventActions').then(({ openFileForEvent }) =>
+                openFileForEvent(this.plugin.cache, this.app, e.id)
+              );
             })
           );
           menu.addItem(item =>
@@ -814,6 +810,7 @@ export class CalendarView extends ItemView {
           event.type === 'recurring' || event.type === 'rrule' || event.recurringEventId;
 
         if (!isRecurringSystem) {
+          const { toggleTask } = await import('../actions/tasks');
           await this.plugin.cache.updateEventWithId(eventId, toggleTask(event, isDone));
           return true;
         }
@@ -846,6 +843,11 @@ export class CalendarView extends ItemView {
     // Initialize shadow events if starting in timeline view
     currentViewType = this.fullCalendarView?.view?.type || '';
     if (currentViewType.includes('resourceTimeline')) {
+      if (!this.timelineResources) {
+        this.timelineResources = this.buildTimelineResources();
+        this.fullCalendarView?.setOption('resources', this.timelineResources);
+        this.fullCalendarView?.setOption('resourcesInitiallyExpanded', false);
+      }
       this.addShadowEventsToView();
     }
 
