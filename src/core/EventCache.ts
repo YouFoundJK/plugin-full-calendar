@@ -50,6 +50,8 @@ import { LocalCacheUpdater } from './modules/LocalCacheUpdater';
 import { IdentifierManager } from './modules/IdentifierManager';
 import { EditableCalendar } from '../calendars/EditableCalendar';
 import { CalendarInfo, OFCEvent, validateEvent } from '../types';
+import { ProviderAdapter } from './ProviderAdapter';
+import { FullNoteProvider } from '../providers/fullnote/FullNoteProvider';
 
 export type CalendarInitializerMap = Record<
   CalendarInfo['type'],

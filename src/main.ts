@@ -18,6 +18,7 @@ import { ensureCalendarIds, sanitizeInitialView } from './ui/settings/utilsSetti
 import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
 import { toEventInput } from './core/interop';
+import { FullNoteProvider } from './providers/fullnote/FullNoteProvider';
 import { ObsidianIO } from './ObsidianAdapter';
 import { renderCalendar } from './ui/calendar';
 import { manageTimezone } from './calendars/utils/Timezone';
@@ -109,6 +110,11 @@ export default class FullCalendarPlugin extends Plugin {
    */
   async onload() {
     this.isMobile = (this.app as App & { isMobile: boolean }).isMobile;
+    this.providerRegistry = new ProviderRegistry();
+
+    // Register the FullNoteProvider
+    this.providerRegistry.register(new FullNoteProvider(new ObsidianIO(this.app), this));
+
     this.categorizationManager = new CategorizationManager(this);
     await this.loadSettings();
     await manageTimezone(this);
@@ -168,7 +174,6 @@ export default class FullCalendarPlugin extends Plugin {
       await this.activateView();
     });
 
-    this.providerRegistry = new ProviderRegistry();
     this.settingsTab = new LazySettingsTab(this.app, this, this.providerRegistry);
     this.addSettingTab(this.settingsTab);
 
