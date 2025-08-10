@@ -64,9 +64,7 @@ export class RemoteCacheUpdater {
       return provider
         .getEvents(config)
         .then(events => {
-          // @ts-ignore
-          this.cache.store.deleteEventsInCalendar(calendar);
-
+          this.cache.store.deleteEventsInCalendar(runtimeId);
           const newEvents = events.map(([event, location]) => ({
             event,
             id: event.id || this.cache.generateId(),

@@ -13,10 +13,11 @@ import {
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { FullNoteProviderConfig } from './typesLocal';
-import { EditableEventResponse } from '../../calendars/EditableCalendar';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { FullNoteConfigComponent } from './FullNoteConfigComponent';
 import { convertEvent } from '../../calendars/utils/Timezone';
+
+export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
 // Helper Functions (ported from FullNoteCalendar.ts)
 // =================================================================================================

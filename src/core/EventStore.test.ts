@@ -1,8 +1,9 @@
 import { TFile } from 'obsidian';
 
 import EventStore from './EventStore';
-import { Calendar } from '../calendars/Calendar';
 import { EventLocation, OFCEvent } from '../types';
+
+type MockCalendar = { id: string };
 
 const withCounter = <T>(f: (x: string) => T, label?: string) => {
   const counter = () => {
@@ -15,7 +16,7 @@ const withCounter = <T>(f: (x: string) => T, label?: string) => {
 
 const mockFile = withCounter(path => ({ path }) as TFile, 'file');
 
-const mockCalendar = withCounter((id): Calendar => ({ id }) as Calendar, 'calendar');
+const mockCalendar = withCounter((id): MockCalendar => ({ id }), 'calendar');
 
 const mockEvent = withCounter((title): OFCEvent => ({ title }) as OFCEvent, 'event');
 

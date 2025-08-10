@@ -27,9 +27,8 @@ import FullCalendarPlugin from '../main';
 import { ConfirmModal } from './modals/ConfirmModal';
 import { EditEvent } from './modals/components/EditEvent';
 import { openFileForEvent } from '../actions/eventActions';
-import { EditableCalendar } from '../calendars/EditableCalendar';
-import { CalendarInfo } from '../types'; // <-- ADD THIS IMPORT
-import { getRuntimeCalendarId } from './settings/utilsSettings'; // <-- ADD THIS IMPORT
+import { CalendarInfo } from '../types';
+import { getRuntimeCalendarId } from './settings/utilsSettings';
 
 export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
   const calendars = plugin.settings.calendarSources

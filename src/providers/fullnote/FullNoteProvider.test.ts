@@ -6,9 +6,8 @@ import { ObsidianInterface } from '../../ObsidianAdapter';
 import { MockApp, MockAppBuilder } from '../../../test_helpers/AppBuilder';
 import { OFCEvent } from '../../types';
 import { FileBuilder } from '../../../test_helpers/FileBuilder';
-import FullNoteCalendar from '../../calendars/FullNoteCalendar'; // Keep for now if any old tests use it
 import { parseEvent } from '../../types/schema';
-import { DEFAULT_SETTINGS } from '../../types/settings';
+import { DEFAULT_SETTINGS, FullCalendarSettings } from '../../types/settings';
 import { CalendarInfo } from '../../types';
 import FullCalendarPlugin from '../../main';
 
@@ -99,16 +98,16 @@ const makeApp = (app: MockApp): ObsidianInterface => ({
 const dirName = 'events';
 const color = '#BADA55';
 
-// Create a mock plugin instance to satisfy the constructor
-const mockPlugin = {
-  app: {}, // Mock app if needed, though not used by constructor directly
-  settings: DEFAULT_SETTINGS,
-  nonBlockingProcess: jest.fn(async (files, processor) => {
-    for (const file of files) {
-      await processor(file);
-    }
-  })
-} as unknown as FullCalendarPlugin;
+const makePlugin = (settings: Partial<FullCalendarSettings> = {}): FullCalendarPlugin =>
+  ({
+    app: {}, // Mock app if needed, though not used by constructor directly
+    settings: { ...DEFAULT_SETTINGS, ...settings },
+    nonBlockingProcess: jest.fn(async (files, processor) => {
+      for (const file of files) {
+        await processor(file);
+      }
+    })
+  }) as unknown as FullCalendarPlugin;
 
 describe('FullNoteCalendar Tests', () => {
   it.each([
@@ -189,11 +188,11 @@ describe('FullNoteCalendar Tests', () => {
         color,
         directory: dirName
       };
-      const calendar = new FullNoteCalendar(obsidian, mockPlugin, info, {
-        ...DEFAULT_SETTINGS,
-        enableAdvancedCategorization: true
-      });
-      const res = await calendar.getEvents();
+      const calendar = new FullNoteProvider(
+        obsidian,
+        makePlugin({ enableAdvancedCategorization: true })
+      );
+      const res = await calendar.getEvents({ directory: dirName, id: 'local_1' });
       expect(res.length).toBe(inputs.length);
 
       const receivedEvents = res.map(e => e[0]);
@@ -215,10 +214,10 @@ describe('FullNoteCalendar Tests', () => {
       color,
       directory: dirName
     };
-    const calendar = new FullNoteCalendar(obsidian, mockPlugin, info, {
-      ...DEFAULT_SETTINGS,
-      enableAdvancedCategorization: true
-    });
+    const calendar = new FullNoteProvider(
+      obsidian,
+      makePlugin({ enableAdvancedCategorization: true })
+    );
     const event = {
       title: 'Test Event',
       category: 'Work',
@@ -231,7 +230,7 @@ describe('FullNoteCalendar Tests', () => {
     (obsidian.create as jest.Mock).mockReturnValue({
       path: join(dirName, '2022-01-01 Work - Test Event.md')
     });
-    await calendar.createEvent(parseEvent(event));
+    await calendar.createEvent(parseEvent(event), { directory: dirName, id: 'local_1' });
     expect(obsidian.create).toHaveBeenCalledTimes(1);
     const [path, content] = (obsidian.create as jest.Mock).mock.calls[0];
 
@@ -265,10 +264,10 @@ describe('FullNoteCalendar Tests', () => {
       color,
       directory: dirName
     };
-    const calendar = new FullNoteCalendar(obsidian, mockPlugin, info, {
-      ...DEFAULT_SETTINGS,
-      enableAdvancedCategorization: true
-    });
+    const calendar = new FullNoteProvider(
+      obsidian,
+      makePlugin({ enableAdvancedCategorization: true })
+    );
 
     const path = normalizePath(`events/${filename}`); // Use forward slash instead of join
     const abstractFile = obsidian.getAbstractFileByPath(path);
@@ -289,11 +288,17 @@ describe('FullNoteCalendar Tests', () => {
       category: 'Work' // Add the category
     });
 
-    await calendar.modifyEvent(
+    const handle = calendar.getEventHandle(initialEvent as OFCEvent, {
+      directory: dirName,
+      id: 'local_1'
+    });
+    if (!handle) throw new Error('Could not get event handle.');
+
+    await calendar.updateEvent(
+      handle,
       initialEvent as OFCEvent, // <-- PASS THE ORIGINAL EVENT DATA
       newEvent,
-      { path, lineNumber: undefined }, // Use the same path variable
-      mockFn
+      { directory: dirName, id: 'local_1' }
     );
 
     expect(obsidian.rewrite).toHaveBeenCalledTimes(1);

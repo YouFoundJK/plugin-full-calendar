@@ -40,19 +40,13 @@
 import { Notice, TFile } from 'obsidian';
 
 import FullCalendarPlugin from '../main';
-import { Calendar } from '../calendars/Calendar';
 import EventStore, { StoredEvent } from './EventStore';
-import { FullCalendarSettings } from '../types/settings';
-import FullNoteCalendar from '../calendars/FullNoteCalendar';
 import { RecurringEventManager } from './modules/RecurringEventManager';
 import { RemoteCacheUpdater } from './modules/RemoteCacheUpdater';
 import { LocalCacheUpdater } from './modules/LocalCacheUpdater';
 import { IdentifierManager } from './modules/IdentifierManager';
-import { EditableCalendar } from '../calendars/EditableCalendar';
 import { CalendarInfo, OFCEvent, validateEvent } from '../types';
 import { getRuntimeCalendarId } from '../ui/settings/utilsSettings';
-import { ProviderAdapter } from './ProviderAdapter';
-import { FullNoteProvider } from '../providers/fullnote/FullNoteProvider';
 import { CalendarProvider } from '../providers/Provider';
 
 export type CacheEntry = { event: OFCEvent; id: string; calendarId: string };
@@ -108,7 +102,7 @@ export default class EventCache {
   // For now, let's pass an empty map. This will be fixed in the `reset` method.
   private identifierManager: IdentifierManager;
 
-  calendars = new Map<string, CalendarProvider<any>>(); // Changed type to provider
+  calendars = new Map<string, CalendarProvider<any>>();
   initialized = false;
 
   public isBulkUpdating = false;
@@ -129,6 +123,10 @@ export default class EventCache {
     return this._store;
   }
 
+  getProviders(): CalendarProvider<any>[] {
+    return Array.from(this.calendars.values());
+  }
+
   /**
    * Flush the cache and initialize calendars from the initializer map.
    */
@@ -140,7 +138,6 @@ export default class EventCache {
     this.updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
     this.resync();
 
-    // Store provider instances in the calendars map
     this.calendarInfos.forEach(info => {
       const runtimeId = getRuntimeCalendarId(info);
       const provider = this.plugin.providerRegistry.getProvider(info.type);
@@ -285,26 +282,6 @@ export default class EventCache {
 
   getCalendarById(c: string): CalendarProvider<any> | undefined {
     return this.calendars.get(c);
-  }
-
-  private getProviderForEvent(eventId: string) {
-    const details = this._store.getEventDetails(eventId);
-    if (!details) {
-      throw new Error(`Event ID ${eventId} not present in event store.`);
-    }
-    const { calendarId, location, event } = details;
-
-    const provider = this.calendars.get(calendarId);
-    if (!provider) {
-      throw new Error(`Provider for calendar ID ${calendarId} not found in cache map.`);
-    }
-
-    const calendarInfo = this.calendarInfos.find(c => getRuntimeCalendarId(c) === calendarId);
-    if (!calendarInfo) {
-      throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
-    }
-
-    return { provider, config: (calendarInfo as any).config, location, event };
   }
 
   // ====================================================================
@@ -707,5 +684,25 @@ export default class EventCache {
       return (provider as any).checkForDuplicate(event, config);
     }
     return false;
+  }
+
+  private getProviderForEvent(eventId: string) {
+    const details = this._store.getEventDetails(eventId);
+    if (!details) {
+      throw new Error(`Event ID ${eventId} not present in event store.`);
+    }
+    const { calendarId, location, event } = details;
+
+    const provider = this.calendars.get(calendarId);
+    if (!provider) {
+      throw new Error(`Provider for calendar ID ${calendarId} not found in cache map.`);
+    }
+
+    const calendarInfo = this.calendarInfos.find(c => getRuntimeCalendarId(c) === calendarId);
+    if (!calendarInfo) {
+      throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
+    }
+
+    return { provider, config: (calendarInfo as any).config, location, event };
   }
 }

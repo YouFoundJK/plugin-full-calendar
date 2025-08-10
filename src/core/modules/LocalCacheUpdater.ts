@@ -2,8 +2,19 @@
  * @file LocalCacheUpdater.ts
  * @brief Manages cache updates in response to local file system events.
  *
- * @description
- * This class is an internal module of the EventCache. It encapsulates all
+ * @      const oldEvents = this.cache.store.getEventsInCalendar(runtimeId);
+      const newEventResponses = await provider.getEvents((info as any).config);
+
+      const oldEventsMapped = oldEvents.map(({ event }) => event);
+      const newEventsMapped = newEventResponses.map(([event, _]) => event);
+
+      if (!eventsAreDifferent(oldEventsMapped, newEventsMapped)) {
+        continue;
+      }
+
+      // If events have changed, perform a full diff for this source.
+      const oldSessionIds = this.cache.store.deleteEventsInCalendar(runtimeId);
+      idsToRemove.push(...oldSessionIds); This class is an internal module of the EventCache. It encapsulates all
  * logic for responding to file creations, updates, and deletions within the
  * Obsidian vault, ensuring the in-memory cache stays synchronized.
  *
@@ -16,7 +27,6 @@ import { TFile } from 'obsidian';
 
 import EventCache, { CacheEntry } from '../EventCache';
 import { StoredEvent } from '../EventStore';
-import { EditableCalendar } from '../../calendars/EditableCalendar';
 import { OFCEvent, validateEvent } from '../../types';
 import { IdentifierManager } from './IdentifierManager';
 import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
@@ -65,7 +75,6 @@ export class LocalCacheUpdater {
       this.identifierManager.removeMapping(storedEvent.event, calendarId);
     }
 
-    // @ts-ignore: Accessing private store for refactoring
     this.cache.flushUpdateQueue([...this.cache.store.deleteEventsAtPath(path)], []);
   }
 
@@ -114,7 +123,7 @@ export class LocalCacheUpdater {
       if (!calendar) continue;
 
       // @ts-ignore: Accessing private store for refactoring
-      const oldEvents = this.cache.store.getEventsInCalendar(calendar);
+      const oldEvents = this.cache.store.getEventsInCalendar(runtimeId);
       const newEventResponses = await provider.getEvents((info as any).config);
 
       const oldEventsMapped = oldEvents.map(({ event }) => event);
@@ -126,7 +135,7 @@ export class LocalCacheUpdater {
 
       // If events have changed, perform a full diff for this source.
       // @ts-ignore
-      const oldSessionIds = this.cache.store.deleteEventsInCalendar(calendar);
+      const oldSessionIds = this.cache.store.deleteEventsInCalendar(runtimeId);
       idsToRemove.push(...oldSessionIds);
 
       const newEventsWithIds = newEventResponses.map(([event, location]) => {

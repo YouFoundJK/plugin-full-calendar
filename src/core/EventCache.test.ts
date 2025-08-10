@@ -19,16 +19,16 @@ jest.mock(
 // End of new code
 
 import FullCalendarPlugin from '../main';
-import { EventPathLocation } from './EventStore';
-import { Calendar, EventResponse } from '../calendars/Calendar';
+import { EventPathLocation, StoredEvent } from './EventStore';
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
+import { CalendarProvider, CalendarProviderCapabilities } from '../providers/Provider';
 import { DEFAULT_SETTINGS, FullCalendarSettings } from '../types/settings';
-import { EditableCalendar, EditableEventResponse } from '../calendars/EditableCalendar';
 import EventCache, {
   CacheEntry,
   OFCEventSource,
   CachedEvent // <-- ADD THIS
 } from './EventCache';
+import { EventHandle } from '../providers/typesProvider';
 
 jest.mock('../types/schema', () => ({
   validateEvent: (e: any) => e
@@ -45,42 +45,19 @@ const withCounter = <T>(f: (x: string) => T, label?: string) => {
 
 const mockEvent = withCounter((title): OFCEvent => ({ title }) as OFCEvent, 'event');
 
-class TestReadonlyCalendar extends Calendar {
-  get name(): string {
-    return 'test';
-  }
-  private _id: string;
-  events: OFCEvent[] = [];
-  constructor(info: CalendarInfo, settings: FullCalendarSettings) {
-    super(info, settings);
-    const testInfo = info as Extract<CalendarInfo, { type: 'FOR_TEST_ONLY' }>;
-    this._id = testInfo.id;
-    this.events = testInfo.events || [];
-  }
-  get type(): 'FOR_TEST_ONLY' {
-    return 'FOR_TEST_ONLY';
-  }
-
-  get identifier(): string {
-    return this._id;
-  }
-
-  async getEvents(): Promise<EventResponse[]> {
-    return this.events.map(event => [event, null]);
-  }
-
-  // Add getLocalIdentifier for tests
-  public getLocalIdentifier(event: OFCEvent): string | null {
-    return event.title;
-  }
-}
-
-// In the `describe('event cache with readonly calendar', ...)` block:
+// Replace the entire TestReadonlyCalendar class with this function:
 const makeCache = (events: OFCEvent[]) => {
-  const mockProvider = {
+  const mockProvider: CalendarProvider<any> = {
+    type: 'FOR_TEST_ONLY',
+    displayName: 'Test Provider',
     getEvents: async () => events.map(e => [e, null] as [OFCEvent, null]),
     getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
-    getEventHandle: (e: OFCEvent) => ({ persistentId: e.title })
+    getEventHandle: (e: OFCEvent) => ({ persistentId: e.title }),
+    createEvent: jest.fn(),
+    updateEvent: jest.fn(),
+    deleteEvent: jest.fn(),
+    createInstanceOverride: jest.fn(),
+    getConfigurationComponent: jest.fn()
   };
 
   const mockPlugin = {
@@ -132,21 +109,43 @@ describe('event cache with readonly calendar', () => {
   });
 
   it('properly sorts events into separate calendars', async () => {
-    const cache = makeCache([]);
     const events1 = [mockEvent()];
     const events2 = [mockEvent(), mockEvent()];
+
+    const mockProvider: CalendarProvider<any> = {
+      type: 'FOR_TEST_ONLY',
+      displayName: 'Test Provider',
+      getEvents: async (config: any) =>
+        (config.id === 'cal1' ? events1 : events2).map(e => [e, null]),
+      getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
+      getEventHandle: (e: OFCEvent) => ({ persistentId: e.title }),
+      createEvent: jest.fn(),
+      updateEvent: jest.fn(),
+      deleteEvent: jest.fn(),
+      createInstanceOverride: jest.fn(),
+      getConfigurationComponent: jest.fn()
+    };
+
+    const mockPlugin = {
+      settings: DEFAULT_SETTINGS,
+      providerRegistry: {
+        getProvider: () => mockProvider
+      }
+    } as any;
+    const cache = new EventCache(mockPlugin);
+
     cache.reset([
       {
         type: 'FOR_TEST_ONLY',
         id: 'cal1',
         color: 'red',
-        events: events1
+        config: { id: 'cal1' }
       },
       {
         type: 'FOR_TEST_ONLY',
         id: 'cal2',
         color: 'blue',
-        events: events2
+        config: { id: 'cal2' }
       }
     ]);
     await cache.populate();
@@ -164,8 +163,7 @@ describe('event cache with readonly calendar', () => {
   it.each([
     [
       'addEvent',
-      async (cache: EventCache, id: string) =>
-        await cache.addEvent('FOR_TEST_ONLY::test', mockEvent())
+      async (cache: EventCache, id: string) => await cache.addEvent('test', mockEvent())
     ],
     ['deleteEvent', async (cache: EventCache, id: string) => await cache.deleteEvent(id)],
     [
@@ -200,58 +198,46 @@ describe('event cache with readonly calendar', () => {
   });
 });
 
-class TestEditable extends EditableCalendar {
-  get name(): string {
-    return 'test';
-  }
-  private _directory: string;
-  events: EditableEventResponse[];
-  shouldContainPath = true;
-  constructor(info: CalendarInfo, settings: FullCalendarSettings) {
-    super(info, settings);
-    const testInfo = info as Extract<CalendarInfo, { type: 'FOR_TEST_ONLY' }>;
-    this._directory = testInfo.id;
-    this.events = [];
-  }
-  get directory(): string {
-    return this._directory;
-  }
+type EditableEventResponse = [OFCEvent, EventLocation | null];
 
-  containsPath(path: string): boolean {
-    return this.shouldContainPath;
-  }
+// Replace the entire TestEditable class with this function:
+const makeEditableCache = (events: EditableEventResponse[]) => {
+  const calendar: jest.Mocked<CalendarProvider<any>> = {
+    type: 'FOR_TEST_ONLY',
+    displayName: 'Editable Test Provider',
+    getEvents: jest.fn(async (config: any) => events),
+    getCapabilities: jest.fn((config: any) => ({
+      canCreate: true,
+      canEdit: true,
+      canDelete: true
+    })),
+    getEventHandle: jest.fn((e: OFCEvent, config: any) => ({ persistentId: e.title })),
+    createEvent: jest.fn(),
+    updateEvent: jest.fn(),
+    deleteEvent: jest.fn(),
+    createInstanceOverride: jest.fn(),
+    getConfigurationComponent: jest.fn()
+  };
 
-  getEvents = jest.fn(async () => this.events);
-  getEventsInFile = jest.fn();
-
-  createEvent = jest.fn();
-  createInstanceOverride = jest.fn();
-
-  checkForDuplicate = jest.fn(async () => false);
-
-  deleteEvent = jest.fn();
-  move = jest.fn();
-  modifyEvent = jest.fn();
-
-  // ADD THE MOCK IMPLEMENTATIONS HERE
-  bulkAddCategories = jest.fn(async () => {});
-  bulkRemoveCategories = jest.fn(async () => {});
-
-  get type(): 'FOR_TEST_ONLY' {
-    return 'FOR_TEST_ONLY';
-  }
-  get identifier(): string {
-    return this.directory;
-  }
-
-  // Add getLocalIdentifier for tests
-  public getLocalIdentifier(event: OFCEvent): string | null {
-    return event.title;
-  }
-}
+  const mockPlugin = {
+    settings: DEFAULT_SETTINGS,
+    providerRegistry: {
+      getProvider: () => calendar
+    }
+  } as any;
+  const cache = new EventCache(mockPlugin);
+  const calendarInfo: CalendarInfo = {
+    type: 'FOR_TEST_ONLY',
+    id: 'test',
+    config: { id: 'test' },
+    color: 'black'
+  };
+  cache.reset([calendarInfo]);
+  return [cache, calendar] as const;
+};
 
 const mockFile = withCounter(path => ({ path }) as TFile, 'file');
-const mockLocation = (withLine = false) => ({
+const mockLocation = (withLine = false): EventLocation => ({
   file: mockFile(),
   lineNumber: withLine ? Math.floor(Math.random() * 100) : undefined
 });
@@ -263,52 +249,16 @@ const assertCacheContentCounts = (
   { calendars, files, events }: { calendars: number; files: number; events: number }
 ) => {
   expect(cache.getAllEvents().length).toBe(calendars);
-  expect(cache._storeForTest.fileCount).toBe(files);
-  expect(cache._storeForTest.eventCount).toBe(events);
+  expect(cache.store.fileCount).toBe(files);
+  expect(cache.store.eventCount).toBe(events);
 };
 
 describe('editable calendars', () => {
-  // In the `describe('editable calendars', ...)` block:
-  const makeCache = (events: EditableEventResponse[]) => {
-    const calendar = new TestEditable(
-      { type: 'FOR_TEST_ONLY', id: 'test', color: 'black' },
-      DEFAULT_SETTINGS
-    );
-    calendar.events = events;
-
-    const mockPlugin = {
-      settings: DEFAULT_SETTINGS,
-      providerRegistry: {
-        getProvider: () => calendar
-      }
-    } as any;
-    const cache = new EventCache(mockPlugin);
-    const calendarInfo: CalendarInfo = {
-      type: 'FOR_TEST_ONLY',
-      id: 'test',
-      config: { id: 'test' },
-      color: 'black'
-    };
-    cache.reset([calendarInfo]);
-    return cache;
-  };
-
-  const getId = (id: string) => `FOR_TEST_ONLY::${id}`;
-
-  const getCalendar = (cache: EventCache, id: string) => {
-    const provider = (cache as any).plugin.providerRegistry.getProvider('FOR_TEST_ONLY');
-    expect(provider).toBeTruthy();
-    expect(provider).toBeInstanceOf(TestEditable);
-    return provider as TestEditable;
-  };
-
   it('populates a single event', async () => {
     const e1 = mockEventResponse();
-    const cache = makeCache([e1]);
+    const [cache, calendar] = makeEditableCache([e1]);
 
     await cache.populate();
-
-    const calendar = getCalendar(cache, 'test');
 
     const sources = cache.getAllEvents();
 
@@ -320,18 +270,16 @@ describe('editable calendars', () => {
 
   describe('add events', () => {
     it('empty cache', async () => {
-      const cache = makeCache([]);
+      const [cache, calendar] = makeEditableCache([]);
 
       await cache.populate();
 
-      const calendar = getCalendar(cache, 'test');
-
       const event = mockEvent();
       const loc = mockLocation();
-      calendar.createEvent.mockReturnValueOnce(new Promise(resolve => resolve([event, loc])));
+      calendar.createEvent.mockResolvedValue([event, loc]);
       expect(await cache.addEvent('test', event)).toBeTruthy();
-      expect(calendar.createEvent.mock.calls.length).toBe(1);
-      expect(calendar.createEvent.mock.calls[0]).toEqual([event]);
+      expect(calendar.createEvent).toHaveBeenCalledTimes(1);
+      expect(calendar.createEvent).toHaveBeenCalledWith(event, { id: 'test' });
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -342,18 +290,16 @@ describe('editable calendars', () => {
 
     it('in the same file', async () => {
       const event = mockEventResponse();
-      const cache = makeCache([event]);
+      const [cache, calendar] = makeEditableCache([event]);
 
       await cache.populate();
 
-      const calendar = getCalendar(cache, 'test');
-
       const event2 = mockEvent();
-      const loc = { file: event[1].file, lineNumber: 102 };
-      calendar.createEvent.mockReturnValueOnce(new Promise(resolve => resolve([event2, loc])));
+      const loc = { file: event[1]!.file, lineNumber: 102 };
+      calendar.createEvent.mockResolvedValue([event2, loc]);
       expect(await cache.addEvent('test', event2)).toBeTruthy();
-      expect(calendar.createEvent.mock.calls.length).toBe(1);
-      expect(calendar.createEvent.mock.calls[0]).toEqual([event2]);
+      expect(calendar.createEvent).toHaveBeenCalledTimes(1);
+      expect(calendar.createEvent).toHaveBeenCalledWith(event2, { id: 'test' });
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -364,18 +310,17 @@ describe('editable calendars', () => {
 
     it('in a different file', async () => {
       const event = mockEventResponse();
-      const cache = makeCache([event]);
+      const [cache, calendar] = makeEditableCache([event]);
 
       await cache.populate();
 
       const event2 = mockEvent();
       const loc = mockLocation();
 
-      const calendar = getCalendar(cache, 'test');
-      calendar.createEvent.mockReturnValueOnce(new Promise(resolve => resolve([event2, loc])));
+      calendar.createEvent.mockResolvedValue([event2, loc]);
       expect(await cache.addEvent('test', event2)).toBeTruthy();
-      expect(calendar.createEvent.mock.calls.length).toBe(1);
-      expect(calendar.createEvent.mock.calls[0]).toEqual([event2]);
+      expect(calendar.createEvent).toHaveBeenCalledTimes(1);
+      expect(calendar.createEvent).toHaveBeenCalledWith(event2, { id: 'test' });
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -386,13 +331,12 @@ describe('editable calendars', () => {
 
     it('adding many events', async () => {
       const event = mockEventResponse();
-      const cache = makeCache([event]);
+      const [cache, calendar] = makeEditableCache([event]);
 
       await cache.populate();
 
-      const calendar = getCalendar(cache, 'test');
-
-      const mockAndResolve = () => new Promise(resolve => resolve([mockEvent(), mockLocation()]));
+      const mockAndResolve = (): Promise<EditableEventResponse> =>
+        Promise.resolve([mockEvent(), mockLocation()]);
       calendar.createEvent
         .mockReturnValueOnce(mockAndResolve())
         .mockReturnValueOnce(mockAndResolve())
@@ -402,7 +346,7 @@ describe('editable calendars', () => {
       expect(await cache.addEvent('test', mockEvent())).toBeTruthy();
       expect(await cache.addEvent('test', mockEvent())).toBeTruthy();
 
-      expect(calendar.createEvent.mock.calls.length).toBe(3);
+      expect(calendar.createEvent).toHaveBeenCalledTimes(3);
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -411,14 +355,11 @@ describe('editable calendars', () => {
       });
     });
   });
-  const pathResult = (loc: EventLocation): EventPathLocation => ({
-    path: loc.file.path,
-    lineNumber: loc.lineNumber
-  });
+
   describe('delete events', () => {
     it('delete one', async () => {
       const event = mockEventResponse();
-      const cache = makeCache([event]);
+      const [cache, calendar] = makeEditableCache([event]);
 
       await cache.populate();
 
@@ -434,12 +375,12 @@ describe('editable calendars', () => {
 
       await cache.deleteEvent(id);
 
-      const calendar = getCalendar(cache, 'test');
-      expect(calendar.deleteEvent.mock.calls.length).toBe(1);
-      expect(calendar.deleteEvent.mock.calls[0]).toEqual([event[0], pathResult(event[1])]);
+      expect(calendar.deleteEvent).toHaveBeenCalledTimes(1);
+      const handle = calendar.getEventHandle(event[0], { id: 'test' });
+      expect(calendar.deleteEvent).toHaveBeenCalledWith(handle, { id: 'test' });
 
       assertCacheContentCounts(cache, {
-        calendars: 0,
+        calendars: 1, // Calendar source still exists
         files: 0,
         events: 0
       });
@@ -447,7 +388,7 @@ describe('editable calendars', () => {
 
     it('delete non-existing event', async () => {
       const event = mockEventResponse();
-      const cache = makeCache([event]);
+      const [cache, calendar] = makeEditableCache([event]);
 
       await cache.populate();
       assertCacheContentCounts(cache, {
@@ -456,14 +397,9 @@ describe('editable calendars', () => {
         events: 1
       });
 
-      expect(cache._storeForTest.calendarCount).toBe(1);
-      expect(cache._storeForTest.fileCount).toBe(1);
-      expect(cache._storeForTest.eventCount).toBe(1);
+      await assertFailed(() => cache.deleteEvent('unknown ID'), /not present in event store/);
 
-      assertFailed(() => cache.deleteEvent('unknown ID'), /not present in event store/);
-
-      const calendar = getCalendar(cache, 'test');
-      expect(calendar.deleteEvent.mock.calls.length).toBe(0);
+      expect(calendar.deleteEvent).not.toHaveBeenCalled();
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -483,19 +419,19 @@ describe('editable calendars', () => {
         'calendar moves event to a new file',
         newLoc,
         [
-          { file: oldEvent[1].file, numEvents: 0 },
+          { file: oldEvent[1]!.file, numEvents: 0 },
           { file: newLoc.file, numEvents: 1 }
         ],
         1 // The old file is gone, so the total count is now 1.
       ],
       [
         'calendar keeps event in the same file, but moves it around',
-        { file: oldEvent[1].file, lineNumber: newLoc.lineNumber },
-        [{ file: oldEvent[1].file, numEvents: 1 }],
+        { file: oldEvent[1]!.file, lineNumber: newLoc.lineNumber },
+        [{ file: oldEvent[1]!.file, numEvents: 1 }],
         1 // The file count never changes.
       ]
     ])('%p', async (_, newLocation, fileDetails, expectedFileCount) => {
-      const cache = makeCache([oldEvent]);
+      const [cache, calendar] = makeEditableCache([oldEvent]);
       await cache.populate();
 
       assertCacheContentCounts(cache, { calendars: 1, files: 1, events: 1 });
@@ -503,19 +439,15 @@ describe('editable calendars', () => {
       const sources = cache.getAllEvents();
       const id = sources[0].events[0].id;
 
-      const calendar = getCalendar(cache, 'test');
-      calendar.modifyEvent.mockImplementation(async (old, n, loc, updateCallback) => {
-        updateCallback(newLocation);
-        return { isDirty: false }; // isDirty: false ensures immediate UI update for testing
-      });
+      calendar.updateEvent.mockResolvedValue(newLocation);
 
       await cache.updateEventWithId(id, newEvent);
 
-      expect(calendar.modifyEvent.mock.calls.length).toBe(1);
-      const [oldEventArg, newEventArg, oldLocationArg] = calendar.modifyEvent.mock.calls[0];
-      expect(oldEventArg).toEqual(oldEvent[0]);
-      expect(newEventArg).toEqual(newEvent);
-      expect(oldLocationArg).toEqual(pathResult(oldEvent[1]));
+      expect(calendar.updateEvent).toHaveBeenCalledTimes(1);
+      const handle = calendar.getEventHandle(oldEvent[0], { id: 'test' });
+      expect(calendar.updateEvent).toHaveBeenCalledWith(handle, oldEvent[0], newEvent, {
+        id: 'test'
+      });
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -523,17 +455,17 @@ describe('editable calendars', () => {
         events: 1
       });
 
-      expect(cache._storeForTest.getEventById(id)).toEqual(newEvent);
+      expect(cache.store.getEventById(id)).toEqual(newEvent);
 
       for (const { file, numEvents } of fileDetails) {
-        const eventsInFile = cache._storeForTest.getEventsInFile({ path: file.path });
+        const eventsInFile = cache.store.getEventsInFile(file);
         expect(eventsInFile).toHaveLength(numEvents);
       }
     });
 
     it('modify non-existing event', async () => {
       const event = mockEventResponse();
-      const cache = makeCache([event]);
+      const [cache, calendar] = makeEditableCache([event]);
       await cache.populate();
 
       assertCacheContentCounts(cache, {
@@ -542,7 +474,7 @@ describe('editable calendars', () => {
         events: 1
       });
 
-      assertFailed(
+      await assertFailed(
         () => cache.updateEventWithId('unknown ID', mockEvent()),
         /not present in event store/
       );
@@ -551,9 +483,8 @@ describe('editable calendars', () => {
       expect(sources.length).toBe(1);
       const id = sources[0].events[0].id;
 
-      const calendar = getCalendar(cache, 'test');
-      expect(calendar.modifyEvent.mock.calls.length).toBe(0);
-      expect(cache._storeForTest.getEventById(id)).toEqual(event[0]);
+      expect(calendar.updateEvent).not.toHaveBeenCalled();
+      expect(cache.store.getEventById(id)).toEqual(event[0]);
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -568,9 +499,11 @@ describe('editable calendars', () => {
     const oldEvent = mockEventResponse();
     const newEvent = mockEventResponse();
     let cache: EventCache;
-    beforeEach(() => {
-      cache = makeCache([oldEvent]);
-      cache.populate();
+    let calendar: jest.Mocked<CalendarProvider<any>>;
+
+    beforeEach(async () => {
+      [cache, calendar] = makeEditableCache([oldEvent]);
+      await cache.populate();
       callbackMock.mockClear();
       cache.on('update', callbackMock);
     });
@@ -579,34 +512,32 @@ describe('editable calendars', () => {
       {
         test: 'New event in a new file',
         eventsInFile: [newEvent],
-        file: newEvent[1].file,
+        file: newEvent[1]!.file,
         counts: { files: 2, events: 2 },
-        callback: { toRemoveLength: 0, eventsToAdd: [newEvent[0]] }
+        callback: { toRemoveLength: 0, eventsToAddLength: 1 }
       },
       {
         test: 'Changing events in an existing location',
-        eventsInFile: [[newEvent[0], oldEvent[1]]],
-        file: oldEvent[1].file,
+        eventsInFile: [[newEvent[0], oldEvent[1]] as EditableEventResponse],
+        file: oldEvent[1]!.file,
         counts: { files: 1, events: 1 },
-        callback: { toRemoveLength: 1, eventsToAdd: [newEvent[0]] }
+        callback: { toRemoveLength: 1, eventsToAddLength: 1 }
       },
       {
         test: 'No callback fired if event does not change.',
         eventsInFile: [oldEvent],
-        file: oldEvent[1].file,
+        file: oldEvent[1]!.file,
         counts: { files: 1, events: 1 },
         callback: null
       }
     ])('$test', async ({ eventsInFile, file, counts: { files, events }, callback }) => {
-      const calendar = getCalendar(cache, 'test');
-
       assertCacheContentCounts(cache, {
         calendars: 1,
         files: 1,
         events: 1
       });
 
-      calendar.getEventsInFile.mockReturnValue(new Promise(resolve => resolve(eventsInFile)));
+      calendar.getEvents.mockResolvedValue(eventsInFile);
 
       await cache.fileUpdated(file as TFile);
 
@@ -618,7 +549,7 @@ describe('editable calendars', () => {
 
       if (callback) {
         expect(callbackMock).toHaveBeenCalled();
-        const { toRemoveLength, eventsToAdd } = callback;
+        const { toRemoveLength, eventsToAddLength } = callback;
         const callbackInvocation: {
           toRemove: string[];
           toAdd: CacheEntry[];
@@ -628,10 +559,12 @@ describe('editable calendars', () => {
         expect(callbackInvocation.toRemove).toBeDefined();
 
         expect(callbackInvocation.toRemove.length).toBe(toRemoveLength);
-        expect(callbackInvocation.toAdd.length).toBe(eventsToAdd.length);
-        expect(callbackInvocation.toAdd.map(e => e.event)).toEqual(eventsToAdd);
+        expect(callbackInvocation.toAdd.length).toBe(eventsToAddLength);
+        if (eventsToAddLength > 0) {
+          expect(callbackInvocation.toAdd[0].event).toEqual(eventsInFile[0][0]);
+        }
       } else {
-        expect(callbackMock.mock.calls.length).toBe(0);
+        expect(callbackMock).not.toHaveBeenCalled();
       }
     });
     it.todo('updates when events are the same but locations are different');

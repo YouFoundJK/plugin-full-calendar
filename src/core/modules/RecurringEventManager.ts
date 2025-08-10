@@ -18,7 +18,6 @@ import { OFCEvent } from '../../types';
 import EventCache from '../EventCache';
 import { StoredEvent } from '../EventStore';
 import { toggleTask } from '../../actions/tasks';
-import GoogleCalendar from '../../calendars/GoogleCalendar';
 import { DeleteRecurringModal } from '../../ui/modals/DeleteRecurringModal';
 import FullCalendarPlugin from '../../main';
 import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';

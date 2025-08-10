@@ -22,13 +22,14 @@ import { ObsidianInterface } from '../../ObsidianAdapter';
 import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation } from '../../types';
 import { constructTitle, enhanceEvent, parseTitle } from '../../calendars/parsing/categoryParser';
-import { EditableEventResponse } from '../../calendars/EditableCalendar';
 import { convertEvent } from '../../calendars/utils/Timezone';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { DailyNoteProviderConfig } from './typesDaily';
 import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
+
+export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
 export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConfig> {
   private app: ObsidianInterface;

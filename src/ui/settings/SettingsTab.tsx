@@ -34,7 +34,6 @@ import { getNextColor } from '../colors';
 import { CalendarSettingsRef } from './components/CalendarSetting';
 import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
 import { importCalendars } from '../../calendars/parsing/caldav/import';
-import { AddCalendarSource } from '../modals/components/AddCalendarSource';
 import { fetchGoogleCalendarList } from '../../calendars/parsing/google/api';
 import { makeDefaultPartialCalendarSource, CalendarInfo } from '../../types/calendar_settings';
 import { ProviderRegistry } from '../../core/ProviderRegistry';

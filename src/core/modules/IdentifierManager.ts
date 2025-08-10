@@ -41,8 +41,8 @@ export class IdentifierManager {
   public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
     // [DEBUG] Log calendarId received
     console.log(`[DEBUG] IdentifierManager.getGlobalIdentifier:
-      - calendarId received: ${calendarId}
-      - event title: ${event.title}`);
+          - calendarId received: ${calendarId}
+          - event title: ${event.title}`);
 
     // @ts-ignore: Accessing private field for refactor
     const calendarInfo = this.cache.calendarInfos.find(
@@ -53,8 +53,8 @@ export class IdentifierManager {
       // [DEBUG] Log failure to find calendarInfo
       console.error(
         `[DEBUG] IdentifierManager.getGlobalIdentifier: FAILED to find calendar info.
-        - calendarId being searched: ${calendarId}
-        - All available calendarInfos:`,
+            - calendarId being searched: ${calendarId}
+            - All available calendarInfos:`,
         JSON.parse(JSON.stringify((this.cache as any).calendarInfos))
       );
       console.warn(`Could not find calendar info for ID ${calendarId}`);

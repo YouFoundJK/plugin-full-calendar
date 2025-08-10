@@ -6,7 +6,7 @@
 import { OFCEvent } from '../../types';
 import { RecurringEventManager } from './RecurringEventManager';
 import EventCache from '../EventCache';
-import { EditableCalendar } from '../../calendars/EditableCalendar';
+import { CalendarProvider } from '../../providers/Provider';
 import { CalendarInfo } from '../../types';
 import { DEFAULT_SETTINGS } from '../../types/settings';
 import FullCalendarPlugin from '../../main';
@@ -28,12 +28,11 @@ jest.mock(
 
 // Mock dependencies
 jest.mock('../EventCache');
-jest.mock('../../calendars/EditableCalendar');
 
 describe('RecurringEventManager', () => {
   let manager: RecurringEventManager;
   let mockCache: jest.Mocked<EventCache>;
-  let mockCalendar: jest.Mocked<EditableCalendar>;
+  let mockProvider: jest.Mocked<CalendarProvider<any>>;
 
   const mockPlugin = {
     app: {},
@@ -42,9 +41,10 @@ describe('RecurringEventManager', () => {
 
   beforeEach(() => {
     // Create mock calendar
-    mockCalendar = {
-      id: 'test-calendar',
-      getLocalIdentifier: jest.fn((event: OFCEvent) => event.title)
+    mockProvider = {
+      type: 'test',
+      displayName: 'Test Provider',
+      getEventHandle: jest.fn((event: OFCEvent) => ({ persistentId: event.title }))
     } as any;
 
     // Create mock cache
@@ -63,7 +63,7 @@ describe('RecurringEventManager', () => {
         getEventDetails: jest.fn(),
         getAllEvents: jest.fn().mockReturnValue([])
       },
-      calendars: new Map([['test-calendar', mockCalendar as any]]),
+      calendars: new Map([['test-calendar', mockProvider as any]]),
       plugin: mockPlugin
     } as unknown as jest.Mocked<EventCache>;
 

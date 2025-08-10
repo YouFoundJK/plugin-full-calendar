@@ -4,7 +4,6 @@ import { OFCEvent, EventLocation } from '../../types';
 import { enhanceEvent } from '../../calendars/parsing/categoryParser';
 import { getEventsFromICS } from '../../calendars/parsing/ics';
 import { convertEvent } from '../../calendars/utils/Timezone';
-import { EditableEventResponse } from '../../calendars/EditableCalendar';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
