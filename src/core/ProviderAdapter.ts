@@ -109,35 +109,6 @@ export class ProviderAdapter<TConfig> extends EditableCalendar {
         `ProviderAdapter: Could not generate a persistent handle for the event being modified.`
       );
     }
-    // For Google, we may need special logic.
-    if (this.provider instanceof GoogleProvider) {
-      const gProvider = this.provider as GoogleProvider;
-      const gConfig = this.config as any;
-
-      const newSkipDates = new Set(
-        newEvent.type === 'rrule' || newEvent.type === 'recurring' ? newEvent.skipDates : []
-      );
-      const oldSkipDates = new Set(
-        oldEvent.type === 'rrule' || oldEvent.type === 'recurring' ? oldEvent.skipDates : []
-      );
-
-      let cancelledDate: string | undefined;
-
-      if (newSkipDates.size > oldSkipDates.size) {
-        for (const date of newSkipDates) {
-          if (!oldSkipDates.has(date)) {
-            cancelledDate = date;
-            break;
-          }
-        }
-      }
-      if (cancelledDate) {
-        // @ts-ignore
-        await gProvider.cancelInstance(oldEvent, cancelledDate, gConfig);
-        updateCacheWithLocation(null);
-        return { isDirty: false };
-      }
-    }
 
     const newLocation = await this.provider.updateEvent(handle, oldEvent, newEvent, this.config);
     updateCacheWithLocation(newLocation);

@@ -33,16 +33,14 @@ import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
 export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConfig> {
   private app: ObsidianInterface;
   private plugin: FullCalendarPlugin;
-  private settings: FullCalendarSettings;
 
   readonly type = 'dailynote';
   readonly displayName = 'Daily Note';
 
-  constructor(app: ObsidianInterface, plugin: FullCalendarPlugin, settings: FullCalendarSettings) {
+  constructor(app: ObsidianInterface, plugin: FullCalendarPlugin) {
     appHasDailyNotesPluginLoaded();
     this.app = app;
     this.plugin = plugin;
-    this.settings = settings;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -73,12 +71,23 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       getAllInlineEventsFromFile(text, listItems, { date })
     );
     const displayTimezone =
-      this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     return inlineEvents.map(({ event: rawEvent, lineNumber }) => {
-      const event = enhanceEvent(rawEvent, this.settings);
+      console.log(
+        '[DEBUG] DailyNoteProvider: Event BEFORE enhancement',
+        JSON.parse(JSON.stringify(rawEvent))
+      );
+
+      const event = enhanceEvent(rawEvent, this.plugin.settings);
+
+      console.log(
+        '[DEBUG] DailyNoteProvider: Event AFTER enhancement',
+        JSON.parse(JSON.stringify(event))
+      );
+
       let sourceTimezone: string;
 
-      if (this.settings.dailyNotesTimezone === 'local') {
+      if (this.plugin.settings.dailyNotesTimezone === 'local') {
         sourceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       } else {
         sourceTimezone = event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -108,10 +117,10 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
     let eventToCreate = { ...event };
     const displayTimezone =
-      this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     if (!eventToCreate.timezone) {
-      if (this.settings.dailyNotesTimezone === 'strict') {
+      if (this.plugin.settings.dailyNotesTimezone === 'strict') {
         eventToCreate.timezone = displayTimezone;
       } else {
         eventToCreate.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -134,7 +143,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       const { page, lineNumber } = addToHeading(
         contents,
         { heading: headingInfo, item: eventToCreate, headingText: config.heading },
-        this.settings
+        this.plugin.settings
       );
       return [page, lineNumber] as [string, number];
     });
@@ -161,10 +170,10 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     if (!file) throw new Error(`File not found at path: ${path}`);
 
     const displayTimezone =
-      this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     let eventToWrite = newEventData;
     let targetTimezone: string;
-    if (this.settings.dailyNotesTimezone === 'local') {
+    if (this.plugin.settings.dailyNotesTimezone === 'local') {
       targetTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     } else {
       const contents = await this.app.read(file);
@@ -200,7 +209,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
           const { page, lineNumber: newLn } = addToHeading(
             newFileContents,
             { heading: headingInfo, item: eventToWrite, headingText: config.heading },
-            this.settings
+            this.plugin.settings
           );
           return page;
         });
@@ -211,7 +220,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     } else {
       await this.app.rewrite(file, (contents: string) => {
         const lines = contents.split('\n');
-        const newLine = modifyListItem(lines[lineNumber], eventToWrite, this.settings);
+        const newLine = modifyListItem(lines[lineNumber], eventToWrite, this.plugin.settings);
         if (!newLine) throw new Error('Did not successfully update line.');
         lines[lineNumber] = newLine;
         return lines.join('\n');
@@ -260,7 +269,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
           if (!existingEvent) continue;
 
           const enhanced = enhanceEvent(existingEvent, {
-            ...this.settings,
+            ...this.plugin.settings,
             enableAdvancedCategorization: true
           });
 
@@ -289,7 +298,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
             subCategory: finalSubCategory
           };
 
-          const newLine = modifyListItem(line, eventWithNewCategory, this.settings);
+          const newLine = modifyListItem(line, eventWithNewCategory, this.plugin.settings);
           if (newLine) {
             lines[lineNumber] = newLine;
             modified = true;
@@ -316,7 +325,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
     const allNotes = Object.values(getAllDailyNotes());
     const removalSettings: FullCalendarSettings = {
-      ...this.settings,
+      ...this.plugin.settings,
       enableAdvancedCategorization: true
     };
 
@@ -341,7 +350,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
           if (!event?.category || !categoriesToRemove.has(event.category)) continue;
 
           const eventWithoutCategory: OFCEvent = { ...event, category: undefined };
-          const newLine = modifyListItem(line, eventWithoutCategory, this.settings);
+          const newLine = modifyListItem(line, eventWithoutCategory, this.plugin.settings);
 
           if (newLine && newLine !== line) {
             lines[lineNumber] = newLine;

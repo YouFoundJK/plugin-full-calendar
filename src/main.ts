@@ -69,31 +69,24 @@ export default class FullCalendarPlugin extends Plugin {
     ical: (info, settings) => {
       const provider = this.providerRegistry.getProvider('ical');
       if (!provider) return null;
-      // Wrap in a RemoteCalendar that delegates to the adapter
-      const adapter = new (require('./core/ProviderAdapter').ProviderAdapter)(
+      // Return the adapter directly. It has the necessary `revalidate` method.
+      return new (require('./core/ProviderAdapter').ProviderAdapter)(
         provider,
         (info as any).config,
         info,
         settings
       );
-      const remote = new (require('./calendars/RemoteCalendar').default)(info, settings);
-      remote.getEvents = adapter.getEvents.bind(adapter);
-      remote.revalidate = adapter.revalidate.bind(adapter);
-      return remote;
     },
     caldav: (info, settings) => {
       const provider = this.providerRegistry.getProvider('caldav');
       if (!provider) return null;
-      const adapter = new (require('./core/ProviderAdapter').ProviderAdapter)(
+      // Return the adapter directly.
+      return new (require('./core/ProviderAdapter').ProviderAdapter)(
         provider,
         (info as any).config,
         info,
         settings
       );
-      const remote = new (require('./calendars/RemoteCalendar').default)(info, settings);
-      remote.getEvents = adapter.getEvents.bind(adapter);
-      remote.revalidate = adapter.revalidate.bind(adapter);
-      return remote;
     },
     google: (info, settings) => {
       const provider = this.providerRegistry.getProvider('google');
@@ -147,9 +140,7 @@ export default class FullCalendarPlugin extends Plugin {
 
     // Register the providers
     this.providerRegistry.register(new FullNoteProvider(new ObsidianIO(this.app), this));
-    this.providerRegistry.register(
-      new DailyNoteProvider(new ObsidianIO(this.app), this, this.settings)
-    );
+    this.providerRegistry.register(new DailyNoteProvider(new ObsidianIO(this.app), this));
     this.providerRegistry.register(new ICSProvider(this.settings));
     this.providerRegistry.register(new CalDAVProvider(this.settings));
     this.providerRegistry.register(new GoogleProvider(this));
