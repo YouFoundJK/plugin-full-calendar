@@ -26,7 +26,6 @@ import { DEFAULT_SETTINGS, FullCalendarSettings } from '../types/settings';
 import { EditableCalendar, EditableEventResponse } from '../calendars/EditableCalendar';
 import EventCache, {
   CacheEntry,
-  CalendarInitializerMap,
   OFCEventSource,
   CachedEvent // <-- ADD THIS
 } from './EventCache';
@@ -76,17 +75,21 @@ class TestReadonlyCalendar extends Calendar {
   }
 }
 
-// For tests, we only want test calendars to
-const initializerMap = (
-  cb: (info: CalendarInfo, settings: FullCalendarSettings) => Calendar | null
-): CalendarInitializerMap => ({
-  FOR_TEST_ONLY: cb,
-  local: () => null,
-  dailynote: () => null,
-  ical: () => null,
-  caldav: () => null,
-  google: () => null
-});
+// In the `describe('event cache with readonly calendar', ...)` block:
+const makeCache = (events: OFCEvent[]) => {
+  const mockPlugin = {
+    settings: DEFAULT_SETTINGS,
+    providerRegistry: {
+      getProvider: () => ({
+        getEvents: async () => events.map(e => [e, null])
+        // Add other provider methods if needed for other tests
+      })
+    }
+  } as any;
+  const cache = new EventCache(mockPlugin);
+  cache.reset([{ type: 'FOR_TEST_ONLY', color: '#000000', id: 'test', config: {} }]);
+  return cache;
+};
 
 const extractEvents = (source: OFCEventSource): OFCEvent[] =>
   source.events.map(({ event }: CachedEvent) => event); // <-- ADD `: CachedEvent`
@@ -103,20 +106,6 @@ async function assertFailed(func: () => Promise<any>, message: RegExp) {
 }
 
 describe('event cache with readonly calendar', () => {
-  const makeCache = (events: OFCEvent[]) => {
-    const cache = new EventCache(
-      { settings: DEFAULT_SETTINGS } as FullCalendarPlugin,
-      initializerMap((info, settings) => {
-        if (info.type !== 'FOR_TEST_ONLY') {
-          return null;
-        }
-        return new TestReadonlyCalendar(info, settings);
-      })
-    );
-    cache.reset([{ type: 'FOR_TEST_ONLY', color: '#000000', id: 'test', events }]);
-    return cache;
-  };
-
   it('populates a single event', async () => {
     const event = mockEvent();
     const cache = makeCache([event]);
@@ -273,19 +262,22 @@ const assertCacheContentCounts = (
 };
 
 describe('editable calendars', () => {
+  // In the `describe('editable calendars', ...)` block:
   const makeCache = (events: EditableEventResponse[]) => {
-    const cache = new EventCache(
-      { settings: DEFAULT_SETTINGS } as FullCalendarPlugin,
-      initializerMap((info, settings) => {
-        if (info.type !== 'FOR_TEST_ONLY') {
-          return null;
-        }
-        const calendar = new TestEditable(info, settings);
-        calendar.events = events;
-        return calendar;
-      })
+    const calendar = new TestEditable(
+      { type: 'FOR_TEST_ONLY', id: 'test', color: 'black' },
+      DEFAULT_SETTINGS
     );
-    cache.reset([{ type: 'FOR_TEST_ONLY', id: 'test', events: [], color: 'black' }]);
+    calendar.events = events;
+
+    const mockPlugin = {
+      settings: DEFAULT_SETTINGS,
+      providerRegistry: {
+        getProvider: () => calendar // The test calendar doubles as a provider
+      }
+    } as any;
+    const cache = new EventCache(mockPlugin);
+    cache.reset([{ type: 'FOR_TEST_ONLY', id: 'test', config: { id: 'test' }, color: 'black' }]);
     return cache;
   };
 

@@ -29,7 +29,7 @@ export async function openFileForEvent(
   { workspace, vault }: { workspace: Workspace; vault: Vault },
   id: string
 ) {
-  const details = cache.getInfoForEditableEvent(id);
+  const details = cache.store.getEventDetails(id);
   if (!details || !details.location) {
     new Notice('Cannot open note for a remote event.');
     return;

@@ -42,6 +42,7 @@ export type TestSource = {
   type: 'FOR_TEST_ONLY';
   id: string;
   events?: OFCEvent[];
+  config?: any;
 };
 
 export type CalendarInfo = (z.infer<typeof calendarOptionsSchema> | TestSource) &

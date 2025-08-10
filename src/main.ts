@@ -45,61 +45,7 @@ export default class FullCalendarPlugin extends Plugin {
   providerRegistry!: ProviderRegistry;
 
   // To parse `data.json` file.`
-  cache: EventCache = new EventCache(this, {
-    local: (info, settings) => {
-      const provider = this.providerRegistry.getProvider('local');
-      if (!provider) return null;
-      return new (require('./core/ProviderAdapter').ProviderAdapter)(
-        provider,
-        (info as any).config,
-        info,
-        settings
-      );
-    },
-    dailynote: (info, settings) => {
-      const provider = this.providerRegistry.getProvider('dailynote');
-      if (!provider) return null;
-      return new (require('./core/ProviderAdapter').ProviderAdapter)(
-        provider,
-        (info as any).config,
-        info,
-        settings
-      );
-    },
-    ical: (info, settings) => {
-      const provider = this.providerRegistry.getProvider('ical');
-      if (!provider) return null;
-      // Return the adapter directly. It has the necessary `revalidate` method.
-      return new (require('./core/ProviderAdapter').ProviderAdapter)(
-        provider,
-        (info as any).config,
-        info,
-        settings
-      );
-    },
-    caldav: (info, settings) => {
-      const provider = this.providerRegistry.getProvider('caldav');
-      if (!provider) return null;
-      // Return the adapter directly.
-      return new (require('./core/ProviderAdapter').ProviderAdapter)(
-        provider,
-        (info as any).config,
-        info,
-        settings
-      );
-    },
-    google: (info, settings) => {
-      const provider = this.providerRegistry.getProvider('google');
-      if (!provider) return null;
-      return new (require('./core/ProviderAdapter').ProviderAdapter)(
-        provider,
-        (info as any).config,
-        info,
-        settings
-      );
-    },
-    FOR_TEST_ONLY: () => null
-  });
+  cache: EventCache = new EventCache(this);
 
   renderCalendar = renderCalendar;
   processFrontmatter = toEventInput;

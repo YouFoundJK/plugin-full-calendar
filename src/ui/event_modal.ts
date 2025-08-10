@@ -85,7 +85,11 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
   if (!eventToEdit) {
     throw new Error("Cannot edit event that doesn't exist.");
   }
-  const calId = plugin.cache.getInfoForEditableEvent(eventId).calendar.id;
+  const eventDetails = plugin.cache.store.getEventDetails(eventId);
+  if (!eventDetails) {
+    throw new Error(`Cannot edit event with ID ${eventId} that doesn't exist in the store.`);
+  }
+  const calId = eventDetails.calendarId;
 
   const calendars = [...plugin.cache.calendars.entries()]
     .filter(([_, cal]) => cal instanceof EditableCalendar)

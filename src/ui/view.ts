@@ -384,7 +384,7 @@ export class CalendarView extends ItemView {
       title: string;
       parentId?: string;
       eventColor?: string;
-      extendedProps?: any;
+      extendedProps: any;
     }[] = [];
     if (!this.plugin.settings.enableAdvancedCategorization) {
       return resources;
@@ -438,7 +438,8 @@ export class CalendarView extends ItemView {
         resources.push({
           id: `${category}::${subCategory}`,
           title: subCategory === '__NONE__' ? '(none)' : subCategory,
-          parentId: category
+          parentId: category,
+          extendedProps: {}
         });
       }
     }
@@ -725,7 +726,7 @@ export class CalendarView extends ItemView {
 
       eventMouseEnter: async info => {
         try {
-          const location = this.plugin.cache.getInfoForEditableEvent(info.event.id).location;
+          const location = this.plugin.cache.store.getEventDetails(info.event.id)?.location;
           if (location) {
             this.app.workspace.trigger('hover-link', {
               event: info.jsEvent,

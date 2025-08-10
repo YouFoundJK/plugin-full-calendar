@@ -44,7 +44,6 @@ describe('RecurringEventManager', () => {
     // Create mock cache
     mockCache = {
       getEventById: jest.fn(),
-      getInfoForEditableEvent: jest.fn(),
       updateEventWithId: jest.fn(),
       deleteEvent: jest.fn(),
       processEvent: jest.fn(),
@@ -54,9 +53,17 @@ describe('RecurringEventManager', () => {
       store: {
         getEventDetails: jest.fn(),
         getAllEvents: jest.fn()
-      } as any,
-      calendars: new Map([['test-calendar', mockCalendar]])
-    } as any;
+      },
+      calendars: new Map([['test-calendar', mockCalendar]]),
+      plugin: {
+        settings: {
+          calendarSources: []
+        },
+        providerRegistry: {
+          getProvider: jest.fn()
+        }
+      }
+    } as unknown as jest.Mocked<EventCache>;
 
     manager = new RecurringEventManager(mockCache);
   });
@@ -99,9 +106,9 @@ describe('RecurringEventManager', () => {
 
     it('should delete override when timing is unchanged from original', async () => {
       // Setup: child override has original timing
-      mockCache.getInfoForEditableEvent.mockReturnValue({
+      (mockCache.store.getEventDetails as jest.Mock).mockReturnValue({
         event: originalOverrideEvent,
-        calendar: mockCalendar,
+        calendarId: 'test-calendar',
         location: { path: 'test.md', lineNumber: 1 }
       });
 
@@ -115,9 +122,9 @@ describe('RecurringEventManager', () => {
 
     it('should preserve override and change completion status when timing is modified', async () => {
       // Setup: child override has modified timing
-      mockCache.getInfoForEditableEvent.mockReturnValue({
+      (mockCache.store.getEventDetails as jest.Mock).mockReturnValue({
         event: modifiedTimingOverrideEvent,
-        calendar: mockCalendar,
+        calendarId: 'test-calendar',
         location: { path: 'test.md', lineNumber: 1 }
       });
 
@@ -145,9 +152,9 @@ describe('RecurringEventManager', () => {
         completed: '2023-11-20T10:00:00.000Z'
       };
 
-      mockCache.getInfoForEditableEvent.mockReturnValue({
+      (mockCache.store.getEventDetails as jest.Mock).mockReturnValue({
         event: modifiedEndDateOverride,
-        calendar: mockCalendar,
+        calendarId: 'test-calendar',
         location: { path: 'test.md', lineNumber: 1 }
       });
 
@@ -179,9 +186,9 @@ describe('RecurringEventManager', () => {
         recurringEventId: 'Weekly Meeting'
       };
 
-      mockCache.getInfoForEditableEvent.mockReturnValue({
+      (mockCache.store.getEventDetails as jest.Mock).mockReturnValue({
         event: modifiedAllDayOverride,
-        calendar: mockCalendar,
+        calendarId: 'test-calendar',
         location: { path: 'test.md', lineNumber: 1 }
       });
 

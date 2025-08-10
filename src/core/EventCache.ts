@@ -50,13 +50,9 @@ import { LocalCacheUpdater } from './modules/LocalCacheUpdater';
 import { IdentifierManager } from './modules/IdentifierManager';
 import { EditableCalendar } from '../calendars/EditableCalendar';
 import { CalendarInfo, OFCEvent, validateEvent } from '../types';
+import { getRuntimeCalendarId } from '../ui/settings/utilsSettings';
 import { ProviderAdapter } from './ProviderAdapter';
 import { FullNoteProvider } from '../providers/fullnote/FullNoteProvider';
-
-export type CalendarInitializerMap = Record<
-  CalendarInfo['type'],
-  (info: CalendarInfo, settings: FullCalendarSettings) => Calendar | null
->;
 
 export type CacheEntry = { event: OFCEvent; id: string; calendarId: string };
 
@@ -103,10 +99,12 @@ export default class EventCache {
   private _plugin: FullCalendarPlugin;
   private _store = new EventStore();
   private calendarInfos: CalendarInfo[] = [];
-  private calendarInitializers: CalendarInitializerMap;
   private recurringEventManager: RecurringEventManager;
   private remoteUpdater: RemoteCacheUpdater;
   private localUpdater: LocalCacheUpdater;
+  // You'll need to pass the new `calendars` map to the IdentifierManager,
+  // but the map is not populated here anymore. We'll pass it in `reset`.
+  // For now, let's pass an empty map. This will be fixed in the `reset` method.
   private identifierManager: IdentifierManager;
 
   calendars = new Map<string, Calendar>();
@@ -114,12 +112,11 @@ export default class EventCache {
 
   public isBulkUpdating = false;
 
-  constructor(plugin: FullCalendarPlugin, calendarInitializers: CalendarInitializerMap) {
+  constructor(plugin: FullCalendarPlugin) {
     this._plugin = plugin;
-    this.calendarInitializers = calendarInitializers;
     this.recurringEventManager = new RecurringEventManager(this);
     this.remoteUpdater = new RemoteCacheUpdater(this);
-    this.identifierManager = new IdentifierManager(this.calendars);
+    this.identifierManager = new IdentifierManager(new Map());
     this.localUpdater = new LocalCacheUpdater(this, this.identifierManager);
   }
 
@@ -141,53 +138,48 @@ export default class EventCache {
     this._store.clear();
     this.updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
     this.resync();
-    this.init();
-  }
 
-  init() {
-    this.calendarInfos
-      .flatMap(s => {
-        const cal = this.calendarInitializers[s.type](s, this._plugin.settings);
-        return cal || [];
-      })
-      .forEach(cal => {
-        this.calendars.set(cal.id, cal);
-      });
+    // Create lightweight stubs for the `calendars` map, which is now only used
+    // for ID generation and legacy checks.
+    this.calendarInfos.forEach(info => {
+      const runtimeId = getRuntimeCalendarId(info);
+      this.calendars.set(runtimeId, { id: runtimeId, type: info.type } as any);
+    });
+    // Re-initialize IdentifierManager with the new map.
+    this.identifierManager = new IdentifierManager(this.calendars);
   }
 
   /**
    * Populate the cache with events.
    */
   async populate() {
-    // Avoid duplicate init; reset() already calls init()
-    if (this.calendars.size === 0) {
-      this.init();
-    }
+    this.reset(this._plugin.settings.calendarSources);
 
-    const calendars = Array.from(this.calendars.values());
-
-    const settled = await Promise.allSettled(
-      calendars.map(async calendar => {
-        const results = await calendar.getEvents();
-        return { calendar, results };
-      })
-    );
-
-    for (const s of settled) {
-      if (s.status === 'fulfilled') {
-        const { calendar, results } = s.value;
-        results.forEach(([event, location]) =>
-          this._store.add({
-            calendar,
-            location,
-            id: event.id || this.generateId(),
-            event
-          })
-        );
-      } else {
-        console.warn('Full Calendar: Failed to load a calendar source', s.reason);
+    const promises = this.calendarInfos.map(async info => {
+      const provider = this.plugin.providerRegistry.getProvider(info.type);
+      if (!provider) {
+        console.warn(`Full Calendar: Provider for type "${info.type}" not found.`);
+        return;
       }
-    }
+      try {
+        const results = await provider.getEvents((info as any).config);
+        const runtimeId = getRuntimeCalendarId(info);
+
+        results.forEach(([event, location]) => {
+          const id = event.id || this.generateId();
+          this._store.add({
+            calendar: { id: runtimeId, type: info.type } as any,
+            location,
+            id,
+            event
+          });
+        });
+      } catch (e) {
+        console.warn(`Full Calendar: Failed to load calendar source`, info, e);
+      }
+    });
+
+    await Promise.allSettled(promises);
 
     this.initialized = true;
     this.identifierManager.buildMap(this._store);
@@ -239,9 +231,18 @@ export default class EventCache {
     const eventsByCalendar = this._store.eventsByCalendar;
     for (const [calId, calendar] of this.calendars.entries()) {
       const events = eventsByCalendar.get(calId) || [];
+
+      const provider = this.plugin.providerRegistry.getProvider(calendar.type);
+      const calendarInfo = this.calendarInfos.find(c => getRuntimeCalendarId(c) === calId);
+      const config = calendarInfo ? (calendarInfo as any).config : {};
+      const capabilities = provider
+        ? provider.getCapabilities(config)
+        : { canCreate: false, canEdit: false, canDelete: false };
+      const editable = capabilities.canCreate || capabilities.canEdit || capabilities.canDelete;
+
       result.push({
-        editable: calendar instanceof EditableCalendar,
-        events: events.map(({ event, id }) => ({ event, id })), // make sure not to leak location data past the cache.
+        editable,
+        events: events.map(({ event, id }) => ({ event, id })),
         color: calendar.color,
         id: calId
       });
@@ -255,12 +256,22 @@ export default class EventCache {
    * @returns
    */
   isEventEditable(id: string): boolean {
-    const calId = this._store.getEventDetails(id)?.calendarId;
-    if (!calId) {
-      return false;
-    }
-    const cal = this.getCalendarById(calId);
-    return cal instanceof EditableCalendar;
+    const details = this._store.getEventDetails(id);
+    if (!details) return false;
+
+    // NEW LOGIC
+    const calendarInfo = this.calendarInfos.find(
+      c => getRuntimeCalendarId(c) === details.calendarId
+    );
+    if (!calendarInfo) return false;
+
+    const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
+    if (!provider) return false;
+
+    const config = (calendarInfo as any).config;
+    const capabilities = provider.getCapabilities(config);
+    return capabilities.canCreate || capabilities.canEdit || capabilities.canDelete;
+    // END NEW LOGIC
   }
 
   getEventById(s: string): OFCEvent | null {
@@ -271,27 +282,26 @@ export default class EventCache {
     return this.calendars.get(c);
   }
 
-  /**
-   * Get calendar and location information for a given event in an editable calendar.
-   * Throws an error if event is not found or if it does not have a location in the Vault.
-   * @param eventId ID of event in question.
-   * @returns Calendar and location for an event.
-   */
-  getInfoForEditableEvent(eventId: string) {
+  private getProviderForEvent(eventId: string) {
     const details = this._store.getEventDetails(eventId);
     if (!details) {
       throw new Error(`Event ID ${eventId} not present in event store.`);
     }
     const { calendarId, location, event } = details;
-    const calendar = this.calendars.get(calendarId);
-    if (!calendar) {
-      throw new Error(`Calendar ID ${calendarId} is not registered.`);
+
+    const calendarInfo = this.calendarInfos.find(
+      c => this.getCalendarById(calendarId)?.id === calendarId
+    );
+    if (!calendarInfo) {
+      throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
     }
-    if (!(calendar instanceof EditableCalendar)) {
-      // console.warn("Cannot modify event of type " + calendar.type);
-      throw new Error(`Read-only events cannot be modified.`);
+
+    const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
+    if (!provider) {
+      throw new Error(`Provider of type ${calendarInfo.type} is not registered.`);
     }
-    return { calendar, location, event };
+
+    return { provider, config: (calendarInfo as any).config, location, event };
   }
 
   // ====================================================================
@@ -305,66 +315,64 @@ export default class EventCache {
    * @returns Returns true if successful, false otherwise.
    */
   async addEvent(
-    calendarId: string,
+    calendarId: string, // This is now the settings ID, e.g., "local_1"
     event: OFCEvent,
     options?: { silent: boolean }
   ): Promise<boolean> {
-    const calendar = this.calendars.get(calendarId);
-    if (!calendar) {
-      throw new Error(`Calendar ID ${calendarId} is not registered.`);
+    const calendarInfo = this.calendarInfos.find(c => (c as any).id === calendarId);
+    if (!calendarInfo) {
+      throw new Error(`Calendar with settings ID ${calendarId} not found.`);
     }
-    if (!(calendar instanceof EditableCalendar)) {
+    const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
+    if (!provider) {
+      throw new Error(`Provider for type ${calendarInfo.type} is not registered.`);
+    }
+    const config = (calendarInfo as any).config;
+    const runtimeId = getRuntimeCalendarId(calendarInfo); // <-- FIXED
+
+    if (!provider.getCapabilities(config).canCreate) {
       throw new Error(`Cannot add event to a read-only calendar`);
     }
 
-    // UPDATED LOGIC
-    const [finalEvent, newLocation] = await calendar.createEvent(event);
+    const [finalEvent, newLocation] = await provider.createEvent(event, config);
     const id = this._store.add({
-      calendar,
+      calendar: { id: runtimeId, type: provider.type } as any,
       location: newLocation,
       id: finalEvent.id || this.generateId(),
       event: finalEvent // Use the event returned by the calendar
     });
 
-    this.identifierManager.addMapping(finalEvent, calendar.id, id);
+    this.identifierManager.addMapping(finalEvent, runtimeId, id);
 
-    const cacheEntry = { event: finalEvent, id, calendarId: calendar.id };
-    // --- vvv THIS IS THE FIX vvv ---
+    const cacheEntry = { event: finalEvent, id, calendarId: runtimeId };
+
     if (options?.silent) {
       this.isBulkUpdating = true;
       this.updateQueue.toAdd.set(id, cacheEntry);
     } else {
       this.flushUpdateQueue([], [cacheEntry]);
     }
-    // --- ^^^ END OF FIX ^^^ ---
     return true;
   }
 
   /**
-   * Check if adding an event to a given calendar would result in a duplicate.
-   * @param calendarId ID of calendar to check.
-   * @param event Event details to check for duplicates.
-   * @returns Returns true if the event would be a duplicate, false otherwise.
+   * Deletes an event by its ID.
+   *
+   * @param eventId ID of the event to delete.
+   * @param options Options for the delete operation.
+   * @returns Promise that resolves when the delete operation is complete.
    */
-  async checkForDuplicate(calendarId: string, event: OFCEvent): Promise<boolean> {
-    const calendar = this.calendars.get(calendarId);
-    if (!calendar) {
-      throw new Error(`Calendar ID ${calendarId} is not registered.`);
-    }
-    if (!(calendar instanceof EditableCalendar)) {
-      return false; // Read-only calendars can't have user-created duplicates
-    }
-
-    return await calendar.checkForDuplicate(event);
-  }
-
   async deleteEvent(
     eventId: string,
     options?: { silent?: boolean; instanceDate?: string; force?: boolean }
   ): Promise<void> {
-    const { calendar, location, event } = this.getInfoForEditableEvent(eventId);
+    const { provider, config, location, event } = this.getProviderForEvent(eventId);
+    const calendarId = `${provider.type}::${config.id}`;
 
-    // DELEGATE ALL COMPLEXITY. If the manager handles it, our job is done.
+    if (!provider.getCapabilities(config).canDelete) {
+      throw new Error(`Calendar of type "${provider.type}" does not support deleting events.`);
+    }
+
     if (
       !options?.force &&
       (await this.recurringEventManager.handleDelete(eventId, event, options))
@@ -377,7 +385,7 @@ export default class EventCache {
     // ====================================================================
     if (event.type === 'single' && event.recurringEventId) {
       const masterLocalIdentifier = event.recurringEventId;
-      const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
+      const globalMasterIdentifier = `${calendarId}::${masterLocalIdentifier}`;
       const masterSessionId = await this.getSessionId(globalMasterIdentifier);
 
       if (masterSessionId) {
@@ -399,11 +407,19 @@ export default class EventCache {
         );
       }
     }
-    // ====================================================================
 
-    this.identifierManager.removeMapping(event, calendar.id);
+    const handle = provider.getEventHandle(event, config);
+    if (!handle) {
+      // Allow deletion even if handle can't be generated, as it might be a corrupted event.
+      console.warn(
+        `Could not generate a persistent handle for the event being deleted. Proceeding with deletion from cache only.`
+      );
+    } else {
+      await provider.deleteEvent(handle, config);
+    }
+
+    this.identifierManager.removeMapping(event, calendarId);
     this._store.delete(eventId);
-    await calendar.deleteEvent(event, location);
 
     if (options?.silent) {
       this.isBulkUpdating = true;
@@ -414,18 +430,12 @@ export default class EventCache {
   }
 
   /**
-   * Update an event with a given ID. This is a primary method for event modification.
-   * It finds the event's calendar and location, then calls the calendar's
-   * `modifyEvent` method to perform the underlying file/API changes.
-   *
-   * The `updateCacheWithLocation` callback passed to `modifyEvent` is crucial
-   * for maintaining data consistency, as it updates the cache's in-memory
-   * representation of the event's location before the file is written.
+   * Updates an event with the given ID.
    *
    * @param eventId ID of the event to update.
-   * @param newEvent The new event data.
-   * @returns true if the update was successful.
-   * @throws If the event is not in an editable calendar or cannot be found.
+   * @param newEvent New event data.
+   * @param options Options for the update operation.
+   * @returns Promise that resolves when the update operation is complete.
    */
   async updateEventWithId(
     eventId: string,
@@ -433,37 +443,57 @@ export default class EventCache {
     options?: { silent: boolean }
   ): Promise<boolean> {
     const {
-      calendar,
+      provider,
+      config,
       location: oldLocation,
       event: oldEvent
-    } = this.getInfoForEditableEvent(eventId);
+    } = this.getProviderForEvent(eventId);
 
-    await this.recurringEventManager.handleUpdate(oldEvent, newEvent, calendar.id);
+    if (!provider.getCapabilities(config).canEdit) {
+      throw new Error(`Calendar of type "${provider.type}" does not support editing events.`);
+    }
+
+    // Recurring logic stays the same, as it operates on event data, not providers.
+    await this.recurringEventManager.handleUpdate(
+      oldEvent,
+      newEvent,
+      `${provider.type}::${config.id}`
+    );
+
+    const handle = provider.getEventHandle(oldEvent, config);
+    if (!handle) {
+      throw new Error(`Could not generate a persistent handle for the event being modified.`);
+    }
 
     // Remove old identifier
-    this.identifierManager.removeMapping(oldEvent, calendar.id);
+    this.identifierManager.removeMapping(oldEvent, `${provider.type}::${config.id}`);
 
-    const { isDirty } = await calendar.modifyEvent(oldEvent, newEvent, oldLocation, newLocation => {
-      this.store.delete(eventId);
-      this.store.add({
-        calendar,
-        location: newLocation,
-        id: eventId,
-        event: newEvent
-      });
+    const newLocation = await provider.updateEvent(handle, oldEvent, newEvent, config);
+    this.store.delete(eventId);
+    this.store.add({
+      // We still need a calendar-like object for the store. A lightweight stub is fine.
+      calendar: { id: `${provider.type}::${config.id}`, type: provider.type } as any,
+      location: newLocation,
+      id: eventId,
+      event: newEvent
     });
 
     // Add new identifier
-    this.identifierManager.addMapping(newEvent, calendar.id, eventId);
+    this.identifierManager.addMapping(newEvent, `${provider.type}::${config.id}`, eventId);
 
-    // If the calendar is not "dirty", it means no file watcher event is coming.
-    const cacheEntry = { id: eventId, calendarId: calendar.id, event: newEvent };
+    // No need for `isDirty` check anymore, as we are no longer file-watcher dependent.
+    // The provider model is explicit: after an update, the cache IS the source of truth.
+    const cacheEntry = {
+      id: eventId,
+      calendarId: `${provider.type}::${config.id}`,
+      event: newEvent
+    };
 
     if (options?.silent) {
       this.isBulkUpdating = true;
       this.updateQueue.toRemove.add(eventId);
       this.updateQueue.toAdd.set(eventId, cacheEntry);
-    } else if (!isDirty) {
+    } else {
       this.flushUpdateQueue([eventId], [cacheEntry]);
     }
     return true;
@@ -689,5 +719,27 @@ export default class EventCache {
 
   get _storeForTest() {
     return this._store;
+  }
+
+  async checkForDuplicate(calendarId: string, event: OFCEvent): Promise<boolean> {
+    const calendarInfo = this.calendarInfos.find(c => (c as any).id === calendarId);
+    if (!calendarInfo) {
+      throw new Error(`Calendar with settings ID ${calendarId} not found.`);
+    }
+    const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
+    if (!provider) {
+      // If no provider, it can't be a duplicate.
+      return false;
+    }
+    const config = (calendarInfo as any).config;
+
+    // Check if provider has the method, otherwise default to false.
+    if (
+      'checkForDuplicate' in provider &&
+      typeof (provider as any).checkForDuplicate === 'function'
+    ) {
+      return (provider as any).checkForDuplicate(event, config);
+    }
+    return false;
   }
 }

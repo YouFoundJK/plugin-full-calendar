@@ -20,6 +20,7 @@ import { StoredEvent } from '../EventStore';
 import { toggleTask } from '../../actions/tasks';
 import GoogleCalendar from '../../calendars/GoogleCalendar';
 import { DeleteRecurringModal } from '../../ui/modals/DeleteRecurringModal';
+import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
 
 /**
  * Manages all complex business logic related to recurring events.
@@ -151,7 +152,13 @@ export class RecurringEventManager {
   ): Promise<boolean> {
     // Check if we are "undoing" an override. This is now the full operation.
     if (event.type === 'single' && event.recurringEventId) {
-      const { calendar } = this.cache.getInfoForEditableEvent(eventId);
+      // THIS LOGIC IS CORRECT AND DOES NOT USE getInfoForEditableEvent.
+      const eventDetails = this.cache.store.getEventDetails(eventId);
+      if (!eventDetails) return false;
+      const { calendarId } = eventDetails;
+      const calendar = this.cache.getCalendarById(calendarId);
+      if (!calendar) return false;
+
       const masterLocalIdentifier = event.recurringEventId;
       const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
       const masterSessionId = await this.cache.getSessionId(globalMasterIdentifier);
@@ -175,15 +182,8 @@ export class RecurringEventManager {
           `Master recurring event with identifier "${globalMasterIdentifier}" not found. Deleting orphan override.`
         );
       }
-
-      // Queue the deletion of the override event itself.
-      // `force: true` is critical to prevent an infinite loop.
       await this.cache.deleteEvent(eventId, { silent: true, force: true });
-
-      // Flush both updates to the UI atomically.
       this.cache.flushUpdateQueue([], []);
-
-      // Return true to signify that the deletion has been fully handled.
       return true;
     }
 
@@ -192,8 +192,15 @@ export class RecurringEventManager {
       return false;
     }
 
-    const { calendar } = this.cache.getInfoForEditableEvent(eventId);
-    const isGoogle = calendar instanceof GoogleCalendar;
+    // THIS IS THE BLOCK THAT WAS STILL INCORRECT.
+    // IT IS NOW FIXED.
+    const eventDetails = this.cache.store.getEventDetails(eventId);
+    if (!eventDetails) return false;
+    const { calendarId } = eventDetails;
+    const calendar = this.cache.getCalendarById(calendarId);
+    if (!calendar) return false;
+    const isGoogle = calendar.type === 'google';
+    // END OF FIX
 
     const children = this.findRecurringChildren(eventId);
 
@@ -204,7 +211,6 @@ export class RecurringEventManager {
         () => this.deleteAllRecurring(eventId),
         options?.instanceDate
           ? async () => {
-              // This GENERIC logic now correctly triggers the "modifyEvent" flow.
               const updated = await this.cache.processEvent(eventId, e => {
                 if (e.type !== 'recurring' && e.type !== 'rrule') return e;
                 const skipDates = e.skipDates?.includes(options.instanceDate!)
@@ -214,9 +220,6 @@ export class RecurringEventManager {
               });
 
               if (updated) {
-                // Forcing a full calendar source re-render is necessary for recurring
-                // events on "dirty" calendars, as a simple event replacement in the
-                // view won't trigger a re-computation of the recurrence.
                 const details = this.cache.store.getEventDetails(eventId);
                 if (details) {
                   const calendarSource = this.cache
@@ -232,10 +235,10 @@ export class RecurringEventManager {
         options?.instanceDate,
         isGoogle
       ).open();
-      return true; // Deletion is handled by the modal, stop further processing.
+      return true;
     }
 
-    return false; // No children, proceed with normal deletion.
+    return false;
   }
 
   /**
@@ -249,14 +252,11 @@ export class RecurringEventManager {
     instanceDateToSkip: string,
     overrideEventData: OFCEvent
   ): Promise<void> {
-    const { calendar, event: masterEvent } = this.cache.getInfoForEditableEvent(masterEventId);
-
-    const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
-    if (!masterLocalIdentifier) {
-      throw new Error(
-        `Cannot create an override for a recurring event that has no persistent local identifier.`
-      );
-    }
+    const masterDetails = this.cache.store.getEventDetails(masterEventId);
+    if (!masterDetails) throw new Error('Master event not found');
+    const { calendarId: masterCalendarId, event: masterEvent } = masterDetails;
+    const calendar = this.cache.getCalendarById(masterCalendarId);
+    if (!calendar) throw new Error('Calendar not found');
 
     // Destructure the master event to inherit common properties (like title, category, etc.)
     // while explicitly excluding properties that ONLY apply to recurring definitions.
@@ -286,7 +286,7 @@ export class RecurringEventManager {
     const finalOverrideEvent: OFCEvent = {
       ...parentPropsToInherit,
       ...overrideEventData,
-      recurringEventId: masterLocalIdentifier
+      recurringEventId: masterCalendarId
     };
 
     if (
@@ -339,17 +339,36 @@ export class RecurringEventManager {
       throw new Error('Cannot create a recurring override from a non-single event.');
     }
 
-    const { calendar, event: masterEvent } = this.cache.getInfoForEditableEvent(masterEventId);
-    if (!(calendar instanceof GoogleCalendar)) {
-      throw new Error('Cannot modify an instance on a non-editable calendar.');
+    const details = this.cache.store.getEventDetails(masterEventId);
+    if (!details) {
+      throw new Error('Master event not found for instance modification.');
+    }
+    const { calendarId, event: masterEvent } = details;
+    const calendarInfo = this.cache.plugin.settings.calendarSources.find(
+      c => getRuntimeCalendarId(c) === calendarId
+    );
+    if (!calendarInfo) {
+      throw new Error(`Could not find calendar info for ${calendarId}`);
+    }
+    const provider = this.cache.plugin.providerRegistry.getProvider(calendarInfo.type);
+    if (!provider) {
+      throw new Error(`Could not find provider for calendar type ${calendarInfo.type}`);
+    }
+    const masterHandle = provider.getEventHandle(masterEvent, (calendarInfo as any).config);
+    if (!masterHandle) {
+      throw new Error('Could not create handle for master event.');
     }
 
-    // 1. Delegate override creation to the calendar (which will be our adapter).
-    const [authoritativeOverrideEvent, overrideLocation] = await calendar.createInstanceOverride(
-      masterEvent,
+    const [authoritativeOverrideEvent, overrideLocation] = await provider.createInstanceOverride(
+      masterHandle,
       instanceDate,
-      newEventData
+      newEventData,
+      (calendarInfo as any).config
     );
+    const calendar = this.cache.getCalendarById(calendarId); // Keep this for adding to store
+    if (!calendar) {
+      throw new Error('Could not find calendar stub in cache.');
+    }
 
     // 2. Add the new override event to the cache silently.
     const overrideId = this.cache.generateId();
@@ -396,7 +415,9 @@ export class RecurringEventManager {
     isDone: boolean
   ): Promise<void> {
     // Get the event that was actually clicked.
-    const { event: clickedEvent } = this.cache.getInfoForEditableEvent(eventId);
+    const clickedEventDetails = this.cache.store.getEventDetails(eventId);
+    if (!clickedEventDetails) return;
+    const { event: clickedEvent, calendarId } = clickedEventDetails;
 
     if (isDone) {
       // === USE CASE: COMPLETING A TASK ===
@@ -413,28 +434,30 @@ export class RecurringEventManager {
           date: instanceDate,
           endDate: null
         };
-
         await this._createRecurringOverride(eventId, instanceDate, toggleTask(overrideEvent, true));
       }
     } else {
       // === USE CASE: UN-COMPLETING A TASK ===
-      // This action is only possible on an existing override.
-      // Check if the override has modified timing compared to the original recurring instance.
-      // If timing is modified, preserve the override but change completion status.
-      // If timing is unchanged, delete the override to clean up.
-
       if (clickedEvent.type === 'single' && clickedEvent.recurringEventId) {
-        const { calendar } = this.cache.getInfoForEditableEvent(eventId);
+        const calendar = this.cache.getCalendarById(calendarId);
+        if (!calendar) return;
+
         const masterLocalIdentifier = clickedEvent.recurringEventId;
         const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
         const masterSessionId = await this.cache.getSessionId(globalMasterIdentifier);
 
         if (masterSessionId) {
           const masterEvent = this.cache.getEventById(masterSessionId);
-          if (masterEvent && this.hasModifiedTiming(clickedEvent, masterEvent, instanceDate)) {
+          if (
+            masterEvent &&
+            this.hasModifiedTiming(clickedEventDetails.event, masterEvent, instanceDate)
+          ) {
             // Timing has been modified, preserve the override but change completion status
             new Notice('Preserving modified event timing and uncompleting task.');
-            await this.cache.updateEventWithId(eventId, toggleTask(clickedEvent, false));
+            await this.cache.updateEventWithId(
+              eventId,
+              toggleTask(clickedEventDetails.event, false)
+            );
             return;
           }
         }
@@ -463,11 +486,15 @@ export class RecurringEventManager {
     new Notice(`Updating ${childrenToUpdate.length} child event(s) to match new parent title.`);
 
     for (const childStoredEvent of childrenToUpdate) {
+      const childDetails = this.cache.store.getEventDetails(childStoredEvent.id);
+      if (!childDetails) continue;
       const {
-        calendar: childCalendar,
+        calendarId: childCalendarId,
         location: childLocation,
         event: childEvent
-      } = this.cache.getInfoForEditableEvent(childStoredEvent.id);
+      } = childDetails;
+      const childCalendar = this.cache.getCalendarById(childCalendarId);
+      if (!childCalendar) continue;
 
       const updatedChildEvent: OFCEvent = {
         ...childEvent,
@@ -477,11 +504,11 @@ export class RecurringEventManager {
       };
 
       // We pass the child's own data as the "old event"
-      await childCalendar.modifyEvent(
+      await (childCalendar as any).modifyEvent(
         childEvent,
         updatedChildEvent,
         childLocation,
-        newChildLocation => {
+        (newChildLocation: any) => {
           this.cache.store.delete(childStoredEvent.id);
           this.cache.store.add({
             calendar: childCalendar,
@@ -518,6 +545,7 @@ export class RecurringEventManager {
 
     const calendar = this.cache.calendars.get(calendarId);
     if (!calendar) {
+      return true; // Indicate that we've handled any necessary recurring logic.
       return false;
     }
 
