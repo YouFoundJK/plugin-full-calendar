@@ -12,18 +12,19 @@
  * @license See LICENSE.md
  */
 
-import { Calendar } from '../../calendars/Calendar';
-import EventStore from '../EventStore';
 import { OFCEvent } from '../../types';
+import EventCache from '../EventCache';
+import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
 
 export class IdentifierManager {
-  private calendars: Map<string, Calendar>;
+  private cache: EventCache; // Changed from `calendars`
   private pkCounter = 0;
   private identifierToSessionIdMap: Map<string, string> = new Map();
   private identifierMapPromise: Promise<void> | null = null;
 
-  constructor(calendars: Map<string, Calendar>) {
-    this.calendars = calendars;
+  constructor(cache: EventCache) {
+    // Changed constructor
+    this.cache = cache;
   }
 
   public generateId(): string {
@@ -38,19 +39,43 @@ export class IdentifierManager {
   }
 
   public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
-    const calendar = this.calendars.get(calendarId);
-    if (!calendar) {
-      console.warn(`Could not find calendar with ID ${calendarId} to generate global identifier.`);
+    // [DEBUG] Log calendarId received
+    console.log(`[DEBUG] IdentifierManager.getGlobalIdentifier:
+      - calendarId received: ${calendarId}
+      - event title: ${event.title}`);
+
+    // @ts-ignore: Accessing private field for refactor
+    const calendarInfo = this.cache.calendarInfos.find(
+      // @ts-ignore
+      info => getRuntimeCalendarId(info) === calendarId
+    );
+    if (!calendarInfo) {
+      // [DEBUG] Log failure to find calendarInfo
+      console.error(
+        `[DEBUG] IdentifierManager.getGlobalIdentifier: FAILED to find calendar info.
+        - calendarId being searched: ${calendarId}
+        - All available calendarInfos:`,
+        JSON.parse(JSON.stringify((this.cache as any).calendarInfos))
+      );
+      console.warn(`Could not find calendar info for ID ${calendarId}`);
       return null;
     }
-    const localIdentifier = calendar.getLocalIdentifier(event);
-    if (!localIdentifier) {
+    const provider = this.cache.plugin.providerRegistry.getProvider(calendarInfo.type);
+    if (!provider) {
+      console.warn(`Could not find provider for type ${calendarInfo.type}`);
       return null;
     }
-    return `${calendar.id}::${localIdentifier}`;
+
+    const handle = provider.getEventHandle(event, (calendarInfo as any).config);
+    if (!handle) {
+      return null;
+    }
+
+    return `${calendarId}::${handle.persistentId}`;
   }
 
-  public buildMap(store: EventStore): void {
+  public buildMap(store: any): void {
+    // Changed store type to any to avoid import
     this.identifierMapPromise = (async () => {
       this.identifierToSessionIdMap.clear();
       for (const storedEvent of store.getAllEvents()) {

@@ -28,17 +28,24 @@ import { ConfirmModal } from './modals/ConfirmModal';
 import { EditEvent } from './modals/components/EditEvent';
 import { openFileForEvent } from '../actions/eventActions';
 import { EditableCalendar } from '../calendars/EditableCalendar';
+import { CalendarInfo } from '../types'; // <-- ADD THIS IMPORT
+import { getRuntimeCalendarId } from './settings/utilsSettings'; // <-- ADD THIS IMPORT
 
 export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
-  const calendars = [...plugin.cache.calendars.entries()]
-    .filter(([_, cal]) => cal instanceof EditableCalendar)
-    .map(([id, cal]) => {
+  const calendars = plugin.settings.calendarSources
+    .map(info => {
+      const provider = plugin.providerRegistry.getProvider(info.type);
+      if (!provider) return null;
+      const capabilities = provider.getCapabilities((info as any).config);
+      if (!capabilities.canCreate) return null; // Filter for writable calendars
+
       return {
-        id,
-        type: cal.type,
-        name: cal.name
+        id: (info as any).id, // This is the SETTINGS ID
+        type: info.type,
+        name: (info as any).name || provider.displayName
       };
-    });
+    })
+    .filter((c): c is { id: string; type: CalendarInfo['type']; name: string } => !!c);
 
   // MODIFICATION: Get available categories
   const availableCategories = plugin.cache.getAllCategories();
@@ -56,7 +63,7 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
         return await plugin.cache.checkForDuplicate(calendarId, event);
       },
       submit: async (data, calendarIndex) => {
-        const calendarId = calendars[calendarIndex].id;
+        const calendarId = calendars[calendarIndex].id; // This is now the settings ID
         try {
           // Note: The data source layer is now responsible for constructing the full title.
           // The `data` object here has a clean title and category.
@@ -89,19 +96,28 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
   if (!eventDetails) {
     throw new Error(`Cannot edit event with ID ${eventId} that doesn't exist in the store.`);
   }
-  const calId = eventDetails.calendarId;
+  const calId = eventDetails.calendarId; // This is the RUNTIME ID.
 
-  const calendars = [...plugin.cache.calendars.entries()]
-    .filter(([_, cal]) => cal instanceof EditableCalendar)
-    .map(([id, cal]) => {
+  const calendars = plugin.settings.calendarSources
+    .map(info => {
+      const provider = plugin.providerRegistry.getProvider(info.type);
+      if (!provider) return null;
+      const capabilities = provider.getCapabilities((info as any).config);
+      // For the edit modal, show any calendar that can be edited OR created into.
+      if (!capabilities.canEdit && !capabilities.canCreate) return null;
+
       return {
-        id,
-        type: cal.type,
-        name: cal.name
+        id: (info as any).id, // settings ID
+        runtimeId: getRuntimeCalendarId(info), // runtime ID for matching
+        type: info.type,
+        name: (info as any).name || provider.displayName
       };
-    });
+    })
+    .filter(
+      (c): c is { id: string; runtimeId: string; type: CalendarInfo['type']; name: string } => !!c
+    );
 
-  const calIdx = calendars.findIndex(({ id }) => id === calId);
+  const calIdx = calendars.findIndex(({ runtimeId }) => runtimeId === calId);
   const availableCategories = plugin.cache.getAllCategories();
 
   new ReactModal(plugin.app, async closeModal => {
@@ -113,7 +129,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
         async () => {
           if (eventToEdit.type === 'single' && eventToEdit.recurringEventId) {
             const parentLocalId = eventToEdit.recurringEventId;
-            const parentGlobalId = `${calId}::${parentLocalId}`;
+            const parentGlobalId = `${calId}::${parentLocalId}`; // <-- CHANGE calendarId to calId
             const parentSessionId = await plugin.cache.getSessionId(parentGlobalId);
             if (parentSessionId) {
               closeModal();
@@ -134,7 +150,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
       enableCategory: plugin.settings.enableAdvancedCategorization,
       enableBackgroundEvents: plugin.settings.enableBackgroundEvents,
       checkForDuplicate: async (event: OFCEvent, calendarIndex: number) => {
-        const calendarId = calendars[calendarIndex].id;
+        const calendarId = calendars[calendarIndex].id; // settings ID
         // When editing, exclude the current event from duplicate check
         // by comparing with the original event data
         if (eventToEdit) {
@@ -163,8 +179,15 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
       },
       submit: async (data, calendarIndex) => {
         try {
-          if (calendarIndex !== calIdx) {
-            await plugin.cache.moveEventToCalendar(eventId, calendars[calendarIndex].id);
+          const newCalendarSettingsId = calendars[calendarIndex].id;
+          const oldCalendarRuntimeId = eventDetails.calendarId;
+          const newCalendarRuntimeId = calendars[calendarIndex].runtimeId;
+
+          if (newCalendarRuntimeId !== oldCalendarRuntimeId) {
+            // TODO: The "move" operation needs to be implemented at the provider level.
+            // For now, we show a notice and update the event in its original calendar.
+            new Notice('Moving events between calendars is not yet supported.');
+            // await plugin.cache.moveEventToCalendar(eventId, calendars[calendarIndex].id);
           }
           await plugin.cache.updateEventWithId(eventId, data);
         } catch (e) {

@@ -1,5 +1,3 @@
-// PASTE THIS INTO: src/core/modules/RemoteCacheUpdater.ts
-
 /**
  * @file RemoteCacheUpdater.ts
  * @brief Manages the synchronization logic for remote calendars.
@@ -15,8 +13,7 @@
 
 import { Notice } from 'obsidian';
 import EventCache from '../EventCache';
-import RemoteCalendar from '../../calendars/RemoteCalendar';
-import { EditableCalendar } from '../../calendars/EditableCalendar'; // <-- THE CRITICAL MISSING IMPORT
+import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -39,66 +36,76 @@ export class RemoteCacheUpdater {
     const now = Date.now();
 
     if (!force && now - this.lastRevalidation < MILLICONDS_BETWEEN_REVALIDATIONS) {
-      // console.debug('Last revalidation was too soon.');
       return;
     }
 
-    // A calendar is "remote" if it's a legacy RemoteCalendar OR if it's an
-    // EditableCalendar that has a `revalidate` method (our adapter).
-    const remoteCalendars = [...this.cache.calendars.values()].filter(
-      (c): c is RemoteCalendar | (EditableCalendar & { revalidate: () => Promise<void> }) =>
-        c instanceof RemoteCalendar ||
-        (c instanceof EditableCalendar &&
-          'revalidate' in c &&
-          typeof (c as any).revalidate === 'function')
-    );
+    // @ts-ignore
+    const remoteSources = this.cache.calendarInfos.filter(info => {
+      const provider = this.cache.plugin.providerRegistry.getProvider(info.type);
+      // A provider is "remote" if it has a `revalidate` method.
+      return provider && 'revalidate' in provider;
+    });
 
-    if (remoteCalendars.length === 0) {
+    if (remoteSources.length === 0) {
       return;
     }
 
     this.revalidating = true;
-    const promises = remoteCalendars.map(calendar => {
-      // Both RemoteCalendar and our adapted EditableCalendar are guaranteed to have `revalidate`.
-      return calendar
-        .revalidate()
-        .then(() => calendar.getEvents())
+    const promises = remoteSources.map(info => {
+      const provider = this.cache.plugin.providerRegistry.getProvider(info.type)!;
+      const config = (info as any).config;
+      const runtimeId = getRuntimeCalendarId(info);
+      const calendar = this.cache.getCalendarById(runtimeId); // <-- Use the adapter instance
+      if (!calendar) {
+        // This should not happen if the cache is initialized correctly.
+        return Promise.reject(`Calendar with runtime ID ${runtimeId} not found in cache.`);
+      }
+
+      return provider
+        .getEvents(config)
         .then(events => {
-          // The `events` parameter is now correctly typed as EventResponse[]
-          // @ts-ignore: Accessing private store for refactoring
+          // @ts-ignore
           this.cache.store.deleteEventsInCalendar(calendar);
+
           const newEvents = events.map(([event, location]) => ({
             event,
             id: event.id || this.cache.generateId(),
             location,
-            calendarId: calendar.id
+            calendarId: runtimeId
           }));
+
           newEvents.forEach(({ event, id, location }) => {
-            // @ts-ignore: Accessing private store for refactoring
+            // @ts-ignore
             this.cache.store.add({
-              calendar,
+              calendar, // <-- Use the full adapter instance here
               location,
               id,
               event
             });
           });
+
           this.cache.updateCalendar({
-            id: calendar.id,
-            // An editable calendar can still be remote (e.g. Google).
-            editable: calendar instanceof EditableCalendar,
-            color: calendar.color,
+            id: runtimeId,
+            editable: provider.getCapabilities(config).canEdit,
+            color: info.color,
             events: newEvents
           });
+        })
+        .catch(err => {
+          // Wrap the error with context about which calendar failed.
+          const name = (info as any).name || info.type;
+          throw new Error(`Failed to revalidate calendar "${name}": ${err.message}`);
         });
     });
+
     Promise.allSettled(promises).then(results => {
       this.revalidating = false;
       this.lastRevalidation = Date.now();
       const errors = results.flatMap(result => (result.status === 'rejected' ? result.reason : []));
       if (errors.length > 0) {
-        new Notice('A remote calendar failed to load. Check the console for more details.');
+        new Notice('One or more remote calendars failed to load. Check the console for details.');
         errors.forEach(reason => {
-          console.error(`Revalidation failed with reason: ${reason}`);
+          console.error(`Full Calendar: Revalidation failed.`, reason);
         });
       }
     });

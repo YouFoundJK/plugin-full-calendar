@@ -86,7 +86,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
   }
 
   async createInstanceOverride(
-    masterEventHandle: EventHandle,
+    masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent,
     config: CalDAVProviderConfig

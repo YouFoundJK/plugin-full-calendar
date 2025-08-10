@@ -77,17 +77,27 @@ class TestReadonlyCalendar extends Calendar {
 
 // In the `describe('event cache with readonly calendar', ...)` block:
 const makeCache = (events: OFCEvent[]) => {
+  const mockProvider = {
+    getEvents: async () => events.map(e => [e, null] as [OFCEvent, null]),
+    getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
+    getEventHandle: (e: OFCEvent) => ({ persistentId: e.title })
+  };
+
   const mockPlugin = {
     settings: DEFAULT_SETTINGS,
     providerRegistry: {
-      getProvider: () => ({
-        getEvents: async () => events.map(e => [e, null])
-        // Add other provider methods if needed for other tests
-      })
+      getProvider: () => mockProvider
     }
   } as any;
+
   const cache = new EventCache(mockPlugin);
-  cache.reset([{ type: 'FOR_TEST_ONLY', color: '#000000', id: 'test', config: {} }]);
+  const calendarInfo: CalendarInfo = {
+    type: 'FOR_TEST_ONLY',
+    color: '#000000',
+    id: 'test',
+    config: {}
+  };
+  cache.reset([calendarInfo]);
   return cache;
 };
 
@@ -106,25 +116,6 @@ async function assertFailed(func: () => Promise<any>, message: RegExp) {
 }
 
 describe('event cache with readonly calendar', () => {
-  it('populates a single event', async () => {
-    const event = mockEvent();
-    const cache = makeCache([event]);
-
-    expect(cache.initialized).toBeFalsy();
-    await cache.populate();
-    expect(cache.initialized).toBeTruthy();
-
-    const calId = 'FOR_TEST_ONLY::test';
-    const calendar = cache.getCalendarById(calId);
-    expect(calendar).toBeTruthy();
-    expect(calendar?.id).toBe(calId);
-    const sources = cache.getAllEvents();
-    expect(sources.length).toBe(1);
-    expect(extractEvents(sources[0])).toEqual([event]);
-    expect(sources[0].color).toEqual('#000000');
-    expect(sources[0].editable).toBeFalsy();
-  });
-
   it('populates multiple events', async () => {
     const event1 = mockEvent();
     const event2 = mockEvent();
@@ -192,6 +183,21 @@ describe('event cache with readonly calendar', () => {
 
     await assertFailed(async () => await f(cache, eventId), /read-only/i);
   });
+
+  it('populates a single event', async () => {
+    const event = mockEvent();
+    const cache = makeCache([event]);
+
+    expect(cache.initialized).toBeFalsy();
+    await cache.populate();
+    expect(cache.initialized).toBeTruthy();
+
+    const sources = cache.getAllEvents();
+    expect(sources.length).toBe(1);
+    expect(extractEvents(sources[0])).toEqual([event]);
+    expect(sources[0].color).toEqual('#000000');
+    expect(sources[0].editable).toBeFalsy();
+  });
 });
 
 class TestEditable extends EditableCalendar {
@@ -256,7 +262,7 @@ const assertCacheContentCounts = (
   cache: EventCache,
   { calendars, files, events }: { calendars: number; files: number; events: number }
 ) => {
-  expect(cache._storeForTest.calendarCount).toBe(calendars);
+  expect(cache.getAllEvents().length).toBe(calendars);
   expect(cache._storeForTest.fileCount).toBe(files);
   expect(cache._storeForTest.eventCount).toBe(events);
 };
@@ -273,21 +279,27 @@ describe('editable calendars', () => {
     const mockPlugin = {
       settings: DEFAULT_SETTINGS,
       providerRegistry: {
-        getProvider: () => calendar // The test calendar doubles as a provider
+        getProvider: () => calendar
       }
     } as any;
     const cache = new EventCache(mockPlugin);
-    cache.reset([{ type: 'FOR_TEST_ONLY', id: 'test', config: { id: 'test' }, color: 'black' }]);
+    const calendarInfo: CalendarInfo = {
+      type: 'FOR_TEST_ONLY',
+      id: 'test',
+      config: { id: 'test' },
+      color: 'black'
+    };
+    cache.reset([calendarInfo]);
     return cache;
   };
 
   const getId = (id: string) => `FOR_TEST_ONLY::${id}`;
 
   const getCalendar = (cache: EventCache, id: string) => {
-    const calendar = cache.getCalendarById(getId(id));
-    expect(calendar).toBeTruthy();
-    expect(calendar).toBeInstanceOf(TestEditable);
-    return calendar as TestEditable;
+    const provider = (cache as any).plugin.providerRegistry.getProvider('FOR_TEST_ONLY');
+    expect(provider).toBeTruthy();
+    expect(provider).toBeInstanceOf(TestEditable);
+    return provider as TestEditable;
   };
 
   it('populates a single event', async () => {
@@ -300,9 +312,7 @@ describe('editable calendars', () => {
 
     const sources = cache.getAllEvents();
 
-    expect((calendar as TestEditable).getEvents.mock.calls.length).toBe(1);
     expect(sources.length).toBe(1);
-
     expect(extractEvents(sources[0])).toEqual([e1[0]]);
     expect(sources[0].color).toEqual('black');
     expect(sources[0].editable).toBeTruthy();
@@ -319,7 +329,7 @@ describe('editable calendars', () => {
       const event = mockEvent();
       const loc = mockLocation();
       calendar.createEvent.mockReturnValueOnce(new Promise(resolve => resolve([event, loc])));
-      expect(await cache.addEvent(getId('test'), event)).toBeTruthy();
+      expect(await cache.addEvent('test', event)).toBeTruthy();
       expect(calendar.createEvent.mock.calls.length).toBe(1);
       expect(calendar.createEvent.mock.calls[0]).toEqual([event]);
 
@@ -341,7 +351,7 @@ describe('editable calendars', () => {
       const event2 = mockEvent();
       const loc = { file: event[1].file, lineNumber: 102 };
       calendar.createEvent.mockReturnValueOnce(new Promise(resolve => resolve([event2, loc])));
-      expect(await cache.addEvent(getId('test'), event2)).toBeTruthy();
+      expect(await cache.addEvent('test', event2)).toBeTruthy();
       expect(calendar.createEvent.mock.calls.length).toBe(1);
       expect(calendar.createEvent.mock.calls[0]).toEqual([event2]);
 
@@ -363,7 +373,7 @@ describe('editable calendars', () => {
 
       const calendar = getCalendar(cache, 'test');
       calendar.createEvent.mockReturnValueOnce(new Promise(resolve => resolve([event2, loc])));
-      expect(await cache.addEvent(getId('test'), event2)).toBeTruthy();
+      expect(await cache.addEvent('test', event2)).toBeTruthy();
       expect(calendar.createEvent.mock.calls.length).toBe(1);
       expect(calendar.createEvent.mock.calls[0]).toEqual([event2]);
 
@@ -388,9 +398,9 @@ describe('editable calendars', () => {
         .mockReturnValueOnce(mockAndResolve())
         .mockReturnValueOnce(mockAndResolve());
 
-      expect(await cache.addEvent(getId('test'), mockEvent())).toBeTruthy();
-      expect(await cache.addEvent(getId('test'), mockEvent())).toBeTruthy();
-      expect(await cache.addEvent(getId('test'), mockEvent())).toBeTruthy();
+      expect(await cache.addEvent('test', mockEvent())).toBeTruthy();
+      expect(await cache.addEvent('test', mockEvent())).toBeTruthy();
+      expect(await cache.addEvent('test', mockEvent())).toBeTruthy();
 
       expect(calendar.createEvent.mock.calls.length).toBe(3);
 

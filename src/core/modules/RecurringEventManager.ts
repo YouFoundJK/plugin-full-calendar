@@ -86,17 +86,16 @@ export class RecurringEventManager {
     if (!masterEventDetails) return [];
 
     const { calendarId, event: masterEvent } = masterEventDetails;
-    const calendar = this.cache.calendars.get(calendarId);
-    if (!calendar) return [];
 
-    // The local identifier is what's stored in the child's `recurringEventId` field.
-    const masterLocalIdentifier = calendar.getLocalIdentifier(masterEvent);
+    const masterLocalIdentifier = this.cache
+      .getGlobalIdentifier(masterEvent, calendarId)
+      ?.split('::')[2];
     if (!masterLocalIdentifier) return [];
 
     return this.cache.store
       .getAllEvents()
       .filter(
-        e => e.calendarId === calendar.id && e.event.recurringEventId === masterLocalIdentifier
+        e => e.calendarId === calendarId && e.event.recurringEventId === masterLocalIdentifier
       );
   }
 
@@ -145,22 +144,15 @@ export class RecurringEventManager {
    * If so, it opens a modal to ask the user how to proceed.
    * @returns `true` if the deletion was handled (modal opened), `false` otherwise.
    */
-  public async handleDelete(
-    eventId: string,
-    event: OFCEvent,
-    options?: { force?: boolean; instanceDate?: string }
-  ): Promise<boolean> {
+  public async handleDelete(eventId: string, event: OFCEvent, options?: any): Promise<boolean> {
     // Check if we are "undoing" an override. This is now the full operation.
     if (event.type === 'single' && event.recurringEventId) {
-      // THIS LOGIC IS CORRECT AND DOES NOT USE getInfoForEditableEvent.
       const eventDetails = this.cache.store.getEventDetails(eventId);
       if (!eventDetails) return false;
       const { calendarId } = eventDetails;
-      const calendar = this.cache.getCalendarById(calendarId);
-      if (!calendar) return false;
 
       const masterLocalIdentifier = event.recurringEventId;
-      const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
+      const globalMasterIdentifier = `${calendarId}::${masterLocalIdentifier}`;
       const masterSessionId = await this.cache.getSessionId(globalMasterIdentifier);
 
       if (masterSessionId) {
@@ -360,7 +352,7 @@ export class RecurringEventManager {
     }
 
     const [authoritativeOverrideEvent, overrideLocation] = await provider.createInstanceOverride(
-      masterHandle,
+      masterEvent,
       instanceDate,
       newEventData,
       (calendarInfo as any).config
@@ -439,11 +431,8 @@ export class RecurringEventManager {
     } else {
       // === USE CASE: UN-COMPLETING A TASK ===
       if (clickedEvent.type === 'single' && clickedEvent.recurringEventId) {
-        const calendar = this.cache.getCalendarById(calendarId);
-        if (!calendar) return;
-
         const masterLocalIdentifier = clickedEvent.recurringEventId;
-        const globalMasterIdentifier = `${calendar.id}::${masterLocalIdentifier}`;
+        const globalMasterIdentifier = `${calendarId}::${masterLocalIdentifier}`;
         const masterSessionId = await this.cache.getSessionId(globalMasterIdentifier);
 
         if (masterSessionId) {

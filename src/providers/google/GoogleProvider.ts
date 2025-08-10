@@ -200,16 +200,11 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   }
 
   async createInstanceOverride(
-    masterEventHandle: EventHandle,
+    masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent,
     config: GoogleProviderConfig
   ): Promise<[OFCEvent, EventLocation | null]> {
-    const masterEvent = this.plugin.cache.getEventById(masterEventHandle.persistentId);
-    if (!masterEvent) {
-      throw new Error('Master event not found in cache for override creation.');
-    }
-
     if (newEventData.allDay === false && masterEvent.allDay === false) {
       const originalStartTime = {
         dateTime: DateTime.fromISO(`${instanceDate}T${masterEvent.startTime}`).toISO(),

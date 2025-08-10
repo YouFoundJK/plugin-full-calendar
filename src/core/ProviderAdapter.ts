@@ -149,11 +149,12 @@ export class ProviderAdapter<TConfig> extends EditableCalendar {
     instanceDate: string,
     newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
-    const handle = this.provider.getEventHandle(masterEvent, this.config);
-    if (!handle) {
-      throw new Error('ProviderAdapter could not generate a handle for the master event.');
-    }
-    return this.provider.createInstanceOverride(handle, instanceDate, newEventData, this.config);
+    return this.provider.createInstanceOverride(
+      masterEvent,
+      instanceDate,
+      newEventData,
+      this.config
+    );
   }
 
   // Bulk operations for CategorizationManager.

@@ -27,7 +27,7 @@ export interface CalendarProvider<TConfig> {
   deleteEvent(handle: EventHandle, config: TConfig): Promise<void>;
 
   createInstanceOverride(
-    masterEventHandle: EventHandle,
+    masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent,
     config: TConfig

@@ -116,7 +116,7 @@ export default class EventCache {
     this._plugin = plugin;
     this.recurringEventManager = new RecurringEventManager(this);
     this.remoteUpdater = new RemoteCacheUpdater(this);
-    this.identifierManager = new IdentifierManager(new Map());
+    this.identifierManager = new IdentifierManager(this);
     this.localUpdater = new LocalCacheUpdater(this, this.identifierManager);
   }
 
@@ -146,7 +146,7 @@ export default class EventCache {
       this.calendars.set(runtimeId, { id: runtimeId, type: info.type } as any);
     });
     // Re-initialize IdentifierManager with the new map.
-    this.identifierManager = new IdentifierManager(this.calendars);
+    this.identifierManager = new IdentifierManager(this);
   }
 
   /**
@@ -289,12 +289,32 @@ export default class EventCache {
     }
     const { calendarId, location, event } = details;
 
+    // [DEBUG] Log details found in store
+    console.log(`[DEBUG] EventCache.getProviderForEvent:
+      - eventId: ${eventId}
+      - Found details in store:
+        - calendarId (runtime): ${calendarId}
+        - event title: ${event.title}`);
+
     const calendarInfo = this.calendarInfos.find(
       c => this.getCalendarById(calendarId)?.id === calendarId
     );
     if (!calendarInfo) {
+      // [DEBUG] Log failure to find calendarInfo
+      console.error(
+        `[DEBUG] EventCache.getProviderForEvent: FAILED to find calendar info.
+        - calendarId being searched: ${calendarId}
+        - All available calendarInfos:`,
+        JSON.parse(JSON.stringify(this.calendarInfos))
+      );
       throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
     }
+
+    // [DEBUG] Log found calendarInfo
+    console.log(
+      `[DEBUG] EventCache.getProviderForEvent: Successfully found calendarInfo:`,
+      JSON.parse(JSON.stringify(calendarInfo))
+    );
 
     const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
     if (!provider) {
@@ -367,7 +387,10 @@ export default class EventCache {
     options?: { silent?: boolean; instanceDate?: string; force?: boolean }
   ): Promise<void> {
     const { provider, config, location, event } = this.getProviderForEvent(eventId);
-    const calendarId = `${provider.type}::${config.id}`;
+    // HINT: Get the correct calendarId from the store and use it consistently.
+    const details = this.store.getEventDetails(eventId);
+    if (!details) throw new Error('Event details not found for deletion.');
+    const calendarId = details.calendarId;
 
     if (!provider.getCapabilities(config).canDelete) {
       throw new Error(`Calendar of type "${provider.type}" does not support deleting events.`);
@@ -448,17 +471,17 @@ export default class EventCache {
       location: oldLocation,
       event: oldEvent
     } = this.getProviderForEvent(eventId);
+    // HINT: Get the correct calendarId from the store and use it consistently.
+    const details = this.store.getEventDetails(eventId);
+    if (!details) throw new Error('Event details not found for update.');
+    const calendarId = details.calendarId;
 
     if (!provider.getCapabilities(config).canEdit) {
       throw new Error(`Calendar of type "${provider.type}" does not support editing events.`);
     }
 
     // Recurring logic stays the same, as it operates on event data, not providers.
-    await this.recurringEventManager.handleUpdate(
-      oldEvent,
-      newEvent,
-      `${provider.type}::${config.id}`
-    );
+    await this.recurringEventManager.handleUpdate(oldEvent, newEvent, calendarId);
 
     const handle = provider.getEventHandle(oldEvent, config);
     if (!handle) {
@@ -466,26 +489,26 @@ export default class EventCache {
     }
 
     // Remove old identifier
-    this.identifierManager.removeMapping(oldEvent, `${provider.type}::${config.id}`);
+    this.identifierManager.removeMapping(oldEvent, calendarId);
 
     const newLocation = await provider.updateEvent(handle, oldEvent, newEvent, config);
     this.store.delete(eventId);
     this.store.add({
       // We still need a calendar-like object for the store. A lightweight stub is fine.
-      calendar: { id: `${provider.type}::${config.id}`, type: provider.type } as any,
+      calendar: { id: calendarId, type: provider.type } as any,
       location: newLocation,
       id: eventId,
       event: newEvent
     });
 
     // Add new identifier
-    this.identifierManager.addMapping(newEvent, `${provider.type}::${config.id}`, eventId);
+    this.identifierManager.addMapping(newEvent, calendarId, eventId);
 
     // No need for `isDirty` check anymore, as we are no longer file-watcher dependent.
     // The provider model is explicit: after an update, the cache IS the source of truth.
     const cacheEntry = {
       id: eventId,
-      calendarId: `${provider.type}::${config.id}`,
+      calendarId: calendarId,
       event: newEvent
     };
 

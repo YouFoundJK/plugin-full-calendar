@@ -19,6 +19,7 @@ import { StoredEvent } from '../EventStore';
 import { EditableCalendar } from '../../calendars/EditableCalendar';
 import { OFCEvent, validateEvent } from '../../types';
 import { IdentifierManager } from './IdentifierManager';
+import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
 
 /**
  * Compares two arrays of OFCEvents to see if they are different.
@@ -84,62 +85,71 @@ export class LocalCacheUpdater {
       return;
     }
 
-    const calendars = [...this.cache.calendars.values()].flatMap(c =>
-      c instanceof EditableCalendar && c.containsPath(file.path) ? c : []
-    );
+    // Find all calendar sources that could be affected by this file change.
+    // @ts-ignore
+    const affectedSources = this.cache.calendarInfos.filter(info => {
+      if (info.type === 'local' || info.type === 'dailynote') {
+        const config = (info as any).config;
+        const directory =
+          info.type === 'local'
+            ? config.directory
+            : require('obsidian-daily-notes-interface').getDailyNoteSettings().folder;
+        return file.path.startsWith(directory);
+      }
+      return false;
+    });
 
-    if (calendars.length === 0) {
+    if (affectedSources.length === 0) {
       return;
     }
 
     const idsToRemove: string[] = [];
     const eventsToAdd: CacheEntry[] = [];
 
-    for (const calendar of calendars) {
+    for (const info of affectedSources) {
+      const provider = this.cache.plugin.providerRegistry.getProvider(info.type);
+      if (!provider) continue;
+
+      const runtimeId = getRuntimeCalendarId(info);
+      const calendar = this.cache.getCalendarById(runtimeId); // <-- Use the adapter instance
+      if (!calendar) continue;
+
       // @ts-ignore: Accessing private store for refactoring
-      const oldEvents = this.cache.store.getEventsInFileAndCalendar(file, calendar);
-      const newEvents = await calendar.getEventsInFile(file);
+      const oldEvents = this.cache.store.getEventsInCalendar(calendar);
+      const newEventResponses = await provider.getEvents((info as any).config);
 
       const oldEventsMapped = oldEvents.map(({ event }) => event);
-      const newEventsMapped = newEvents.map(([event, _]) => event);
-      const eventsHaveChanged = eventsAreDifferent(oldEventsMapped, newEventsMapped);
+      const newEventsMapped = newEventResponses.map(([event, _]) => event);
 
-      if (!eventsHaveChanged) {
-        return;
+      if (!eventsAreDifferent(oldEventsMapped, newEventsMapped)) {
+        continue;
       }
 
-      for (const oldStoredEvent of oldEvents) {
-        this.identifierManager.removeMapping(oldStoredEvent.event, calendar.id);
-      }
+      // If events have changed, perform a full diff for this source.
+      // @ts-ignore
+      const oldSessionIds = this.cache.store.deleteEventsInCalendar(calendar);
+      idsToRemove.push(...oldSessionIds);
 
-      const oldSessionIds = oldEvents.map((r: StoredEvent) => r.id);
-      oldSessionIds.forEach((id: string) => {
-        // @ts-ignore: Accessing private store for refactoring
-        this.cache.store.delete(id);
-      });
-
-      const newEventsWithIds = newEvents.map(([event, location]) => {
+      const newEventsWithIds = newEventResponses.map(([event, location]) => {
         const newSessionId = event.id || this.cache.generateId();
-        this.identifierManager.addMapping(event, calendar.id, newSessionId);
+        this.identifierManager.addMapping(event, runtimeId, newSessionId);
         return {
           event,
           id: newSessionId,
           location,
-          calendarId: calendar.id
+          calendarId: runtimeId
         };
       });
 
       newEventsWithIds.forEach(({ event, id, location }) => {
         // @ts-ignore: Accessing private store for refactoring
         this.cache.store.add({
-          calendar,
+          calendar, // <-- Use the full adapter instance here
           location,
           id,
           event
         });
       });
-
-      idsToRemove.push(...oldSessionIds);
       eventsToAdd.push(...newEventsWithIds);
     }
 

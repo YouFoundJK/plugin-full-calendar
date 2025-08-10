@@ -50,11 +50,14 @@ describe('RecurringEventManager', () => {
       addEvent: jest.fn(),
       flushUpdateQueue: jest.fn(),
       getSessionId: jest.fn(),
+      getGlobalIdentifier: jest.fn(
+        (event: OFCEvent, calendarId: string) => `${calendarId}::${event.title}`
+      ),
       store: {
         getEventDetails: jest.fn(),
-        getAllEvents: jest.fn()
+        getAllEvents: jest.fn().mockReturnValue([])
       },
-      calendars: new Map([['test-calendar', mockCalendar]]),
+      calendars: new Map([['test-calendar', mockCalendar as any]]),
       plugin: {
         settings: {
           calendarSources: []

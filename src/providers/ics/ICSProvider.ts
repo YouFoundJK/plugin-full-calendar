@@ -80,7 +80,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
   }
 
   async createInstanceOverride(
-    masterEventHandle: EventHandle,
+    masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent,
     config: ICSProviderConfig
