@@ -6,7 +6,7 @@ interface ICSConfigComponentProps {
   config: Partial<ICSProviderConfig>;
   onConfigChange: (newConfig: Partial<ICSProviderConfig>) => void;
   onSave: (finalConfig: ICSProviderConfig) => void;
-  onClose?: () => void; // Add prop
+  onClose: () => void; // Required prop
 }
 
 export const ICSConfigComponent: React.FC<ICSConfigComponentProps> = ({

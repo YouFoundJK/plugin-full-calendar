@@ -8,7 +8,7 @@ interface DailyNoteConfigComponentProps {
   onConfigChange: (newConfig: Partial<DailyNoteProviderConfig>) => void;
   context: ProviderConfigContext;
   onSave: (finalConfig: DailyNoteProviderConfig) => void;
-  onClose?: () => void; // Add prop
+  onClose: () => void; // Required prop
 }
 
 export const DailyNoteConfigComponent: React.FC<DailyNoteConfigComponentProps> = ({

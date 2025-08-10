@@ -52,13 +52,16 @@ export function sanitizeInitialView(settings: FullCalendarSettings): FullCalenda
  * Also normalizes special schemes like webcal -> https for ICS sources to match runtime.
  */
 export function getRuntimeCalendarId(info: CalendarInfo): string {
+  // @ts-ignore - The config object is not part of the base CalendarInfo type yet.
+  const config = (info as any).config || info;
+
   switch (info.type) {
     case 'local':
-      return `local::${(info as Extract<CalendarInfo, { type: 'local' }>).directory}`;
+      return `local::${config.directory}`;
     case 'dailynote':
-      return `dailynote::${(info as Extract<CalendarInfo, { type: 'dailynote' }>).heading}`;
+      return `dailynote::${config.heading}`;
     case 'ical': {
-      let url = (info as Extract<CalendarInfo, { type: 'ical' }>).url;
+      let url = config.url;
       // ICSCalendar converts webcal:// to https:// internally
       if (url.toLowerCase().startsWith('webcal')) {
         url = 'https' + url.slice('webcal'.length);
@@ -66,14 +69,15 @@ export function getRuntimeCalendarId(info: CalendarInfo): string {
       return `ical::${url}`;
     }
     case 'caldav':
-      return `caldav::${(info as Extract<CalendarInfo, { type: 'caldav' }>).url}`;
+      // The identifier for CalDAV is the specific homeUrl, not the server url.
+      return `caldav::${config.homeUrl}`;
     case 'google':
-      return `google::${(info as Extract<CalendarInfo, { type: 'google' }>).id}`;
+      return `google::${config.id}`;
     default:
       // FOR_TEST_ONLY and any unknown types fall back to their existing id if present
       // This keeps tests and future types working without breaking filtering.
       // @ts-ignore
-      return `${(info as any).type}::${(info as any).id ?? 'unknown'}`;
+      return `${(info as any).type}::${config.id ?? 'unknown'}`;
   }
 }
 

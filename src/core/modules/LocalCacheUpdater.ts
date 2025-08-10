@@ -59,13 +59,10 @@ export class LocalCacheUpdater {
    * @param path Path of the file that has been deleted.
    */
   public handleFileDelete(path: string): void {
-    // @ts-ignore: Accessing private store for refactoring
     const eventsToDelete = this.cache.store.getEventsInFile({ path });
     for (const storedEvent of eventsToDelete) {
-      const calendar = this.cache.calendars.get(storedEvent.calendarId);
-      if (calendar) {
-        this.identifierManager.removeMapping(storedEvent.event, calendar.id);
-      }
+      const calendarId = storedEvent.calendarId;
+      this.identifierManager.removeMapping(storedEvent.event, calendarId);
     }
 
     // @ts-ignore: Accessing private store for refactoring
@@ -81,6 +78,8 @@ export class LocalCacheUpdater {
    * @param file The file that has been updated in the Vault.
    */
   public async handleFileUpdate(file: TFile): Promise<void> {
+    // [DEBUG] log for file update trigger
+    console.log(`[DEBUG] LocalCacheUpdater.handleFileUpdate triggered for file:`, file.path);
     if (this.cache.isBulkUpdating) {
       return;
     }
@@ -142,9 +141,8 @@ export class LocalCacheUpdater {
       });
 
       newEventsWithIds.forEach(({ event, id, location }) => {
-        // @ts-ignore: Accessing private store for refactoring
         this.cache.store.add({
-          calendar, // <-- Use the full adapter instance here
+          calendarId: runtimeId,
           location,
           id,
           event
@@ -153,6 +151,11 @@ export class LocalCacheUpdater {
       eventsToAdd.push(...newEventsWithIds);
     }
 
+    console.log(`[DEBUG] LocalCacheUpdater.handleFileUpdate flushing changes:`, {
+      idsToRemove,
+      eventsToAdd: eventsToAdd.map(e => ({ id: e.id, title: e.event.title }))
+    });
+    this.identifierManager.buildMap(this.cache.store);
     this.cache.flushUpdateQueue(idsToRemove, eventsToAdd);
   }
 }

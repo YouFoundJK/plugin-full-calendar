@@ -75,9 +75,8 @@ export class RemoteCacheUpdater {
           }));
 
           newEvents.forEach(({ event, id, location }) => {
-            // @ts-ignore
             this.cache.store.add({
-              calendar, // <-- Use the full adapter instance here
+              calendarId: runtimeId,
               location,
               id,
               event

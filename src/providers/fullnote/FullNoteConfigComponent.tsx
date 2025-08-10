@@ -8,7 +8,7 @@ interface FullNoteConfigComponentProps {
   onConfigChange: (newConfig: Partial<FullNoteProviderConfig>) => void;
   context: ProviderConfigContext;
   onSave: (finalConfig: FullNoteProviderConfig) => void;
-  onClose?: () => void; // Added prop to match the updated contract
+  onClose: () => void; // Required prop
 }
 
 export const FullNoteConfigComponent: React.FC<FullNoteConfigComponentProps> = ({

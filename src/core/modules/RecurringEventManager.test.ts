@@ -9,6 +9,7 @@ import EventCache from '../EventCache';
 import { EditableCalendar } from '../../calendars/EditableCalendar';
 import { CalendarInfo } from '../../types';
 import { DEFAULT_SETTINGS } from '../../types/settings';
+import FullCalendarPlugin from '../../main';
 
 // Mock Obsidian
 jest.mock(
@@ -34,6 +35,11 @@ describe('RecurringEventManager', () => {
   let mockCache: jest.Mocked<EventCache>;
   let mockCalendar: jest.Mocked<EditableCalendar>;
 
+  const mockPlugin = {
+    app: {},
+    settings: DEFAULT_SETTINGS
+  } as unknown as FullCalendarPlugin;
+
   beforeEach(() => {
     // Create mock calendar
     mockCalendar = {
@@ -58,17 +64,10 @@ describe('RecurringEventManager', () => {
         getAllEvents: jest.fn().mockReturnValue([])
       },
       calendars: new Map([['test-calendar', mockCalendar as any]]),
-      plugin: {
-        settings: {
-          calendarSources: []
-        },
-        providerRegistry: {
-          getProvider: jest.fn()
-        }
-      }
+      plugin: mockPlugin
     } as unknown as jest.Mocked<EventCache>;
 
-    manager = new RecurringEventManager(mockCache);
+    manager = new RecurringEventManager(mockCache, mockPlugin);
   });
 
   describe('toggleRecurringInstance - undoing completed task', () => {

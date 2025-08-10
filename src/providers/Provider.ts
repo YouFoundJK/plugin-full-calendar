@@ -38,6 +38,6 @@ export interface CalendarProvider<TConfig> {
     onConfigChange: (newConfig: Partial<TConfig>) => void;
     context: ProviderConfigContext;
     onSave: (finalConfig: TConfig | TConfig[]) => void; // Allow saving multiple configs
-    onClose?: () => void; // Add this optional prop
+    onClose: () => void; // Make mandatory for consistent contract
   }>;
 }
