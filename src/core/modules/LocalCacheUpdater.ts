@@ -69,13 +69,21 @@ export class LocalCacheUpdater {
    * @param path Path of the file that has been deleted.
    */
   public handleFileDelete(path: string): void {
-    const eventsToDelete = this.cache.store.getEventsInFile({ path });
-    for (const storedEvent of eventsToDelete) {
-      const calendarId = storedEvent.calendarId;
-      this.identifierManager.removeMapping(storedEvent.event, calendarId);
+    // Get all events that were in the deleted file.
+    const eventsInFile = this.cache.store.getEventsInFile({ path });
+    if (eventsInFile.length === 0) {
+      return; // No events were in this file, nothing to do.
     }
 
-    this.cache.flushUpdateQueue([...this.cache.store.deleteEventsAtPath(path)], []);
+    const idsToRemove: string[] = [];
+    for (const storedEvent of eventsInFile) {
+      idsToRemove.push(storedEvent.id);
+      this.identifierManager.removeMapping(storedEvent.event, storedEvent.calendarId);
+    }
+
+    // Delete all events at the path from the store and flush the changes to the UI.
+    this.cache.store.deleteEventsAtPath(path);
+    this.cache.flushUpdateQueue(idsToRemove, []);
   }
 
   /**
@@ -87,57 +95,68 @@ export class LocalCacheUpdater {
    * @param file The file that has been updated in the Vault.
    */
   public async handleFileUpdate(file: TFile): Promise<void> {
-    // [DEBUG] log for file update trigger
-    console.log(`[DEBUG] LocalCacheUpdater.handleFileUpdate triggered for file:`, file.path);
     if (this.cache.isBulkUpdating) {
       return;
     }
 
-    // Find all calendar sources that could be affected by this file change.
-    // @ts-ignore
-    const affectedSources = this.cache.calendarInfos.filter(info => {
-      if (info.type === 'local' || info.type === 'dailynote') {
-        const config = (info as any).config;
-        const directory =
-          info.type === 'local'
-            ? config.directory
-            : require('obsidian-daily-notes-interface').getDailyNoteSettings().folder;
-        return file.path.startsWith(directory);
-      }
-      return false;
+    // Find all *local* calendar sources.
+    const localCalendarInfos = (this.cache as any).calendarInfos.filter((info: any) => {
+      const provider = this.cache.plugin.providerRegistry.getProvider(info.type);
+      return provider && !provider.isRemote;
     });
 
-    if (affectedSources.length === 0) {
+    if (localCalendarInfos.length === 0) {
       return;
     }
 
-    const idsToRemove: string[] = [];
-    const eventsToAdd: CacheEntry[] = [];
+    const idsToRemove = new Set<string>();
+    const eventsToAdd = []; // <-- CHANGE THIS LINE
+    let hasChanges = false;
 
-    for (const info of affectedSources) {
+    for (const info of localCalendarInfos) {
       const provider = this.cache.plugin.providerRegistry.getProvider(info.type);
-      if (!provider) continue;
-
+      // We already filtered for providers that have getEventsInFile
+      if (!provider || !provider.getEventsInFile) {
+        continue;
+      }
+      const config = (info as any).config;
       const runtimeId = getRuntimeCalendarId(info);
-      const calendar = this.cache.getCalendarById(runtimeId); // <-- Use the adapter instance
-      if (!calendar) continue;
 
-      // @ts-ignore: Accessing private store for refactoring
-      const oldEvents = this.cache.store.getEventsInCalendar(runtimeId);
-      const newEventResponses = await provider.getEvents((info as any).config);
+      // Check if the file is relevant to this calendar source.
+      let isRelevant = false;
+      if (info.type === 'local' && config.directory) {
+        isRelevant = file.path.startsWith(config.directory + '/');
+      } else if (info.type === 'dailynote') {
+        const { folder } = require('obsidian-daily-notes-interface').getDailyNoteSettings();
+        isRelevant = folder ? file.path.startsWith(folder + '/') : true;
+      }
 
-      const oldEventsMapped = oldEvents.map(({ event }) => event);
-      const newEventsMapped = newEventResponses.map(([event, _]) => event);
-
-      if (!eventsAreDifferent(oldEventsMapped, newEventsMapped)) {
+      if (!isRelevant) {
         continue;
       }
 
-      // If events have changed, perform a full diff for this source.
-      // @ts-ignore
-      const oldSessionIds = this.cache.store.deleteEventsInCalendar(runtimeId);
-      idsToRemove.push(...oldSessionIds);
+      // 1. Get old state for this specific file and calendar.
+      const oldEventsForFile = this.cache.store.getEventsInFileAndCalendar(file, runtimeId);
+      const oldEventsMapped = oldEventsForFile.map(e => e.event);
 
+      // 2. Get new state for this specific file.
+      const newEventResponses = await provider.getEventsInFile(file, config);
+      const newEventsMapped = newEventResponses.map(([event, _]) => event);
+
+      // 3. Compare.
+      if (!eventsAreDifferent(oldEventsMapped, newEventsMapped)) {
+        continue; // No changes in this file for this source.
+      }
+
+      hasChanges = true;
+
+      // 4. Apply diff: accumulate events to remove.
+      oldEventsForFile.forEach(oldEvent => {
+        idsToRemove.add(oldEvent.id);
+        this.identifierManager.removeMapping(oldEvent.event, oldEvent.calendarId);
+      });
+
+      // 5. Apply diff: accumulate events to add.
       const newEventsWithIds = newEventResponses.map(([event, location]) => {
         const newSessionId = event.id || this.cache.generateId();
         this.identifierManager.addMapping(event, runtimeId, newSessionId);
@@ -149,22 +168,34 @@ export class LocalCacheUpdater {
         };
       });
 
-      newEventsWithIds.forEach(({ event, id, location }) => {
-        this.cache.store.add({
-          calendarId: runtimeId,
-          location,
-          id,
-          event
-        });
-      });
       eventsToAdd.push(...newEventsWithIds);
     }
 
-    console.log(`[DEBUG] LocalCacheUpdater.handleFileUpdate flushing changes:`, {
-      idsToRemove,
-      eventsToAdd: eventsToAdd.map(e => ({ id: e.id, title: e.event.title }))
+    if (!hasChanges) {
+      return;
+    }
+
+    // First, remove all old events from the store.
+    idsToRemove.forEach(id => this.cache.store.delete(id));
+
+    // Then, add all new events.
+    eventsToAdd.forEach(({ event, id, location, calendarId }) => {
+      this.cache.store.add({
+        calendarId,
+        location,
+        id,
+        event
+      });
     });
-    this.identifierManager.buildMap(this.cache.store);
-    this.cache.flushUpdateQueue(idsToRemove, eventsToAdd);
+
+    // Finally, flush the batched changes to the UI.
+    // vvv REPLACE THE CALL to flushUpdateQueue with this block vvv
+    const cacheEntriesToAdd: CacheEntry[] = eventsToAdd.map(({ event, id, calendarId }) => ({
+      event,
+      id,
+      calendarId
+    }));
+    this.cache.flushUpdateQueue([...idsToRemove], cacheEntriesToAdd);
+    // ^^^ END OF REPLACEMENT ^^^
   }
 }

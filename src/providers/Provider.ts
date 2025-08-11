@@ -10,12 +10,17 @@ export interface CalendarProviderCapabilities {
 export interface CalendarProvider<TConfig> {
   readonly type: string;
   readonly displayName: string;
+  readonly isRemote: boolean;
 
   getCapabilities(config: TConfig): CalendarProviderCapabilities;
 
   getEventHandle(event: OFCEvent, config: TConfig): EventHandle | null;
 
   getEvents(config: TConfig): Promise<[OFCEvent, EventLocation | null][]>;
+  getEventsInFile?(
+    file: import('obsidian').TFile,
+    config: TConfig
+  ): Promise<[OFCEvent, EventLocation | null][]>;
 
   createEvent(event: OFCEvent, config: TConfig): Promise<[OFCEvent, EventLocation | null]>;
   updateEvent(

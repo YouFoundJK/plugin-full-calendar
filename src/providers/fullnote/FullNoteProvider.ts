@@ -68,6 +68,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
   readonly type = 'local';
   readonly displayName = 'Local Notes';
+  readonly isRemote = false;
 
   constructor(app: ObsidianInterface, plugin: FullCalendarPlugin) {
     this.app = app;
@@ -84,7 +85,8 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return { persistentId: path };
   }
 
-  private async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
+  public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
+    // <-- CHANGED FROM private TO public
     const metadata = this.app.getMetadata(file);
     if (!metadata?.frontmatter) {
       return [];

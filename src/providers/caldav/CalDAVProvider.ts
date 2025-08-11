@@ -14,6 +14,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
 
   readonly type = 'caldav';
   readonly displayName = 'CalDAV';
+  readonly isRemote = true;
 
   constructor(settings: FullCalendarSettings) {
     this.settings = settings;

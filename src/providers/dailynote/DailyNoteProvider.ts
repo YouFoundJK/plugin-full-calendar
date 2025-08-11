@@ -37,6 +37,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
   readonly type = 'dailynote';
   readonly displayName = 'Daily Note';
+  readonly isRemote = false;
 
   constructor(app: ObsidianInterface, plugin: FullCalendarPlugin) {
     appHasDailyNotesPluginLoaded();
@@ -60,7 +61,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     return null;
   }
 
-  private async getEventsInFile(
+  public async getEventsInFile(
     file: TFile,
     config: DailyNoteProviderConfig
   ): Promise<EditableEventResponse[]> {

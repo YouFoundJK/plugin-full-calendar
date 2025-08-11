@@ -50,6 +50,7 @@ const makeCache = (events: OFCEvent[]) => {
   const mockProvider: CalendarProvider<any> = {
     type: 'FOR_TEST_ONLY',
     displayName: 'Test Provider',
+    isRemote: false, // <-- ADD THIS LINE
     getEvents: async () => events.map(e => [e, null] as [OFCEvent, null]),
     getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
     getEventHandle: (e: OFCEvent) => ({ persistentId: e.title }),
@@ -79,8 +80,7 @@ const makeCache = (events: OFCEvent[]) => {
 };
 
 const extractEvents = (source: OFCEventSource): OFCEvent[] =>
-  source.events.map(({ event }: CachedEvent) => event); // <-- ADD `: CachedEvent`
-
+  source.events.map(({ event }: CachedEvent) => event);
 async function assertFailed(func: () => Promise<any>, message: RegExp) {
   try {
     await func();
@@ -115,6 +115,7 @@ describe('event cache with readonly calendar', () => {
     const mockProvider: CalendarProvider<any> = {
       type: 'FOR_TEST_ONLY',
       displayName: 'Test Provider',
+      isRemote: false, // <-- ADD THIS LINE
       getEvents: async (config: any) =>
         (config.id === 'cal1' ? events1 : events2).map(e => [e, null]),
       getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
@@ -205,6 +206,7 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
   const calendar: jest.Mocked<CalendarProvider<any>> = {
     type: 'FOR_TEST_ONLY',
     displayName: 'Editable Test Provider',
+    isRemote: false, // <-- ADD THIS LINE
     getEvents: jest.fn(async (config: any) => events),
     getCapabilities: jest.fn((config: any) => ({
       canCreate: true,

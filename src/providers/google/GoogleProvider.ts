@@ -16,6 +16,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
 
   readonly type = 'google';
   readonly displayName = 'Google Calendar';
+  readonly isRemote = true;
 
   constructor(plugin: FullCalendarPlugin) {
     this.plugin = plugin;

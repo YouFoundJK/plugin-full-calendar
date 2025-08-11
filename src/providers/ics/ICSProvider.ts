@@ -17,6 +17,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
 
   readonly type = 'ical';
   readonly displayName = 'Remote Calendar (ICS)';
+  readonly isRemote = true;
 
   constructor(settings: FullCalendarSettings) {
     this.settings = settings;
