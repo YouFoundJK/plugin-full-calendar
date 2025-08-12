@@ -27,9 +27,7 @@ export function renderGoogleSettings(
           text: 'Check here ',
           href: 'https://youfoundjk.github.io/plugin-full-calendar/calendars/gcal'
         });
-        fragment.appendText(
-          "on how to set it up. NOTE: Enable it as it won't work otherwise (Google has to verify the app before they allow it)."
-        );
+        fragment.appendText('on how to set it up.');
         return fragment;
       })()
     )

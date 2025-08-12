@@ -153,11 +153,6 @@ export function addCalendarButton(
             }
           };
 
-          // Add provider-specific props
-          if (providerType === 'google') {
-            componentProps.plugin = plugin;
-          }
-
           return createElement(ConfigComponent, componentProps);
         });
         modal.open();
@@ -233,83 +228,3 @@ export class FullCalendarSettingTab extends PluginSettingTab {
 
 // ensureCalendarIds and sanitizeInitialView moved to ./utils to avoid loading this heavy
 // settings module (and React) during plugin startup. Keep imports above.
-
-class SelectGoogleCalendarsModal extends Modal {
-  plugin: FullCalendarPlugin;
-  calendars: any[];
-  onSubmit: (selected: CalendarInfo[]) => void;
-  googleCalendarSelection: Set<string>;
-
-  constructor(
-    plugin: FullCalendarPlugin,
-    calendars: any[],
-    onSubmit: (selected: CalendarInfo[]) => void
-  ) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.calendars = calendars;
-    this.onSubmit = onSubmit;
-    this.googleCalendarSelection = new Set();
-  }
-
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.createEl('h2', { text: 'Select Google Calendars to Add' });
-
-    const existingGoogleCalendarIds = new Set(
-      this.plugin.settings.calendarSources
-        .filter(s => s.type === 'google')
-        .map(s => (s as Extract<CalendarInfo, { type: 'google' }>).id)
-    );
-
-    this.calendars.forEach(cal => {
-      if (!cal.id || existingGoogleCalendarIds.has(cal.id)) {
-        return;
-      }
-
-      new Setting(contentEl)
-        .setName(cal.summary || cal.id)
-        .setDesc(cal.description || '')
-        .addToggle(toggle =>
-          toggle.onChange(value => {
-            if (value) {
-              this.googleCalendarSelection.add(cal.id);
-            } else {
-              this.googleCalendarSelection.delete(cal.id);
-            }
-          })
-        );
-    });
-
-    new Setting(contentEl).addButton(button =>
-      button
-        .setButtonText('Add Selected Calendars')
-        .setCta()
-        .onClick(() => {
-          const existingColors = this.plugin.settings.calendarSources.map(s => s.color);
-
-          const selectedCalendars = this.calendars
-            .filter(cal => this.googleCalendarSelection.has(cal.id))
-            .map(cal => {
-              const newColor = getNextColor(existingColors);
-              existingColors.push(newColor);
-
-              const newCalendar: Extract<CalendarInfo, { type: 'google' }> = {
-                type: 'google',
-                id: cal.id,
-                name: cal.summary,
-                color: cal.backgroundColor || newColor
-              };
-              return newCalendar;
-            });
-
-          this.onSubmit(selectedCalendars);
-          this.close();
-        })
-    );
-  }
-
-  onClose() {
-    this.contentEl.empty();
-  }
-}

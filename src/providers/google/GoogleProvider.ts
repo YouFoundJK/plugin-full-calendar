@@ -11,6 +11,10 @@ import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { GoogleProviderConfig } from './typesGCal';
 
+import { GoogleConfigComponent } from './GoogleConfigComponent';
+import { fetchGoogleCalendarList } from './api';
+import * as React from 'react';
+
 export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   private plugin: FullCalendarPlugin;
 
@@ -237,7 +241,30 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   }
 
   getConfigurationComponent(): FCReactComponent<any> {
-    return () => null;
+    const WrapperComponent: React.FC<any> = props => {
+      // Prepare the props for the "dumb" component here.
+      const isAuthenticated = !!this.plugin.settings.googleAuth?.refreshToken;
+
+      const getAvailableCalendars = async (): Promise<any[]> => {
+        // This function now lives inside the provider, where it has access to the plugin.
+        const allCalendars = await fetchGoogleCalendarList(this.plugin);
+        const existingGoogleIds = new Set(
+          this.plugin.settings.calendarSources
+            .filter(s => s.type === 'google')
+            .map(s => (s as any).config.id)
+        );
+        return allCalendars.filter(cal => !existingGoogleIds.has(cal.id));
+      };
+
+      const componentProps = {
+        ...props,
+        isAuthenticated,
+        getAvailableCalendars
+      };
+
+      return React.createElement(GoogleConfigComponent, componentProps);
+    };
+    return WrapperComponent;
   }
 
   async revalidate(config: GoogleProviderConfig): Promise<void> {
