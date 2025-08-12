@@ -1,9 +1,9 @@
 import { request } from 'obsidian';
 import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation } from '../../types';
-import { enhanceEvent } from '../../calendars/parsing/categoryParser';
-import { getEventsFromICS } from '../../calendars/parsing/ics';
-import { convertEvent } from '../../calendars/utils/Timezone';
+import { enhanceEvent } from '../../utils/categoryParser';
+import { getEventsFromICS } from './ics';
+import { convertEvent } from '../../utils/Timezone';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';

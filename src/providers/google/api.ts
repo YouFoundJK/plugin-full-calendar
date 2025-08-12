@@ -4,7 +4,7 @@
  * @license See LICENSE.md
  */
 
-import FullCalendarPlugin from '../../../main';
+import FullCalendarPlugin from '../../main';
 import { makeAuthenticatedRequest } from './request';
 
 const CALENDAR_LIST_URL = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';

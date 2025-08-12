@@ -6,7 +6,7 @@
 
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
-import { startGoogleLogin } from '../../../calendars/parsing/google/auth';
+import { startGoogleLogin } from '../../../providers/google/auth';
 
 export function renderGoogleSettings(
   containerEl: HTMLElement,

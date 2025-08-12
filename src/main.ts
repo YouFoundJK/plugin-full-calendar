@@ -22,13 +22,13 @@ import { FullNoteProvider } from './providers/fullnote/FullNoteProvider';
 import { DailyNoteProvider } from './providers/dailynote/DailyNoteProvider';
 import { ObsidianIO } from './ObsidianAdapter';
 import { renderCalendar } from './ui/calendar';
-import { manageTimezone } from './calendars/utils/Timezone';
+import { manageTimezone } from './utils/Timezone';
 import { Notice, Plugin, TFile, App } from 'obsidian';
 // Heavy calendar classes are loaded lazily in the initializer map below
 import { CategorizationManager } from './core/CategorizationManager';
 import type { CalendarView } from './ui/view';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
-import { ProviderRegistry } from './core/ProviderRegistry';
+import { ProviderRegistry } from './providers/ProviderRegistry';
 import { ICSProvider } from './providers/ics/ICSProvider';
 import { CalDAVProvider } from './providers/caldav/CalDAVProvider';
 import { GoogleProvider } from './providers/google/GoogleProvider';
@@ -226,7 +226,7 @@ export default class FullCalendarPlugin extends Plugin {
 
     this.registerObsidianProtocolHandler('full-calendar-google-auth', async params => {
       if (params.code && params.state) {
-        const { exchangeCodeForToken } = await import('./calendars/parsing/google/auth');
+        const { exchangeCodeForToken } = await import('./providers/google/auth');
         await exchangeCodeForToken(params.code, params.state, this);
         if (this.settingsTab) {
           await this.settingsTab.display();

@@ -4,18 +4,14 @@ import { TFile, TFolder, normalizePath } from 'obsidian';
 
 import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
-import { constructTitle, enhanceEvent, parseTitle } from '../../calendars/parsing/categoryParser';
-import {
-  newFrontmatter,
-  modifyFrontmatterString,
-  replaceFrontmatter
-} from '../../calendars/frontmatter';
+import { constructTitle, enhanceEvent, parseTitle } from '../../utils/categoryParser';
+import { newFrontmatter, modifyFrontmatterString, replaceFrontmatter } from './frontmatter';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { FullNoteProviderConfig } from './typesLocal';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { FullNoteConfigComponent } from './FullNoteConfigComponent';
-import { convertEvent } from '../../calendars/utils/Timezone';
+import { convertEvent } from '../../utils/Timezone';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 

@@ -12,9 +12,9 @@
 
 import { CachedMetadata, HeadingCache, ListItemCache, Loc, Pos } from 'obsidian';
 
-import { OFCEvent, validateEvent } from '../../../types';
-import { FullCalendarSettings } from '../../../types/settings';
-import { constructTitle, parseTitle } from '../categoryParser';
+import { OFCEvent, validateEvent } from '../../types';
+import { FullCalendarSettings } from '../../types/settings';
+import { constructTitle, parseTitle } from '../../utils/categoryParser';
 
 // TYPES AND CONSTANTS
 // =================================================================================================

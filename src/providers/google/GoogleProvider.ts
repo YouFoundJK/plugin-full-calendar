@@ -2,10 +2,10 @@ import { DateTime } from 'luxon';
 import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
-import { enhanceEvent } from '../../calendars/parsing/categoryParser';
-import { convertEvent } from '../../calendars/utils/Timezone';
-import { fromGoogleEvent, toGoogleEvent } from '../../calendars/parsing/google/parser_gcal';
-import { makeAuthenticatedRequest } from '../../calendars/parsing/google/request';
+import { enhanceEvent } from '../../utils/categoryParser';
+import { convertEvent } from '../../utils/Timezone';
+import { fromGoogleEvent, toGoogleEvent } from './parser_gcal';
+import { makeAuthenticatedRequest } from './request';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';

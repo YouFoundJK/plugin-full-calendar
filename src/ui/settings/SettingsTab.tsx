@@ -33,11 +33,8 @@ import { createElement, createRef } from 'react';
 import { getNextColor } from '../colors';
 import { CalendarSettingsRef } from './components/CalendarSetting';
 import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
-import { importCalendars } from '../../calendars/parsing/caldav/import';
-import { fetchGoogleCalendarList } from '../../calendars/parsing/google/api';
-import { makeDefaultPartialCalendarSource, CalendarInfo } from '../../types/calendar_settings';
-import { ProviderRegistry } from '../../core/ProviderRegistry';
-import { ProviderConfigContext } from '../../providers/typesProvider';
+import { CalendarInfo } from '../../types/calendar_settings';
+import { ProviderRegistry } from '../../providers/ProviderRegistry';
 
 // Import the new section renderers
 import { renderGoogleSettings } from './sections/renderGoogle';

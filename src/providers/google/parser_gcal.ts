@@ -11,8 +11,8 @@
  */
 
 import { DateTime } from 'luxon';
-import { OFCEvent } from '../../../types';
-import { constructTitle } from '../categoryParser';
+import { OFCEvent } from '../../types';
+import { constructTitle } from '../../utils/categoryParser';
 import { rrulestr } from 'rrule';
 
 /**

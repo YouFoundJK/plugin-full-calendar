@@ -11,7 +11,7 @@
  */
 
 import { Platform, requestUrl, Notice } from 'obsidian';
-import FullCalendarPlugin from '../../../main';
+import FullCalendarPlugin from '../../main';
 import * as http from 'http';
 import * as url from 'url';
 

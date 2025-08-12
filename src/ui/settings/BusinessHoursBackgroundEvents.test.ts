@@ -3,8 +3,8 @@
  * @brief Tests for Business Hours and Background Events functionality
  */
 
-import { parseEvent } from './types/schema';
-import { DEFAULT_SETTINGS } from './types/settings';
+import { parseEvent } from '../../types/schema';
+import { DEFAULT_SETTINGS } from '../../types/settings';
 
 describe('Business Hours and Background Events', () => {
   describe('Business Hours Configuration', () => {

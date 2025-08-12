@@ -10,8 +10,8 @@
  * @license See LICENSE.md
  */
 
-import { OFCEvent } from '../../types';
-import { FullCalendarSettings } from '../../types/settings';
+import { OFCEvent } from '../types';
+import { FullCalendarSettings } from '../types/settings';
 
 /**
  * Parses a full title string into its category, sub-category, and clean title components.

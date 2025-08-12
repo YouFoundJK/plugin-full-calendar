@@ -11,7 +11,7 @@
  */
 
 import { requestUrl } from 'obsidian';
-import FullCalendarPlugin from '../../../main';
+import FullCalendarPlugin from '../../main';
 import { getGoogleAuthToken } from './auth';
 
 /**

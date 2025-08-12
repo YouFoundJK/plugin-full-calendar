@@ -16,11 +16,7 @@ import * as React from 'react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { CalendarInfo, OFCEvent } from '../../../types';
 import { AutocompleteInput } from '../../components/forms/AutocompleteInput';
-import {
-  constructTitle,
-  parseTitle,
-  parseSubcategoryTitle
-} from '../../../calendars/parsing/categoryParser';
+import { constructTitle, parseTitle, parseSubcategoryTitle } from '../../../utils/categoryParser';
 
 interface DayChoiceProps {
   code: string;

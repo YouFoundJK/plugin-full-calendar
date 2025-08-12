@@ -12,7 +12,7 @@
 import { App, PluginSettingTab } from 'obsidian';
 import type FullCalendarPlugin from '../../main';
 import type { FullCalendarSettingTab } from './SettingsTab';
-import type { ProviderRegistry } from '../../core/ProviderRegistry';
+import type { ProviderRegistry } from '../../providers/ProviderRegistry';
 
 export class LazySettingsTab extends PluginSettingTab {
   private actualTab?: FullCalendarSettingTab;

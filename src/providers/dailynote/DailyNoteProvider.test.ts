@@ -1,6 +1,6 @@
 import { DEFAULT_SETTINGS } from '../../types/settings';
-import { getInlineEventFromLine } from '../../calendars/parsing/dailynote/parser_dailyN';
-import { enhanceEvent } from '../../calendars/parsing/categoryParser';
+import { getInlineEventFromLine } from './parser_dailyN';
+import { enhanceEvent } from '../../utils/categoryParser';
 import { OFCEvent } from '../../types';
 
 // ...existing test logic adapted to use DailyNoteProvider...

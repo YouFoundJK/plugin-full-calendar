@@ -15,14 +15,14 @@ import {
   getListsUnderHeading,
   modifyListItem,
   addToHeading
-} from '../../calendars/parsing/dailynote/parser_dailyN';
+} from './parser_dailyN';
 
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation } from '../../types';
-import { constructTitle, enhanceEvent, parseTitle } from '../../calendars/parsing/categoryParser';
-import { convertEvent } from '../../calendars/utils/Timezone';
+import { constructTitle, enhanceEvent, parseTitle } from '../../utils/categoryParser';
+import { convertEvent } from '../../utils/Timezone';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';

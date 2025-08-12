@@ -608,7 +608,7 @@ export class CalendarView extends ItemView {
       eventClick: async info => {
         try {
           if (info.jsEvent.getModifierState('Control') || info.jsEvent.getModifierState('Meta')) {
-            const { openFileForEvent } = await import('../actions/eventActions');
+            const { openFileForEvent } = await import('../utils/eventActions');
             await openFileForEvent(this.plugin.cache, this.app, info.event.id);
           } else {
             const { launchEditModal } = await import('./event_modal');
@@ -752,7 +752,7 @@ export class CalendarView extends ItemView {
         }
 
         if (this.plugin.cache.isEventEditable(e.id)) {
-          const tasks = await import('../actions/tasks');
+          const tasks = await import('../utils/tasks');
           if (!tasks.isTask(event)) {
             menu.addItem(item =>
               item.setTitle('Turn into task').onClick(async () => {
@@ -772,7 +772,7 @@ export class CalendarView extends ItemView {
               if (!this.plugin.cache) {
                 return;
               }
-              import('../actions/eventActions').then(({ openFileForEvent }) =>
+              import('../utils/eventActions').then(({ openFileForEvent }) =>
                 openFileForEvent(this.plugin.cache, this.app, e.id)
               );
             })
@@ -811,7 +811,7 @@ export class CalendarView extends ItemView {
           event.type === 'recurring' || event.type === 'rrule' || event.recurringEventId;
 
         if (!isRecurringSystem) {
-          const { toggleTask } = await import('../actions/tasks');
+          const { toggleTask } = await import('../utils/tasks');
           await this.plugin.cache.updateEventWithId(eventId, toggleTask(event, isDone));
           return true;
         }

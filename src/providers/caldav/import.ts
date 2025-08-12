@@ -16,8 +16,8 @@ import dav from 'dav';
 
 import Color from 'color';
 import * as transport from './transport';
-import { Authentication, CalDAVSource } from '../../../types';
-import { generateCalendarId } from '../../../types/calendar_settings';
+import { Authentication, CalDAVSource } from '../../types';
+import { generateCalendarId } from '../../types/calendar_settings';
 
 export async function importCalendars(
   auth: Authentication,

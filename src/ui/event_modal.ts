@@ -26,7 +26,7 @@ import { OFCEvent } from '../types';
 import FullCalendarPlugin from '../main';
 import { ConfirmModal } from './modals/ConfirmModal';
 import { EditEvent } from './modals/components/EditEvent';
-import { openFileForEvent } from '../actions/eventActions';
+import { openFileForEvent } from '../utils/eventActions';
 import { CalendarInfo } from '../types';
 import { getRuntimeCalendarId } from './settings/utilsSettings';
 

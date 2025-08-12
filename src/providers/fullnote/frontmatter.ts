@@ -14,7 +14,7 @@
  * @license See LICENSE.md
  */
 
-import { OFCEvent } from '../types';
+import { OFCEvent } from '../../types';
 import { parseYaml } from 'obsidian';
 
 const FRONTMATTER_SEPARATOR = '---';
