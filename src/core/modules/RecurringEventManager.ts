@@ -348,6 +348,8 @@ export class RecurringEventManager {
       newEventData,
       (calendarInfo as any).config
     );
+
+    const enhancedEvent = this.cache.enhancer.enhance(authoritativeOverrideEvent);
     const calendar = this.cache.getCalendarById(calendarId); // Keep this for adding to store
     if (!calendar) {
       throw new Error('Could not find calendar stub in cache.');
@@ -359,12 +361,12 @@ export class RecurringEventManager {
       calendarId: calendarId,
       location: overrideLocation,
       id: overrideId,
-      event: authoritativeOverrideEvent
+      event: enhancedEvent
     });
     this.cache.updateQueue.toAdd.set(overrideId, {
       id: overrideId,
       calendarId: calendarId,
-      event: authoritativeOverrideEvent
+      event: enhancedEvent
     });
     this.cache.isBulkUpdating = true; // Prevent immediate flushes
 

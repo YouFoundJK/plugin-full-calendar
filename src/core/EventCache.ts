@@ -48,6 +48,7 @@ import { IdentifierManager } from './modules/IdentifierManager';
 import { CalendarInfo, OFCEvent, validateEvent } from '../types';
 import { getRuntimeCalendarId } from '../ui/settings/utilsSettings';
 import { CalendarProvider } from '../providers/Provider';
+import { EventEnhancer } from './EventEnhancer';
 
 export type CacheEntry = { event: OFCEvent; id: string; calendarId: string };
 
@@ -107,8 +108,11 @@ export default class EventCache {
 
   public isBulkUpdating = false;
 
+  public enhancer: EventEnhancer; // Make public for modules
+
   constructor(plugin: FullCalendarPlugin) {
     this._plugin = plugin;
+    this.enhancer = new EventEnhancer(this.plugin.settings);
     this.recurringEventManager = new RecurringEventManager(this, this._plugin); // MODIFY THIS LINE
     this.remoteUpdater = new RemoteCacheUpdater(this);
     this.identifierManager = new IdentifierManager(this);
@@ -170,7 +174,8 @@ export default class EventCache {
         const results = await provider.getEvents((info as any).config);
         const runtimeId = getRuntimeCalendarId(info);
 
-        results.forEach(([event, location]) => {
+        results.forEach(([rawEvent, location]) => {
+          const event = this.enhancer.enhance(rawEvent);
           const id = event.id || this.generateId();
           this._store.add({
             calendarId: runtimeId,
@@ -314,7 +319,8 @@ export default class EventCache {
       throw new Error(`Cannot add event to a read-only calendar`);
     }
 
-    const [finalEvent, newLocation] = await provider.createEvent(event, config);
+    const eventForStorage = this.enhancer.prepareForStorage(event);
+    const [finalEvent, newLocation] = await provider.createEvent(eventForStorage, config);
     const id = this._store.add({
       calendarId: runtimeId,
       location: newLocation,
@@ -439,7 +445,14 @@ export default class EventCache {
 
     this.identifierManager.removeMapping(oldEvent, calendarId);
 
-    const newLocation = await provider.updateEvent(handle, oldEvent, newEvent, config);
+    const preparedOldEvent = this.enhancer.prepareForStorage(oldEvent);
+    const preparedNewEvent = this.enhancer.prepareForStorage(newEvent);
+    const newLocation = await provider.updateEvent(
+      handle,
+      preparedOldEvent,
+      preparedNewEvent,
+      config
+    );
     this.store.delete(eventId);
     this.store.add({
       calendarId: calendarId,
@@ -503,10 +516,11 @@ export default class EventCache {
     instanceDate: string,
     newEventData: OFCEvent
   ): Promise<void> {
+    const eventForStorage = this.enhancer.prepareForStorage(newEventData);
     await this.recurringEventManager.modifyRecurringInstance(
       masterEventId,
       instanceDate,
-      newEventData
+      eventForStorage
     );
     this.flushUpdateQueue([], []);
   }

@@ -14,7 +14,6 @@ import { CachedMetadata, HeadingCache, ListItemCache, Loc, Pos } from 'obsidian'
 
 import { OFCEvent, validateEvent } from '../../types';
 import { FullCalendarSettings } from '../../types/settings';
-import { constructTitle, parseTitle } from '../../utils/categoryParser';
 
 // TYPES AND CONSTANTS
 // =================================================================================================
@@ -97,7 +96,7 @@ const makeListItem = (
   settings: FullCalendarSettings
 ): string => {
   if (data.type !== 'single') throw new Error('Can only pass in single event.');
-  const { completed, title, category, subCategory } = data;
+  const { completed, title } = data;
   const checkbox = (() => {
     if (completed !== null && completed !== undefined) {
       return `[${completed ? 'x' : ' '}]`;
@@ -105,9 +104,7 @@ const makeListItem = (
     return null;
   })();
 
-  const titleToWrite = settings.enableAdvancedCategorization
-    ? constructTitle(category, subCategory, title)
-    : title;
+  const titleToWrite = title;
 
   const attrs: Partial<OFCEvent> = { ...data };
   delete attrs['completed'];

@@ -3,7 +3,8 @@
  * @brief Tests for categoryParser utility functions
  */
 
-import { constructTitle, parseTitle, parseSubcategoryTitle, enhanceEvent } from './categoryParser';
+import { constructTitle, parseTitle, parseSubcategoryTitle } from './categoryParser';
+import { EventEnhancer } from '../core/EventEnhancer';
 import { OFCEvent } from '../types';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from '../types/settings';
 
@@ -92,7 +93,7 @@ describe('parseTitle', () => {
   });
 });
 
-describe('enhanceEvent', () => {
+describe('EventEnhancer.enhance', () => {
   const mockEvent: OFCEvent = {
     title: 'Work - Important - Meeting',
     type: 'single',
@@ -107,7 +108,8 @@ describe('enhanceEvent', () => {
       enableAdvancedCategorization: true
     };
 
-    const result = enhanceEvent(mockEvent, settings);
+    const enhancer = new EventEnhancer(settings);
+    const result = enhancer.enhance(mockEvent);
     expect(result).toEqual({
       ...mockEvent,
       title: 'Meeting',
@@ -122,7 +124,8 @@ describe('enhanceEvent', () => {
       enableAdvancedCategorization: false
     };
 
-    const result = enhanceEvent(mockEvent, settings);
+    const enhancer = new EventEnhancer(settings);
+    const result = enhancer.enhance(mockEvent);
     expect(result).toEqual(mockEvent);
   });
 });

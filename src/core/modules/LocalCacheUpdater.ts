@@ -110,7 +110,7 @@ export class LocalCacheUpdater {
     }
 
     const idsToRemove = new Set<string>();
-    const eventsToAdd = []; // <-- CHANGE THIS LINE
+    const eventsToAdd = [];
     let hasChanges = false;
 
     for (const info of localCalendarInfos) {
@@ -139,12 +139,14 @@ export class LocalCacheUpdater {
       const oldEventsForFile = this.cache.store.getEventsInFileAndCalendar(file, runtimeId);
       const oldEventsMapped = oldEventsForFile.map(e => e.event);
 
-      // 2. Get new state for this specific file.
+      // 2. Get new state from the file AND ENHANCE IT IMMEDIATELY.
       const newEventResponses = await provider.getEventsInFile(file, config);
-      const newEventsMapped = newEventResponses.map(([event, _]) => event);
+      const newEnhancedEvents = newEventResponses.map(([event, _]) =>
+        this.cache.enhancer.enhance(event)
+      );
 
-      // 3. Compare.
-      if (!eventsAreDifferent(oldEventsMapped, newEventsMapped)) {
+      // 3. Compare structured vs structured data.
+      if (!eventsAreDifferent(oldEventsMapped, newEnhancedEvents)) {
         continue; // No changes in this file for this source.
       }
 
@@ -156,12 +158,13 @@ export class LocalCacheUpdater {
         this.identifierManager.removeMapping(oldEvent.event, oldEvent.calendarId);
       });
 
-      // 5. Apply diff: accumulate events to add.
-      const newEventsWithIds = newEventResponses.map(([event, location]) => {
-        const newSessionId = event.id || this.cache.generateId();
-        this.identifierManager.addMapping(event, runtimeId, newSessionId);
+      // 5. Apply diff: accumulate events to add using the events we already enhanced.
+      const newEventsWithIds = newEnhancedEvents.map((enhancedEvent, index) => {
+        const location = newEventResponses[index][1];
+        const newSessionId = enhancedEvent.id || this.cache.generateId();
+        this.identifierManager.addMapping(enhancedEvent, runtimeId, newSessionId);
         return {
-          event,
+          event: enhancedEvent,
           id: newSessionId,
           location,
           calendarId: runtimeId
@@ -189,13 +192,11 @@ export class LocalCacheUpdater {
     });
 
     // Finally, flush the batched changes to the UI.
-    // vvv REPLACE THE CALL to flushUpdateQueue with this block vvv
     const cacheEntriesToAdd: CacheEntry[] = eventsToAdd.map(({ event, id, calendarId }) => ({
       event,
       id,
       calendarId
     }));
     this.cache.flushUpdateQueue([...idsToRemove], cacheEntriesToAdd);
-    // ^^^ END OF REPLACEMENT ^^^
   }
 }

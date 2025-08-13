@@ -4,7 +4,7 @@ import { TFile, TFolder, normalizePath } from 'obsidian';
 
 import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
-import { constructTitle, enhanceEvent, parseTitle } from '../../utils/categoryParser';
+import { constructTitle } from '../../utils/categoryParser';
 import { newFrontmatter, modifyFrontmatterString, replaceFrontmatter } from './frontmatter';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
@@ -98,7 +98,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
       return [];
     }
 
-    let event = enhanceEvent(rawEvent, this.plugin.settings);
+    let event = rawEvent; // use raw event; no enhancement here
     const displayTimezone = this.plugin.settings.displayTimezone;
 
     if (event.timezone && displayTimezone && event.timezone !== displayTimezone) {
@@ -139,13 +139,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
       eventToWrite = convertEvent(event, displayTimezone, eventToWrite.timezone);
     }
 
-    const titleToWrite = this.plugin.settings.enableAdvancedCategorization
-      ? constructTitle(eventToWrite.category, eventToWrite.subCategory, eventToWrite.title)
-      : eventToWrite.title;
-
-    const eventWithFullTitle = { ...eventToWrite, title: titleToWrite };
-    delete (eventWithFullTitle as Partial<OFCEvent>).category;
-    delete (eventWithFullTitle as Partial<OFCEvent>).subCategory;
+    // Deleted title reconstruction and category field stripping
 
     const path = normalizePath(
       `${config.directory}/${filenameForEvent(eventToWrite, this.plugin.settings)}`
@@ -154,14 +148,14 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
       throw new Error(`Event at ${path} already exists.`);
     }
 
-    const newPage = replaceFrontmatter('', newFrontmatter(eventWithFullTitle));
+    const newPage = replaceFrontmatter('', newFrontmatter(eventToWrite)); // write as-is
     const file = await this.app.create(path, newPage);
     return [event, { file, lineNumber: undefined }];
   }
 
   async updateEvent(
     handle: EventHandle,
-    oldEventData: OFCEvent, // <-- ADD THIS PARAMETER (it will be unused)
+    oldEventData: OFCEvent,
     newEventData: OFCEvent,
     config: FullNoteProviderConfig
   ): Promise<EventLocation | null> {
@@ -183,13 +177,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     }
     eventToWrite.timezone = fileTimezone;
 
-    const titleToWrite = this.plugin.settings.enableAdvancedCategorization
-      ? constructTitle(eventToWrite.category, eventToWrite.subCategory, eventToWrite.title)
-      : eventToWrite.title;
-
-    const eventWithFullTitle = { ...eventToWrite, title: titleToWrite };
-    delete (eventWithFullTitle as Partial<OFCEvent>).category;
-    delete (eventWithFullTitle as Partial<OFCEvent>).subCategory;
+    // Deleted title reconstruction and category field stripping
 
     const newPath = normalizePath(
       `${config.directory}/${filenameForEvent(eventToWrite, this.plugin.settings)}`
@@ -198,7 +186,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
       await this.app.rename(file, newPath);
     }
 
-    await this.app.rewrite(file, page => modifyFrontmatterString(page, eventWithFullTitle));
+    await this.app.rewrite(file, page => modifyFrontmatterString(page, eventToWrite)); // write as-is
     return { file: { path: newPath }, lineNumber: undefined };
   }
 
@@ -209,93 +197,6 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
       throw new Error(`File ${path} not found.`);
     }
     return this.app.delete(file);
-  }
-
-  async bulkAddCategories(
-    getCategory: (event: OFCEvent, location: EventLocation) => string | undefined,
-    force: boolean,
-    config: FullNoteProviderConfig
-  ): Promise<void> {
-    const allFiles = await (async () => {
-      const eventFolder = this.app.getAbstractFileByPath(config.directory);
-      if (!(eventFolder instanceof TFolder)) return [];
-      // This needs a recursive walk, which was missing in the legacy class too. Correcting it here.
-      const files: TFile[] = [];
-      const walk = async (folder: TFolder) => {
-        for (const child of folder.children) {
-          if (child instanceof TFile) {
-            files.push(child);
-          } else if (child instanceof TFolder) {
-            await walk(child);
-          }
-        }
-      };
-      await walk(eventFolder);
-      return files;
-    })();
-
-    const processor = async (file: TFile) => {
-      await this.plugin.app.fileManager.processFrontMatter(file, frontmatter => {
-        const event = validateEvent(frontmatter);
-        if (!event || !event.title) return;
-
-        const { category: existingCategory, title: cleanTitle } = parseTitle(event.title);
-        if (existingCategory && !force) return;
-
-        const newCategory = getCategory(event, { file, lineNumber: undefined });
-        if (!newCategory) return;
-
-        const titleToCategorize = force ? event.title : cleanTitle;
-        frontmatter.title = constructTitle(newCategory, undefined, titleToCategorize);
-      });
-    };
-
-    await this.plugin.nonBlockingProcess(
-      allFiles,
-      processor,
-      `Categorizing notes in ${config.directory}`
-    );
-  }
-
-  async bulkRemoveCategories(
-    knownCategories: Set<string>,
-    config: FullNoteProviderConfig
-  ): Promise<void> {
-    const categoriesToRemove = new Set(knownCategories);
-    const dir = config.directory.split('/').pop();
-    if (dir) categoriesToRemove.add(dir);
-
-    const allFiles = await (async () => {
-      const eventFolder = this.app.getAbstractFileByPath(config.directory);
-      if (!(eventFolder instanceof TFolder)) return [];
-      const files: TFile[] = [];
-      const walk = async (folder: TFolder) => {
-        for (const child of folder.children) {
-          if (child instanceof TFile) {
-            files.push(child);
-          } else if (child instanceof TFolder) {
-            await walk(child);
-          }
-        }
-      };
-      await walk(eventFolder);
-      return files;
-    })();
-
-    const processor = async (file: TFile) => {
-      await this.plugin.app.fileManager.processFrontMatter(file, frontmatter => {
-        if (!frontmatter.title) return;
-        const { category, title: cleanTitle } = parseTitle(frontmatter.title);
-        if (category && categoriesToRemove.has(category)) {
-          frontmatter.title = cleanTitle;
-        }
-      });
-    };
-    await this.plugin.nonBlockingProcess(
-      allFiles,
-      processor,
-      `De-categorizing notes in ${config.directory}`
-    );
   }
 
   async createInstanceOverride(

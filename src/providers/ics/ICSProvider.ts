@@ -1,7 +1,6 @@
 import { request } from 'obsidian';
 import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation } from '../../types';
-import { enhanceEvent } from '../../utils/categoryParser';
 import { getEventsFromICS } from './ics';
 import { convertEvent } from '../../utils/Timezone';
 
@@ -46,7 +45,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
       if (!displayTimezone) return [];
 
       return getEventsFromICS(response).map(rawEvent => {
-        const event = enhanceEvent(rawEvent, this.settings);
+        const event = rawEvent;
         let translatedEvent = event;
         if (event.timezone && event.timezone !== displayTimezone) {
           translatedEvent = convertEvent(event, event.timezone, displayTimezone);

@@ -55,7 +55,7 @@ export class RemoteCacheUpdater {
       const provider = this.cache.plugin.providerRegistry.getProvider(info.type)!;
       const config = (info as any).config;
       const runtimeId = getRuntimeCalendarId(info);
-      const calendar = this.cache.getCalendarById(runtimeId); // <-- Use the adapter instance
+      const calendar = this.cache.getCalendarById(runtimeId);
       if (!calendar) {
         // This should not happen if the cache is initialized correctly.
         return Promise.reject(`Calendar with runtime ID ${runtimeId} not found in cache.`);
@@ -65,12 +65,15 @@ export class RemoteCacheUpdater {
         .getEvents(config)
         .then(events => {
           this.cache.store.deleteEventsInCalendar(runtimeId);
-          const newEvents = events.map(([event, location]) => ({
-            event,
-            id: event.id || this.cache.generateId(),
-            location,
-            calendarId: runtimeId
-          }));
+          const newEvents = events.map(([rawEvent, location]) => {
+            const event = this.cache.enhancer.enhance(rawEvent); // Enhance event
+            return {
+              event,
+              id: event.id || this.cache.generateId(),
+              location,
+              calendarId: runtimeId
+            };
+          });
 
           newEvents.forEach(({ event, id, location }) => {
             this.cache.store.add({

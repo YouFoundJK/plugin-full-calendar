@@ -2,7 +2,6 @@ import { DateTime } from 'luxon';
 import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
-import { enhanceEvent } from '../../utils/categoryParser';
 import { convertEvent } from '../../utils/Timezone';
 import { fromGoogleEvent, toGoogleEvent } from './parser_gcal';
 import { makeAuthenticatedRequest } from './request';
@@ -78,7 +77,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
         .map((gEvent: any) => {
           let rawEvent = fromGoogleEvent(gEvent);
           if (!rawEvent) return null;
-          let parsedEvent = enhanceEvent(rawEvent, this.plugin.settings);
+          let parsedEvent = rawEvent;
 
           if (
             (parsedEvent.type === 'rrule' || parsedEvent.type === 'recurring') &&
@@ -120,7 +119,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     const rawEvent = fromGoogleEvent(createdGEvent);
     if (!rawEvent) throw new Error('Could not parse event from Google API after creation.');
 
-    return [enhanceEvent(rawEvent, this.plugin.settings), null];
+    return [rawEvent, null];
   }
 
   async updateEvent(
@@ -233,7 +232,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
       if (!rawEvent) {
         throw new Error('Could not parse Google API response after creating instance override.');
       }
-      return [enhanceEvent(rawEvent, this.plugin.settings), null];
+      return [rawEvent, null];
     }
     throw new Error(
       'Modifying a single instance of an all-day recurring event is not yet supported for Google Calendars.'

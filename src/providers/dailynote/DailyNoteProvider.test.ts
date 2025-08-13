@@ -1,6 +1,6 @@
 import { DEFAULT_SETTINGS } from '../../types/settings';
 import { getInlineEventFromLine } from './parser_dailyN';
-import { enhanceEvent } from '../../utils/categoryParser';
+import { EventEnhancer } from '../../core/EventEnhancer';
 import { OFCEvent } from '../../types';
 
 // ...existing test logic adapted to use DailyNoteProvider...
@@ -44,7 +44,8 @@ describe('DailyNoteCalendar', () => {
         date: '2023-01-01',
         endDate: null
       };
-      const result = enhanceEvent(rawEvent, settingsWithoutCategory);
+      const enhancer = new EventEnhancer(settingsWithoutCategory);
+      const result = enhancer.enhance(rawEvent);
       expect(result.title).toBe('Work - Review PR');
       expect(result.category).toBeUndefined();
     });
@@ -57,7 +58,8 @@ describe('DailyNoteCalendar', () => {
         date: '2023-01-01',
         endDate: null
       };
-      const result = enhanceEvent(rawEvent, settingsWithCategory);
+      const enhancer = new EventEnhancer(settingsWithCategory);
+      const result = enhancer.enhance(rawEvent);
       expect(result.title).toBe('Review PR');
       expect(result.category).toBe('Work');
     });
@@ -70,7 +72,8 @@ describe('DailyNoteCalendar', () => {
         date: '2023-01-01',
         endDate: null
       };
-      const result = enhanceEvent(rawEvent, settingsWithCategory);
+      const enhancer = new EventEnhancer(settingsWithCategory);
+      const result = enhancer.enhance(rawEvent);
       expect(result.title).toBe('Clean garage');
       expect(result.category).toBe('Chores');
       expect(result.subCategory).toBe('Home');
@@ -84,7 +87,8 @@ describe('DailyNoteCalendar', () => {
         date: '2023-01-01',
         endDate: null
       };
-      const result = enhanceEvent(rawEvent, settingsWithCategory);
+      const enhancer = new EventEnhancer(settingsWithCategory);
+      const result = enhancer.enhance(rawEvent);
       expect(result.title).toBe('A task with a time');
       expect(result.category).toBeUndefined();
       expect(result.subCategory).toBeUndefined();

@@ -19,9 +19,8 @@ import {
 
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
-import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation } from '../../types';
-import { constructTitle, enhanceEvent, parseTitle } from '../../utils/categoryParser';
+import { constructTitle } from '../../utils/categoryParser';
 import { convertEvent } from '../../utils/Timezone';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
@@ -75,20 +74,10 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     const displayTimezone =
       this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     return inlineEvents.map(({ event: rawEvent, lineNumber }) => {
-      console.log(
-        '[DEBUG] DailyNoteProvider: Event BEFORE enhancement',
-        JSON.parse(JSON.stringify(rawEvent))
-      );
-
-      const event = enhanceEvent(rawEvent, this.plugin.settings);
-
-      console.log(
-        '[DEBUG] DailyNoteProvider: Event AFTER enhancement',
-        JSON.parse(JSON.stringify(event))
-      );
+      // Use raw event; enhancement is handled elsewhere now
+      const event = rawEvent;
 
       let sourceTimezone: string;
-
       if (this.plugin.settings.dailyNotesTimezone === 'local') {
         sourceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       } else {
@@ -244,125 +233,6 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       lines.splice(lineNumber, 1);
       return lines.join('\n');
     });
-  }
-
-  async bulkAddCategories(
-    getCategory: (event: OFCEvent, location: EventLocation) => string | undefined,
-    force: boolean,
-    config: DailyNoteProviderConfig
-  ): Promise<void> {
-    const allNotes = Object.values(getAllDailyNotes());
-
-    const processor = async (file: TFile) => {
-      await this.app.rewrite(file, content => {
-        const metadata = this.app.getMetadata(file);
-        if (!metadata) return content;
-
-        const listItems = getListsUnderHeading(config.heading, metadata);
-        if (listItems.length === 0) return content;
-
-        const lines = content.split('\n');
-        let modified = false;
-
-        for (const item of listItems) {
-          const lineNumber = item.position.start.line;
-          const line = lines[lineNumber];
-          const existingEvent = getInlineEventFromLine(line, {});
-          if (!existingEvent) continue;
-
-          const enhanced = enhanceEvent(existingEvent, {
-            ...this.plugin.settings,
-            enableAdvancedCategorization: true
-          });
-
-          if (enhanced.category && !force) continue;
-
-          const newCategory = getCategory(existingEvent, { file, lineNumber });
-          if (!newCategory) continue;
-
-          const rawTitle = line
-            .replace(/^(\s*)\-\s+(\[(.)\]\s+)?/, '')
-            .replace(/\s*\[.*?\]\s*/g, '')
-            .trim();
-          const titleToCategorize = force ? rawTitle : existingEvent.title;
-          const newFullTitle = constructTitle(newCategory, undefined, titleToCategorize);
-
-          const {
-            category: finalCategory,
-            subCategory: finalSubCategory,
-            title: finalTitle
-          } = parseTitle(newFullTitle);
-
-          const eventWithNewCategory: OFCEvent = {
-            ...existingEvent,
-            title: finalTitle,
-            category: finalCategory,
-            subCategory: finalSubCategory
-          };
-
-          const newLine = modifyListItem(line, eventWithNewCategory, this.plugin.settings);
-          if (newLine) {
-            lines[lineNumber] = newLine;
-            modified = true;
-          }
-        }
-        return modified ? lines.join('\n') : content;
-      });
-    };
-
-    await this.plugin.nonBlockingProcess(allNotes, processor, 'Categorizing daily notes');
-  }
-
-  async bulkRemoveCategories(
-    knownCategories: Set<string>,
-    config: DailyNoteProviderConfig
-  ): Promise<void> {
-    const categoriesToRemove = new Set(knownCategories);
-    const { folder } = getDailyNoteSettings();
-    const parentDir = folder
-      ?.split('/')
-      .filter(s => s)
-      .pop();
-    if (parentDir) categoriesToRemove.add(parentDir);
-
-    const allNotes = Object.values(getAllDailyNotes());
-    const removalSettings: FullCalendarSettings = {
-      ...this.plugin.settings,
-      enableAdvancedCategorization: true
-    };
-
-    const processor = async (file: TFile) => {
-      await this.app.rewrite(file, content => {
-        const metadata = this.app.getMetadata(file);
-        if (!metadata) return content;
-
-        const listItems = getListsUnderHeading(config.heading, metadata);
-        if (listItems.length === 0) return content;
-
-        const lines = content.split('\n');
-        let modified = false;
-
-        for (const item of listItems) {
-          const lineNumber = item.position.start.line;
-          const line = lines[lineNumber];
-          const eventWithCategory = getInlineEventFromLine(line, {});
-          if (!eventWithCategory) continue;
-
-          const event = enhanceEvent(eventWithCategory, removalSettings);
-          if (!event?.category || !categoriesToRemove.has(event.category)) continue;
-
-          const eventWithoutCategory: OFCEvent = { ...event, category: undefined };
-          const newLine = modifyListItem(line, eventWithoutCategory, this.plugin.settings);
-
-          if (newLine && newLine !== line) {
-            lines[lineNumber] = newLine;
-            modified = true;
-          }
-        }
-        return modified ? lines.join('\n') : content;
-      });
-    };
-    await this.plugin.nonBlockingProcess(allNotes, processor, 'De-categorizing daily notes');
   }
 
   getConfigurationComponent(): FCReactComponent<any> {

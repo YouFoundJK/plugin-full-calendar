@@ -1,7 +1,6 @@
 import dav from 'dav';
 import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation } from '../../types';
-import { enhanceEvent } from '../../utils/categoryParser';
 import { getEventsFromICS } from '../ics/ics';
 import * as transport from './transport';
 import { convertEvent } from '../../utils/Timezone';
@@ -53,7 +52,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
         .filter(vevent => vevent.calendarData)
         .flatMap(vevent => getEventsFromICS(vevent.calendarData))
         .map(rawEvent => {
-          const event = enhanceEvent(rawEvent, this.settings);
+          const event = rawEvent;
           let translatedEvent = event;
           if (event.timezone && event.timezone !== displayTimezone) {
             translatedEvent = convertEvent(event, event.timezone, displayTimezone);

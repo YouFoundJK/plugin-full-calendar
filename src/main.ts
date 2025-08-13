@@ -25,7 +25,6 @@ import { renderCalendar } from './ui/calendar';
 import { manageTimezone } from './utils/Timezone';
 import { Notice, Plugin, TFile, App } from 'obsidian';
 // Heavy calendar classes are loaded lazily in the initializer map below
-import { CategorizationManager } from './core/CategorizationManager';
 import type { CalendarView } from './ui/view';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
 import { ProviderRegistry } from './providers/ProviderRegistry';
@@ -39,7 +38,6 @@ const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';
 
 export default class FullCalendarPlugin extends Plugin {
   settings: FullCalendarSettings = DEFAULT_SETTINGS;
-  categorizationManager!: CategorizationManager;
   isMobile: boolean = false;
   settingsTab?: LazySettingsTab;
   providerRegistry!: ProviderRegistry;
@@ -91,7 +89,6 @@ export default class FullCalendarPlugin extends Plugin {
     this.providerRegistry.register(new CalDAVProvider(this.settings));
     this.providerRegistry.register(new GoogleProvider(this));
 
-    this.categorizationManager = new CategorizationManager(this);
     await this.loadSettings();
     await manageTimezone(this);
 
@@ -303,6 +300,8 @@ export default class FullCalendarPlugin extends Plugin {
     const { updated, sources } = ensureCalendarIds(loadedSettings.calendarSources);
     this.settings = { ...loadedSettings, calendarSources: sources };
 
+    this.cache.enhancer.updateSettings(this.settings);
+
     if (updated) {
       new Notice('Full Calendar has updated your calendar settings to a new format.');
       await this.saveData(this.settings);
@@ -316,6 +315,7 @@ export default class FullCalendarPlugin extends Plugin {
    */
   async saveSettings() {
     await this.saveData(this.settings);
+    this.cache.enhancer.updateSettings(this.settings);
     // If calendarSources changed, rebuild cache; otherwise use lightweight resync
     // This is a heuristic: callers that mutate calendarSources will trigger reset via Settings UI.
     if (this.cache && this.cache.initialized) {
