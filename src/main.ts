@@ -111,7 +111,7 @@ export default class FullCalendarPlugin extends Plugin {
     this.registerEvent(
       this.app.vault.on('delete', file => {
         if (file instanceof TFile) {
-          // console.debug('FILE DELETED', file.path);
+          console.log(`[4] vault.on('delete') listener FIRED for path: ${file.path}`); // ADD THIS
           this.cache.deleteEventsAtPath(file.path);
         }
       })

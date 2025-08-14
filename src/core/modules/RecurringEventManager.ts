@@ -167,21 +167,11 @@ export class RecurringEventManager {
       const globalMasterIdentifier = `${calendarId}::${masterLocalIdentifier}`;
 
       // [DEBUG] logs for troubleshooting recurring event deletion
-      console.log('[DEBUG] RecurringEventManager.handleDelete: Attempting to find master event.');
-      console.log('[DEBUG] Child event calendarId (runtime):', calendarId);
-      console.log('[DEBUG] Master event local identifier:', masterLocalIdentifier);
-      console.log('[DEBUG] Constructed globalMasterIdentifier:', globalMasterIdentifier);
 
       const masterSessionId = await this.cache.getSessionId(globalMasterIdentifier);
 
-      console.log('[DEBUG] Result of getSessionId (masterSessionId):', masterSessionId);
-
       if (masterSessionId) {
         // [DEBUG] inspect store before processEvent
-        console.log(
-          '[DEBUG] RecurringEventManager.handleDelete: Found masterSessionId:',
-          masterSessionId
-        );
         await this.cache.processEvent(
           masterSessionId,
           e => {

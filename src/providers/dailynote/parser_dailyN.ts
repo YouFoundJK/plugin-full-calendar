@@ -148,8 +148,6 @@ export const getInlineEventFromLine = (
   const titleWithExtraSpaces = text.replace(listRegex, '').replace(fieldRegex, '');
   const rawTitle = titleWithExtraSpaces.replace(/\s+/g, ' ').trim();
 
-  console.log('[DEBUG] getInlineEventFromLine raw data:', { rawTitle, attrs, globals });
-
   if (!rawTitle && !hasInlineFields) {
     return null;
   }

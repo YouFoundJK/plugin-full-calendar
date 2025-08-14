@@ -352,6 +352,7 @@ export default class EventCache {
     eventId: string,
     options?: { silent?: boolean; instanceDate?: string; force?: boolean }
   ): Promise<void> {
+    console.log(`[1] EventCache.deleteEvent START for eventId: ${eventId}`); // ADD THIS
     const { provider, config, event } = this.getProviderForEvent(eventId);
     const details = this.store.getEventDetails(eventId);
     if (!details) throw new Error('Event details not found for deletion.');
@@ -400,10 +401,17 @@ export default class EventCache {
         `Could not generate a persistent handle for the event being deleted. Proceeding with deletion from cache only.`
       );
     } else {
+      console.log(
+        `[2] EventCache.deleteEvent -> Calling provider.deleteEvent for eventId: ${eventId}`
+      ); // ADD THIS
       await provider.deleteEvent(handle, config);
+      console.log(
+        `[5] EventCache.deleteEvent -> Returned from provider.deleteEvent for eventId: ${eventId}`
+      ); // ADD THIS
     }
 
     this.identifierManager.removeMapping(event, calendarId);
+    console.log(`[6] EventCache.deleteEvent -> Deleting event from _store: ${eventId}`); // ADD THIS
     this._store.delete(eventId);
 
     if (options?.silent) {
