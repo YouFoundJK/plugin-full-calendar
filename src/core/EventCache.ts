@@ -323,94 +323,98 @@ export default class EventCache {
       return false;
     }
 
-    // Step 2: Optimistic state mutation
-    const optimisticId = this.generateId();
-    // The event from the UI is already structured. It can be added to the cache directly
-    // for the optimistic update. We assign it our new session ID.
-    const optimisticEvent = { ...event, id: optimisticId };
-
-    this._store.add({
-      calendarId: runtimeId,
-      location: null, // Location is unknown until provider returns
-      id: optimisticId,
-      event: optimisticEvent
-    });
-    this.identifierManager.addMapping(optimisticEvent, runtimeId, optimisticId);
-
-    // Step 3: Immediate UI update
-    const optimisticCacheEntry: CacheEntry = {
-      event: optimisticEvent,
-      id: optimisticId,
-      calendarId: runtimeId
-    };
-
-    if (options?.silent) {
-      this.isBulkUpdating = true;
-      this.updateQueue.toAdd.set(optimisticId, optimisticCacheEntry);
-    } else {
-      this.flushUpdateQueue([], [optimisticCacheEntry]);
-    }
-
-    // Step 4: Asynchronous I/O with rollback
+    this.isBulkUpdating = true;
     try {
-      // Prepare the event for the provider (e.g., combine title and category)
-      const eventForStorage = this.enhancer.prepareForStorage(event);
-      const [finalEvent, newLocation] = await provider.createEvent(eventForStorage, config);
+      // Step 2: Optimistic state mutation
+      const optimisticId = this.generateId();
+      // The event from the UI is already structured. It can be added to the cache directly
+      // for the optimistic update. We assign it our new session ID.
+      const optimisticEvent = { ...event, id: optimisticId };
 
-      // SUCCESS: The I/O succeeded. Update the store with the authoritative event.
-      // The `finalEvent` from the provider is the source of truth. It needs to be enhanced
-      // back into the structured format for the cache.
-      const authoritativeEvent = this.enhancer.enhance(finalEvent);
-      const eventWithSessionId = { ...authoritativeEvent, id: optimisticId };
-
-      // Replace the optimistic event in the store with the authoritative one.
-      this._store.delete(optimisticId);
       this._store.add({
         calendarId: runtimeId,
-        location: newLocation,
+        location: null, // Location is unknown until provider returns
         id: optimisticId,
-        event: eventWithSessionId
+        event: optimisticEvent
       });
+      this.identifierManager.addMapping(optimisticEvent, runtimeId, optimisticId);
 
-      // Update ID mapping with the new authoritative data.
-      this.identifierManager.removeMapping(optimisticEvent, runtimeId);
-      this.identifierManager.addMapping(eventWithSessionId, runtimeId, optimisticId);
-
-      // Flush this "correction" to the UI. The event is already visible,
-      // but this updates its data to the final state from the server.
-      const finalCacheEntry: CacheEntry = {
-        event: eventWithSessionId,
+      // Step 3: Immediate UI update
+      const optimisticCacheEntry: CacheEntry = {
+        event: optimisticEvent,
         id: optimisticId,
         calendarId: runtimeId
       };
-      // For a non-silent update, we must issue a remove and an add to force a re-render.
-      this.flushUpdateQueue([optimisticId], [finalCacheEntry]);
-      // For a silent update, we can just overwrite the event in the queue.
+
       if (options?.silent) {
-        this.updateQueue.toRemove.delete(optimisticId); // Ensure it's not in the remove queue
-        this.updateQueue.toAdd.set(optimisticId, finalCacheEntry);
-      }
-
-      return true;
-    } catch (e) {
-      // FAILURE: I/O failed. Roll back all optimistic changes.
-      console.error(`Failed to create event with provider. Rolling back cache state.`, {
-        error: e
-      });
-
-      // Roll back store and mappings
-      this.identifierManager.removeMapping(optimisticEvent, runtimeId);
-      this._store.delete(optimisticId);
-
-      // Roll back UI
-      if (options?.silent) {
-        this.updateQueue.toAdd.delete(optimisticId);
+        this.updateQueue.toAdd.set(optimisticId, optimisticCacheEntry);
       } else {
-        this.flushUpdateQueue([optimisticId], []);
+        this.flushUpdateQueue([], [optimisticCacheEntry]);
       }
 
-      new Notice('Failed to create event. Change has been reverted.');
-      return false;
+      // Step 4: Asynchronous I/O with rollback
+      try {
+        // Prepare the event for the provider (e.g., combine title and category)
+        const eventForStorage = this.enhancer.prepareForStorage(event);
+        const [finalEvent, newLocation] = await provider.createEvent(eventForStorage, config);
+
+        // SUCCESS: The I/O succeeded. Update the store with the authoritative event.
+        // The `finalEvent` from the provider is the source of truth. It needs to be enhanced
+        // back into the structured format for the cache.
+        const authoritativeEvent = this.enhancer.enhance(finalEvent);
+        const eventWithSessionId = { ...authoritativeEvent, id: optimisticId };
+
+        // Replace the optimistic event in the store with the authoritative one.
+        this._store.delete(optimisticId);
+        this._store.add({
+          calendarId: runtimeId,
+          location: newLocation,
+          id: optimisticId,
+          event: eventWithSessionId
+        });
+
+        // Update ID mapping with the new authoritative data.
+        this.identifierManager.removeMapping(optimisticEvent, runtimeId);
+        this.identifierManager.addMapping(eventWithSessionId, runtimeId, optimisticId);
+
+        // Flush this "correction" to the UI. The event is already visible,
+        // but this updates its data to the final state from the server.
+        const finalCacheEntry: CacheEntry = {
+          event: eventWithSessionId,
+          id: optimisticId,
+          calendarId: runtimeId
+        };
+        // For a non-silent update, we must issue a remove and an add to force a re-render.
+        this.flushUpdateQueue([optimisticId], [finalCacheEntry]);
+        // For a silent update, we can just overwrite the event in the queue.
+        if (options?.silent) {
+          this.updateQueue.toRemove.delete(optimisticId); // Ensure it's not in the remove queue
+          this.updateQueue.toAdd.set(optimisticId, finalCacheEntry);
+        }
+
+        return true;
+      } catch (e) {
+        // FAILURE: I/O failed. Roll back all optimistic changes.
+        console.error(`Failed to create event with provider. Rolling back cache state.`, {
+          error: e
+        });
+
+        // Roll back store and mappings
+        this.identifierManager.removeMapping(optimisticEvent, runtimeId);
+        this._store.delete(optimisticId);
+
+        // Roll back UI
+        if (options?.silent) {
+          this.updateQueue.toAdd.delete(optimisticId);
+        } else {
+          this.flushUpdateQueue([optimisticId], []);
+        }
+
+        new Notice('Failed to create event. Change has been reverted.');
+        return false;
+      }
+    } finally {
+      this.isBulkUpdating = false;
     }
   }
 
@@ -448,79 +452,83 @@ export default class EventCache {
 
     const handle = provider.getEventHandle(event, config);
 
-    // Step 3: Optimistic state mutation
-    this.identifierManager.removeMapping(event, originalDetails.calendarId);
-    this._store.delete(eventId);
-
-    // Step 4: Immediate UI update
-    if (options?.silent) {
-      this.isBulkUpdating = true;
-      this.updateQueue.toRemove.add(eventId);
-    } else {
-      this.flushUpdateQueue([eventId], []);
-    }
-
-    // Step 5: Asynchronous I/O with rollback
-    if (!handle) {
-      console.warn(
-        `Could not generate a persistent handle for the event being deleted. Proceeding with deletion from cache only.`
-      );
-      // No I/O to perform, so no rollback is necessary. The operation is complete.
-      return;
-    }
-
+    this.isBulkUpdating = true;
     try {
-      await provider.deleteEvent(handle, config);
-      // SUCCESS: The external source is now in sync with the cache.
-    } catch (e) {
-      // FAILURE: The I/O operation failed. Roll back the optimistic changes.
-      console.error(`Failed to delete event with provider. Rolling back cache state.`, {
-        eventId,
-        error: e
-      });
+      // Step 3: Optimistic state mutation
+      this.identifierManager.removeMapping(event, originalDetails.calendarId);
+      this._store.delete(eventId);
 
-      // Re-add event to the store
-      const locationForStore = originalDetails.location
-        ? {
-            file: { path: originalDetails.location.path },
-            lineNumber: originalDetails.location.lineNumber
-          }
-        : null;
-
-      this._store.add({
-        calendarId: originalDetails.calendarId,
-        location: locationForStore,
-        id: originalDetails.id,
-        event: originalDetails.event
-      });
-
-      // Restore ID mapping
-      this.identifierManager.addMapping(
-        originalDetails.event,
-        originalDetails.calendarId,
-        originalDetails.id
-      );
-
-      // Roll back the UI update
-      const cacheEntry: CacheEntry = {
-        event: originalDetails.event,
-        id: originalDetails.id,
-        calendarId: originalDetails.calendarId
-      };
-
+      // Step 4: Immediate UI update
       if (options?.silent) {
-        // If part of a bulk operation, reverse the change in the queue.
-        this.updateQueue.toRemove.delete(eventId);
-        this.updateQueue.toAdd.set(eventId, cacheEntry);
+        this.updateQueue.toRemove.add(eventId);
       } else {
-        // Otherwise, flush the reversal to the UI immediately.
-        this.flushUpdateQueue([], [cacheEntry]);
+        this.flushUpdateQueue([eventId], []);
       }
 
-      new Notice('Failed to delete event. Change has been reverted.');
+      // Step 5: Asynchronous I/O with rollback
+      if (!handle) {
+        console.warn(
+          `Could not generate a persistent handle for the event being deleted. Proceeding with deletion from cache only.`
+        );
+        // No I/O to perform, so no rollback is necessary. The operation is complete.
+        return;
+      }
 
-      // Propagate the error to the original caller.
-      throw e;
+      try {
+        await provider.deleteEvent(handle, config);
+        // SUCCESS: The external source is now in sync with the cache.
+      } catch (e) {
+        // FAILURE: The I/O operation failed. Roll back the optimistic changes.
+        console.error(`Failed to delete event with provider. Rolling back cache state.`, {
+          eventId,
+          error: e
+        });
+
+        // Re-add event to the store
+        const locationForStore = originalDetails.location
+          ? {
+              file: { path: originalDetails.location.path },
+              lineNumber: originalDetails.location.lineNumber
+            }
+          : null;
+
+        this._store.add({
+          calendarId: originalDetails.calendarId,
+          location: locationForStore,
+          id: originalDetails.id,
+          event: originalDetails.event
+        });
+
+        // Restore ID mapping
+        this.identifierManager.addMapping(
+          originalDetails.event,
+          originalDetails.calendarId,
+          originalDetails.id
+        );
+
+        // Roll back the UI update
+        const cacheEntry: CacheEntry = {
+          event: originalDetails.event,
+          id: originalDetails.id,
+          calendarId: originalDetails.calendarId
+        };
+
+        if (options?.silent) {
+          // If part of a bulk operation, reverse the change in the queue.
+          this.updateQueue.toRemove.delete(eventId);
+          this.updateQueue.toAdd.set(eventId, cacheEntry);
+        } else {
+          // Otherwise, flush the reversal to the UI immediately.
+          this.flushUpdateQueue([], [cacheEntry]);
+        }
+
+        new Notice('Failed to delete event. Change has been reverted.');
+
+        // Propagate the error to the original caller.
+        throw e;
+      }
+    } finally {
+      this.isBulkUpdating = false;
     }
   }
 
@@ -560,84 +568,17 @@ export default class EventCache {
       throw new Error(`Could not generate a persistent handle for the event being modified.`);
     }
 
-    // Step 3: Optimistic state mutation
-    // Remove the old event and its mappings
-    this.identifierManager.removeMapping(oldEvent, calendarId);
-    this.store.delete(eventId);
-
-    // Add the new event and its mappings, using the same session ID
-    const newEventWithId = { ...newEvent, id: eventId };
-
-    // FIX: Convert the location from the stored format back to the input format.
-    const locationForStore = originalDetails.location
-      ? {
-          file: { path: originalDetails.location.path },
-          lineNumber: originalDetails.location.lineNumber
-        }
-      : null;
-
-    this.store.add({
-      calendarId: calendarId,
-      location: locationForStore, // Use the correctly formatted location
-      id: eventId,
-      event: newEventWithId
-    });
-    this.identifierManager.addMapping(newEventWithId, calendarId, eventId);
-
-    // Step 4: Immediate UI update
-    const newCacheEntry: CacheEntry = {
-      event: newEventWithId,
-      id: eventId,
-      calendarId: calendarId
-    };
-
-    // The UI needs to know to remove the old event and add the new one.
-    // This is how FullCalendar handles an "update".
-    if (options?.silent) {
-      this.isBulkUpdating = true;
-      this.updateQueue.toRemove.add(eventId);
-      this.updateQueue.toAdd.set(eventId, newCacheEntry);
-    } else {
-      this.flushUpdateQueue([eventId], [newCacheEntry]);
-    }
-
-    // Step 5: Asynchronous I/O with rollback
+    this.isBulkUpdating = true;
     try {
-      // Prepare events for storage (e.g., flatten title and category).
-      const preparedOldEvent = this.enhancer.prepareForStorage(oldEvent);
-      const preparedNewEvent = this.enhancer.prepareForStorage(newEvent);
-
-      const updatedLocation = await provider.updateEvent(
-        handle,
-        preparedOldEvent,
-        preparedNewEvent,
-        config
-      );
-
-      // SUCCESS: The I/O succeeded. Correct the location in the store if it changed.
-      // This ensures our cache is perfectly in sync with the source of truth.
-      if (updatedLocation && updatedLocation.file.path !== originalDetails.location?.path) {
-        this.store.delete(eventId);
-        this.store.add({
-          calendarId: calendarId,
-          location: updatedLocation,
-          id: eventId,
-          event: newEventWithId
-        });
-      }
-
-      return true;
-    } catch (e) {
-      // FAILURE: I/O failed. Roll back all optimistic changes.
-      console.error(`Failed to update event with provider. Rolling back cache state.`, {
-        eventId,
-        error: e
-      });
-
-      // Roll back store and mappings to original state
-      this.identifierManager.removeMapping(newEventWithId, calendarId);
+      // Step 3: Optimistic state mutation
+      // Remove the old event and its mappings
+      this.identifierManager.removeMapping(oldEvent, calendarId);
       this.store.delete(eventId);
 
+      // Add the new event and its mappings, using the same session ID
+      const newEventWithId = { ...newEvent, id: eventId };
+
+      // FIX: Convert the location from the stored format back to the input format.
       const locationForStore = originalDetails.location
         ? {
             file: { path: originalDetails.location.path },
@@ -646,34 +587,105 @@ export default class EventCache {
         : null;
 
       this.store.add({
-        calendarId: originalDetails.calendarId,
-        location: locationForStore,
-        id: originalDetails.id,
-        event: originalDetails.event
+        calendarId: calendarId,
+        location: locationForStore, // Use the correctly formatted location
+        id: eventId,
+        event: newEventWithId
       });
-      this.identifierManager.addMapping(
-        originalDetails.event,
-        originalDetails.calendarId,
-        originalDetails.id
-      );
+      this.identifierManager.addMapping(newEventWithId, calendarId, eventId);
 
-      // Roll back the UI update
-      const originalCacheEntry: CacheEntry = {
-        event: originalDetails.event,
-        id: originalDetails.id,
-        calendarId: originalDetails.calendarId
+      // Step 4: Immediate UI update
+      const newCacheEntry: CacheEntry = {
+        event: newEventWithId,
+        id: eventId,
+        calendarId: calendarId
       };
 
+      // The UI needs to know to remove the old event and add the new one.
+      // This is how FullCalendar handles an "update".
       if (options?.silent) {
-        this.updateQueue.toRemove.delete(eventId); // Should already be gone, but be safe
-        this.updateQueue.toAdd.set(eventId, originalCacheEntry);
+        this.updateQueue.toRemove.add(eventId);
+        this.updateQueue.toAdd.set(eventId, newCacheEntry);
       } else {
-        // Replace the new version with the original
-        this.flushUpdateQueue([eventId], [originalCacheEntry]);
+        this.flushUpdateQueue([eventId], [newCacheEntry]);
       }
 
-      new Notice('Failed to update event. Change has been reverted.');
-      return false;
+      // Step 5: Asynchronous I/O with rollback
+      try {
+        // Prepare events for storage (e.g., flatten title and category).
+        const preparedOldEvent = this.enhancer.prepareForStorage(oldEvent);
+        const preparedNewEvent = this.enhancer.prepareForStorage(newEvent);
+
+        const updatedLocation = await provider.updateEvent(
+          handle,
+          preparedOldEvent,
+          preparedNewEvent,
+          config
+        );
+
+        // SUCCESS: The I/O succeeded. Correct the location in the store if it changed.
+        // This ensures our cache is perfectly in sync with the source of truth.
+        if (updatedLocation && updatedLocation.file.path !== originalDetails.location?.path) {
+          this.store.delete(eventId);
+          this.store.add({
+            calendarId: calendarId,
+            location: updatedLocation,
+            id: eventId,
+            event: newEventWithId
+          });
+        }
+
+        return true;
+      } catch (e) {
+        // FAILURE: I/O failed. Roll back all optimistic changes.
+        console.error(`Failed to update event with provider. Rolling back cache state.`, {
+          eventId,
+          error: e
+        });
+
+        // Roll back store and mappings to original state
+        this.identifierManager.removeMapping(newEventWithId, calendarId);
+        this.store.delete(eventId);
+
+        const locationForStore = originalDetails.location
+          ? {
+              file: { path: originalDetails.location.path },
+              lineNumber: originalDetails.location.lineNumber
+            }
+          : null;
+
+        this.store.add({
+          calendarId: originalDetails.calendarId,
+          location: locationForStore,
+          id: originalDetails.id,
+          event: originalDetails.event
+        });
+        this.identifierManager.addMapping(
+          originalDetails.event,
+          originalDetails.calendarId,
+          originalDetails.id
+        );
+
+        // Roll back the UI update
+        const originalCacheEntry: CacheEntry = {
+          event: originalDetails.event,
+          id: originalDetails.id,
+          calendarId: originalDetails.calendarId
+        };
+
+        if (options?.silent) {
+          this.updateQueue.toRemove.delete(eventId); // Should already be gone, but be safe
+          this.updateQueue.toAdd.set(eventId, originalCacheEntry);
+        } else {
+          // Replace the new version with the original
+          this.flushUpdateQueue([eventId], [originalCacheEntry]);
+        }
+
+        new Notice('Failed to update event. Change has been reverted.');
+        return false;
+      }
+    } finally {
+      this.isBulkUpdating = false;
     }
   }
 

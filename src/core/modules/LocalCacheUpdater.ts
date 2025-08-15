@@ -69,6 +69,10 @@ export class LocalCacheUpdater {
    * @param path Path of the file that has been deleted.
    */
   public handleFileDelete(path: string): void {
+    if (this.cache.isBulkUpdating) {
+      return;
+    }
+
     // Get all events that were in the deleted file.
     const eventsInFile = this.cache.store.getEventsInFile({ path });
     if (eventsInFile.length === 0) {

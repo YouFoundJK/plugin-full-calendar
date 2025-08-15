@@ -82,6 +82,9 @@ export class EventEnhancer {
     delete eventForStorage.category;
     delete eventForStorage.subCategory;
 
+    // Remove the transient session ID before writing to storage.
+    delete (eventForStorage as any).id;
+
     return eventForStorage;
   }
 }
