@@ -27,31 +27,70 @@ import { TFile } from 'obsidian';
 
 import EventCache, { CacheEntry } from '../EventCache';
 import { StoredEvent } from '../EventStore';
-import { OFCEvent, validateEvent } from '../../types';
+import { OFCEvent, validateEvent, EventLocation } from '../../types';
 import { IdentifierManager } from './IdentifierManager';
 import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
 
 /**
- * Compares two arrays of OFCEvents to see if they are different.
- * This is used to determine if a file update requires a cache update.
+ * A stable identifier for an event within a file, used for diffing.
+ * For now, we assume that if an event's title changes, it's a new event.
  */
-const eventsAreDifferent = (oldEvents: OFCEvent[], newEvents: OFCEvent[]): boolean => {
-  oldEvents.sort((a, b) => a.title.localeCompare(b.title));
-  newEvents.sort((a, b) => a.title.localeCompare(b.title));
+function getEventIdentifier(event: OFCEvent): string {
+  if (event.type === 'single' && event.date) {
+    return `${event.date}::${event.title}`;
+  }
+  // Fallback for recurring/rrule or events without a date.
+  // This is less stable but provides a baseline.
+  return event.title;
+}
 
-  oldEvents = oldEvents.flatMap(e => validateEvent(e) || []);
-  newEvents = newEvents.flatMap(e => validateEvent(e) || []);
+interface DiffResult {
+  toAdd: [OFCEvent, EventLocation | null][];
+  toRemove: StoredEvent[];
+  toUpdate: { oldEvent: StoredEvent; newEvent: [OFCEvent, EventLocation | null] }[];
+}
 
-  if (oldEvents.length !== newEvents.length) {
-    return true;
+/**
+ * Compares two arrays of OFCEvents and returns a structured diff.
+ */
+function diffEvents(
+  oldEvents: StoredEvent[],
+  newEvents: [OFCEvent, EventLocation | null][]
+): DiffResult {
+  const result: DiffResult = {
+    toAdd: [],
+    toRemove: [],
+    toUpdate: []
+  };
+
+  const oldEventMap = new Map<string, StoredEvent>();
+  for (const oldEvent of oldEvents) {
+    oldEventMap.set(getEventIdentifier(oldEvent.event), oldEvent);
   }
 
-  const unmatchedEvents = oldEvents
-    .map((e, i) => ({ oldEvent: e, newEvent: newEvents[i] }))
-    .filter(({ oldEvent, newEvent }) => !equal(oldEvent, newEvent));
+  for (const newEventTuple of newEvents) {
+    const [newEvent] = newEventTuple;
+    const identifier = getEventIdentifier(newEvent);
+    const oldEventMatch = oldEventMap.get(identifier);
 
-  return unmatchedEvents.length > 0;
-};
+    if (oldEventMatch) {
+      // Event exists in both old and new lists. Check if it has been updated.
+      if (!equal(oldEventMatch.event, newEvent)) {
+        result.toUpdate.push({ oldEvent: oldEventMatch, newEvent: newEventTuple });
+      }
+      // Remove from map so we can find deletions later.
+      oldEventMap.delete(identifier);
+    } else {
+      // Event is new.
+      result.toAdd.push(newEventTuple);
+    }
+  }
+
+  // Any events left in the map are deletions.
+  result.toRemove = [...oldEventMap.values()];
+
+  return result;
+}
 
 export class LocalCacheUpdater {
   private cache: EventCache;
@@ -141,41 +180,58 @@ export class LocalCacheUpdater {
 
       // 1. Get old state for this specific file and calendar.
       const oldEventsForFile = this.cache.store.getEventsInFileAndCalendar(file, runtimeId);
-      const oldEventsMapped = oldEventsForFile.map(e => e.event);
-
       // 2. Get new state from the file AND ENHANCE IT IMMEDIATELY.
       const newEventResponses = await provider.getEventsInFile(file, config);
-      const newEnhancedEvents = newEventResponses.map(([event, _]) =>
-        this.cache.enhancer.enhance(event)
-      );
+      const newEnhancedEventsWithLocation: [OFCEvent, EventLocation | null][] =
+        newEventResponses.map(([event, location]) => [
+          this.cache.enhancer.enhance(event),
+          location
+        ]);
+
+      const diff = diffEvents(oldEventsForFile, newEnhancedEventsWithLocation);
 
       // 3. Compare structured vs structured data.
-      if (!eventsAreDifferent(oldEventsMapped, newEnhancedEvents)) {
+      if (diff.toAdd.length === 0 && diff.toRemove.length === 0 && diff.toUpdate.length === 0) {
         continue; // No changes in this file for this source.
       }
 
       hasChanges = true;
 
-      // 4. Apply diff: accumulate events to remove.
-      oldEventsForFile.forEach(oldEvent => {
+      // 4. Process removals
+      for (const oldEvent of diff.toRemove) {
         idsToRemove.add(oldEvent.id);
         this.identifierManager.removeMapping(oldEvent.event, oldEvent.calendarId);
-      });
+      }
 
-      // 5. Apply diff: accumulate events to add using the events we already enhanced.
-      const newEventsWithIds = newEnhancedEvents.map((enhancedEvent, index) => {
-        const location = newEventResponses[index][1];
-        const newSessionId = this.cache.generateId();
-        this.identifierManager.addMapping(enhancedEvent, runtimeId, newSessionId);
-        return {
-          event: enhancedEvent,
-          id: newSessionId,
-          location,
+      // Process updates
+      for (const {
+        oldEvent,
+        newEvent: [newEvent, newLocation]
+      } of diff.toUpdate) {
+        // For an update, we reuse the session ID. This is a "remove" and "add" for the UI.
+        idsToRemove.add(oldEvent.id);
+        this.identifierManager.removeMapping(oldEvent.event, oldEvent.calendarId);
+        this.identifierManager.addMapping(newEvent, runtimeId, oldEvent.id);
+
+        eventsToAdd.push({
+          event: newEvent,
+          id: oldEvent.id, // Reuse the ID
+          location: newLocation,
           calendarId: runtimeId
-        };
-      });
+        });
+      }
 
-      eventsToAdd.push(...newEventsWithIds);
+      // Process additions
+      for (const [newEvent, newLocation] of diff.toAdd) {
+        const newSessionId = this.cache.generateId();
+        this.identifierManager.addMapping(newEvent, runtimeId, newSessionId);
+        eventsToAdd.push({
+          event: newEvent,
+          id: newSessionId,
+          location: newLocation,
+          calendarId: runtimeId
+        });
+      }
     }
 
     if (!hasChanges) {
