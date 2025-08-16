@@ -60,6 +60,34 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     return null;
   }
 
+  private async _findEventLineNumber(file: TFile, persistentId: string): Promise<number> {
+    const content = await this.app.read(file);
+    const lines = content.split('\n');
+    const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
+
+    // It's possible for a daily note file to not have a date in its title.
+    // In that case, we cannot reliably parse events from it.
+    if (!date) {
+      throw new Error(`Could not determine date from file: ${file.path}`);
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const event = getInlineEventFromLine(line, { date });
+      if (event && event.type === 'single') {
+        // Check for event type
+        const fullTitle = constructTitle(event.category, event.subCategory, event.title);
+        // Now it's safe to access event.date
+        const currentId = `${event.date}::${fullTitle}`;
+        if (currentId === persistentId) {
+          return i; // Found it
+        }
+      }
+    }
+
+    throw new Error(`Could not find event with ID "${persistentId}" in file "${file.path}".`);
+  }
+
   public async getEventsInFile(
     file: TFile,
     config: DailyNoteProviderConfig
@@ -143,7 +171,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
   async updateEvent(
     handle: EventHandle,
-    oldEventData: OFCEvent, // <-- ADD THIS PARAMETER (it will be unused)
+    oldEventData: OFCEvent,
     newEventData: OFCEvent,
     config: DailyNoteProviderConfig
   ): Promise<EventLocation | null> {
@@ -151,14 +179,14 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       throw new Error('Daily Note provider can only update events to be single events.');
     }
 
-    if (!handle.location?.path || handle.location?.lineNumber === undefined) {
-      throw new Error(
-        'DailyNoteProvider updateEvent requires a file path and line number in the event handle.'
-      );
+    if (!handle.location?.path) {
+      throw new Error('DailyNoteProvider updateEvent requires a file path in the event handle.');
     }
-    const { path, lineNumber } = handle.location;
+    const { path } = handle.location;
     const file = this.app.getFileByPath(path);
     if (!file) throw new Error(`File not found at path: ${path}`);
+
+    const lineNumber = await this._findEventLineNumber(file, handle.persistentId);
 
     const displayTimezone =
       this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -221,12 +249,14 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
   }
 
   async deleteEvent(handle: EventHandle, config: DailyNoteProviderConfig): Promise<void> {
-    if (!handle.location?.path || handle.location?.lineNumber === undefined) {
-      throw new Error('DailyNoteProvider deleteEvent requires a file path and line number.');
+    if (!handle.location?.path) {
+      throw new Error('DailyNoteProvider deleteEvent requires a file path.');
     }
-    const { path, lineNumber } = handle.location;
+    const { path } = handle.location;
     const file = this.app.getFileByPath(path);
     if (!file) throw new Error(`File not found at path: ${path}`);
+
+    const lineNumber = await this._findEventLineNumber(file, handle.persistentId);
 
     await this.app.rewrite(file, (contents: string) => {
       let lines = contents.split('\n');
