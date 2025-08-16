@@ -39,8 +39,7 @@ export class IdentifierManager {
 
   public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
     // calendarId is now the stable Settings ID.
-    // @ts-ignore
-    const calendarInfo = this.cache.calendarInfoMap.get(calendarId);
+    const calendarInfo = this.cache.plugin.providerRegistry.getSource(calendarId);
     if (!calendarInfo) {
       console.warn(`Could not find calendar info for ID ${calendarId}`);
       return null;

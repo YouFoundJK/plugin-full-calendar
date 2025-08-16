@@ -30,7 +30,8 @@ import { openFileForEvent } from '../utils/eventActions';
 import { CalendarInfo } from '../types';
 
 export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
-  const calendars = plugin.settings.calendarSources
+  const calendars = plugin.providerRegistry
+    .getAllSources()
     .map(info => {
       const provider = plugin.providerRegistry.getProvider(info.type);
       if (!provider) return null;
@@ -96,7 +97,8 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
   }
   const calId = eventDetails.calendarId; // This is the RUNTIME ID.
 
-  const calendars = plugin.settings.calendarSources
+  const calendars = plugin.providerRegistry
+    .getAllSources()
     .map(info => {
       const provider = plugin.providerRegistry.getProvider(info.type);
       if (!provider) return null;

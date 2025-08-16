@@ -157,7 +157,7 @@ export class WorkspaceModal extends Modal {
     section.createEl('h3', { text: 'Calendar Filters' });
 
     // Get available calendars
-    const calendars = this.plugin.settings.calendarSources;
+    const calendars = this.plugin.providerRegistry.getAllSources();
 
     if (calendars.length === 0) {
       section.createEl('p', {

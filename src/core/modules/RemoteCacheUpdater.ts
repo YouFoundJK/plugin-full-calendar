@@ -38,10 +38,8 @@ export class RemoteCacheUpdater {
       return;
     }
 
-    // @ts-ignore
-    const remoteSources = this.cache.calendarInfos.filter(info => {
+    const remoteSources = this.cache.plugin.providerRegistry.getAllSources().filter(info => {
       const provider = this.cache.plugin.providerRegistry.getProvider(info.type);
-      // A provider is "remote" if it has a `revalidate` method.
       return provider && 'revalidate' in provider;
     });
 

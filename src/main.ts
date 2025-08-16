@@ -37,7 +37,22 @@ const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
 const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';
 
 export default class FullCalendarPlugin extends Plugin {
-  settings: FullCalendarSettings = DEFAULT_SETTINGS;
+  private _settings: FullCalendarSettings = DEFAULT_SETTINGS;
+
+  // vvv ADD THIS GETTER AND SETTER vvv
+  get settings(): FullCalendarSettings {
+    return this._settings;
+  }
+
+  set settings(newSettings: FullCalendarSettings) {
+    this._settings = newSettings;
+    // ALWAYS keep the provider registry in sync.
+    if (this.providerRegistry) {
+      this.providerRegistry.updateSources(this._settings.calendarSources);
+    }
+  }
+  // ^^^ END OF BLOCK ^^^
+
   isMobile: boolean = false;
   settingsTab?: LazySettingsTab;
   providerRegistry!: ProviderRegistry;
@@ -89,10 +104,10 @@ export default class FullCalendarPlugin extends Plugin {
     this.providerRegistry.register(new CalDAVProvider(this.settings));
     this.providerRegistry.register(new GoogleProvider(this));
 
-    await this.loadSettings();
+    await this.loadSettings(); // This now handles setting and syncing
     await manageTimezone(this);
 
-    this.cache.reset(this.settings.calendarSources);
+    this.cache.reset();
 
     // Respond to obsidian events
     this.registerEvent(
@@ -162,7 +177,7 @@ export default class FullCalendarPlugin extends Plugin {
       id: 'full-calendar-reset',
       name: 'Reset Event Cache',
       callback: () => {
-        this.cache.reset(this.settings.calendarSources);
+        this.cache.reset();
         this.app.workspace.detachLeavesOfType(FULL_CALENDAR_VIEW_TYPE);
         this.app.workspace.detachLeavesOfType(FULL_CALENDAR_SIDEBAR_VIEW_TYPE);
         new Notice('Full Calendar has been reset.');
@@ -297,6 +312,7 @@ export default class FullCalendarPlugin extends Plugin {
     loadedSettings = sanitizeInitialView(loadedSettings);
 
     const { updated, sources } = ensureCalendarIds(loadedSettings.calendarSources);
+    // This now triggers the setter, which syncs the provider registry.
     this.settings = { ...loadedSettings, calendarSources: sources };
 
     this.cache.enhancer.updateSettings(this.settings);
@@ -314,13 +330,14 @@ export default class FullCalendarPlugin extends Plugin {
    */
   async saveSettings() {
     await this.saveData(this.settings);
+    // No need to call updateSources here anymore, the setter already did.
     this.cache.enhancer.updateSettings(this.settings);
     // If calendarSources changed, rebuild cache; otherwise use lightweight resync
     // This is a heuristic: callers that mutate calendarSources will trigger reset via Settings UI.
     if (this.cache && this.cache.initialized) {
       this.cache.resync();
     } else {
-      this.cache.reset(this.settings.calendarSources);
+      this.cache.reset();
       await this.cache.populate();
       this.cache.resync();
     }

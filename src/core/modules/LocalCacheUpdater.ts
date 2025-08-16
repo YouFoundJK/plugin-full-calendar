@@ -142,10 +142,12 @@ export class LocalCacheUpdater {
     }
 
     // Find all *local* calendar sources.
-    const localCalendarInfos = (this.cache as any).calendarInfos.filter((info: any) => {
-      const provider = this.cache.plugin.providerRegistry.getProvider(info.type);
-      return provider && !provider.isRemote;
-    });
+    const localCalendarInfos = this.cache.plugin.providerRegistry
+      .getAllSources()
+      .filter((info: any) => {
+        const provider = this.cache.plugin.providerRegistry.getProvider(info.type);
+        return provider && !provider.isRemote;
+      });
 
     if (localCalendarInfos.length === 0) {
       return;

@@ -35,10 +35,7 @@ export class RecurringEventManager {
   }
 
   private getProviderAndConfig(calendarId: string) {
-    // The calendarId parameter is now the stable settings ID.
-    const calendarInfo = this.cache.plugin.settings.calendarSources.find(
-      c => (c as any).id === calendarId
-    );
+    const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
     if (!calendarInfo) return null;
     const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
     if (!provider) return null;
@@ -263,10 +260,7 @@ export class RecurringEventManager {
     if (!masterDetails) throw new Error('Master event not found');
     const { calendarId: masterCalendarId, event: masterEvent } = masterDetails;
 
-    // We need the *settings* ID of the calendar to call `addEvent`.
-    const calendarInfo = this.plugin.settings.calendarSources.find(
-      c => (c as any).id === masterCalendarId
-    );
+    const calendarInfo = this.plugin.providerRegistry.getSource(masterCalendarId);
     if (!calendarInfo) throw new Error(`Could not find calendar info for ${masterCalendarId}`);
 
     // Inherit properties from the master event for the override.
@@ -317,9 +311,7 @@ export class RecurringEventManager {
       throw new Error('Master event not found for instance modification.');
     }
     const { calendarId, event: masterEvent } = details;
-    const calendarInfo = this.cache.plugin.settings.calendarSources.find(
-      c => (c as any).id === calendarId
-    );
+    const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
     if (!calendarInfo) {
       throw new Error(`Could not find calendar info for ${calendarId}`);
     }
