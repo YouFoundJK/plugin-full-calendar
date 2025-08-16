@@ -29,6 +29,15 @@ export class RecurringEventManager {
   private cache: EventCache;
   private plugin: FullCalendarPlugin;
 
+  // vvv ADD THIS HELPER METHOD vvv
+  private _sanitizeTitleForFilename(title: string): string {
+    return title
+      .replace(/[\\/:"*?<>|]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  // ^^^ END OF BLOCK ^^^
+
   constructor(cache: EventCache, plugin: FullCalendarPlugin) {
     this.cache = cache;
     this.plugin = plugin;
@@ -160,10 +169,21 @@ export class RecurringEventManager {
       if (!eventDetails) return false;
       const { calendarId } = eventDetails;
 
-      const masterLocalIdentifier = event.recurringEventId;
-      const globalMasterIdentifier = `${calendarId}::${masterLocalIdentifier}`;
-
-      // [DEBUG] logs for troubleshooting recurring event deletion
+      const masterFilename = event.recurringEventId;
+      const providerResult = this.getProviderAndConfig(calendarId);
+      if (!providerResult) {
+        // Cannot proceed if provider/config is not found.
+        console.warn(
+          `Could not find provider for calendar ID ${calendarId}. Deleting orphan override.`
+        );
+        await this.cache.deleteEvent(eventId, { silent: true, force: true });
+        this.cache.flushUpdateQueue([], []);
+        return true;
+      }
+      const { config } = providerResult;
+      // Reconstruct the master event's full path.
+      const masterPath = `${(config as any).directory}/${masterFilename}`;
+      const globalMasterIdentifier = `${calendarId}::${masterPath}`;
 
       const masterSessionId = await this.cache.getSessionId(globalMasterIdentifier);
 
@@ -263,12 +283,22 @@ export class RecurringEventManager {
     const calendarInfo = this.plugin.providerRegistry.getSource(masterCalendarId);
     if (!calendarInfo) throw new Error(`Could not find calendar info for ${masterCalendarId}`);
 
+    const globalIdentifier = this.cache.getGlobalIdentifier(masterEvent, masterCalendarId);
+    if (!globalIdentifier) {
+      throw new Error('Could not generate global identifier for master event.');
+    }
+    // Safely extract the persistentId, which is the full path for a FullNoteProvider event.
+    const masterPath = globalIdentifier.substring(masterCalendarId.length + 2);
+
+    const masterFilename = masterPath.split('/').pop();
+    if (!masterFilename) {
+      throw new Error(`Could not extract filename from master event path: ${masterPath}`);
+    }
+
     // Inherit properties from the master event for the override.
     const finalOverrideEvent: OFCEvent = {
       ...overrideEventData,
-      recurringEventId: this.cache
-        .getGlobalIdentifier(masterEvent, masterCalendarId)
-        ?.split('::')[2]
+      recurringEventId: masterFilename // Store filename only
     };
 
     // 1. Add the new override event to the cache silently.
@@ -407,8 +437,19 @@ export class RecurringEventManager {
     } else {
       // === USE CASE: UN-COMPLETING A TASK ===
       if (clickedEvent.type === 'single' && clickedEvent.recurringEventId) {
-        const masterLocalIdentifier = clickedEvent.recurringEventId;
-        const globalMasterIdentifier = `${calendarId}::${masterLocalIdentifier}`;
+        const masterFilename = clickedEvent.recurringEventId;
+        const providerResult = this.getProviderAndConfig(calendarId);
+        if (!providerResult) {
+          console.warn(
+            `Could not find provider for calendar ID ${calendarId}. Deleting orphan override.`
+          );
+          await this.cache.deleteEvent(eventId);
+          return;
+        }
+
+        const { config } = providerResult;
+        const masterPath = `${(config as any).directory}/${masterFilename}`;
+        const globalMasterIdentifier = `${calendarId}::${masterPath}`;
         const masterSessionId = await this.cache.getSessionId(globalMasterIdentifier);
 
         if (masterSessionId) {
@@ -436,13 +477,28 @@ export class RecurringEventManager {
 
   public async updateRecurringChildren(
     calendarId: string,
-    oldParentIdentifier: string,
-    newParentIdentifier: string,
-    newParentEvent: OFCEvent
+    newParentFilename: string,
+    newParentEvent: OFCEvent,
+    oldParentEvent: OFCEvent
   ): Promise<void> {
-    const childrenToUpdate = this.cache.store
-      .getAllEvents()
-      .filter(e => e.calendarId === calendarId && e.event.recurringEventId === oldParentIdentifier);
+    if (newParentEvent.type !== 'recurring' && newParentEvent.type !== 'rrule') {
+      return;
+    }
+
+    const providerResult = this.getProviderAndConfig(calendarId);
+    if (!providerResult) return;
+    const { provider, config } = providerResult;
+    const directory = (config as any).directory;
+    if (!directory) return;
+
+    const oldFullTitle = this.plugin.cache.enhancer.prepareForStorage(oldParentEvent).title;
+    const sanitizedOldTitle = this._sanitizeTitleForFilename(oldFullTitle);
+
+    const childrenToUpdate = (newParentEvent.skipDates || []).flatMap((date: string) => {
+      const childFilename = `${date} ${sanitizedOldTitle}.md`;
+      const childPath = `${directory}/${childFilename}`;
+      return this.cache.store.getEventsInFile({ path: childPath });
+    });
 
     if (childrenToUpdate.length === 0) {
       return;
@@ -453,33 +509,30 @@ export class RecurringEventManager {
     for (const childStoredEvent of childrenToUpdate) {
       const childDetails = this.cache.store.getEventDetails(childStoredEvent.id);
       if (!childDetails) continue;
-      const {
-        calendarId: childCalendarId,
-        location: childLocation,
-        event: childEvent
-      } = childDetails;
-      const childProvider = this.cache.getCalendarById(childCalendarId);
-      if (!childProvider) continue;
 
+      const { calendarId: childCalendarId, event: childEvent } = childDetails;
+
+      // ====================================================================
+      // THIS IS THE CORRECTED BLOCK
+      // ====================================================================
+      // 1. Prepare the new parent event for storage to get its full title.
+      const preparedNewParent = this.plugin.cache.enhancer.prepareForStorage(newParentEvent);
+
+      // 2. Create the updated child event object. Its title IS the full title.
+      //    The category/subCategory fields are removed, as they are now encoded in the title.
       const updatedChildEvent: OFCEvent = {
         ...childEvent,
-        title: newParentEvent.title,
-        category: newParentEvent.category,
-        recurringEventId: newParentIdentifier
+        title: preparedNewParent.title, // This is now the FULL title string.
+        recurringEventId: newParentFilename
       };
+      delete updatedChildEvent.category;
+      delete updatedChildEvent.subCategory;
+      // ====================================================================
 
-      const handle = childProvider.getEventHandle(
-        childEvent,
-        (this.getProviderAndConfig(childCalendarId) as any).config
-      );
+      const handle = provider.getEventHandle(childEvent, config);
       if (!handle) continue;
 
-      const newLocation = await childProvider.updateEvent(
-        handle,
-        childEvent,
-        updatedChildEvent,
-        (this.getProviderAndConfig(childCalendarId) as any).config
-      );
+      const newLocation = await provider.updateEvent(handle, childEvent, updatedChildEvent, config);
 
       this.cache.store.delete(childStoredEvent.id);
       this.cache.store.add({
@@ -513,7 +566,6 @@ export class RecurringEventManager {
       return false; // Not a recurring master, do nothing.
     }
 
-    // PROVIDER-BASED LOGIC
     const providerResult = this.getProviderAndConfig(calendarId);
     if (!providerResult) {
       return false;
@@ -523,16 +575,16 @@ export class RecurringEventManager {
     const oldHandle = provider.getEventHandle(oldEvent, config);
     const newHandle = provider.getEventHandle(newEvent, config);
 
-    const oldLocalIdentifier = oldHandle?.persistentId;
-    const newLocalIdentifier = newHandle?.persistentId;
+    // For FullNoteProvider, persistentId is the full path.
+    const oldPath = oldHandle?.persistentId;
+    const newPath = newHandle?.persistentId;
 
-    if (oldLocalIdentifier && newLocalIdentifier && oldLocalIdentifier !== newLocalIdentifier) {
-      await this.updateRecurringChildren(
-        calendarId,
-        oldLocalIdentifier,
-        newLocalIdentifier,
-        newEvent
-      );
+    if (oldPath && newPath && oldPath !== newPath) {
+      const oldFilename = oldPath.split('/').pop();
+      const newFilename = newPath.split('/').pop();
+      if (oldFilename && newFilename && oldFilename !== newFilename) {
+        await this.updateRecurringChildren(calendarId, newFilename, newEvent, oldEvent);
+      }
     }
 
     return true; // Indicate that we've handled any necessary recurring logic.

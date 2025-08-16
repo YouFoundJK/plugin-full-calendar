@@ -210,9 +210,14 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
       throw new Error('Could not get persistent ID for master event.');
     }
 
+    const masterFilename = masterLocalId.split('/').pop();
+    if (!masterFilename) {
+      throw new Error(`Could not extract filename from master event path: ${masterLocalId}`);
+    }
+
     const overrideEventData: OFCEvent = {
       ...newEventData,
-      recurringEventId: masterLocalId
+      recurringEventId: masterFilename
     };
 
     // Use the existing createEvent logic to handle file creation and timezone conversion
