@@ -177,7 +177,7 @@ export default class EventCache {
 
         results.forEach(([rawEvent, location]) => {
           const event = this.enhancer.enhance(rawEvent);
-          const id = event.id || this.generateId();
+          const id = this.generateId();
           this._store.add({
             calendarId: runtimeId,
             location,
@@ -328,9 +328,7 @@ export default class EventCache {
     try {
       // Step 2: Optimistic state mutation
       const optimisticId = this.generateId();
-      // The event from the UI is already structured. It can be added to the cache directly
-      // for the optimistic update. We assign it our new session ID.
-      const optimisticEvent = { ...event, id: optimisticId };
+      const optimisticEvent = event;
 
       this._store.add({
         calendarId: runtimeId,
@@ -363,7 +361,7 @@ export default class EventCache {
         // The `finalEvent` from the provider is the source of truth. It needs to be enhanced
         // back into the structured format for the cache.
         const authoritativeEvent = this.enhancer.enhance(finalEvent);
-        const eventWithSessionId = { ...authoritativeEvent, id: optimisticId };
+        const eventWithSessionId = authoritativeEvent;
 
         // Replace the optimistic event in the store with the authoritative one.
         this._store.delete(optimisticId);
@@ -389,7 +387,7 @@ export default class EventCache {
         this.flushUpdateQueue([optimisticId], [finalCacheEntry]);
         // For a silent update, we can just overwrite the event in the queue.
         if (options?.silent) {
-          this.updateQueue.toRemove.delete(optimisticId); // Ensure it's not in the remove queue
+          this.updateQueue.toRemove.delete(optimisticId);
           this.updateQueue.toAdd.set(optimisticId, finalCacheEntry);
         }
 
@@ -577,7 +575,7 @@ export default class EventCache {
       this.store.delete(eventId);
 
       // Add the new event and its mappings, using the same session ID
-      const newEventWithId = { ...newEvent, id: eventId };
+      const newEventWithId = newEvent;
 
       // FIX: Convert the location from the stored format back to the input format.
       const locationForStore = originalDetails.location

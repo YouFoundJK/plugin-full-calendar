@@ -165,7 +165,7 @@ export class LocalCacheUpdater {
       // 5. Apply diff: accumulate events to add using the events we already enhanced.
       const newEventsWithIds = newEnhancedEvents.map((enhancedEvent, index) => {
         const location = newEventResponses[index][1];
-        const newSessionId = enhancedEvent.id || this.cache.generateId();
+        const newSessionId = this.cache.generateId();
         this.identifierManager.addMapping(enhancedEvent, runtimeId, newSessionId);
         return {
           event: enhancedEvent,
