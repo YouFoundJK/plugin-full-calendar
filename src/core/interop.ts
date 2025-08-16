@@ -471,7 +471,9 @@ export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
           type: 'single',
           date: startDate,
           ...(startDate !== endDate ? { endDate } : { endDate: null }),
-          completed: event.extendedProps.taskCompleted
+          completed: event.extendedProps.isTask
+            ? (event.extendedProps.taskCompleted ?? false)
+            : event.extendedProps.taskCompleted
         })
   };
 }
