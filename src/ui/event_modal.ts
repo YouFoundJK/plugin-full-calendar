@@ -28,7 +28,6 @@ import { ConfirmModal } from './modals/ConfirmModal';
 import { EditEvent } from './modals/components/EditEvent';
 import { openFileForEvent } from '../utils/eventActions';
 import { CalendarInfo } from '../types';
-import { getRuntimeCalendarId } from './settings/utilsSettings';
 
 export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
   const calendars = plugin.settings.calendarSources
@@ -107,16 +106,13 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
 
       return {
         id: (info as any).id, // settings ID
-        runtimeId: getRuntimeCalendarId(info), // runtime ID for matching
         type: info.type,
         name: (info as any).name || provider.displayName
       };
     })
-    .filter(
-      (c): c is { id: string; runtimeId: string; type: CalendarInfo['type']; name: string } => !!c
-    );
+    .filter((c): c is { id: string; type: CalendarInfo['type']; name: string } => !!c);
 
-  const calIdx = calendars.findIndex(({ runtimeId }) => runtimeId === calId);
+  const calIdx = calendars.findIndex(({ id }) => id === calId);
   const availableCategories = plugin.cache.getAllCategories();
 
   new ReactModal(plugin.app, async closeModal => {
@@ -179,10 +175,12 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
       submit: async (data, calendarIndex) => {
         try {
           const newCalendarSettingsId = calendars[calendarIndex].id;
-          const oldCalendarRuntimeId = eventDetails.calendarId;
-          const newCalendarRuntimeId = calendars[calendarIndex].runtimeId;
+          // const oldCalendarRuntimeId = eventDetails.calendarId;
+          // const newCalendarRuntimeId = calendars[calendarIndex].runtimeId;
 
-          if (newCalendarRuntimeId !== oldCalendarRuntimeId) {
+          // if (newCalendarRuntimeId !== oldCalendarRuntimeId) {
+          const oldCalendarSettingsId = eventDetails.calendarId;
+          if (newCalendarSettingsId !== oldCalendarSettingsId) {
             // TODO: The "move" operation needs to be implemented at the provider level.
             // For now, we show a notice and update the event in its original calendar.
             new Notice('Moving events between calendars is not yet supported.');

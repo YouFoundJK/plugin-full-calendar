@@ -46,7 +46,6 @@ import { RemoteCacheUpdater } from './modules/RemoteCacheUpdater';
 import { LocalCacheUpdater } from './modules/LocalCacheUpdater';
 import { IdentifierManager } from './modules/IdentifierManager';
 import { CalendarInfo, OFCEvent, validateEvent } from '../types';
-import { getRuntimeCalendarId } from '../ui/settings/utilsSettings';
 import { CalendarProvider } from '../providers/Provider';
 import { EventEnhancer } from './EventEnhancer';
 
@@ -95,6 +94,7 @@ export default class EventCache {
   private _plugin: FullCalendarPlugin;
   private _store = new EventStore();
   private calendarInfos: CalendarInfo[] = [];
+  private calendarInfoMap = new Map<string, CalendarInfo>(); // <-- ADD THIS
   private recurringEventManager: RecurringEventManager;
   private remoteUpdater: RemoteCacheUpdater;
   private localUpdater: LocalCacheUpdater;
@@ -138,15 +138,22 @@ export default class EventCache {
     this.initialized = false;
     this.calendarInfos = infos;
     this.calendars.clear();
+    this.calendarInfoMap.clear(); // <-- ADD THIS
     this._store.clear();
     this.updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
     this.resync();
 
     this.calendarInfos.forEach(info => {
-      const runtimeId = getRuntimeCalendarId(info);
+      const settingsId = (info as any).id;
+      if (!settingsId) {
+        console.warn('Full Calendar: Calendar source is missing an ID.', info);
+        return;
+      }
+      this.calendarInfoMap.set(settingsId, info); // <-- POPULATE NEW MAP
+
       const provider = this.plugin.providerRegistry.getProvider(info.type);
       if (provider) {
-        this.calendars.set(runtimeId, provider);
+        this.calendars.set(settingsId, provider); // <-- USE SETTINGS ID
       } else {
         console.warn(
           `Full Calendar: Provider for type "${info.type}" not found during cache reset.`
@@ -165,21 +172,19 @@ export default class EventCache {
   async populate() {
     this.reset(this._plugin.settings.calendarSources);
 
-    const promises = this.calendarInfos.map(async info => {
-      const provider = this.plugin.providerRegistry.getProvider(info.type);
-      if (!provider) {
-        console.warn(`Full Calendar: Provider for type "${info.type}" not found.`);
+    const promises = Array.from(this.calendars.entries()).map(async ([settingsId, provider]) => {
+      const info = this.calendarInfoMap.get(settingsId);
+      if (!info) {
+        console.warn(`Full Calendar: Could not find calendar info for ID ${settingsId}.`);
         return;
       }
       try {
         const results = await provider.getEvents((info as any).config);
-        const runtimeId = getRuntimeCalendarId(info);
-
         results.forEach(([rawEvent, location]) => {
           const event = this.enhancer.enhance(rawEvent);
           const id = this.generateId();
           this._store.add({
-            calendarId: runtimeId,
+            calendarId: settingsId, // <-- USE SETTINGS ID
             location,
             id,
             event
@@ -243,7 +248,9 @@ export default class EventCache {
     for (const [calId, provider] of this.calendars.entries()) {
       const events = eventsByCalendar.get(calId) || [];
 
-      const calendarInfo = this.calendarInfos.find(c => getRuntimeCalendarId(c) === calId);
+      // Replace find logic:
+      // const calendarInfo = this.calendarInfos.find(c => getRuntimeCalendarId(c) === calId);
+      const calendarInfo = this.calendarInfoMap.get(calId);
       if (!calendarInfo) continue;
 
       const config = (calendarInfo as any).config || {};
@@ -272,9 +279,10 @@ export default class EventCache {
     const provider = this.calendars.get(details.calendarId);
     if (!provider) return false;
 
-    const calendarInfo = this.calendarInfos.find(
-      c => getRuntimeCalendarId(c) === details.calendarId
-    );
+    // const calendarInfo = this.calendarInfos.find(
+    //   c => getRuntimeCalendarId(c) === details.calendarId
+    // );
+    const calendarInfo = this.calendarInfoMap.get(details.calendarId);
     if (!calendarInfo) return false;
 
     const config = (calendarInfo as any).config;
@@ -306,7 +314,7 @@ export default class EventCache {
     options?: { silent: boolean }
   ): Promise<boolean> {
     // Step 1: Get Provider, Config, and pre-flight checks
-    const calendarInfo = this.calendarInfos.find(c => (c as any).id === calendarId);
+    const calendarInfo = this.calendarInfoMap.get(calendarId);
     if (!calendarInfo) {
       new Notice(`Cannot add event: calendar with ID ${calendarId} not found.`);
       return false;
@@ -317,7 +325,6 @@ export default class EventCache {
       return false;
     }
     const config = (calendarInfo as any).config;
-    const runtimeId = getRuntimeCalendarId(calendarInfo);
 
     if (!provider.getCapabilities(config).canCreate) {
       new Notice(`Cannot add event to a read-only calendar.`);
@@ -330,18 +337,18 @@ export default class EventCache {
       const optimisticEvent = event;
 
       this._store.add({
-        calendarId: runtimeId,
+        calendarId: calendarId,
         location: null, // Location is unknown until provider returns
         id: optimisticId,
         event: optimisticEvent
       });
-      this.identifierManager.addMapping(optimisticEvent, runtimeId, optimisticId);
+      this.identifierManager.addMapping(optimisticEvent, calendarId, optimisticId);
 
       // Step 3: Immediate UI update
       const optimisticCacheEntry: CacheEntry = {
         event: optimisticEvent,
         id: optimisticId,
-        calendarId: runtimeId
+        calendarId: calendarId
       };
 
       if (options?.silent) {
@@ -364,22 +371,22 @@ export default class EventCache {
         // Replace the optimistic event in the store with the authoritative one.
         this._store.delete(optimisticId);
         this._store.add({
-          calendarId: runtimeId,
+          calendarId: calendarId,
           location: newLocation,
           id: optimisticId,
           event: authoritativeEvent
         });
 
         // Update ID mapping with the new authoritative data.
-        this.identifierManager.removeMapping(optimisticEvent, runtimeId);
-        this.identifierManager.addMapping(authoritativeEvent, runtimeId, optimisticId);
+        this.identifierManager.removeMapping(optimisticEvent, calendarId);
+        this.identifierManager.addMapping(authoritativeEvent, calendarId, optimisticId);
 
         // Flush this "correction" to the UI. The event is already visible,
         // but this updates its data to the final state from the server.
         const finalCacheEntry: CacheEntry = {
           event: authoritativeEvent,
           id: optimisticId,
-          calendarId: runtimeId
+          calendarId: calendarId
         };
 
         return true;
@@ -390,7 +397,7 @@ export default class EventCache {
         });
 
         // Roll back store and mappings
-        this.identifierManager.removeMapping(optimisticEvent, runtimeId);
+        this.identifierManager.removeMapping(optimisticEvent, calendarId);
         this._store.delete(optimisticId);
 
         // Roll back UI
@@ -909,7 +916,8 @@ export default class EventCache {
       throw new Error(`Provider for calendar ID ${calendarId} not found in cache map.`);
     }
 
-    const calendarInfo = this.calendarInfos.find(c => getRuntimeCalendarId(c) === calendarId);
+    // const calendarInfo = this.calendarInfos.find(c => getRuntimeCalendarId(c) === calendarId);
+    const calendarInfo = this.calendarInfoMap.get(calendarId);
     if (!calendarInfo) {
       throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
     }

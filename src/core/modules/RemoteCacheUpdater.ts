@@ -13,7 +13,6 @@
 
 import { Notice } from 'obsidian';
 import EventCache from '../EventCache';
-import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -54,30 +53,28 @@ export class RemoteCacheUpdater {
     const promises = remoteSources.map(info => {
       const provider = this.cache.plugin.providerRegistry.getProvider(info.type)!;
       const config = (info as any).config;
-      const runtimeId = getRuntimeCalendarId(info);
-      const calendar = this.cache.getCalendarById(runtimeId);
-      if (!calendar) {
-        // This should not happen if the cache is initialized correctly.
-        return Promise.reject(`Calendar with runtime ID ${runtimeId} not found in cache.`);
+      const settingsId = (info as any).id;
+      if (!settingsId) {
+        return Promise.reject(`Calendar source is missing an ID.`);
       }
 
       return provider
         .getEvents(config)
         .then(events => {
-          this.cache.store.deleteEventsInCalendar(runtimeId);
+          this.cache.store.deleteEventsInCalendar(settingsId); // <-- USE SETTINGS ID
           const newEvents = events.map(([rawEvent, location]) => {
-            const event = this.cache.enhancer.enhance(rawEvent); // Enhance event
+            const event = this.cache.enhancer.enhance(rawEvent);
             return {
               event,
               id: event.id || this.cache.generateId(),
               location,
-              calendarId: runtimeId
+              calendarId: settingsId // <-- USE SETTINGS ID
             };
           });
 
           newEvents.forEach(({ event, id, location }) => {
             this.cache.store.add({
-              calendarId: runtimeId,
+              calendarId: settingsId, // <-- USE SETTINGS ID
               location,
               id,
               event
@@ -85,7 +82,7 @@ export class RemoteCacheUpdater {
           });
 
           this.cache.updateCalendar({
-            id: runtimeId,
+            id: settingsId, // <-- USE SETTINGS ID
             editable: provider.getCapabilities(config).canEdit,
             color: info.color,
             events: newEvents

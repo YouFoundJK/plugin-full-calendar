@@ -142,48 +142,11 @@ export class CalendarView extends ItemView {
 
     const selected = (workspace.visibleCalendars ?? []).map(String);
     if (selected.length === 0) return sources;
-    // Support both runtime ids and legacy settings ids by mapping configured sources -> runtime ids
-    const configured = this.plugin.settings.calendarSources;
-    const mapSettingsToRuntime = new Map<string, string>();
-    for (const s of configured) {
-      // Build runtime id to match EventCache.calendars keys
-      let runtimeId = '';
-      switch (s.type) {
-        case 'local':
-          runtimeId = `local::${(s as any).directory}`;
-          break;
-        case 'dailynote':
-          runtimeId = `dailynote::${(s as any).heading}`;
-          break;
-        case 'ical': {
-          let url = (s as any).url as string;
-          if (typeof url === 'string' && url.toLowerCase().startsWith('webcal')) {
-            url = 'https' + url.slice('webcal'.length);
-          }
-          runtimeId = `ical::${url}`;
-          break;
-        }
-        case 'caldav':
-          runtimeId = `caldav::${(s as any).url}`;
-          break;
-        case 'google':
-          runtimeId = `google::${(s as any).id}`;
-          break;
-        default:
-          // fall back to existing id if any
-          // @ts-ignore
-          runtimeId = String((s as any).id ?? '');
-      }
-      // @ts-ignore
-      if ((s as any).id) mapSettingsToRuntime.set(String((s as any).id), runtimeId);
-    }
 
-    const selectedSet = new Set(
-      selected.map(id => mapSettingsToRuntime.get(id) || id) // normalize selection to runtime ids
-    );
+    const selectedSet = new Set(selected);
     const filtered = sources.filter(source => selectedSet.has(String(source.id)));
 
-    if (filtered.length === 0) {
+    if (filtered.length === 0 && selected.length > 0) {
       console.warn(
         'Full Calendar: No sources matched visibleCalendars. Falling back to all sources.'
       );

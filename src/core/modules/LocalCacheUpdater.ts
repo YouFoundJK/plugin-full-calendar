@@ -29,7 +29,6 @@ import EventCache, { CacheEntry } from '../EventCache';
 import { StoredEvent } from '../EventStore';
 import { OFCEvent, validateEvent, EventLocation } from '../../types';
 import { IdentifierManager } from './IdentifierManager';
-import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
 
 /**
  * A stable identifier for an event within a file, used for diffing.
@@ -163,7 +162,8 @@ export class LocalCacheUpdater {
         continue;
       }
       const config = (info as any).config;
-      const runtimeId = getRuntimeCalendarId(info);
+      const settingsId = (info as any).id;
+      if (!settingsId) continue;
 
       // Check if the file is relevant to this calendar source.
       let isRelevant = false;
@@ -179,7 +179,7 @@ export class LocalCacheUpdater {
       }
 
       // 1. Get old state for this specific file and calendar.
-      const oldEventsForFile = this.cache.store.getEventsInFileAndCalendar(file, runtimeId);
+      const oldEventsForFile = this.cache.store.getEventsInFileAndCalendar(file, settingsId); // <-- USE SETTINGS ID
       // 2. Get new state from the file AND ENHANCE IT IMMEDIATELY.
       const newEventResponses = await provider.getEventsInFile(file, config);
       const newEnhancedEventsWithLocation: [OFCEvent, EventLocation | null][] =
@@ -211,25 +211,25 @@ export class LocalCacheUpdater {
         // For an update, we reuse the session ID. This is a "remove" and "add" for the UI.
         idsToRemove.add(oldEvent.id);
         this.identifierManager.removeMapping(oldEvent.event, oldEvent.calendarId);
-        this.identifierManager.addMapping(newEvent, runtimeId, oldEvent.id);
+        this.identifierManager.addMapping(newEvent, settingsId, oldEvent.id); // <-- USE SETTINGS ID
 
         eventsToAdd.push({
           event: newEvent,
           id: oldEvent.id, // Reuse the ID
           location: newLocation,
-          calendarId: runtimeId
+          calendarId: settingsId
         });
       }
 
       // Process additions
       for (const [newEvent, newLocation] of diff.toAdd) {
         const newSessionId = this.cache.generateId();
-        this.identifierManager.addMapping(newEvent, runtimeId, newSessionId);
+        this.identifierManager.addMapping(newEvent, settingsId, newSessionId);
         eventsToAdd.push({
           event: newEvent,
           id: newSessionId,
           location: newLocation,
-          calendarId: runtimeId
+          calendarId: settingsId
         });
       }
     }

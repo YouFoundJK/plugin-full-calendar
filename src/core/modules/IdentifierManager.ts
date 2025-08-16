@@ -14,7 +14,6 @@
 
 import { OFCEvent } from '../../types';
 import EventCache from '../EventCache';
-import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
 
 export class IdentifierManager {
   private cache: EventCache; // Changed from `calendars`
@@ -39,15 +38,10 @@ export class IdentifierManager {
   }
 
   public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
-    // [DEBUG] Log calendarId received
-
-    // @ts-ignore: Accessing private field for refactor
-    const calendarInfo = this.cache.calendarInfos.find(
-      // @ts-ignore
-      info => getRuntimeCalendarId(info) === calendarId
-    );
+    // calendarId is now the stable Settings ID.
+    // @ts-ignore
+    const calendarInfo = this.cache.calendarInfoMap.get(calendarId);
     if (!calendarInfo) {
-      // [DEBUG] Log failure to find calendarInfo
       console.warn(`Could not find calendar info for ID ${calendarId}`);
       return null;
     }

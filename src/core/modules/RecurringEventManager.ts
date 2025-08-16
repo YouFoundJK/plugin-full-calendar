@@ -20,7 +20,6 @@ import { StoredEvent } from '../EventStore';
 import { toggleTask } from '../../utils/tasks';
 import { DeleteRecurringModal } from '../../ui/modals/DeleteRecurringModal';
 import FullCalendarPlugin from '../../main';
-import { getRuntimeCalendarId } from '../../ui/settings/utilsSettings';
 
 /**
  * Manages all complex business logic related to recurring events.
@@ -36,8 +35,9 @@ export class RecurringEventManager {
   }
 
   private getProviderAndConfig(calendarId: string) {
+    // The calendarId parameter is now the stable settings ID.
     const calendarInfo = this.cache.plugin.settings.calendarSources.find(
-      c => getRuntimeCalendarId(c) === calendarId
+      c => (c as any).id === calendarId
     );
     if (!calendarInfo) return null;
     const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
@@ -265,7 +265,7 @@ export class RecurringEventManager {
 
     // We need the *settings* ID of the calendar to call `addEvent`.
     const calendarInfo = this.plugin.settings.calendarSources.find(
-      c => getRuntimeCalendarId(c) === masterCalendarId
+      c => (c as any).id === masterCalendarId
     );
     if (!calendarInfo) throw new Error(`Could not find calendar info for ${masterCalendarId}`);
 
@@ -318,7 +318,7 @@ export class RecurringEventManager {
     }
     const { calendarId, event: masterEvent } = details;
     const calendarInfo = this.cache.plugin.settings.calendarSources.find(
-      c => getRuntimeCalendarId(c) === calendarId
+      c => (c as any).id === calendarId
     );
     if (!calendarInfo) {
       throw new Error(`Could not find calendar info for ${calendarId}`);
