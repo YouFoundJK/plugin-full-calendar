@@ -196,7 +196,6 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     if (!file) {
       throw new Error(`File ${path} not found.`);
     }
-    console.log(`[3] FullNoteProvider.deleteEvent -> Deleting file at path: ${path}`); // ADD THIS
     return this.app.delete(file);
   }
 

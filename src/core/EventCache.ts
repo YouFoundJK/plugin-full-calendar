@@ -324,7 +324,6 @@ export default class EventCache {
       return false;
     }
 
-    this.isBulkUpdating = true;
     try {
       // Step 2: Optimistic state mutation
       const optimisticId = this.generateId();
@@ -361,7 +360,6 @@ export default class EventCache {
         // The `finalEvent` from the provider is the source of truth. It needs to be enhanced
         // back into the structured format for the cache.
         const authoritativeEvent = this.enhancer.enhance(finalEvent);
-        const eventWithSessionId = authoritativeEvent;
 
         // Replace the optimistic event in the store with the authoritative one.
         this._store.delete(optimisticId);
@@ -369,27 +367,20 @@ export default class EventCache {
           calendarId: runtimeId,
           location: newLocation,
           id: optimisticId,
-          event: eventWithSessionId
+          event: authoritativeEvent
         });
 
         // Update ID mapping with the new authoritative data.
         this.identifierManager.removeMapping(optimisticEvent, runtimeId);
-        this.identifierManager.addMapping(eventWithSessionId, runtimeId, optimisticId);
+        this.identifierManager.addMapping(authoritativeEvent, runtimeId, optimisticId);
 
         // Flush this "correction" to the UI. The event is already visible,
         // but this updates its data to the final state from the server.
         const finalCacheEntry: CacheEntry = {
-          event: eventWithSessionId,
+          event: authoritativeEvent,
           id: optimisticId,
           calendarId: runtimeId
         };
-        // For a non-silent update, we must issue a remove and an add to force a re-render.
-        this.flushUpdateQueue([optimisticId], [finalCacheEntry]);
-        // For a silent update, we can just overwrite the event in the queue.
-        if (options?.silent) {
-          this.updateQueue.toRemove.delete(optimisticId);
-          this.updateQueue.toAdd.set(optimisticId, finalCacheEntry);
-        }
 
         return true;
       } catch (e) {
@@ -413,7 +404,6 @@ export default class EventCache {
         return false;
       }
     } finally {
-      this.isBulkUpdating = false;
     }
   }
 
@@ -451,7 +441,6 @@ export default class EventCache {
 
     const handle = provider.getEventHandle(event, config);
 
-    this.isBulkUpdating = true;
     try {
       // Step 3: Optimistic state mutation
       this.identifierManager.removeMapping(event, originalDetails.calendarId);
@@ -527,7 +516,6 @@ export default class EventCache {
         throw e;
       }
     } finally {
-      this.isBulkUpdating = false;
     }
   }
 
