@@ -156,6 +156,7 @@ export default class EventCache {
 
     // Re-initialize IdentifierManager with the new map.
     this.identifierManager = new IdentifierManager(this);
+    this.localUpdater = new LocalCacheUpdater(this, this.identifierManager);
   }
 
   /**
