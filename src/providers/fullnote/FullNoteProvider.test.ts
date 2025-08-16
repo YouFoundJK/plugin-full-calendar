@@ -122,8 +122,7 @@ describe('FullNoteCalendar Tests', () => {
             date: '2022-01-01'
           },
           expected: {
-            title: 'Test Event',
-            category: 'Work',
+            title: 'Work - Test Event',
             allDay: true,
             date: '2022-01-01'
           }
@@ -141,8 +140,7 @@ describe('FullNoteCalendar Tests', () => {
             date: '2022-01-01'
           },
           expected: {
-            title: 'Test Event',
-            category: 'Work',
+            title: 'Work - Test Event',
             allDay: true,
             date: '2022-01-01'
           }
@@ -235,10 +233,9 @@ describe('FullNoteCalendar Tests', () => {
     const [path, content] = (obsidian.create as jest.Mock).mock.calls[0];
 
     expect(path).toBe('events/2022-01-01 Work - Test Event.md');
-    // The created frontmatter should have the FULL title.
-    expect(content).toContain('title: Work - Test Event');
-    // It should NOT have a separate category field.
-    expect(content).not.toContain('category: Work');
+    // The frontmatter content will now have separate fields.
+    expect(content).toContain('title: Test Event');
+    expect(content).toContain('category: Work');
   });
 
   it('modify an existing event to add a category', async () => {
@@ -305,9 +302,8 @@ describe('FullNoteCalendar Tests', () => {
     const [file, rewriteCallback] = (obsidian.rewrite as jest.Mock).mock.calls[0];
     const newContent = rewriteCallback(contents);
 
-    // The rewritten content should have the new, full title.
-    expect(newContent).toContain('title: Work - Test Event');
-    // It should not have a separate category field.
-    expect(newContent).not.toContain('category: Work');
+    // The rewritten content should have the new structured data.
+    expect(newContent).toContain('title: Test Event');
+    expect(newContent).toContain('category: Work');
   });
 });
