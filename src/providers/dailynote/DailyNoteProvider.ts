@@ -105,12 +105,8 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       // Use raw event; enhancement is handled elsewhere now
       const event = rawEvent;
 
-      let sourceTimezone: string;
-      if (this.plugin.settings.dailyNotesTimezone === 'local') {
-        sourceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      } else {
-        sourceTimezone = event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-      }
+      // --- simplified timezone logic ---
+      const sourceTimezone = event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
       let translatedEvent = event;
       if (sourceTimezone !== displayTimezone) {
         translatedEvent = convertEvent(event, sourceTimezone, displayTimezone);
@@ -134,21 +130,19 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       throw new Error('Daily Note provider can only create single events.');
     }
 
-    let eventToCreate = { ...event };
+    // --- unified write logic ---
     const displayTimezone =
       this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const targetTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    if (!eventToCreate.timezone) {
-      if (this.plugin.settings.dailyNotesTimezone === 'strict') {
-        eventToCreate.timezone = displayTimezone;
-      } else {
-        eventToCreate.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      }
+    let eventToCreate = { ...event };
+
+    if (displayTimezone !== targetTimezone) {
+      eventToCreate = convertEvent(event, displayTimezone, targetTimezone);
     }
 
-    if (eventToCreate.timezone !== displayTimezone) {
-      eventToCreate = convertEvent(event, displayTimezone, eventToCreate.timezone);
-    }
+    // A floating event in a note should not have a timezone property written to it.
+    delete eventToCreate.timezone;
 
     const m = moment(eventToCreate.date);
     let file = getDailyNote(m, getAllDailyNotes());
@@ -188,22 +182,19 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
     const lineNumber = await this._findEventLineNumber(file, handle.persistentId);
 
+    // --- unified write logic ---
     const displayTimezone =
       this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const targetTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
     let eventToWrite = newEventData;
-    let targetTimezone: string;
-    if (this.plugin.settings.dailyNotesTimezone === 'local') {
-      targetTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } else {
-      const contents = await this.app.read(file);
-      const line = contents.split('\n')[lineNumber];
-      const sourceEvent = getInlineEventFromLine(line, {});
-      targetTimezone = sourceEvent?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    }
+
     if (displayTimezone !== targetTimezone) {
       eventToWrite = convertEvent(newEventData, displayTimezone, targetTimezone);
     }
-    eventToWrite.timezone = targetTimezone;
+
+    // A floating event in a note should not have a timezone property written to it.
+    delete eventToWrite.timezone;
 
     const oldDate = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
     if (!oldDate) throw new Error(`Could not get date from file at path ${file.path}`);

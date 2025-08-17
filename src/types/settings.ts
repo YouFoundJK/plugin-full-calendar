@@ -39,7 +39,6 @@ export interface FullCalendarSettings {
     mobile: string;
   };
   timeFormat24h: boolean;
-  dailyNotesTimezone: 'local' | 'strict';
   clickToCreateEventFromMonthView: boolean;
   displayTimezone: string | null;
   lastSystemTimezone: string | null;
@@ -69,7 +68,6 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     mobile: 'timeGrid3Days'
   },
   timeFormat24h: false,
-  dailyNotesTimezone: 'local',
   clickToCreateEventFromMonthView: true,
   displayTimezone: null,
   lastSystemTimezone: null,
