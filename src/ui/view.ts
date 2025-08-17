@@ -811,7 +811,7 @@ export class CalendarView extends ItemView {
     window.fc = this.fullCalendarView;
 
     this.registerDomEvent(this.containerEl, 'mouseenter', () => {
-      this.plugin.cache.revalidateRemoteCalendars();
+      this.plugin.providerRegistry.revalidateRemoteCalendars();
     });
 
     if (this.callback) {

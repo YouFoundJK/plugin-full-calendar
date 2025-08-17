@@ -42,9 +42,7 @@ import { Notice, TFile } from 'obsidian';
 import FullCalendarPlugin from '../main';
 import EventStore, { StoredEvent } from './EventStore';
 import { RecurringEventManager } from './modules/RecurringEventManager';
-import { RemoteCacheUpdater } from './modules/RemoteCacheUpdater';
-import { LocalCacheUpdater } from './modules/LocalCacheUpdater';
-import { CalendarInfo, OFCEvent, validateEvent } from '../types';
+import { CalendarInfo, OFCEvent, validateEvent, EventLocation } from '../types';
 import { CalendarProvider } from '../providers/Provider';
 import { EventEnhancer } from './EventEnhancer';
 
@@ -93,8 +91,6 @@ export default class EventCache {
   private _plugin: FullCalendarPlugin;
   private _store = new EventStore();
   private recurringEventManager: RecurringEventManager;
-  private remoteUpdater: RemoteCacheUpdater;
-  private localUpdater: LocalCacheUpdater;
 
   calendars = new Map<string, CalendarProvider<any>>();
   initialized = false;
@@ -107,8 +103,6 @@ export default class EventCache {
     this._plugin = plugin;
     this.enhancer = new EventEnhancer(this.plugin.settings);
     this.recurringEventManager = new RecurringEventManager(this, this._plugin);
-    this.remoteUpdater = new RemoteCacheUpdater(this);
-    this.localUpdater = new LocalCacheUpdater(this, this.plugin.providerRegistry as any);
   }
 
   get plugin(): FullCalendarPlugin {
@@ -149,8 +143,6 @@ export default class EventCache {
         );
       }
     });
-
-    this.localUpdater = new LocalCacheUpdater(this, this.plugin.providerRegistry as any);
   }
 
   /**
@@ -172,7 +164,6 @@ export default class EventCache {
 
     this.initialized = true;
     this.plugin.providerRegistry.buildMap(this._store);
-    this.revalidateRemoteCalendars();
   }
 
   // ====================================================================
@@ -810,41 +801,63 @@ export default class EventCache {
   // ====================================================================
 
   /**
-   * Deletes all events associated with a given file path from the EventStore
-   * and notifies views to remove them.
-   *
-   * @param path Path of the file that has been deleted.
+   * Sync a calendar's events with the cache, diffing and updating as needed.
    */
-  deleteEventsAtPath(path: string) {
-    this.localUpdater.handleFileDelete(path);
-  }
+  public syncCalendar(calendarId: string, newRawEvents: [OFCEvent, EventLocation | null][]): void {
+    if (this.isBulkUpdating) {
+      return;
+    }
 
-  /**
-   * Main hook into the filesystem. Called when a file is created or updated.
-   * It determines which calendars are affected by the change, reads the new
-   * event data from the file, compares it to the old data in the cache,
-   * and updates the EventStore and subscribing views if any changes are detected.
-   *
-   * @param file The file that has been updated in the Vault.
-   * @remarks This is an async method and can be prone to race conditions if
-   * a file is updated multiple times in quick succession.
-   */
-  async fileUpdated(file: TFile): Promise<void> {
-    this.localUpdater.handleFileUpdate(file);
-  }
+    // 1. Get OLD state from the store for this calendar.
+    const oldEventsInCalendar = this.store.getEventsInCalendar(calendarId);
 
-  /**
-   * Revalidates all remote calendars (ICS, CalDAV) to fetch the latest events.
-   * This operation is non-blocking. As each calendar finishes fetching, it
-   * updates the cache and the UI.
-   *
-   * @param force - If true, bypasses the throttling mechanism and fetches immediately.
-   *                Defaults to false.
-   * @remarks Revalidation is throttled by MILLICONDS_BETWEEN_REVALIDATIONS to avoid
-   * excessive network requests.
-   */
-  revalidateRemoteCalendars(force = false) {
-    this.remoteUpdater.revalidate(force);
+    // 2. ENHANCE the new raw events.
+    const newEnhancedEvents = newRawEvents.map(([rawEvent, location]) => ({
+      event: this.enhancer.enhance(rawEvent),
+      location,
+      calendarId
+    }));
+
+    // Simple diff to avoid unnecessary updates
+    const oldEventData = oldEventsInCalendar.map(e => e.event);
+    const newEventData = newEnhancedEvents.map(e => e.event);
+    if (JSON.stringify(oldEventData) === JSON.stringify(newEventData)) {
+      return;
+    }
+
+    // 3. Prepare removal and addition lists.
+    const idsToRemove: string[] = [];
+    const eventsToAdd: {
+      event: OFCEvent;
+      id: string;
+      location: EventLocation | null;
+      calendarId: string;
+    }[] = [];
+
+    for (const oldEvent of oldEventsInCalendar) {
+      idsToRemove.push(oldEvent.id);
+      this.plugin.providerRegistry.removeMapping(oldEvent.event, oldEvent.calendarId);
+    }
+
+    for (const { event, location, calendarId } of newEnhancedEvents) {
+      const newSessionId = this.plugin.providerRegistry.generateId();
+      this.plugin.providerRegistry.addMapping(event, calendarId, newSessionId);
+      eventsToAdd.push({ event, location, calendarId, id: newSessionId });
+    }
+
+    // 4. Atomically update the store.
+    this.store.deleteEventsInCalendar(calendarId);
+    for (const { event, id, location, calendarId } of eventsToAdd) {
+      this.store.add({ calendarId, location, id, event });
+    }
+
+    // 5. Notify the UI.
+    const cacheEntriesToAdd = eventsToAdd.map(({ event, id, calendarId }) => ({
+      event,
+      id,
+      calendarId
+    }));
+    this.flushUpdateQueue(idsToRemove, cacheEntriesToAdd);
   }
 
   // ====================================================================
@@ -875,6 +888,71 @@ export default class EventCache {
       return (provider as any).checkForDuplicate(event, config);
     }
     return false;
+  }
+
+  // Add this new method:
+  public async syncFile(
+    file: TFile,
+    newEventsWithDetails: { event: OFCEvent; location: EventLocation | null; calendarId: string }[]
+  ): Promise<void> {
+    if (this.isBulkUpdating) {
+      return;
+    }
+
+    // 1. Get OLD state from the store for this specific file.
+    const oldEventsInFile = this.store.getEventsInFile(file);
+
+    // 2. ENHANCE the new raw events from the provider.
+    const newEnhancedEvents = newEventsWithDetails.map(({ event, location, calendarId }) => ({
+      event: this.enhancer.enhance(event),
+      location,
+      calendarId
+    }));
+
+    // For a simple diff, we can just compare the stringified versions of the event arrays.
+    const oldEventData = oldEventsInFile.map(e => e.event);
+    const newEventData = newEnhancedEvents.map(e => e.event);
+
+    if (JSON.stringify(oldEventData) === JSON.stringify(newEventData)) {
+      // No changes detected, nothing to do.
+      return;
+    }
+
+    // 3. If there are changes, perform the update.
+    const idsToRemove: string[] = [];
+    const eventsToAdd: {
+      event: OFCEvent;
+      id: string;
+      location: EventLocation | null;
+      calendarId: string;
+    }[] = [];
+
+    // Mark all old events for removal.
+    for (const oldEvent of oldEventsInFile) {
+      idsToRemove.push(oldEvent.id);
+      this.plugin.providerRegistry.removeMapping(oldEvent.event, oldEvent.calendarId);
+    }
+
+    // Prepare all new events for addition.
+    for (const { event, location, calendarId } of newEnhancedEvents) {
+      const newSessionId = this.plugin.providerRegistry.generateId();
+      this.plugin.providerRegistry.addMapping(event, calendarId, newSessionId);
+      eventsToAdd.push({ event, location, calendarId, id: newSessionId });
+    }
+
+    // 4. Atomically update the store.
+    this.store.deleteEventsAtPath(file.path);
+    for (const { event, id, location, calendarId } of eventsToAdd) {
+      this.store.add({ calendarId, location, id, event });
+    }
+
+    // 5. Notify the UI.
+    const cacheEntriesToAdd = eventsToAdd.map(({ event, id, calendarId }) => ({
+      event,
+      id,
+      calendarId
+    }));
+    this.flushUpdateQueue(idsToRemove, cacheEntriesToAdd);
   }
 
   private getProviderForEvent(eventId: string) {

@@ -1,8 +1,12 @@
-import { TFile } from 'obsidian';
+import { TFile, Notice } from 'obsidian';
 import { CalendarProvider } from '../providers/Provider';
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
+
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const MILLICONDS_BETWEEN_REVALIDATIONS = 5 * MINUTE;
 
 export class ProviderRegistry {
   private providers = new Map<string, CalendarProvider<any>>();
@@ -220,12 +224,113 @@ export class ProviderRegistry {
 
   // NOTE: Keep handleFileUpdate and handleFileDelete stubs for now.
   public async handleFileUpdate(file: TFile): Promise<void> {
-    // This will be implemented in Step 3
-    return;
+    if (!this.cache) return;
+
+    // Find all *local* providers that might be interested in this file.
+    const interestedProviders = [];
+    for (const info of this.getAllSources()) {
+      const provider = this.getProvider(info.type);
+      if (provider && !provider.isRemote && provider.getEventsInFile) {
+        const config = (info as any).config;
+        let isRelevant = false;
+        if (info.type === 'local' && config.directory) {
+          isRelevant = file.path.startsWith(config.directory + '/');
+        } else if (info.type === 'dailynote') {
+          const { folder } = require('obsidian-daily-notes-interface').getDailyNoteSettings();
+          isRelevant = folder ? file.path.startsWith(folder + '/') : true;
+        }
+
+        if (isRelevant) {
+          interestedProviders.push({ provider, config, settingsId: (info as any).id });
+        }
+      }
+    }
+
+    if (interestedProviders.length === 0) {
+      // No providers care about this file, so we can stop.
+      await this.cache.syncFile(file, []);
+      return;
+    }
+
+    // Aggregate all events from all interested providers for this one file.
+    const allNewEvents: { event: OFCEvent; location: EventLocation | null; calendarId: string }[] =
+      [];
+    for (const { provider, config, settingsId } of interestedProviders) {
+      const eventsFromFile = await provider.getEventsInFile!(file, config);
+      for (const [event, location] of eventsFromFile) {
+        allNewEvents.push({ event, location, calendarId: settingsId });
+      }
+    }
+
+    // Push the definitive new state of the file to the cache for diffing.
+    await this.cache.syncFile(file, allNewEvents);
   }
 
   public async handleFileDelete(path: string): Promise<void> {
-    // This will be implemented in Step 3
-    return;
+    if (!this.cache) return;
+    // For a delete, the new state of the file is "no events".
+    // The cache will diff this against its old state and remove everything.
+    await this.cache.syncFile({ path } as TFile, []);
+  }
+
+  // Add these properties for remote revalidation
+  private revalidating = false;
+  private lastRevalidation = 0;
+
+  public revalidateRemoteCalendars(force = false): void {
+    if (!this.cache) return;
+    if (this.revalidating) {
+      return;
+    }
+    const now = Date.now();
+
+    if (!force && now - this.lastRevalidation < MILLICONDS_BETWEEN_REVALIDATIONS) {
+      return;
+    }
+
+    const remoteSources = this.getAllSources().filter(info => {
+      const provider = this.getProvider(info.type);
+      return provider && provider.isRemote;
+    });
+
+    if (remoteSources.length === 0) {
+      return;
+    }
+
+    this.revalidating = true;
+    new Notice('Revalidating remote calendars...');
+
+    const promises = remoteSources.map(info => {
+      const provider = this.getProvider(info.type)!;
+      const config = (info as any).config;
+      const settingsId = (info as any).id;
+      if (!settingsId) {
+        return Promise.reject(`Calendar source is missing an ID.`);
+      }
+
+      return provider
+        .getEvents(config)
+        .then(events => {
+          this.cache!.syncCalendar(settingsId, events);
+        })
+        .catch(err => {
+          const name = (info as any).name || info.type;
+          throw new Error(`Failed to revalidate calendar "${name}": ${err.message}`);
+        });
+    });
+
+    Promise.allSettled(promises).then(results => {
+      this.revalidating = false;
+      this.lastRevalidation = Date.now();
+      const errors = results.flatMap(result => (result.status === 'rejected' ? result.reason : []));
+      if (errors.length > 0) {
+        new Notice('One or more remote calendars failed to load. Check the console for details.');
+        errors.forEach(reason => {
+          console.error(`Full Calendar: Revalidation failed.`, reason);
+        });
+      } else {
+        new Notice('Remote calendars revalidated.');
+      }
+    });
   }
 }

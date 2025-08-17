@@ -560,7 +560,13 @@ describe('editable calendars', () => {
         (calendar.getEventsInFile as jest.Mock).mockResolvedValue(eventsInFile);
       }
 
-      await cache.fileUpdated(file as TFile);
+      // Simulate ProviderRegistry fetching events and calling syncFile
+      const newEventsForSync = eventsInFile.map(([event, location]) => ({
+        event,
+        location,
+        calendarId: 'test'
+      }));
+      await cache.syncFile(file as TFile, newEventsForSync);
 
       assertCacheContentCounts(cache, {
         calendars: 1,

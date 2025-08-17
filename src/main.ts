@@ -115,21 +115,22 @@ export default class FullCalendarPlugin extends Plugin {
     // Respond to obsidian events
     this.registerEvent(
       this.app.metadataCache.on('changed', file => {
-        this.cache.fileUpdated(file);
+        this.providerRegistry.handleFileUpdate(file);
       })
     );
     this.registerEvent(
       this.app.vault.on('rename', (file, oldPath) => {
         if (file instanceof TFile) {
-          // console.debug('FILE RENAMED', file.path);
-          this.cache.deleteEventsAtPath(oldPath);
+          // A rename is a delete at the old path.
+          // The 'changed' event will pick up the creation at the new path.
+          this.providerRegistry.handleFileDelete(oldPath);
         }
       })
     );
     this.registerEvent(
       this.app.vault.on('delete', file => {
         if (file instanceof TFile) {
-          this.cache.deleteEventsAtPath(file.path);
+          this.providerRegistry.handleFileDelete(file.path);
         }
       })
     );
@@ -190,7 +191,7 @@ export default class FullCalendarPlugin extends Plugin {
       id: 'full-calendar-revalidate',
       name: 'Revalidate remote calendars',
       callback: () => {
-        this.cache.revalidateRemoteCalendars(true);
+        this.providerRegistry.revalidateRemoteCalendars(true);
       }
     });
     this.addCommand({
@@ -342,6 +343,7 @@ export default class FullCalendarPlugin extends Plugin {
     } else {
       this.cache.reset();
       await this.cache.populate();
+      this.providerRegistry.revalidateRemoteCalendars();
       this.cache.resync();
     }
   }
