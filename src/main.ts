@@ -95,7 +95,7 @@ export default class FullCalendarPlugin extends Plugin {
    */
   async onload() {
     this.isMobile = (this.app as App & { isMobile: boolean }).isMobile;
-    this.providerRegistry = new ProviderRegistry();
+    this.providerRegistry = new ProviderRegistry(this);
 
     // Register the providers
     this.providerRegistry.register(new FullNoteProvider(new ObsidianIO(this.app), this));
@@ -106,6 +106,9 @@ export default class FullCalendarPlugin extends Plugin {
 
     await this.loadSettings(); // This now handles setting and syncing
     await manageTimezone(this);
+
+    // Link the two singletons.
+    this.providerRegistry.setCache(this.cache);
 
     this.cache.reset();
 

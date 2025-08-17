@@ -44,7 +44,6 @@ import EventStore, { StoredEvent } from './EventStore';
 import { RecurringEventManager } from './modules/RecurringEventManager';
 import { RemoteCacheUpdater } from './modules/RemoteCacheUpdater';
 import { LocalCacheUpdater } from './modules/LocalCacheUpdater';
-import { IdentifierManager } from './modules/IdentifierManager';
 import { CalendarInfo, OFCEvent, validateEvent } from '../types';
 import { CalendarProvider } from '../providers/Provider';
 import { EventEnhancer } from './EventEnhancer';
@@ -96,10 +95,6 @@ export default class EventCache {
   private recurringEventManager: RecurringEventManager;
   private remoteUpdater: RemoteCacheUpdater;
   private localUpdater: LocalCacheUpdater;
-  // You'll need to pass the new `calendars` map to the IdentifierManager,
-  // but the map is not populated here anymore. We'll pass it in `reset`.
-  // For now, let's pass an empty map. This will be fixed in the `reset` method.
-  private identifierManager: IdentifierManager;
 
   calendars = new Map<string, CalendarProvider<any>>();
   initialized = false;
@@ -111,10 +106,9 @@ export default class EventCache {
   constructor(plugin: FullCalendarPlugin) {
     this._plugin = plugin;
     this.enhancer = new EventEnhancer(this.plugin.settings);
-    this.recurringEventManager = new RecurringEventManager(this, this._plugin); // MODIFY THIS LINE
+    this.recurringEventManager = new RecurringEventManager(this, this._plugin);
     this.remoteUpdater = new RemoteCacheUpdater(this);
-    this.identifierManager = new IdentifierManager(this);
-    this.localUpdater = new LocalCacheUpdater(this, this.identifierManager);
+    this.localUpdater = new LocalCacheUpdater(this, this.plugin.providerRegistry as any);
   }
 
   get plugin(): FullCalendarPlugin {
@@ -156,8 +150,7 @@ export default class EventCache {
       }
     });
 
-    this.identifierManager = new IdentifierManager(this);
-    this.localUpdater = new LocalCacheUpdater(this, this.identifierManager);
+    this.localUpdater = new LocalCacheUpdater(this, this.plugin.providerRegistry as any);
   }
 
   /**
@@ -166,33 +159,19 @@ export default class EventCache {
   async populate() {
     this.reset();
 
-    const promises = Array.from(this.calendars.entries()).map(async ([settingsId, provider]) => {
-      const info = this.plugin.providerRegistry.getSource(settingsId);
-      if (!info) {
-        console.warn(`Full Calendar: Could not find calendar info for ID ${settingsId}.`);
-        return;
-      }
-      try {
-        const results = await provider.getEvents((info as any).config);
-        results.forEach(([rawEvent, location]) => {
-          const event = this.enhancer.enhance(rawEvent);
-          const id = this.generateId();
-          this._store.add({
-            calendarId: settingsId,
-            location,
-            id,
-            event
-          });
-        });
-      } catch (e) {
-        console.warn(`Full Calendar: Failed to load calendar source`, info, e);
-      }
+    const allEvents = await this.plugin.providerRegistry.fetchAllEvents();
+    allEvents.forEach(({ calendarId, event, location }) => {
+      const id = this.generateId();
+      this._store.add({
+        calendarId,
+        location,
+        id,
+        event
+      });
     });
 
-    await Promise.allSettled(promises);
-
     this.initialized = true;
-    this.identifierManager.buildMap(this._store);
+    this.plugin.providerRegistry.buildMap(this._store);
     this.revalidateRemoteCalendars();
   }
 
@@ -201,15 +180,15 @@ export default class EventCache {
   // ====================================================================
 
   generateId(): string {
-    return this.identifierManager.generateId();
+    return this.plugin.providerRegistry.generateId();
   }
 
   public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
-    return this.identifierManager.getGlobalIdentifier(event, calendarId);
+    return this.plugin.providerRegistry.getGlobalIdentifier(event, calendarId);
   }
 
   public async getSessionId(globalIdentifier: string): Promise<string | null> {
-    return this.identifierManager.getSessionId(globalIdentifier);
+    return this.plugin.providerRegistry.getSessionId(globalIdentifier);
   }
 
   // ====================================================================
@@ -325,7 +304,7 @@ export default class EventCache {
         id: optimisticId,
         event: optimisticEvent
       });
-      this.identifierManager.addMapping(optimisticEvent, calendarId, optimisticId);
+      this.plugin.providerRegistry.addMapping(optimisticEvent, calendarId, optimisticId);
 
       // Step 3: Immediate UI update
       const optimisticCacheEntry: CacheEntry = {
@@ -344,7 +323,11 @@ export default class EventCache {
       try {
         // Prepare the event for the provider (e.g., combine title and category)
         const eventForStorage = this.enhancer.prepareForStorage(event);
-        const [finalEvent, newLocation] = await provider.createEvent(eventForStorage, config);
+        // Delegate to ProviderRegistry
+        const [finalEvent, newLocation] = await this.plugin.providerRegistry.createEventInProvider(
+          calendarId,
+          eventForStorage
+        );
 
         // SUCCESS: The I/O succeeded. Update the store with the authoritative event.
         // The `finalEvent` from the provider is the source of truth. It needs to be enhanced
@@ -361,8 +344,8 @@ export default class EventCache {
         });
 
         // Update ID mapping with the new authoritative data.
-        this.identifierManager.removeMapping(optimisticEvent, calendarId);
-        this.identifierManager.addMapping(authoritativeEvent, calendarId, optimisticId);
+        this.plugin.providerRegistry.removeMapping(optimisticEvent, calendarId);
+        this.plugin.providerRegistry.addMapping(authoritativeEvent, calendarId, optimisticId);
 
         // Flush this "correction" to the UI. The event is already visible,
         // but this updates its data to the final state from the server.
@@ -380,7 +363,7 @@ export default class EventCache {
         });
 
         // Roll back store and mappings
-        this.identifierManager.removeMapping(optimisticEvent, calendarId);
+        this.plugin.providerRegistry.removeMapping(optimisticEvent, calendarId);
         this._store.delete(optimisticId);
 
         // Roll back UI
@@ -408,12 +391,12 @@ export default class EventCache {
     eventId: string,
     options?: { silent?: boolean; instanceDate?: string; force?: boolean }
   ): Promise<void> {
-    // Step 1: Get all original details for potential rollback.
     const originalDetails = this.store.getEventDetails(eventId);
     if (!originalDetails) {
       throw new Error(`Event with ID ${eventId} not found for deletion.`);
     }
-    const { provider, config, event } = this.getProviderForEvent(eventId);
+    const { event, calendarId } = originalDetails;
+    const { provider, config } = this.getProviderForEvent(eventId);
 
     // Step 2: Pre-flight checks and recurring event logic
     if (!provider.getCapabilities(config).canDelete) {
@@ -433,7 +416,7 @@ export default class EventCache {
 
     try {
       // Step 3: Optimistic state mutation
-      this.identifierManager.removeMapping(event, originalDetails.calendarId);
+      this.plugin.providerRegistry.removeMapping(event, originalDetails.calendarId);
       this._store.delete(eventId);
 
       // Step 4: Immediate UI update
@@ -453,7 +436,7 @@ export default class EventCache {
       }
 
       try {
-        await provider.deleteEvent(handle, config);
+        await this.plugin.providerRegistry.deleteEventInProvider(eventId, event, calendarId);
         // SUCCESS: The external source is now in sync with the cache.
       } catch (e) {
         // FAILURE: The I/O operation failed. Roll back the optimistic changes.
@@ -478,7 +461,7 @@ export default class EventCache {
         });
 
         // Restore ID mapping
-        this.identifierManager.addMapping(
+        this.plugin.providerRegistry.addMapping(
           originalDetails.event,
           originalDetails.calendarId,
           originalDetails.id
@@ -556,7 +539,7 @@ export default class EventCache {
     try {
       // Step 3: Optimistic state mutation
       // Remove the old event and its mappings
-      this.identifierManager.removeMapping(oldEvent, calendarId);
+      this.plugin.providerRegistry.removeMapping(oldEvent, calendarId);
       this.store.delete(eventId);
 
       // Add the new event and its mappings, using the same session ID
@@ -576,7 +559,7 @@ export default class EventCache {
         id: eventId,
         event: newEventWithId
       });
-      this.identifierManager.addMapping(newEventWithId, calendarId, eventId);
+      this.plugin.providerRegistry.addMapping(newEventWithId, calendarId, eventId);
 
       // Step 4: Immediate UI update
       const newCacheEntry: CacheEntry = {
@@ -600,11 +583,11 @@ export default class EventCache {
         const preparedOldEvent = this.enhancer.prepareForStorage(oldEvent);
         const preparedNewEvent = this.enhancer.prepareForStorage(newEvent);
 
-        const updatedLocation = await provider.updateEvent(
-          handle,
+        const updatedLocation = await this.plugin.providerRegistry.updateEventInProvider(
+          eventId,
+          calendarId,
           preparedOldEvent,
-          preparedNewEvent,
-          config
+          preparedNewEvent
         );
 
         // SUCCESS: The I/O succeeded. Correct the location in the store if it changed.
@@ -628,7 +611,7 @@ export default class EventCache {
         });
 
         // Roll back store and mappings to original state
-        this.identifierManager.removeMapping(newEventWithId, calendarId);
+        this.plugin.providerRegistry.removeMapping(newEventWithId, calendarId);
         this.store.delete(eventId);
 
         const locationForStore = originalDetails.location
@@ -644,7 +627,7 @@ export default class EventCache {
           id: originalDetails.id,
           event: originalDetails.event
         });
-        this.identifierManager.addMapping(
+        this.plugin.providerRegistry.addMapping(
           originalDetails.event,
           originalDetails.calendarId,
           originalDetails.id
