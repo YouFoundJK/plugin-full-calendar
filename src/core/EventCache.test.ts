@@ -68,10 +68,19 @@ const makeCache = (events: OFCEvent[]) => {
     config: {}
   };
 
+  // Update mockPlugin to include getAllSources
   const mockPlugin = {
     settings: { ...DEFAULT_SETTINGS, calendarSources: [calendarInfo] },
     providerRegistry: {
-      getProvider: () => mockProvider
+      getProvider: () => mockProvider,
+      fetchAllEvents: async () =>
+        events.map(e => ({
+          calendarId: 'test',
+          event: e,
+          location: null
+        })),
+      // ADD THIS METHOD
+      getAllSources: () => [calendarInfo]
     }
   } as any;
 
@@ -141,10 +150,24 @@ describe('event cache with readonly calendar', () => {
         config: { id: 'cal2' }
       }
     ];
+    // Update mockPlugin to include getAllSources and fetchAllEvents
     const mockPlugin = {
       settings: { ...DEFAULT_SETTINGS, calendarSources },
       providerRegistry: {
-        getProvider: () => mockProvider
+        getProvider: () => mockProvider,
+        getAllSources: () => calendarSources,
+        fetchAllEvents: async () => [
+          ...events1.map(e => ({ calendarId: 'cal1', event: e, location: null })),
+          ...events2.map(e => ({ calendarId: 'cal2', event: e, location: null }))
+        ],
+        getSource: (id: string) => calendarSources.find(source => source.id === id),
+        generateId: jest.fn(),
+        addMapping: jest.fn(),
+        removeMapping: jest.fn(),
+        getGlobalIdentifier: jest.fn(),
+        createEventInProvider: jest.fn(),
+        updateEventInProvider: jest.fn(),
+        deleteEventInProvider: jest.fn()
       }
     } as any;
     const cache = new EventCache(mockPlugin);
@@ -240,10 +263,19 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
     config: { id: 'test' },
     color: 'black'
   };
+  // Update mockPlugin to include getAllSources
   const mockPlugin = {
     settings: { ...DEFAULT_SETTINGS, calendarSources: [calendarInfo] },
     providerRegistry: {
-      getProvider: () => calendar
+      getProvider: () => calendar,
+      fetchAllEvents: async () =>
+        events.map(([event, location]) => ({
+          calendarId: 'test',
+          event,
+          location
+        })),
+      // ADD THIS METHOD
+      getAllSources: () => [calendarInfo]
     }
   } as any;
   const cache = new EventCache(mockPlugin);

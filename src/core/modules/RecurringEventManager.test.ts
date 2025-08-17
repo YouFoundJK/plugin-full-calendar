@@ -36,10 +36,17 @@ describe('RecurringEventManager', () => {
 
   const mockPlugin = {
     app: {},
-    settings: DEFAULT_SETTINGS
+    settings: DEFAULT_SETTINGS,
+    providerRegistry: {
+      getSource: jest.fn(),
+      getProvider: jest.fn()
+    }
   } as unknown as FullCalendarPlugin;
 
   beforeEach(() => {
+    (mockPlugin.providerRegistry.getSource as jest.Mock).mockClear();
+    (mockPlugin.providerRegistry.getProvider as jest.Mock).mockClear();
+
     // Create mock calendar
     mockProvider = {
       type: 'test',
@@ -71,6 +78,15 @@ describe('RecurringEventManager', () => {
   });
 
   describe('toggleRecurringInstance - undoing completed task', () => {
+    beforeEach(() => {
+      // Mock the provider registry to return our test provider and config
+      (mockPlugin.providerRegistry.getSource as jest.Mock).mockReturnValue({
+        type: 'test',
+        config: { directory: 'events' }
+      });
+      (mockPlugin.providerRegistry.getProvider as jest.Mock).mockReturnValue(mockProvider);
+    });
+
     const masterEvent: OFCEvent = {
       type: 'recurring',
       title: 'Weekly Meeting',
