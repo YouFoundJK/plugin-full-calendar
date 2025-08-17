@@ -321,7 +321,7 @@ export class CalendarView extends ItemView {
       const settings = this.plugin.settings;
 
       const mainEvents = events
-        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings, calendarId))
+        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings)) // REMOVED calendarId
         .filter((e): e is EventInput => !!e);
 
       const shadowEvents = this.generateShadowEvents(mainEvents, true);
@@ -440,7 +440,7 @@ export class CalendarView extends ItemView {
 
     const sources = allSources.map(({ events, editable, color, id }): EventSourceInput => {
       const mainEvents = events
-        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings, id))
+        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings)) // REMOVED id
         .filter((e): e is EventInput => !!e);
 
       // Apply workspace category filtering
@@ -867,7 +867,7 @@ export class CalendarView extends ItemView {
         });
         toAdd.forEach(({ id, event, calendarId }) => {
           // Pass settings to toEventInput
-          const eventInput = toEventInput(id, event, settings, calendarId);
+          const eventInput = toEventInput(id, event, settings); // REMOVED calendarId
           if (eventInput) {
             // Respect workspace source filtering: skip if calendar is not selected
             const workspace = this.getActiveWorkspace();
@@ -914,7 +914,7 @@ export class CalendarView extends ItemView {
         }
 
         const mainEvents = events.flatMap(
-          ({ id: eventId, event }: CachedEvent) => toEventInput(eventId, event, settings, id) || []
+          ({ id: eventId, event }: CachedEvent) => toEventInput(eventId, event, settings) || [] // REMOVED id
         );
 
         // Apply workspace category filtering

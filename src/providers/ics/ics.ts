@@ -109,7 +109,16 @@ function icsToOFC(input: ical.Event): OFCEvent {
     };
   } else {
     const date = getLuxonDate(startDate);
-    const finalEndDate = specifiesEnd(input) ? getLuxonDate(endDate) : undefined;
+    let finalEndDate: string | null | undefined = null;
+    if (specifiesEnd(input)) {
+      if (isAllDay) {
+        // For all-day events, ICS end date is exclusive. Make it inclusive by subtracting one day.
+        const inclusiveEndDate = endDate.minus({ days: 1 });
+        finalEndDate = getLuxonDate(inclusiveEndDate);
+      } else {
+        finalEndDate = getLuxonDate(endDate);
+      }
+    }
 
     return {
       type: 'single',

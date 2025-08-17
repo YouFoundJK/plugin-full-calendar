@@ -19,7 +19,7 @@ exports[`ics tests parses gcal ics file and categories: BEGIN:VCALENDAR\\nPRODID
   {
     "allDay": true,
     "date": "2022-03-02",
-    "endDate": "2022-03-03",
+    "endDate": null,
     "timezone": undefined,
     "title": "All day event",
     "type": "single",
@@ -63,7 +63,7 @@ exports[`ics tests parses gcal ics file and categories: BEGIN:VCALENDAR\\nPRODID
   {
     "allDay": true,
     "date": "2022-02-16",
-    "endDate": "2022-02-17",
+    "endDate": null,
     "timezone": undefined,
     "title": "Announce Beta",
     "type": "single",
