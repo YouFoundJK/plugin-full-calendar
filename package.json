@@ -64,7 +64,6 @@
         "@types/deep-equal": "^1.0.4",
         "@types/ical": "^0.8.3",
         "color": "^5.0.0",
-        "dav": "^1.8.0",
         "deep-equal": "^2.2.3",
         "esbuild-css-modules-plugin": "^3.1.5",
         "flatpickr": "^4.6.13",

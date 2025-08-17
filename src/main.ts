@@ -101,7 +101,7 @@ export default class FullCalendarPlugin extends Plugin {
     this.providerRegistry.register(new FullNoteProvider(new ObsidianIO(this.app), this));
     this.providerRegistry.register(new DailyNoteProvider(new ObsidianIO(this.app), this));
     this.providerRegistry.register(new ICSProvider(this.settings));
-    this.providerRegistry.register(new CalDAVProvider(this.settings));
+    this.providerRegistry.register(new CalDAVProvider());
     this.providerRegistry.register(new GoogleProvider(this));
 
     await this.loadSettings(); // This now handles setting and syncing

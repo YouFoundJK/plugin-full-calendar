@@ -12,12 +12,11 @@
  * @license See LICENSE.md
  */
 
-import dav from 'dav';
-
-import Color from 'color';
-import * as transport from './transport';
 import { Authentication, CalDAVSource } from '../../types';
 import { generateCalendarId } from '../../types/calendar_settings';
+
+// Use require for robust module loading.
+const { createAccount, findCalendars, AuthMethod, Calendar } = require('tsdav');
 
 export async function importCalendars(
   auth: Authentication,
@@ -25,57 +24,36 @@ export async function importCalendars(
   existingIds: string[]
 ): Promise<CalDAVSource[]> {
   try {
-    let xhr = new transport.Basic(
-      new dav.Credentials({
+    const account = await createAccount({
+      server: url, // The correct property is `server`.
+      credentials: {
         username: auth.username,
         password: auth.password
-      })
-    );
-    let account = await dav.createAccount({
-      xhr: xhr,
-      server: url,
-      loadObjects: false,
-      loadCollections: true
+      },
+      authMethod: AuthMethod.Basic,
+      loadObjects: false
     });
 
-    let colorRequest = dav.request.propfind({
-      props: [{ name: 'calendar-color', namespace: dav.ns.CALDAV_APPLE }],
-      depth: '0'
-    });
+    const discoveredCalendars: any[] = await findCalendars({ account });
 
-    const calendars = await Promise.all(
-      account.calendars.map(async calendar => {
-        if (!calendar.components.includes('VEVENT')) {
-          return null;
-        }
-        let colorResponse = await xhr.send(colorRequest, calendar.url);
-        let color = colorResponse[0].props?.calendarColor;
-        return {
-          name: calendar.displayName,
-          url: calendar.url,
-          color: color ? (Color(color).hex() as string) : null
-        };
-      })
-    );
-    return calendars
-      .flatMap(c => (c ? c : []))
-      .map(c => {
+    return discoveredCalendars
+      .filter(cal => cal.components?.includes('VEVENT'))
+      .map(cal => {
         const newId = generateCalendarId('caldav', existingIds);
         existingIds.push(newId);
         return {
           type: 'caldav',
           id: newId,
-          name: c.name,
+          name: cal.displayName || 'Unnamed Calendar',
           url,
-          homeUrl: c.url,
-          color: c.color || (null as any), // TODO: handle null colors in the type system.
+          homeUrl: cal.url,
+          color: cal.appleCalendarColor || undefined,
           username: auth.username,
           password: auth.password
         };
       });
   } catch (e) {
     console.error(`Error importing calendars from ${url}`, e);
-    console.error(e);
     throw e;
   }
 }

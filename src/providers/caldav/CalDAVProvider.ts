@@ -1,22 +1,25 @@
-import dav from 'dav';
-import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation } from '../../types';
 import { getEventsFromICS } from '../ics/ics';
-import * as transport from './transport';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { CalDAVProviderConfig } from './typesCalDAV';
 
+// Use require for robust module loading.
+const { createAccount, getCalendarObjects, AuthMethod } = require('tsdav');
+
 export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
-  private settings: FullCalendarSettings;
+  // Note: The `settings` property and `constructor` are no longer needed
+  // as the displayTimezone logic was removed in a previous update.
+  // Keeping them commented out in case they are needed for future features.
+  // private settings: FullCalendarSettings;
 
   readonly type = 'caldav';
   readonly displayName = 'CalDAV';
   readonly isRemote = true;
 
-  constructor(settings: FullCalendarSettings) {
-    this.settings = settings;
-  }
+  // constructor(settings: FullCalendarSettings) {
+  //   this.settings = settings;
+  // }
 
   getCapabilities(config: CalDAVProviderConfig): CalendarProviderCapabilities {
     return { canCreate: false, canEdit: false, canDelete: false };
@@ -31,27 +34,26 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
 
   async getEvents(config: CalDAVProviderConfig): Promise<[OFCEvent, EventLocation | null][]> {
     try {
-      const xhr = new transport.Basic(
-        new dav.Credentials({ username: config.username, password: config.password })
-      );
-      const account = await dav.createAccount({ xhr, server: config.url });
-      const calendar = account.calendars.find(cal => cal.url === config.homeUrl);
-      if (!calendar) {
-        console.warn(
-          `CalDAV calendar with homeUrl ${config.homeUrl} not found on server ${config.url}.`
-        );
-        return [];
-      }
+      const account = await createAccount({
+        server: config.url,
+        credentials: {
+          username: config.username,
+          password: config.password
+        },
+        authMethod: AuthMethod.Basic
+      });
 
-      const caldavEvents = await dav.listCalendarObjects(calendar, { xhr });
-      const displayTimezone = this.settings.displayTimezone;
-      if (!displayTimezone) return [];
+      const caldavEvents = await getCalendarObjects({
+        calendarUrl: config.homeUrl,
+        account
+      });
 
-      // Remove timezone conversion logic; just return raw events
+      // The rest of the pipeline remains the same:
+      // Pass raw ICS data to the existing parser.
       return caldavEvents
-        .filter(vevent => vevent.calendarData)
-        .flatMap(vevent => getEventsFromICS(vevent.calendarData))
-        .map(event => [event, null]);
+        .filter((vevent: any) => vevent.data)
+        .flatMap((vevent: any) => getEventsFromICS(vevent.data))
+        .map((event: OFCEvent) => [event, null]);
     } catch (e) {
       console.error(`Error fetching CalDAV events from ${config.url}`, e);
       return [];
