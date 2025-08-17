@@ -515,47 +515,58 @@ export class RecurringEventManager {
       // ====================================================================
       // THIS IS THE CORRECTED BLOCK
       // ====================================================================
-      // 1. Prepare the new parent event for storage to get its full title.
-      const preparedNewParent = this.plugin.cache.enhancer.prepareForStorage(newParentEvent);
-
-      // 2. Create the updated child event object. Its title IS the full title.
-      //    The category/subCategory fields are removed, as they are now encoded in the title.
-      const updatedChildEvent: OFCEvent = {
+      // 1. Create the version of the event for STORAGE on disk.
+      // It has a flat title (e.g., "Category - Title") and no category fields.
+      const storageChildEvent: OFCEvent = {
         ...childEvent,
-        title: preparedNewParent.title, // This is now the FULL title string.
+        // Inherit the new full title from the parent that was prepared for storage.
+        title: this.cache.enhancer.prepareForStorage(newParentEvent).title,
         recurringEventId: newParentFilename
       };
-      delete updatedChildEvent.category;
-      delete updatedChildEvent.subCategory;
-      // ====================================================================
+      delete storageChildEvent.category;
+      delete storageChildEvent.subCategory;
+
+      // 2. Create the version of the event for the in-memory CACHE and UI.
+      // It has separate, structured fields for title, category, etc.
+      const enhancedChildForCache: OFCEvent = {
+        ...childEvent,
+        // Inherit the new ENHANCED properties from the new parent event.
+        title: newParentEvent.title,
+        category: newParentEvent.category,
+        subCategory: newParentEvent.subCategory,
+        recurringEventId: newParentFilename
+      };
 
       const handle = provider.getEventHandle(childEvent, config);
       if (!handle) continue;
 
-      const newLocation = await provider.updateEvent(handle, childEvent, updatedChildEvent, config);
+      // 3. Pass the STORAGE version to the provider to write to the file.
+      const newLocation = await provider.updateEvent(handle, childEvent, storageChildEvent, config);
 
+      // 4. Pass the ENHANCED version to the cache store and the UI update queue.
       this.cache.store.delete(childStoredEvent.id);
       this.cache.store.add({
         calendarId: childCalendarId,
         location: newLocation,
         id: childStoredEvent.id,
-        event: updatedChildEvent
+        event: enhancedChildForCache // Use the correct version here
       });
 
-      this.cache.isBulkUpdating = true;
+      this.cache.isBulkUpdating = true; // This flag is still relevant for batching
       this.cache.updateQueue.toRemove.add(childStoredEvent.id);
       this.cache.updateQueue.toAdd.set(childStoredEvent.id, {
         id: childStoredEvent.id,
         calendarId: childCalendarId,
-        event: updatedChildEvent
+        event: enhancedChildForCache // And use the correct version here
       });
+      // ====================================================================
     }
   }
 
   /**
-   * Intercepts an update request to see if a recurring master's identifier has changed.
-   * If so, it updates all child overrides to point to the new parent identifier.
-   * @returns `true` if the update was handled, `false` otherwise.
+   * Gatekeeper for update requests. Detects if a recurring parent is being renamed.
+   * If so, it delegates to a private handler and returns true. Otherwise, returns false.
+   * @returns `true` if the update was fully handled, `false` otherwise.
    */
   public async handleUpdate(
     oldEvent: OFCEvent,
@@ -563,7 +574,7 @@ export class RecurringEventManager {
     calendarId: string
   ): Promise<boolean> {
     if (oldEvent.type !== 'recurring' && oldEvent.type !== 'rrule') {
-      return false; // Not a recurring master, do nothing.
+      return false; // Not a recurring master, let the standard process handle it.
     }
 
     const providerResult = this.getProviderAndConfig(calendarId);
@@ -575,18 +586,79 @@ export class RecurringEventManager {
     const oldHandle = provider.getEventHandle(oldEvent, config);
     const newHandle = provider.getEventHandle(newEvent, config);
 
-    // For FullNoteProvider, persistentId is the full path.
     const oldPath = oldHandle?.persistentId;
     const newPath = newHandle?.persistentId;
 
+    // A rename is happening if the persistent ID (the file path for notes) changes.
     if (oldPath && newPath && oldPath !== newPath) {
-      const oldFilename = oldPath.split('/').pop();
-      const newFilename = newPath.split('/').pop();
-      if (oldFilename && newFilename && oldFilename !== newFilename) {
-        await this.updateRecurringChildren(calendarId, newFilename, newEvent, oldEvent);
-      }
+      // It's a rename. Delegate to the private handler to manage the entire atomic operation.
+      await this._handleRecurringRename(oldEvent, newEvent, calendarId, oldHandle, newHandle);
+      return true; // Signal that we've taken control.
     }
 
-    return true; // Indicate that we've handled any necessary recurring logic.
+    return false; // Not a rename, let the standard process handle it.
+  }
+
+  /**
+   * Private worker to handle the atomic update of a renamed recurring parent and all its children.
+   * Manages the isBulkUpdating flag to prevent race conditions with the file watcher.
+   */
+  private async _handleRecurringRename(
+    oldEvent: OFCEvent,
+    newEvent: OFCEvent,
+    calendarId: string,
+    oldHandle: import('../../providers/typesProvider').EventHandle,
+    newHandle: import('../../providers/typesProvider').EventHandle
+  ): Promise<void> {
+    this.cache.isBulkUpdating = true;
+    try {
+      const providerResult = this.getProviderAndConfig(calendarId);
+      if (!providerResult) {
+        throw new Error(`Provider for calendar ${calendarId} not found during rename.`);
+      }
+      const { provider, config } = providerResult;
+
+      // 1. Find the parent's session ID in the cache before doing anything.
+      const parentGlobalId = this.cache.getGlobalIdentifier(oldEvent, calendarId);
+      const parentSessionId = parentGlobalId ? await this.cache.getSessionId(parentGlobalId) : null;
+      if (!parentSessionId) {
+        throw new Error('Could not find original parent event in cache to update.');
+      }
+
+      // 2. Update all child notes to point to the new parent filename.
+      const oldFilename = oldHandle.persistentId.split('/').pop();
+      const newFilename = newHandle.persistentId.split('/').pop();
+      if (oldFilename && newFilename) {
+        await this.updateRecurringChildren(calendarId, newFilename, newEvent, oldEvent);
+      }
+
+      // 3. Now, perform the update on the parent event's file itself.
+      const preparedOldEvent = this.cache.enhancer.prepareForStorage(oldEvent);
+      const preparedNewEvent = this.cache.enhancer.prepareForStorage(newEvent);
+      await provider.updateEvent(oldHandle, preparedOldEvent, preparedNewEvent, config);
+
+      // 4. Update the parent event's entry in the cache store and queue the UI change.
+      this.cache.store.delete(parentSessionId);
+      this.cache.store.add({
+        calendarId,
+        location: { file: { path: newHandle.persistentId }, lineNumber: undefined },
+        id: parentSessionId,
+        event: newEvent
+      });
+      this.cache.updateQueue.toRemove.add(parentSessionId);
+      this.cache.updateQueue.toAdd.set(parentSessionId, {
+        id: parentSessionId,
+        calendarId,
+        event: newEvent
+      });
+    } catch (e) {
+      console.error('Error during recurring parent rename operation:', e);
+      new Notice('Error updating recurring event. Some children may not have been updated.');
+      // The finally block will still run to clean up.
+    } finally {
+      this.cache.isBulkUpdating = false;
+      // Flush all queued updates for the parent and children together.
+      this.cache.flushUpdateQueue([], []);
+    }
   }
 }

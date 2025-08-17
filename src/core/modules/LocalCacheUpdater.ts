@@ -159,7 +159,6 @@ export class LocalCacheUpdater {
 
     for (const info of localCalendarInfos) {
       const provider = this.cache.plugin.providerRegistry.getProvider(info.type);
-      // We already filtered for providers that have getEventsInFile
       if (!provider || !provider.getEventsInFile) {
         continue;
       }
@@ -181,7 +180,7 @@ export class LocalCacheUpdater {
       }
 
       // 1. Get old state for this specific file and calendar.
-      const oldEventsForFile = this.cache.store.getEventsInFileAndCalendar(file, settingsId); // <-- USE SETTINGS ID
+      const oldEventsForFile = this.cache.store.getEventsInFileAndCalendar(file, settingsId);
       // 2. Get new state from the file AND ENHANCE IT IMMEDIATELY.
       const newEventResponses = await provider.getEventsInFile(file, config);
       const newEnhancedEventsWithLocation: [OFCEvent, EventLocation | null][] =

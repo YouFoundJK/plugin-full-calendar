@@ -529,16 +529,23 @@ export default class EventCache {
     }
 
     const { provider, config, event: oldEvent } = this.getProviderForEvent(eventId);
-    const calendarId = originalDetails.calendarId; // Use the stable calendarId from originalDetails
+    const calendarId = originalDetails.calendarId;
 
     // Step 2: Pre-flight checks and recurring event logic
     if (!provider.getCapabilities(config).canEdit) {
       throw new Error(`Calendar of type "${provider.type}" does not support editing events.`);
     }
 
-    // Let the recurring manager intercept and potentially modify the newEvent data
-    // BEFORE we do any optimistic updates.
-    await this.recurringEventManager.handleUpdate(oldEvent, newEvent, calendarId);
+    // Let the recurring manager intercept and potentially take over the entire update process
+    // if a recurring parent's title/file is being renamed.
+    const handledByRecurringManager = await this.recurringEventManager.handleUpdate(
+      oldEvent,
+      newEvent,
+      calendarId
+    );
+    if (handledByRecurringManager) {
+      return true; // The recurring manager took full control and completed the update.
+    }
 
     const handle = provider.getEventHandle(oldEvent, config);
     if (!handle) {
