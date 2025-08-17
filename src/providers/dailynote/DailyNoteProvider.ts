@@ -21,7 +21,6 @@ import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
 import { constructTitle } from '../../utils/categoryParser';
-import { convertEvent } from '../../utils/Timezone';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
@@ -99,19 +98,9 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     const inlineEvents = await this.app.process(file, text =>
       getAllInlineEventsFromFile(text, listItems, { date })
     );
-    const displayTimezone =
-      this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // The raw events are returned as-is. The EventEnhancer handles timezone conversion.
     return inlineEvents.map(({ event: rawEvent, lineNumber }) => {
-      // Use raw event; enhancement is handled elsewhere now
-      const event = rawEvent;
-
-      // --- simplified timezone logic ---
-      const sourceTimezone = event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-      let translatedEvent = event;
-      if (sourceTimezone !== displayTimezone) {
-        translatedEvent = convertEvent(event, sourceTimezone, displayTimezone);
-      }
-      return [translatedEvent, { file, lineNumber }];
+      return [rawEvent, { file, lineNumber }];
     });
   }
 
@@ -130,21 +119,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       throw new Error('Daily Note provider can only create single events.');
     }
 
-    // --- unified write logic ---
-    const displayTimezone =
-      this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const targetTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    let eventToCreate = { ...event };
-
-    if (displayTimezone !== targetTimezone) {
-      eventToCreate = convertEvent(event, displayTimezone, targetTimezone);
-    }
-
-    // A floating event in a note should not have a timezone property written to it.
-    delete eventToCreate.timezone;
-
-    const m = moment(eventToCreate.date);
+    const m = moment(event.date);
     let file = getDailyNote(m, getAllDailyNotes());
     if (!file) file = await createDailyNote(m);
     const metadata = await this.app.waitForMetadata(file);
@@ -155,7 +130,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     let lineNumber = await this.app.rewrite(file, (contents: string) => {
       const { page, lineNumber } = addToHeading(
         contents,
-        { heading: headingInfo, item: eventToCreate, headingText: config.heading },
+        { heading: headingInfo, item: event, headingText: config.heading },
         this.plugin.settings
       );
       return [page, lineNumber] as [string, number];
@@ -182,25 +157,11 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
     const lineNumber = await this._findEventLineNumber(file, handle.persistentId);
 
-    // --- unified write logic ---
-    const displayTimezone =
-      this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const targetTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    let eventToWrite = newEventData;
-
-    if (displayTimezone !== targetTimezone) {
-      eventToWrite = convertEvent(newEventData, displayTimezone, targetTimezone);
-    }
-
-    // A floating event in a note should not have a timezone property written to it.
-    delete eventToWrite.timezone;
-
     const oldDate = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
     if (!oldDate) throw new Error(`Could not get date from file at path ${file.path}`);
 
     if (newEventData.date !== oldDate) {
-      const m = moment(eventToWrite.date);
+      const m = moment(newEventData.date);
       let newFile = getDailyNote(m, getAllDailyNotes());
       if (!newFile) newFile = await createDailyNote(m);
 
@@ -218,7 +179,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
         await this.app.rewrite(newFile, newFileContents => {
           const { page, lineNumber: newLn } = addToHeading(
             newFileContents,
-            { heading: headingInfo, item: eventToWrite, headingText: config.heading },
+            { heading: headingInfo, item: newEventData, headingText: config.heading },
             this.plugin.settings
           );
           return page;
@@ -230,7 +191,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     } else {
       await this.app.rewrite(file, (contents: string) => {
         const lines = contents.split('\n');
-        const newLine = modifyListItem(lines[lineNumber], eventToWrite, this.plugin.settings);
+        const newLine = modifyListItem(lines[lineNumber], newEventData, this.plugin.settings);
         if (!newLine) throw new Error('Did not successfully update line.');
         lines[lineNumber] = newLine;
         return lines.join('\n');

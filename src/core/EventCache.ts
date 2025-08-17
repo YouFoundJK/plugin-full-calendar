@@ -266,6 +266,13 @@ export default class EventCache {
     event: OFCEvent,
     options?: { silent: boolean }
   ): Promise<boolean> {
+    // A new event from the UI will not have a timezone. Assign the current
+    // display timezone to it so it is persisted correctly.
+    if (!event.allDay && !event.timezone) {
+      const displayTimezone =
+        this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      event.timezone = displayTimezone;
+    }
     // Step 1: Get Provider, Config, and pre-flight checks
     const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
     if (!calendarInfo) {
@@ -496,6 +503,12 @@ export default class EventCache {
     newEvent: OFCEvent,
     options?: { silent: boolean }
   ): Promise<boolean> {
+    if (!newEvent.allDay && !newEvent.timezone) {
+      const displayTimezone =
+        this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      newEvent.timezone = displayTimezone;
+    }
+
     // Step 1: Get all original details for potential rollback
     const originalDetails = this.store.getEventDetails(eventId);
     if (!originalDetails) {

@@ -1,8 +1,6 @@
 import { DateTime } from 'luxon';
-import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
-import { convertEvent } from '../../utils/Timezone';
 import { fromGoogleEvent, toGoogleEvent } from './parser_gcal';
 import { makeAuthenticatedRequest } from './request';
 
@@ -73,31 +71,25 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
         }
       }
 
+      // Remove convertEvent logic; just validate and return events
       return data.items
         .map((gEvent: any) => {
           let rawEvent = fromGoogleEvent(gEvent);
           if (!rawEvent) return null;
-          let parsedEvent = rawEvent;
 
           if (
-            (parsedEvent.type === 'rrule' || parsedEvent.type === 'recurring') &&
-            parsedEvent.uid &&
-            cancellations.has(parsedEvent.uid)
+            (rawEvent.type === 'rrule' || rawEvent.type === 'recurring') &&
+            rawEvent.uid &&
+            cancellations.has(rawEvent.uid)
           ) {
-            const datesToSkip = cancellations.get(parsedEvent.uid)!;
-            parsedEvent.skipDates = [
-              ...new Set([...(parsedEvent.skipDates || []), ...datesToSkip])
-            ];
+            const datesToSkip = cancellations.get(rawEvent.uid)!;
+            rawEvent.skipDates = [...new Set([...(rawEvent.skipDates || []), ...datesToSkip])];
           }
 
-          const validated = validateEvent(parsedEvent);
+          const validated = validateEvent(rawEvent);
           if (!validated) return null;
 
-          let translated = validated;
-          if (validated.timezone && validated.timezone !== displayTimezone) {
-            translated = convertEvent(validated, validated.timezone, displayTimezone);
-          }
-          return [translated, null];
+          return [validated, null];
         })
         .filter((e: [OFCEvent, EventLocation | null] | null): e is [OFCEvent, null] => e !== null);
     } catch (e) {

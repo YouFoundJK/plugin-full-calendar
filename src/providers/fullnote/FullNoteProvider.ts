@@ -82,7 +82,6 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
   }
 
   public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
-    // <-- CHANGED FROM private TO public
     const metadata = this.app.getMetadata(file);
     if (!metadata?.frontmatter) {
       return [];
@@ -98,14 +97,8 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
       return [];
     }
 
-    let event = rawEvent; // use raw event; no enhancement here
-    const displayTimezone = this.plugin.settings.displayTimezone;
-
-    if (event.timezone && displayTimezone && event.timezone !== displayTimezone) {
-      event = convertEvent(event, event.timezone, displayTimezone);
-    }
-
-    return [[event, { file, lineNumber: undefined }]];
+    // The raw event is returned as-is. The EventEnhancer will handle timezone conversion.
+    return [[rawEvent, { file, lineNumber: undefined }]];
   }
 
   async getEvents(config: FullNoteProviderConfig): Promise<EditableEventResponse[]> {
@@ -128,27 +121,15 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     event: OFCEvent,
     config: FullNoteProviderConfig
   ): Promise<[OFCEvent, EventLocation]> {
-    let eventToWrite = { ...event };
-    const displayTimezone =
-      this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    if (!eventToWrite.timezone) {
-      eventToWrite.timezone = displayTimezone;
-    }
-    if (eventToWrite.timezone !== displayTimezone) {
-      eventToWrite = convertEvent(event, displayTimezone, eventToWrite.timezone);
-    }
-
-    // Deleted title reconstruction and category field stripping
-
+    // The event is already prepared for storage by EventEnhancer.
     const path = normalizePath(
-      `${config.directory}/${filenameForEvent(eventToWrite, this.plugin.settings)}`
+      `${config.directory}/${filenameForEvent(event, this.plugin.settings)}`
     );
     if (this.app.getAbstractFileByPath(path)) {
       throw new Error(`Event at ${path} already exists.`);
     }
 
-    const newPage = replaceFrontmatter('', newFrontmatter(eventToWrite)); // write as-is
+    const newPage = replaceFrontmatter('', newFrontmatter(event));
     const file = await this.app.create(path, newPage);
     return [event, { file, lineNumber: undefined }];
   }
@@ -165,28 +146,15 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
       throw new Error(`File ${path} not found.`);
     }
 
-    const fileMetadata = this.app.getMetadata(file);
-    const fileEvent = validateEvent(fileMetadata?.frontmatter);
-    const displayTimezone =
-      this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const fileTimezone = fileEvent?.timezone || displayTimezone;
-
-    let eventToWrite = newEventData;
-    if (fileTimezone !== displayTimezone) {
-      eventToWrite = convertEvent(newEventData, displayTimezone, fileTimezone);
-    }
-    eventToWrite.timezone = fileTimezone;
-
-    // Deleted title reconstruction and category field stripping
-
+    // The newEventData is already prepared for storage by EventEnhancer.
     const newPath = normalizePath(
-      `${config.directory}/${filenameForEvent(eventToWrite, this.plugin.settings)}`
+      `${config.directory}/${filenameForEvent(newEventData, this.plugin.settings)}`
     );
     if (file.path !== newPath) {
       await this.app.rename(file, newPath);
     }
 
-    await this.app.rewrite(file, page => modifyFrontmatterString(page, eventToWrite)); // write as-is
+    await this.app.rewrite(file, page => modifyFrontmatterString(page, newEventData));
     return { file: { path: newPath }, lineNumber: undefined };
   }
 

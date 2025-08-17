@@ -3,7 +3,6 @@ import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation } from '../../types';
 import { getEventsFromICS } from '../ics/ics';
 import * as transport from './transport';
-import { convertEvent } from '../../utils/Timezone';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { CalDAVProviderConfig } from './typesCalDAV';
@@ -48,17 +47,11 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
       const displayTimezone = this.settings.displayTimezone;
       if (!displayTimezone) return [];
 
+      // Remove timezone conversion logic; just return raw events
       return caldavEvents
         .filter(vevent => vevent.calendarData)
         .flatMap(vevent => getEventsFromICS(vevent.calendarData))
-        .map(rawEvent => {
-          const event = rawEvent;
-          let translatedEvent = event;
-          if (event.timezone && event.timezone !== displayTimezone) {
-            translatedEvent = convertEvent(event, event.timezone, displayTimezone);
-          }
-          return [translatedEvent, null] as [OFCEvent, EventLocation | null];
-        });
+        .map(event => [event, null]);
     } catch (e) {
       console.error(`Error fetching CalDAV events from ${config.url}`, e);
       return [];
