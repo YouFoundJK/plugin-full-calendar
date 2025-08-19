@@ -165,29 +165,31 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       let newFile = getDailyNote(m, getAllDailyNotes());
       if (!newFile) newFile = await createDailyNote(m);
 
-      const metadata = this.app.getMetadata(newFile);
-      if (!metadata) throw new Error('No metadata for file ' + newFile.path);
+      // First, delete the line from the old file.
+      await this.app.rewrite(file, oldFileContents => {
+        let lines = oldFileContents.split('\n');
+        lines.splice(lineNumber, 1);
+        return lines.join('\n');
+      });
 
+      // Second, add the event to the new file and get its line number.
+      const metadata = await this.app.waitForMetadata(newFile);
       const headingInfo = metadata.headings?.find(h => h.heading == config.heading);
       if (!headingInfo) {
         throw new Error(`Could not find heading ${config.heading} in daily note ${newFile.path}.`);
       }
 
-      await this.app.rewrite(file, async oldFileContents => {
-        let lines = oldFileContents.split('\n');
-        lines.splice(lineNumber, 1);
-        await this.app.rewrite(newFile, newFileContents => {
-          const { page, lineNumber: newLn } = addToHeading(
-            newFileContents,
-            { heading: headingInfo, item: newEventData, headingText: config.heading },
-            this.plugin.settings
-          );
-          return page;
-        });
-        return lines.join('\n');
+      const newLn = await this.app.rewrite(newFile, newFileContents => {
+        const { page, lineNumber } = addToHeading(
+          newFileContents,
+          { heading: headingInfo, item: newEventData, headingText: config.heading },
+          this.plugin.settings
+        );
+        return [page, lineNumber] as [string, number];
       });
-      // Note: We don't have the new line number here. The EventCache will trigger a file re-read.
-      return null;
+
+      // Finally, return the authoritative new location to the cache.
+      return { file: newFile, lineNumber: newLn };
     } else {
       await this.app.rewrite(file, (contents: string) => {
         const lines = contents.split('\n');
