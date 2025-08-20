@@ -77,9 +77,9 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return { canCreate: true, canEdit: true, canDelete: true };
   }
 
-  getEventHandle(event: OFCEvent, config: FullNoteProviderConfig): EventHandle | null {
+  getEventHandle(event: OFCEvent): EventHandle | null {
     const filename = filenameForEvent(event, this.plugin.settings);
-    const path = normalizePath(`${config.directory}/${filename}`);
+    const path = normalizePath(`${this.config.directory}/${filename}`);
     return { persistentId: path };
   }
 
@@ -103,10 +103,10 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return [[rawEvent, { file, lineNumber: undefined }]];
   }
 
-  async getEvents(config: FullNoteProviderConfig): Promise<EditableEventResponse[]> {
-    const eventFolder = this.app.getAbstractFileByPath(config.directory);
+  async getEvents(): Promise<EditableEventResponse[]> {
+    const eventFolder = this.app.getAbstractFileByPath(this.config.directory);
     if (!eventFolder || !(eventFolder instanceof TFolder)) {
-      throw new Error(`${config.directory} is not a valid directory.`);
+      throw new Error(`${this.config.directory} is not a valid directory.`);
     }
 
     const events: EditableEventResponse[] = [];
@@ -119,13 +119,10 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return events;
   }
 
-  async createEvent(
-    event: OFCEvent,
-    config: FullNoteProviderConfig
-  ): Promise<[OFCEvent, EventLocation]> {
+  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation]> {
     // The event is already prepared for storage by EventEnhancer.
     const path = normalizePath(
-      `${config.directory}/${filenameForEvent(event, this.plugin.settings)}`
+      `${this.config.directory}/${filenameForEvent(event, this.plugin.settings)}`
     );
     if (this.app.getAbstractFileByPath(path)) {
       throw new Error(`Event at ${path} already exists.`);
@@ -139,8 +136,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
   async updateEvent(
     handle: EventHandle,
     oldEventData: OFCEvent,
-    newEventData: OFCEvent,
-    config: FullNoteProviderConfig
+    newEventData: OFCEvent
   ): Promise<EventLocation | null> {
     const path = handle.persistentId;
     const file = this.app.getFileByPath(path);
@@ -150,7 +146,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
     // The newEventData is already prepared for storage by EventEnhancer.
     const newPath = normalizePath(
-      `${config.directory}/${filenameForEvent(newEventData, this.plugin.settings)}`
+      `${this.config.directory}/${filenameForEvent(newEventData, this.plugin.settings)}`
     );
     if (file.path !== newPath) {
       await this.app.rename(file, newPath);
@@ -160,7 +156,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return { file: { path: newPath }, lineNumber: undefined };
   }
 
-  async deleteEvent(handle: EventHandle, config: FullNoteProviderConfig): Promise<void> {
+  async deleteEvent(handle: EventHandle): Promise<void> {
     const path = handle.persistentId;
     const file = this.app.getFileByPath(path);
     if (!file) {
@@ -172,10 +168,9 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
   async createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
-    newEventData: OFCEvent,
-    config: FullNoteProviderConfig
+    newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
-    const masterLocalId = this.getEventHandle(masterEvent, config)?.persistentId;
+    const masterLocalId = this.getEventHandle(masterEvent)?.persistentId;
     if (!masterLocalId) {
       throw new Error('Could not get persistent ID for master event.');
     }
@@ -191,7 +186,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     };
 
     // Use the existing createEvent logic to handle file creation and timezone conversion
-    return this.createEvent(overrideEventData, config);
+    return this.createEvent(overrideEventData);
   }
 
   getConfigurationComponent(): FCReactComponent<any> {

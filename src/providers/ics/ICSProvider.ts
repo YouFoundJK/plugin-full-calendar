@@ -28,15 +28,15 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
     return { canCreate: false, canEdit: false, canDelete: false };
   }
 
-  getEventHandle(event: OFCEvent, config: ICSProviderConfig): EventHandle | null {
+  getEventHandle(event: OFCEvent): EventHandle | null {
     if (event.uid) {
       return { persistentId: event.uid };
     }
     return null;
   }
 
-  async getEvents(config: ICSProviderConfig): Promise<[OFCEvent, EventLocation | null][]> {
-    let url = config.url;
+  async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
+    let url = this.config.url;
     if (url.startsWith(WEBCAL)) {
       url = 'https' + url.slice(WEBCAL.length);
     }
@@ -54,36 +54,31 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
     }
   }
 
-  async createEvent(
-    event: OFCEvent,
-    config: ICSProviderConfig
-  ): Promise<[OFCEvent, EventLocation | null]> {
+  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
     throw new Error('Cannot create an event on a read-only ICS calendar.');
   }
 
   async updateEvent(
     handle: EventHandle,
     oldEventData: OFCEvent, // <-- ADD THIS
-    newEventData: OFCEvent,
-    config: ICSProviderConfig
+    newEventData: OFCEvent
   ): Promise<EventLocation | null> {
     throw new Error('Cannot update an event on a read-only ICS calendar.');
   }
 
-  async deleteEvent(handle: EventHandle, config: ICSProviderConfig): Promise<void> {
+  async deleteEvent(handle: EventHandle): Promise<void> {
     throw new Error('Cannot delete an event on a read-only ICS calendar.');
   }
 
   async createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
-    newEventData: OFCEvent,
-    config: ICSProviderConfig
+    newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
     throw new Error(`Cannot create a recurring event override on a read-only calendar.`);
   }
 
-  async revalidate(config: ICSProviderConfig): Promise<void> {
+  async revalidate(): Promise<void> {
     // This method's existence signals to the adapter that this is a remote-style provider.
     // The actual fetching is always done in getEvents.
   }

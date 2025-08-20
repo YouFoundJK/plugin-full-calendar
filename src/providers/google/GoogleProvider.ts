@@ -25,18 +25,18 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     this.config = config;
   }
 
-  getCapabilities(config: GoogleProviderConfig): CalendarProviderCapabilities {
+  getCapabilities(): CalendarProviderCapabilities {
     return { canCreate: true, canEdit: true, canDelete: true };
   }
 
-  getEventHandle(event: OFCEvent, config: GoogleProviderConfig): EventHandle | null {
+  getEventHandle(event: OFCEvent): EventHandle | null {
     if (event.uid) {
       return { persistentId: event.uid };
     }
     return null;
   }
 
-  async getEvents(config: GoogleProviderConfig): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
     const displayTimezone = this.plugin.settings.displayTimezone;
     if (!displayTimezone) return [];
 
@@ -47,7 +47,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
       timeMax.setFullYear(timeMax.getFullYear() + 1);
 
       const url = new URL(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(config.id)}/events`
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.config.id)}/events`
       );
       url.searchParams.set('timeMin', timeMin.toISOString());
       url.searchParams.set('timeMax', timeMax.toISOString());
@@ -95,17 +95,14 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
         })
         .filter((e: [OFCEvent, EventLocation | null] | null): e is [OFCEvent, null] => e !== null);
     } catch (e) {
-      console.error(`Error fetching events for Google Calendar "${config.name}":`, e);
+      console.error(`Error fetching events for Google Calendar "${this.config.name}":`, e);
       return [];
     }
   }
 
-  async createEvent(
-    event: OFCEvent,
-    config: GoogleProviderConfig
-  ): Promise<[OFCEvent, EventLocation | null]> {
+  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      config.id
+      this.config.id
     )}/events`;
     const body = toGoogleEvent(event);
     const createdGEvent = await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
@@ -119,8 +116,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   async updateEvent(
     handle: EventHandle,
     oldEventData: OFCEvent,
-    newEventData: OFCEvent,
-    config: GoogleProviderConfig
+    newEventData: OFCEvent
   ): Promise<EventLocation | null> {
     const newSkipDates = new Set(
       newEventData.type === 'rrule' || newEventData.type === 'recurring'
@@ -143,11 +139,11 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     }
 
     if (cancelledDate) {
-      await this.cancelInstance(oldEventData, cancelledDate, config);
+      await this.cancelInstance(oldEventData, cancelledDate);
     } else {
       const eventId = handle.persistentId;
       const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-        config.id
+        this.config.id
       )}/events/${encodeURIComponent(eventId)}`;
       const body = toGoogleEvent(newEventData);
       await makeAuthenticatedRequest(this.plugin, url, 'PUT', body);
@@ -155,19 +151,15 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     return null;
   }
 
-  async deleteEvent(handle: EventHandle, config: GoogleProviderConfig): Promise<void> {
+  async deleteEvent(handle: EventHandle): Promise<void> {
     const eventId = handle.persistentId;
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      config.id
+      this.config.id
     )}/events/${encodeURIComponent(eventId)}`;
     await makeAuthenticatedRequest(this.plugin, url, 'DELETE');
   }
 
-  private async cancelInstance(
-    parentEvent: OFCEvent,
-    instanceDate: string,
-    config: GoogleProviderConfig
-  ): Promise<void> {
+  private async cancelInstance(parentEvent: OFCEvent, instanceDate: string): Promise<void> {
     if (!parentEvent.uid) {
       throw new Error('Cannot cancel an instance of a recurring event that has no master UID.');
     }
@@ -192,7 +184,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     body.end = startTimeObject;
 
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      config.id
+      this.config.id
     )}/events`;
     await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
   }
@@ -200,8 +192,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   async createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
-    newEventData: OFCEvent,
-    config: GoogleProviderConfig
+    newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
     if (newEventData.allDay === false && masterEvent.allDay === false) {
       const originalStartTime = {
@@ -217,7 +208,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
 
       const newGEvent = await makeAuthenticatedRequest(
         this.plugin,
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(config.id)}/events`,
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.config.id)}/events`,
         'POST',
         body
       );
@@ -260,7 +251,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     return WrapperComponent;
   }
 
-  async revalidate(config: GoogleProviderConfig): Promise<void> {
+  async revalidate(): Promise<void> {
     // This method's existence signals to the adapter that this is a remote-style provider.
     // The actual fetching is always done in getEvents.
   }

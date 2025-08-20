@@ -21,30 +21,30 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
     this.config = config;
   }
 
-  getCapabilities(config: CalDAVProviderConfig): CalendarProviderCapabilities {
+  getCapabilities(): CalendarProviderCapabilities {
     return { canCreate: false, canEdit: false, canDelete: false };
   }
 
-  getEventHandle(event: OFCEvent, config: CalDAVProviderConfig): EventHandle | null {
+  getEventHandle(event: OFCEvent): EventHandle | null {
     if (event.uid) {
       return { persistentId: event.uid };
     }
     return null;
   }
 
-  async getEvents(config: CalDAVProviderConfig): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
     try {
       const account = await createAccount({
-        server: config.url,
+        server: this.config.url,
         credentials: {
-          username: config.username,
-          password: config.password
+          username: this.config.username,
+          password: this.config.password
         },
         authMethod: AuthMethod.Basic
       });
 
       const caldavEvents = await getCalendarObjects({
-        calendarUrl: config.homeUrl,
+        calendarUrl: this.config.homeUrl,
         account
       });
 
@@ -55,41 +55,36 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
         .flatMap((vevent: any) => getEventsFromICS(vevent.data))
         .map((event: OFCEvent) => [event, null]);
     } catch (e) {
-      console.error(`Error fetching CalDAV events from ${config.url}`, e);
+      console.error(`Error fetching CalDAV events from ${this.config.url}`, e);
       return [];
     }
   }
 
-  async createEvent(
-    event: OFCEvent,
-    config: CalDAVProviderConfig
-  ): Promise<[OFCEvent, EventLocation | null]> {
+  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
     throw new Error('Creating events on a CalDAV calendar is not yet supported.');
   }
 
   async updateEvent(
     handle: EventHandle,
     oldEventData: OFCEvent,
-    newEventData: OFCEvent,
-    config: CalDAVProviderConfig
+    newEventData: OFCEvent
   ): Promise<EventLocation | null> {
     throw new Error('Updating events on a CalDAV calendar is not yet supported.');
   }
 
-  async deleteEvent(handle: EventHandle, config: CalDAVProviderConfig): Promise<void> {
+  async deleteEvent(handle: EventHandle): Promise<void> {
     throw new Error('Deleting events on a CalDAV calendar is not yet supported.');
   }
 
   async createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
-    newEventData: OFCEvent,
-    config: CalDAVProviderConfig
+    newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
     throw new Error(`Cannot create a recurring event override on a read-only calendar.`);
   }
 
-  async revalidate(config: CalDAVProviderConfig): Promise<void> {
+  async revalidate(): Promise<void> {
     // This method's existence signals to the adapter that this is a remote-style provider.
     // The actual fetching is always done in getEvents.
   }

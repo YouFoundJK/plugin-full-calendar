@@ -1,5 +1,5 @@
 import { TFile, Notice } from 'obsidian';
-import { CalendarProvider } from '../providers/Provider';
+import { CalendarProvider, CalendarProviderCapabilities } from '../providers/Provider';
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
@@ -67,7 +67,15 @@ export class ProviderRegistry {
     this.providers.set(provider.type, provider);
   }
 
-  getProvider(type: string): CalendarProvider<any> | undefined {
+  /**
+   * Gets a stateless, "blueprint" provider instance for a given type.
+   * This should ONLY be used for accessing type-level information like the
+   * display name or the configuration component before an instance for a real
+   * calendar source is created.
+   *
+   * DO NOT use this for any runtime event operations.
+   */
+  public getProviderForType(type: string): CalendarProvider<any> | undefined {
     return this.providers.get(type);
   }
 
@@ -93,12 +101,7 @@ export class ProviderRegistry {
       console.warn(`Could not find provider instance for calendar ID ${calendarId}`);
       return null;
     }
-    const config = (instance as any).config;
-    if (!config) {
-      console.warn(`Provider instance for ${calendarId} is missing a config object.`);
-      return null;
-    }
-    const handle = instance.getEventHandle(event, config);
+    const handle = instance.getEventHandle(event);
     if (!handle) {
       return null;
     }
@@ -149,8 +152,7 @@ export class ProviderRegistry {
     for (const [settingsId, instance] of this.instances.entries()) {
       const promise = (async () => {
         try {
-          const config = (instance as any).config;
-          const rawEvents = await instance.getEvents(config);
+          const rawEvents = await instance.getEvents();
           rawEvents.forEach(([rawEvent, location]) => {
             const event = this.cache!.enhancer.enhance(rawEvent);
             results.push({
@@ -179,8 +181,7 @@ export class ProviderRegistry {
     if (!instance) {
       throw new Error(`Provider instance with ID ${settingsId} not found.`);
     }
-    const config = (instance as any).config;
-    return instance.createEvent(event, config);
+    return instance.createEvent(event);
   }
 
   public async updateEventInProvider(
@@ -193,12 +194,11 @@ export class ProviderRegistry {
     if (!instance) {
       throw new Error(`Provider instance with ID ${calendarId} not found.`);
     }
-    const config = (instance as any).config;
-    const handle = instance.getEventHandle(oldEventData, config);
+    const handle = instance.getEventHandle(oldEventData);
     if (!handle) {
       throw new Error(`Could not generate a persistent handle for the event being modified.`);
     }
-    return instance.updateEvent(handle, oldEventData, newEventData, config);
+    return instance.updateEvent(handle, oldEventData, newEventData);
   }
 
   public async deleteEventInProvider(
@@ -210,11 +210,10 @@ export class ProviderRegistry {
     if (!instance) {
       throw new Error(`Provider instance with ID ${calendarId} not found.`);
     }
-    const config = (instance as any).config;
-    const handle = instance.getEventHandle(event, config);
+    const handle = instance.getEventHandle(event);
 
     if (handle) {
-      await instance.deleteEvent(handle, config);
+      await instance.deleteEvent(handle);
     } else {
       console.warn(
         `Could not generate a persistent handle for the event being deleted. Proceeding with deletion from cache only.`
@@ -254,8 +253,8 @@ export class ProviderRegistry {
     // Aggregate all events from all interested providers for this one file.
     const allNewEvents: { event: OFCEvent; location: EventLocation | null; calendarId: string }[] =
       [];
-    for (const { instance, config, settingsId } of interestedInstances) {
-      const eventsFromFile = await instance.getEventsInFile!(file, config);
+    for (const { instance, settingsId } of interestedInstances) {
+      const eventsFromFile = await instance.getEventsInFile!(file);
       for (const [event, location] of eventsFromFile) {
         allNewEvents.push({ event, location, calendarId: settingsId });
       }
@@ -299,9 +298,8 @@ export class ProviderRegistry {
     new Notice('Revalidating remote calendars...');
 
     const promises = remoteInstances.map(([settingsId, instance]) => {
-      const config = (instance as any).config;
       return instance
-        .getEvents(config)
+        .getEvents()
         .then(events => {
           this.cache!.syncCalendar(settingsId, events);
         })
@@ -364,5 +362,30 @@ export class ProviderRegistry {
         this.instances.set(settingsId, instance);
       }
     }
+  }
+
+  public getInstance(id: string): CalendarProvider<any> | undefined {
+    return this.instances.get(id);
+  }
+
+  public getCapabilities(id: string): CalendarProviderCapabilities | null {
+    const instance = this.instances.get(id);
+    if (!instance) {
+      return null;
+    }
+    return instance.getCapabilities();
+  }
+
+  public async createInstanceOverrideInProvider(
+    calendarId: string,
+    masterEvent: OFCEvent,
+    instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<[OFCEvent, EventLocation | null]> {
+    const instance = this.instances.get(calendarId);
+    if (!instance) {
+      throw new Error(`Provider instance with ID ${calendarId} not found.`);
+    }
+    return instance.createInstanceOverride(masterEvent, instanceDate, newEventData);
   }
 }

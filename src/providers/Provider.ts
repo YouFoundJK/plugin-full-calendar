@@ -12,37 +12,32 @@ export interface CalendarProvider<TConfig> {
   readonly displayName: string;
   readonly isRemote: boolean;
 
-  getCapabilities(config: TConfig): CalendarProviderCapabilities;
+  getCapabilities(): CalendarProviderCapabilities;
 
-  getEventHandle(event: OFCEvent, config: TConfig): EventHandle | null;
+  getEventHandle(event: OFCEvent): EventHandle | null;
 
-  getEvents(config: TConfig): Promise<[OFCEvent, EventLocation | null][]>;
-  getEventsInFile?(
-    file: import('obsidian').TFile,
-    config: TConfig
-  ): Promise<[OFCEvent, EventLocation | null][]>;
+  getEvents(): Promise<[OFCEvent, EventLocation | null][]>;
+  getEventsInFile?(file: import('obsidian').TFile): Promise<[OFCEvent, EventLocation | null][]>;
 
-  createEvent(event: OFCEvent, config: TConfig): Promise<[OFCEvent, EventLocation | null]>;
+  createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]>;
   updateEvent(
     handle: EventHandle,
-    oldEventData: OFCEvent, // <-- ADD THIS PARAMETER
-    newEventData: OFCEvent,
-    config: TConfig
+    oldEventData: OFCEvent,
+    newEventData: OFCEvent
   ): Promise<EventLocation | null>;
-  deleteEvent(handle: EventHandle, config: TConfig): Promise<void>;
+  deleteEvent(handle: EventHandle): Promise<void>;
 
   createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
-    newEventData: OFCEvent,
-    config: TConfig
+    newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]>;
 
   getConfigurationComponent(): FCReactComponent<{
     config: Partial<TConfig>;
     onConfigChange: (newConfig: Partial<TConfig>) => void;
     context: ProviderConfigContext;
-    onSave: (finalConfig: TConfig | TConfig[]) => void; // Allow saving multiple configs
-    onClose: () => void; // Make mandatory for consistent contract
+    onSave: (finalConfig: TConfig | TConfig[]) => void;
+    onClose: () => void;
   }>;
 }

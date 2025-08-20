@@ -39,13 +39,13 @@ describe('RecurringEventManager', () => {
     settings: DEFAULT_SETTINGS,
     providerRegistry: {
       getSource: jest.fn(),
-      getProvider: jest.fn()
+      getInstance: jest.fn()
     }
   } as unknown as FullCalendarPlugin;
 
   beforeEach(() => {
     (mockPlugin.providerRegistry.getSource as jest.Mock).mockClear();
-    (mockPlugin.providerRegistry.getProvider as jest.Mock).mockClear();
+    (mockPlugin.providerRegistry.getInstance as jest.Mock)?.mockClear();
 
     // Create mock calendar
     mockProvider = {
@@ -84,7 +84,8 @@ describe('RecurringEventManager', () => {
         type: 'test',
         config: { directory: 'events' }
       });
-      (mockPlugin.providerRegistry.getProvider as jest.Mock).mockReturnValue(mockProvider);
+      // The getProviderAndConfig helper now uses getInstance, so we mock that.
+      (mockPlugin.providerRegistry.getInstance as jest.Mock).mockReturnValue(mockProvider);
     });
 
     const masterEvent: OFCEvent = {

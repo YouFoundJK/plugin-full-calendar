@@ -125,8 +125,7 @@ describe('event cache with readonly calendar', () => {
       type: 'FOR_TEST_ONLY',
       displayName: 'Test Provider',
       isRemote: false,
-      getEvents: async (config: any) =>
-        (config.id === 'cal1' ? events1 : events2).map(e => [e, null]),
+      getEvents: async () => events1.map(e => [e, null]),
       getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
       getEventHandle: (e: OFCEvent) => ({ persistentId: e.title }),
       createEvent: jest.fn(),
@@ -241,15 +240,15 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
   const calendar: jest.Mocked<CalendarProvider<any>> = {
     type: 'FOR_TEST_ONLY',
     displayName: 'Editable Test Provider',
-    isRemote: false, // <-- ADD THIS LINE
-    getEvents: jest.fn(async (config: any) => events),
-    getEventsInFile: jest.fn(async () => []), // <-- ADD THIS LINE
-    getCapabilities: jest.fn((config: any) => ({
+    isRemote: false,
+    getEvents: jest.fn(async () => events),
+    getEventsInFile: jest.fn(async () => []),
+    getCapabilities: jest.fn(() => ({
       canCreate: true,
       canEdit: true,
       canDelete: true
     })),
-    getEventHandle: jest.fn((e: OFCEvent, config: any) => ({ persistentId: e.title })),
+    getEventHandle: jest.fn((e: OFCEvent) => ({ persistentId: e.title })),
     createEvent: jest.fn(),
     updateEvent: jest.fn(),
     deleteEvent: jest.fn(),
@@ -281,7 +280,7 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
   const cache = new EventCache(mockPlugin);
 
   // Ensure createEvent returns [event, location] as expected by addEvent
-  calendar.createEvent.mockImplementation(async (event, config) => [event, mockLocation()]);
+  calendar.createEvent.mockImplementation(async (event: OFCEvent) => [event, mockLocation()]);
 
   return [cache, calendar] as const;
 };
@@ -426,8 +425,8 @@ describe('editable calendars', () => {
       await cache.deleteEvent(id);
 
       expect(calendar.deleteEvent).toHaveBeenCalledTimes(1);
-      const handle = calendar.getEventHandle(event[0], { id: 'test' });
-      expect(calendar.deleteEvent).toHaveBeenCalledWith(handle, { id: 'test' });
+      const handle = calendar.getEventHandle(event[0]);
+      expect(calendar.deleteEvent).toHaveBeenCalledWith(handle);
 
       assertCacheContentCounts(cache, {
         calendars: 1, // Calendar source still exists
@@ -494,10 +493,8 @@ describe('editable calendars', () => {
       await cache.updateEventWithId(id, newEvent);
 
       expect(calendar.updateEvent).toHaveBeenCalledTimes(1);
-      const handle = calendar.getEventHandle(oldEvent[0], { id: 'test' });
-      expect(calendar.updateEvent).toHaveBeenCalledWith(handle, oldEvent[0], newEvent, {
-        id: 'test'
-      });
+      const handle = calendar.getEventHandle(oldEvent[0]);
+      expect(calendar.updateEvent).toHaveBeenCalledWith(handle, oldEvent[0], newEvent);
 
       assertCacheContentCounts(cache, {
         calendars: 1,

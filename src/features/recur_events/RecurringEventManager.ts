@@ -46,7 +46,7 @@ export class RecurringEventManager {
   private getProviderAndConfig(calendarId: string) {
     const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
     if (!calendarInfo) return null;
-    const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
+    const provider = this.plugin.providerRegistry.getInstance(calendarId);
     if (!provider) return null;
     return { provider, config: (calendarInfo as any).config };
   }
@@ -280,14 +280,16 @@ export class RecurringEventManager {
     if (!masterDetails) throw new Error('Master event not found');
     const { calendarId: masterCalendarId, event: masterEvent } = masterDetails;
 
+    // CORRECTED: This was the source of the calendarInfo error.
     const calendarInfo = this.plugin.providerRegistry.getSource(masterCalendarId);
-    if (!calendarInfo) throw new Error(`Could not find calendar info for ${masterCalendarId}`);
+    if (!calendarInfo) {
+      throw new Error(`Could not find calendar info for ${masterCalendarId}`);
+    }
 
     const globalIdentifier = this.cache.getGlobalIdentifier(masterEvent, masterCalendarId);
     if (!globalIdentifier) {
       throw new Error('Could not generate global identifier for master event.');
     }
-    // Safely extract the persistentId, which is the full path for a FullNoteProvider event.
     const masterPath = globalIdentifier.substring(masterCalendarId.length + 2);
 
     const masterFilename = masterPath.split('/').pop();
@@ -295,21 +297,18 @@ export class RecurringEventManager {
       throw new Error(`Could not extract filename from master event path: ${masterPath}`);
     }
 
-    // Inherit properties from the master event for the override.
     const finalOverrideEvent: OFCEvent = {
       ...overrideEventData,
-      recurringEventId: masterFilename // Store filename only
+      recurringEventId: masterFilename
     };
 
-    // 1. Add the new override event to the cache silently.
+    // CORRECTED: The calendar ID for addEvent comes from the source info.
     await this.cache.addEvent((calendarInfo as any).id, finalOverrideEvent, { silent: true });
 
-    // 2. Update the master event to skip the instance date, also silently.
     await this.cache.processEvent(
       masterEventId,
       e => {
         if (e.type !== 'recurring' && e.type !== 'rrule') return e;
-        // Add the date to the skip list if it's not already there.
         const skipDates = e.skipDates.includes(instanceDateToSkip)
           ? e.skipDates
           : [...e.skipDates, instanceDateToSkip];
@@ -341,33 +340,18 @@ export class RecurringEventManager {
       throw new Error('Master event not found for instance modification.');
     }
     const { calendarId, event: masterEvent } = details;
-    const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
-    if (!calendarInfo) {
-      throw new Error(`Could not find calendar info for ${calendarId}`);
-    }
-    const provider = this.cache.plugin.providerRegistry.getProvider(calendarInfo.type);
-    if (!provider) {
-      throw new Error(`Could not find provider for calendar type ${calendarInfo.type}`);
-    }
-    const masterHandle = provider.getEventHandle(masterEvent, (calendarInfo as any).config);
-    if (!masterHandle) {
-      throw new Error('Could not create handle for master event.');
-    }
 
-    const [authoritativeOverrideEvent, overrideLocation] = await provider.createInstanceOverride(
-      masterEvent,
-      instanceDate,
-      newEventData,
-      (calendarInfo as any).config
-    );
+    // CORRECTED: Delegate the entire provider operation to the registry.
+    const [authoritativeOverrideEvent, overrideLocation] =
+      await this.plugin.providerRegistry.createInstanceOverrideInProvider(
+        calendarId,
+        masterEvent,
+        instanceDate,
+        newEventData
+      );
 
     const enhancedEvent = this.cache.enhancer.enhance(authoritativeOverrideEvent);
-    const calendar = this.cache.getCalendarById(calendarId); // Keep this for adding to store
-    if (!calendar) {
-      throw new Error('Could not find calendar stub in cache.');
-    }
 
-    // 2. Add the new override event to the cache silently.
     const overrideId = this.cache.generateId();
     this.cache.store.add({
       calendarId: calendarId,
@@ -380,22 +364,20 @@ export class RecurringEventManager {
       calendarId: calendarId,
       event: enhancedEvent
     });
-    this.cache.isBulkUpdating = true; // Prevent immediate flushes
+    this.cache.isBulkUpdating = true;
 
-    // 3. Update the master event to skip the instance date, also silently.
     await this.cache.processEvent(
       masterEventId,
       e => {
         if (e.type !== 'recurring' && e.type !== 'rrule') return e;
         const skipDates = e.skipDates.includes(instanceDate)
           ? e.skipDates
-          : /* INF: */ [...e.skipDates, instanceDate];
+          : [...e.skipDates, instanceDate];
         return { ...e, skipDates };
       },
       { silent: true }
     );
 
-    // 4. Flush both atomic changes to the UI.
     this.cache.flushUpdateQueue([], []);
   }
 
@@ -424,13 +406,50 @@ export class RecurringEventManager {
         await this.cache.updateEventWithId(eventId, toggleTask(clickedEvent, true));
       } else {
         // The user clicked the checkbox on a master recurring instance.
-        // We need to create a new, completed override.
-        const overrideEvent: OFCEvent = {
-          ...clickedEvent,
-          type: 'single',
-          date: instanceDate,
-          endDate: null
-        };
+        // We need to create a new, completed override by explicitly picking properties.
+
+        let overrideEvent: OFCEvent;
+
+        if (clickedEvent.allDay === false) {
+          // This is a TIMED recurring event.
+          overrideEvent = {
+            // Inherit common properties
+            title: clickedEvent.title,
+            category: clickedEvent.category,
+            subCategory: clickedEvent.subCategory,
+            timezone: clickedEvent.timezone,
+
+            // Inherit timed properties
+            allDay: false,
+            startTime: clickedEvent.startTime,
+            endTime: clickedEvent.endTime,
+
+            // Set specific properties for a single event
+            type: 'single',
+            date: instanceDate,
+            endDate: null,
+            completed: null // Will be set by toggleTask
+          };
+        } else {
+          // This is an ALL-DAY recurring event.
+          overrideEvent = {
+            // Inherit common properties
+            title: clickedEvent.title,
+            category: clickedEvent.category,
+            subCategory: clickedEvent.subCategory,
+            timezone: clickedEvent.timezone,
+
+            // Inherit all-day property
+            allDay: true,
+
+            // Set specific properties for a single event
+            type: 'single',
+            date: instanceDate,
+            endDate: null,
+            completed: null // Will be set by toggleTask
+          };
+        }
+
         const completedOverrideEvent = toggleTask(overrideEvent, true);
         await this._createRecurringOverride(eventId, instanceDate, completedOverrideEvent);
       }
@@ -537,11 +556,11 @@ export class RecurringEventManager {
         recurringEventId: newParentFilename
       };
 
-      const handle = provider.getEventHandle(childEvent, config);
+      const handle = provider.getEventHandle(childEvent);
       if (!handle) continue;
 
       // 3. Pass the STORAGE version to the provider to write to the file.
-      const newLocation = await provider.updateEvent(handle, childEvent, storageChildEvent, config);
+      const newLocation = await provider.updateEvent(handle, childEvent, storageChildEvent);
 
       // 4. Pass the ENHANCED version to the cache store and the UI update queue.
       this.cache.store.delete(childStoredEvent.id);
@@ -583,8 +602,8 @@ export class RecurringEventManager {
     }
     const { provider, config } = providerResult;
 
-    const oldHandle = provider.getEventHandle(oldEvent, config);
-    const newHandle = provider.getEventHandle(newEvent, config);
+    const oldHandle = provider.getEventHandle(oldEvent);
+    const newHandle = provider.getEventHandle(newEvent);
 
     const oldPath = oldHandle?.persistentId;
     const newPath = newHandle?.persistentId;
@@ -635,7 +654,7 @@ export class RecurringEventManager {
       // 3. Now, perform the update on the parent event's file itself.
       const preparedOldEvent = this.cache.enhancer.prepareForStorage(oldEvent);
       const preparedNewEvent = this.cache.enhancer.prepareForStorage(newEvent);
-      await provider.updateEvent(oldHandle, preparedOldEvent, preparedNewEvent, config);
+      await provider.updateEvent(oldHandle, preparedOldEvent, preparedNewEvent);
 
       // 4. Update the parent event's entry in the cache store and queue the UI change.
       this.cache.store.delete(parentSessionId);

@@ -49,7 +49,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     return { canCreate: true, canEdit: true, canDelete: true };
   }
 
-  getEventHandle(event: OFCEvent, config: DailyNoteProviderConfig): EventHandle | null {
+  getEventHandle(event: OFCEvent): EventHandle | null {
     if (event.type === 'single' && event.date) {
       const fullTitle = constructTitle(event.category, event.subCategory, event.title);
       const persistentId = `${event.date}::${fullTitle}`;
@@ -89,14 +89,11 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     throw new Error(`Could not find event with ID "${persistentId}" in file "${file.path}".`);
   }
 
-  public async getEventsInFile(
-    file: TFile,
-    config: DailyNoteProviderConfig
-  ): Promise<EditableEventResponse[]> {
+  public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
     const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
     const cache = this.app.getMetadata(file);
     if (!cache) return [];
-    const listItems = getListsUnderHeading(config.heading, cache);
+    const listItems = getListsUnderHeading(this.config.heading, cache);
     const inlineEvents = await this.app.process(file, text =>
       getAllInlineEventsFromFile(text, listItems, { date })
     );
@@ -106,17 +103,14 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     });
   }
 
-  async getEvents(config: DailyNoteProviderConfig): Promise<EditableEventResponse[]> {
+  async getEvents(): Promise<EditableEventResponse[]> {
     const notes = getAllDailyNotes();
     const files = Object.values(notes);
-    const allEvents = await Promise.all(files.map(f => this.getEventsInFile(f, config)));
+    const allEvents = await Promise.all(files.map(f => this.getEventsInFile(f)));
     return allEvents.flat();
   }
 
-  async createEvent(
-    event: OFCEvent,
-    config: DailyNoteProviderConfig
-  ): Promise<[OFCEvent, EventLocation]> {
+  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation]> {
     if (event.type !== 'single') {
       throw new Error('Daily Note provider can only create single events.');
     }
@@ -125,14 +119,14 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     let file = getDailyNote(m, getAllDailyNotes());
     if (!file) file = await createDailyNote(m);
     const metadata = await this.app.waitForMetadata(file);
-    const headingInfo = metadata.headings?.find(h => h.heading == config.heading);
+    const headingInfo = metadata.headings?.find(h => h.heading == this.config.heading);
     if (!headingInfo) {
-      throw new Error(`Could not find heading ${config.heading} in daily note ${file.path}.`);
+      throw new Error(`Could not find heading ${this.config.heading} in daily note ${file.path}.`);
     }
     let lineNumber = await this.app.rewrite(file, (contents: string) => {
       const { page, lineNumber } = addToHeading(
         contents,
-        { heading: headingInfo, item: event, headingText: config.heading },
+        { heading: headingInfo, item: event, headingText: this.config.heading },
         this.plugin.settings
       );
       return [page, lineNumber] as [string, number];
@@ -143,8 +137,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
   async updateEvent(
     handle: EventHandle,
     oldEventData: OFCEvent,
-    newEventData: OFCEvent,
-    config: DailyNoteProviderConfig
+    newEventData: OFCEvent
   ): Promise<EventLocation | null> {
     if (newEventData.type !== 'single') {
       throw new Error('Daily Note provider can only update events to be single events.');
@@ -176,15 +169,17 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
       // Second, add the event to the new file and get its line number.
       const metadata = await this.app.waitForMetadata(newFile);
-      const headingInfo = metadata.headings?.find(h => h.heading == config.heading);
+      const headingInfo = metadata.headings?.find(h => h.heading == this.config.heading);
       if (!headingInfo) {
-        throw new Error(`Could not find heading ${config.heading} in daily note ${newFile.path}.`);
+        throw new Error(
+          `Could not find heading ${this.config.heading} in daily note ${newFile.path}.`
+        );
       }
 
       const newLn = await this.app.rewrite(newFile, newFileContents => {
         const { page, lineNumber } = addToHeading(
           newFileContents,
-          { heading: headingInfo, item: newEventData, headingText: config.heading },
+          { heading: headingInfo, item: newEventData, headingText: this.config.heading },
           this.plugin.settings
         );
         return [page, lineNumber] as [string, number];
@@ -204,7 +199,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     }
   }
 
-  async deleteEvent(handle: EventHandle, config: DailyNoteProviderConfig): Promise<void> {
+  async deleteEvent(handle: EventHandle): Promise<void> {
     if (!handle.location?.path) {
       throw new Error('DailyNoteProvider deleteEvent requires a file path.');
     }
@@ -228,10 +223,9 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
   async createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
-    newEventData: OFCEvent,
-    config: DailyNoteProviderConfig
+    newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
-    const masterLocalId = this.getEventHandle(masterEvent, config)?.persistentId;
+    const masterLocalId = this.getEventHandle(masterEvent)?.persistentId;
     if (!masterLocalId) {
       throw new Error('Could not get persistent ID for master event.');
     }
@@ -241,6 +235,6 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       recurringEventId: masterLocalId
     };
 
-    return this.createEvent(overrideEventData, config);
+    return this.createEvent(overrideEventData);
   }
 }

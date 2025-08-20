@@ -134,12 +134,13 @@ export default class EventCache {
         console.warn('Full Calendar: Calendar source is missing an ID.', info);
         return;
       }
-      const provider = this.plugin.providerRegistry.getProvider(info.type);
-      if (provider) {
-        this.calendars.set(settingsId, provider);
+      // CORRECTED: Get the pre-initialized INSTANCE for this source ID.
+      const instance = this.plugin.providerRegistry.getInstance(settingsId);
+      if (instance) {
+        this.calendars.set(settingsId, instance);
       } else {
         console.warn(
-          `Full Calendar: Provider for type "${info.type}" not found during cache reset.`
+          `Full Calendar: Provider instance for source ID "${settingsId}" not found during cache reset.`
         );
       }
     });
@@ -214,7 +215,7 @@ export default class EventCache {
       const calendarInfo = this.plugin.providerRegistry.getSource(calId);
       if (!calendarInfo) continue;
       const config = (calendarInfo as any).config || {};
-      const capabilities = provider.getCapabilities(config);
+      const capabilities = provider.getCapabilities();
       const editable = capabilities.canCreate || capabilities.canEdit || capabilities.canDelete;
       result.push({
         editable,
@@ -239,7 +240,7 @@ export default class EventCache {
     const calendarInfo = this.plugin.providerRegistry.getSource(details.calendarId);
     if (!calendarInfo) return false;
     const config = (calendarInfo as any).config;
-    const capabilities = provider.getCapabilities(config);
+    const capabilities = provider.getCapabilities();
     return capabilities.canCreate || capabilities.canEdit || capabilities.canDelete;
   }
 
@@ -262,7 +263,7 @@ export default class EventCache {
    * @returns Returns true if successful, false otherwise.
    */
   async addEvent(
-    calendarId: string, // This is the settings-level ID from the UI/caller
+    calendarId: string,
     event: OFCEvent,
     options?: { silent: boolean }
   ): Promise<boolean> {
@@ -279,14 +280,14 @@ export default class EventCache {
       new Notice(`Cannot add event: calendar with ID ${calendarId} not found.`);
       return false;
     }
-    const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
-    if (!provider) {
+    // CORRECTED: Check capabilities through the registry, not by getting a provider instance.
+    const capabilities = this.plugin.providerRegistry.getCapabilities(calendarId);
+    if (!capabilities) {
       new Notice(`Cannot add event: provider for type ${calendarInfo.type} not found.`);
       return false;
     }
-    const config = (calendarInfo as any).config;
 
-    if (!provider.getCapabilities(config).canCreate) {
+    if (!capabilities.canCreate) {
       new Notice(`Cannot add event to a read-only calendar.`);
       return false;
     }
@@ -397,7 +398,7 @@ export default class EventCache {
     const { provider, config } = this.getProviderForEvent(eventId);
 
     // Step 2: Pre-flight checks and recurring event logic
-    if (!provider.getCapabilities(config).canDelete) {
+    if (!provider.getCapabilities().canDelete) {
       throw new Error(`Calendar of type "${provider.type}" does not support deleting events.`);
     }
 
@@ -410,7 +411,7 @@ export default class EventCache {
       return;
     }
 
-    const handle = provider.getEventHandle(event, config);
+    const handle = provider.getEventHandle(event);
 
     try {
       // Step 3: Optimistic state mutation
@@ -519,7 +520,7 @@ export default class EventCache {
     const calendarId = originalDetails.calendarId;
 
     // Step 2: Pre-flight checks and recurring event logic
-    if (!provider.getCapabilities(config).canEdit) {
+    if (!provider.getCapabilities().canEdit) {
       throw new Error(`Calendar of type "${provider.type}" does not support editing events.`);
     }
 
@@ -534,7 +535,7 @@ export default class EventCache {
       return true; // The recurring manager took full control and completed the update.
     }
 
-    const handle = provider.getEventHandle(oldEvent, config);
+    const handle = provider.getEventHandle(oldEvent);
     if (!handle) {
       throw new Error(`Could not generate a persistent handle for the event being modified.`);
     }
@@ -879,28 +880,6 @@ export default class EventCache {
 
   get _storeForTest() {
     return this._store;
-  }
-
-  async checkForDuplicate(calendarId: string, event: OFCEvent): Promise<boolean> {
-    const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
-    if (!calendarInfo) {
-      throw new Error(`Calendar with settings ID ${calendarId} not found.`);
-    }
-    const provider = this.plugin.providerRegistry.getProvider(calendarInfo.type);
-    if (!provider) {
-      // If no provider, it can't be a duplicate.
-      return false;
-    }
-    const config = (calendarInfo as any).config;
-
-    // Check if provider has the method, otherwise default to false.
-    if (
-      'checkForDuplicate' in provider &&
-      typeof (provider as any).checkForDuplicate === 'function'
-    ) {
-      return (provider as any).checkForDuplicate(event, config);
-    }
-    return false;
   }
 
   // Add this new method:

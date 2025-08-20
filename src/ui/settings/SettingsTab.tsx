@@ -83,7 +83,7 @@ export function addCalendarButton(
         const sourceType = dropdown.getValue();
         const providerType = sourceType === 'icloud' ? 'caldav' : sourceType;
 
-        const provider = plugin.providerRegistry.getProvider(providerType);
+        const provider = plugin.providerRegistry.getProviderForType(providerType);
         if (!provider) {
           // This path should ideally not be hit if dropdown options are aligned with registered providers.
           new Notice(`${providerType} provider is not registered.`);

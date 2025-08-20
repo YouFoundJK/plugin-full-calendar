@@ -191,7 +191,7 @@ describe('FullNoteCalendar Tests', () => {
         makePlugin({ enableAdvancedCategorization: true }),
         obsidian
       );
-      const res = await calendar.getEvents({ directory: dirName, id: 'local_1' });
+      const res = await calendar.getEvents();
       expect(res.length).toBe(inputs.length);
 
       const receivedEvents = res.map(e => e[0]);
@@ -230,7 +230,7 @@ describe('FullNoteCalendar Tests', () => {
     (obsidian.create as jest.Mock).mockReturnValue({
       path: join(dirName, '2022-01-01 Work - Test Event.md')
     });
-    await calendar.createEvent(parseEvent(event), { directory: dirName, id: 'local_1' });
+    await calendar.createEvent(parseEvent(event));
     expect(obsidian.create).toHaveBeenCalledTimes(1);
     const [path, content] = (obsidian.create as jest.Mock).mock.calls[0];
 
@@ -288,18 +288,10 @@ describe('FullNoteCalendar Tests', () => {
       category: 'Work' // Add the category
     });
 
-    const handle = calendar.getEventHandle(initialEvent as OFCEvent, {
-      directory: dirName,
-      id: 'local_1'
-    });
+    const handle = calendar.getEventHandle(initialEvent as OFCEvent);
     if (!handle) throw new Error('Could not get event handle.');
 
-    await calendar.updateEvent(
-      handle,
-      initialEvent as OFCEvent, // <-- PASS THE ORIGINAL EVENT DATA
-      newEvent,
-      { directory: dirName, id: 'local_1' }
-    );
+    await calendar.updateEvent(handle, initialEvent as OFCEvent, newEvent);
 
     expect(obsidian.rewrite).toHaveBeenCalledTimes(1);
     const [file, rewriteCallback] = (obsidian.rewrite as jest.Mock).mock.calls[0];
