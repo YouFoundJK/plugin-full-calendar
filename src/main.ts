@@ -22,7 +22,7 @@ import { FullNoteProvider } from './providers/fullnote/FullNoteProvider';
 import { DailyNoteProvider } from './providers/dailynote/DailyNoteProvider';
 import { ObsidianIO } from './ObsidianAdapter';
 import { renderCalendar } from './ui/calendar';
-import { manageTimezone } from './utils/Timezone';
+import { manageTimezone } from './features/Timezone';
 import { Notice, Plugin, TFile, App } from 'obsidian';
 // Heavy calendar classes are loaded lazily in the initializer map below
 import type { CalendarView } from './ui/view';

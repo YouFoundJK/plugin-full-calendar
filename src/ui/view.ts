@@ -28,7 +28,7 @@ import { renderCalendar } from './calendar';
 import { renderOnboarding } from './onboard';
 import { PLUGIN_SLUG, CalendarInfo } from '../types';
 import { UpdateViewCallback, CachedEvent } from '../core/EventCache';
-import { WorkspaceManager } from './WorkspaceManager';
+import { WorkspaceManager } from '../features/workspaces/WorkspaceManager';
 // Lazy-import heavy modules at point of use to reduce initial load time
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
 

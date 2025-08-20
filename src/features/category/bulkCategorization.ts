@@ -22,7 +22,7 @@ import {
   getListsUnderHeading,
   modifyListItem
 } from '../../providers/dailynote/parser_dailyN';
-import { constructTitle, parseTitle } from '../../utils/categoryParser';
+import { constructTitle, parseTitle } from './categoryParser';
 import { validateEvent } from '../../types/schema';
 
 type CategoryProvider = (file: TFile) => string | undefined;

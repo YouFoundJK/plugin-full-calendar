@@ -12,7 +12,7 @@
 
 import { DateTime } from 'luxon';
 import { OFCEvent } from '../../types';
-import { constructTitle } from '../../utils/categoryParser';
+import { constructTitle } from '../../features/category/categoryParser';
 import { rrulestr } from 'rrule';
 
 /**

@@ -14,10 +14,10 @@
  * @license See LICENSE.md
  */
 
-import { FullCalendarSettings, WorkspaceSettings } from '../types/settings';
+import { FullCalendarSettings, WorkspaceSettings } from '../../types/settings';
 import { EventInput, EventSourceInput } from '@fullcalendar/core';
-import { OFCEventSource, CachedEvent } from '../core/EventCache';
-import { toEventInput } from '../core/interop';
+import { OFCEventSource, CachedEvent } from '../../core/EventCache';
+import { toEventInput } from '../../core/interop';
 
 // Copied from view.ts to break circular dependency.
 function getCalendarColors(color: string | null | undefined): {

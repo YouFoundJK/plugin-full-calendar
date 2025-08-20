@@ -20,7 +20,7 @@ import {
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
-import { constructTitle } from '../../utils/categoryParser';
+import { constructTitle } from '../../features/category/categoryParser';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';

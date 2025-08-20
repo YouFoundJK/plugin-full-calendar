@@ -13,7 +13,7 @@ import { CategorySettingsManager } from '../components/CategorySetting';
 import {
   bulkUpdateCategories,
   bulkRemoveCategories
-} from '../../../core/actions/bulkCategorization';
+} from '../../../features/category/bulkCategorization';
 
 export function renderCategorizationSettings(
   containerEl: HTMLElement,

@@ -7,7 +7,7 @@ import {
   createDefaultWorkspace,
   FullCalendarSettings,
   DEFAULT_SETTINGS
-} from '../types/settings';
+} from '../../types/settings';
 
 // Mock CalendarView methods for testing
 class MockCalendarView {

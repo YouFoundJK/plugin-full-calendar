@@ -13,8 +13,8 @@
 
 import { OFCEvent } from '../types';
 import { FullCalendarSettings } from '../types/settings';
-import { constructTitle, parseTitle } from '../utils/categoryParser';
-import { convertEvent } from '../utils/Timezone';
+import { constructTitle, parseTitle } from '../features/category/categoryParser';
+import { convertEvent } from '../features/Timezone';
 
 export class EventEnhancer {
   private settings: FullCalendarSettings;

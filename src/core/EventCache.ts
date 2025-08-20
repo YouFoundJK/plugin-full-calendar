@@ -41,7 +41,7 @@ import { Notice, TFile } from 'obsidian';
 
 import FullCalendarPlugin from '../main';
 import EventStore, { StoredEvent } from './EventStore';
-import { RecurringEventManager } from './modules/RecurringEventManager';
+import { RecurringEventManager } from '../features/recur_events/RecurringEventManager';
 import { CalendarInfo, OFCEvent, validateEvent, EventLocation } from '../types';
 import { CalendarProvider } from '../providers/Provider';
 import { EventEnhancer } from './EventEnhancer';

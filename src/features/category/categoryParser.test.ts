@@ -4,9 +4,9 @@
  */
 
 import { constructTitle, parseTitle, parseSubcategoryTitle } from './categoryParser';
-import { EventEnhancer } from '../core/EventEnhancer';
-import { OFCEvent } from '../types';
-import { FullCalendarSettings, DEFAULT_SETTINGS } from '../types/settings';
+import { EventEnhancer } from '../../core/EventEnhancer';
+import { OFCEvent } from '../../types/schema';
+import { FullCalendarSettings, DEFAULT_SETTINGS } from '../../types/settings';
 
 describe('constructTitle', () => {
   it('should return just title when no category or subcategory', () => {

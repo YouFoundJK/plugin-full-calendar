@@ -9,7 +9,7 @@ import {
   getActiveWorkspace,
   FullCalendarSettings,
   DEFAULT_SETTINGS
-} from './settings';
+} from '../../types/settings';
 
 describe('Workspace functionality', () => {
   test('should create a default workspace', () => {
