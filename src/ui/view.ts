@@ -28,6 +28,7 @@ import { renderCalendar } from './calendar';
 import { renderOnboarding } from './onboard';
 import { PLUGIN_SLUG, CalendarInfo } from '../types';
 import { UpdateViewCallback, CachedEvent } from '../core/EventCache';
+import { WorkspaceManager } from './WorkspaceManager';
 // Lazy-import heavy modules at point of use to reduce initial load time
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
 
@@ -63,6 +64,7 @@ export class CalendarView extends ItemView {
   inSidebar: boolean;
   fullCalendarView: Calendar | null = null;
   callback: UpdateViewCallback | null = null;
+  private workspaceManager: WorkspaceManager | null = null; // <-- ADDED
   private timelineResources:
     | { id: string; title: string; parentId?: string; eventColor?: string; extendedProps?: any }[]
     | null = null;
@@ -96,125 +98,10 @@ export class CalendarView extends ItemView {
   }
 
   /**
-   * Get the currently active workspace settings, if any.
-   */
-  getActiveWorkspace() {
-    if (!this.plugin.settings.activeWorkspace) return null;
-    return (
-      this.plugin.settings.workspaces.find(w => w.id === this.plugin.settings.activeWorkspace) ||
-      null
-    );
-  }
-
-  /**
-   * Apply workspace settings to override default settings.
-   */
-  applyWorkspaceSettings(settings: any) {
-    const workspace = this.getActiveWorkspace();
-    if (!workspace) return settings;
-
-    const workspaceSettings = { ...settings };
-
-    // Apply view overrides
-    if (workspace.defaultView?.desktop || workspace.defaultView?.mobile) {
-      workspaceSettings.initialView = {
-        desktop: workspace.defaultView.desktop || settings.initialView?.desktop,
-        mobile: workspace.defaultView.mobile || settings.initialView?.mobile
-      };
-    }
-
-    // Apply business hours override
-    if (workspace.businessHours !== undefined) {
-      workspaceSettings.businessHours = workspace.businessHours;
-    }
-
-    return workspaceSettings;
-  }
-
-  /**
-   * Filter calendar sources based on workspace settings.
-   * - Normalizes IDs to strings for reliable comparisons
-   * - If a selection exists but nothing matches, fall back to all sources
-   */
-  filterCalendarSources(sources: any[]) {
-    const workspace = this.getActiveWorkspace();
-    if (!workspace) return sources;
-
-    const selected = (workspace.visibleCalendars ?? []).map(String);
-    if (selected.length === 0) return sources;
-
-    const selectedSet = new Set(selected);
-    const filtered = sources.filter(source => selectedSet.has(String(source.id)));
-
-    if (filtered.length === 0 && selected.length > 0) {
-      console.warn(
-        'Full Calendar: No sources matched visibleCalendars. Falling back to all sources.'
-      );
-      return sources;
-    }
-    return filtered;
-  }
-
-  /**
-   * Filter events by category based on workspace settings.
-   */
-  filterEventsByCategory(events: EventInput[]): EventInput[] {
-    // Only apply when advanced categorization is enabled
-    if (!this.plugin.settings.enableAdvancedCategorization) {
-      return events;
-    }
-
-    const workspace = this.getActiveWorkspace();
-    if (!workspace?.categoryFilter) return events;
-
-    const { mode, categories } = workspace.categoryFilter;
-
-    // If 'show-only' mode is selected but no categories are chosen, don't apply filtering
-    if (mode === 'show-only' && categories.length === 0) {
-      return events;
-    }
-
-    const knownCategories = new Set(this.plugin.settings.categorySettings?.map(c => c.name) ?? []);
-
-    return events.filter(event => {
-      // Extract category from event (checking different possible formats)
-      const fromExtended =
-        event.extendedProps?.category || event.extendedProps?.originalEvent?.category;
-
-      let category: string | undefined = fromExtended;
-
-      // Only consider resourceId as a category if it clearly represents a category:
-      // - contains "::" (Category::Subcategory), or
-      // - exactly matches a known category name
-      if (!category && typeof event.resourceId === 'string') {
-        const rid = event.resourceId;
-        if (rid.includes('::') || knownCategories.has(rid)) {
-          category = rid;
-        }
-      }
-
-      if (!category) {
-        // Events without categories - include based on filter mode
-        return mode === 'hide'; // If hiding categories, include uncategorized events
-      }
-
-      // For subcategories (format: "Category::Subcategory"), use the parent category
-      const mainCategory = category.includes('::') ? category.split('::')[0] : category;
-
-      if (mode === 'show-only') {
-        return categories.includes(mainCategory);
-      } else {
-        // mode === 'hide'
-        return !categories.includes(mainCategory);
-      }
-    });
-  }
-
-  /**
    * Get the text to display in the workspace switcher button.
    */
   getWorkspaceSwitcherText(): string {
-    const activeWorkspace = this.getActiveWorkspace();
+    const activeWorkspace = this.workspaceManager?.getActiveWorkspace();
     if (!activeWorkspace) {
       return 'Workspace ▾';
     }
@@ -354,7 +241,7 @@ export class CalendarView extends ItemView {
     }
 
     const categorySettings = this.plugin.settings.categorySettings || [];
-    const workspace = this.getActiveWorkspace();
+    const workspace = this.workspaceManager?.getActiveWorkspace();
 
     const isCategoryVisible = (name: string) => {
       if (!workspace?.categoryFilter) return true;
@@ -379,7 +266,9 @@ export class CalendarView extends ItemView {
 
     const categoryMap = new Map<string, Set<string>>();
     let allSources = this.plugin.cache.getAllEvents();
-    allSources = this.filterCalendarSources(allSources);
+    // VVVV MODIFY THIS LINE VVVV
+    allSources = this.workspaceManager?.filterCalendarSources(allSources) || allSources;
+    // ^^^^ END OF MODIFICATION ^^^^
     for (const source of allSources) {
       for (const cachedEvent of source.events) {
         const { category, subCategory } = cachedEvent.event;
@@ -427,38 +316,6 @@ export class CalendarView extends ItemView {
   }
 
   /**
-   * Translates event data from the `EventCache` into the `EventSourceInput`
-   * format required by the FullCalendar library.
-   * Also calculates the correct text color for event backgrounds.
-   */
-  translateSources() {
-    const settings = this.plugin.settings;
-    let allSources = this.plugin.cache.getAllEvents();
-
-    // Apply workspace filtering if active
-    allSources = this.filterCalendarSources(allSources);
-
-    const sources = allSources.map(({ events, editable, color, id }): EventSourceInput => {
-      const mainEvents = events
-        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings)) // REMOVED id
-        .filter((e): e is EventInput => !!e);
-
-      // Apply workspace category filtering
-      const filteredEvents = this.filterEventsByCategory(mainEvents);
-
-      // Don't include shadow events in translateSources - they will be added
-      // dynamically when switching to timeline views
-      return {
-        id,
-        events: filteredEvents,
-        editable,
-        ...getCalendarColors(color)
-      };
-    });
-    return sources;
-  }
-
-  /**
    * Called when the view is opened or re-focused.
    * This is the main rendering method. It clears any existing calendar,
    * fetches all event sources from the cache, and initializes a new FullCalendar
@@ -476,6 +333,9 @@ export class CalendarView extends ItemView {
       await this.plugin.cache.populate();
     }
 
+    // Instantiate and update the WorkspaceManager with the latest settings.
+    this.workspaceManager = new WorkspaceManager(this.plugin.settings);
+
     const container = this.containerEl.children[1];
     container.empty();
     let calendarEl = container.createEl('div');
@@ -488,15 +348,15 @@ export class CalendarView extends ItemView {
       return;
     }
 
-    // Defer building timeline resources until timeline view is active
-
-    const sources: EventSourceInput[] = this.translateSources();
+    // Get all sources from the cache and let the manager filter them.
+    const allSources = this.plugin.cache.getAllEvents();
+    const sources: EventSourceInput[] = this.workspaceManager.getFilteredEventSources(allSources);
 
     if (this.fullCalendarView) {
       this.fullCalendarView.destroy();
       this.fullCalendarView = null;
     }
-    // Add view change handler to manage shadow events and lazy resources for timeline views
+
     let currentViewType = '';
     const handleViewChange = () => {
       const newViewType = this.fullCalendarView?.view?.type || '';
@@ -504,26 +364,22 @@ export class CalendarView extends ItemView {
       const isTimeline = newViewType.includes('resourceTimeline');
 
       if (wasTimeline !== isTimeline) {
-        // View type changed between timeline and non-timeline
         if (isTimeline) {
-          // Lazily build and apply resources the first time we enter a timeline view
           if (!this.timelineResources) {
             this.timelineResources = this.buildTimelineResources();
             this.fullCalendarView?.setOption('resources', this.timelineResources);
             this.fullCalendarView?.setOption('resourcesInitiallyExpanded', false);
           }
-          // Switched to timeline view - add shadow events
           this.addShadowEventsToView();
         } else {
-          // Switched from timeline view - remove shadow events
           this.removeShadowEventsFromView();
         }
       }
       currentViewType = newViewType;
     };
 
-    // Apply workspace settings
-    const workspaceSettings = this.applyWorkspaceSettings(this.plugin.settings);
+    // Get the final, workspace-aware calendar configuration from the manager.
+    const calendarConfig = this.workspaceManager.getCalendarConfig();
 
     this.fullCalendarView = await renderCalendar(calendarEl, sources, {
       // timeZone:
@@ -532,10 +388,10 @@ export class CalendarView extends ItemView {
       // resources added lazily when entering timeline view
       enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
       onViewChange: handleViewChange,
-      initialView: workspaceSettings.initialView, // Use workspace-aware initial view
+      initialView: calendarConfig.initialView, // Use workspace-aware initial view
       businessHours: (() => {
         // Use workspace business hours if set, otherwise use global settings
-        const businessHours = workspaceSettings.businessHours || this.plugin.settings.businessHours;
+        const businessHours = calendarConfig.businessHours || this.plugin.settings.businessHours;
         return businessHours.enabled
           ? {
               daysOfWeek: businessHours.daysOfWeek,
@@ -818,122 +674,33 @@ export class CalendarView extends ItemView {
       this.plugin.cache.off('update', this.callback);
       this.callback = null;
     }
+
+    // VVVV REPLACE THE ENTIRE ARROW FUNCTION BODY VVVV
     this.callback = this.plugin.cache.on('update', payload => {
-      // Get settings once to pass down to the parsers
-      const settings = this.plugin.settings;
-      if (payload.type === 'resync') {
-        if (this.fullCalendarView) {
-          this.fullCalendarView.setOption('firstDay', this.plugin.settings.firstDay);
-          this.fullCalendarView.setOption(
-            'eventTimeFormat',
-            this.plugin.settings.timeFormat24h
-              ? { hour: '2-digit', minute: '2-digit', hour12: false }
-              : { hour: 'numeric', minute: '2-digit', hour12: true }
-          );
-        }
-        this.fullCalendarView?.removeAllEventSources();
-        const sources = this.translateSources();
-        sources.forEach(source => this.fullCalendarView?.addEventSource(source));
-
-        // Re-add shadow events if in timeline view
-        const currentViewType = this.fullCalendarView?.view?.type || '';
-        if (currentViewType.includes('resourceTimeline')) {
-          this.addShadowEventsToView();
-        }
-
+      if (!this.workspaceManager || !this.fullCalendarView) {
         return;
-      } else if (payload.type === 'events') {
-        const { toRemove, toAdd } = payload;
-        // console.debug('updating view from cache...', {
-        //   toRemove,
-        //   toAdd
-        // });
-        toRemove.forEach(id => {
-          // Remove main event if it exists
-          const mainEvent = this.fullCalendarView?.getEventById(id);
-          if (mainEvent) {
-            mainEvent.remove();
-          } else {
-            console.warn(
-              `Event with id=${id} was slated to be removed but does not exist in the calendar.`
-            );
-          }
+      }
+      // With the manager, we no longer need to interpret the payload.
+      // Treat any update as a signal to re-render the view with the latest filtered data.
 
-          // Also remove the corresponding shadow event, if it exists.
-          const shadowEvent = this.fullCalendarView?.getEventById(`${id}-shadow`);
-          if (shadowEvent) {
-            shadowEvent.remove();
-          }
-        });
-        toAdd.forEach(({ id, event, calendarId }) => {
-          // Pass settings to toEventInput
-          const eventInput = toEventInput(id, event, settings); // REMOVED calendarId
-          if (eventInput) {
-            // Respect workspace source filtering: skip if calendar is not selected
-            const workspace = this.getActiveWorkspace();
-            const selected = (workspace?.visibleCalendars ?? []).map(String);
-            if (selected.length > 0 && !new Set(selected).has(String(calendarId))) {
-              return; // Do not add events from hidden calendars
-            }
+      // 1. Update manager with latest settings in case they changed.
+      this.workspaceManager.updateSettings(this.plugin.settings);
 
-            // Apply workspace category filtering
-            if (this.filterEventsByCategory([eventInput]).length === 0) {
-              return; // Filtered out by category rules
-            }
+      // 2. Get fresh, fully-filtered sources from the manager.
+      const allCachedSources = this.plugin.cache.getAllEvents();
+      const newSources = this.workspaceManager.getFilteredEventSources(allCachedSources);
 
-            // Add the main event
-            const addedEvent = this.fullCalendarView?.addEvent(eventInput, calendarId);
+      // 3. Resync the entire calendar view.
+      this.fullCalendarView.removeAllEventSources();
+      newSources.forEach(source => this.fullCalendarView?.addEventSource(source));
 
-            // Also add shadow event if this is a subcategory event and we're in timeline view
-            const currentViewType = this.fullCalendarView?.view?.type || '';
-            if (
-              currentViewType.includes('resourceTimeline') &&
-              this.plugin.settings.enableAdvancedCategorization &&
-              eventInput.resourceId &&
-              eventInput.resourceId.includes('::')
-            ) {
-              const shadowEvents = this.generateShadowEvents([eventInput], true);
-              shadowEvents.forEach(shadowEvent => {
-                this.fullCalendarView?.addEvent(shadowEvent, calendarId);
-              });
-            }
-          }
-        });
-      } else if (payload.type == 'calendar') {
-        const {
-          calendar: { id, events, editable, color }
-        } = payload;
-        // console.debug('replacing calendar with id', payload.calendar);
-        this.fullCalendarView?.getEventSourceById(id)?.remove();
-
-        // Respect workspace source filtering: if hidden, ensure it's removed and skip re-adding
-        const workspace = this.getActiveWorkspace();
-        const selected = (workspace?.visibleCalendars ?? []).map(String);
-        if (selected.length > 0 && !new Set(selected).has(String(id))) {
-          return; // Do not re-add hidden calendar source
-        }
-
-        const mainEvents = events.flatMap(
-          ({ id: eventId, event }: CachedEvent) => toEventInput(eventId, event, settings) || [] // REMOVED id
-        );
-
-        // Apply workspace category filtering
-        const filteredMainEvents = this.filterEventsByCategory(mainEvents);
-
-        // Only include shadow events if in timeline view
-        const currentViewType = this.fullCalendarView?.view?.type || '';
-        const shadowEvents = currentViewType.includes('resourceTimeline')
-          ? this.generateShadowEvents(filteredMainEvents, true)
-          : [];
-
-        this.fullCalendarView?.addEventSource({
-          id,
-          events: [...filteredMainEvents, ...shadowEvents],
-          editable,
-          ...getCalendarColors(color)
-        });
+      // 4. Re-add shadow events if we are in a timeline view.
+      const currentViewType = this.fullCalendarView?.view?.type || '';
+      if (currentViewType.includes('resourceTimeline')) {
+        this.addShadowEventsToView();
       }
     });
+    // ^^^^ END OF REPLACEMENT ^^^^
   }
 
   onResize(): void {
