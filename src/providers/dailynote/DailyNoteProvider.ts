@@ -32,15 +32,17 @@ export type EditableEventResponse = [OFCEvent, EventLocation | null];
 export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConfig> {
   private app: ObsidianInterface;
   private plugin: FullCalendarPlugin;
+  private config: DailyNoteProviderConfig;
 
   readonly type = 'dailynote';
   readonly displayName = 'Daily Note';
   readonly isRemote = false;
 
-  constructor(app: ObsidianInterface, plugin: FullCalendarPlugin) {
+  constructor(config: DailyNoteProviderConfig, plugin: FullCalendarPlugin, app: ObsidianInterface) {
     appHasDailyNotesPluginLoaded();
     this.app = app;
     this.plugin = plugin;
+    this.config = config;
   }
 
   getCapabilities(): CalendarProviderCapabilities {

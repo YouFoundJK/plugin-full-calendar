@@ -3,6 +3,17 @@ import { CalendarProvider } from '../providers/Provider';
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
+import { ObsidianIO } from '../ObsidianAdapter';
+import { FullNoteProvider } from './fullnote/FullNoteProvider';
+import { DailyNoteProvider } from './dailynote/DailyNoteProvider';
+import { ICSProvider } from './ics/ICSProvider';
+import { CalDAVProvider } from './caldav/CalDAVProvider';
+import { GoogleProvider } from './google/GoogleProvider';
+import { FullNoteProviderConfig } from './fullnote/typesLocal';
+import { DailyNoteProviderConfig } from './dailynote/typesDaily';
+import { ICSProviderConfig } from './ics/typesICS';
+import { CalDAVProviderConfig } from './caldav/typesCalDAV';
+import { GoogleProviderConfig } from './google/typesGCal';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -10,6 +21,7 @@ const MILLICONDS_BETWEEN_REVALIDATIONS = 5 * MINUTE;
 
 export class ProviderRegistry {
   private providers = new Map<string, CalendarProvider<any>>();
+  private instances = new Map<string, CalendarProvider<any>>();
   private sources: CalendarInfo[] = [];
 
   // Properties from IdentifierManager and for linking singletons
@@ -22,6 +34,7 @@ export class ProviderRegistry {
   // Updated constructor
   constructor(plugin: FullCalendarPlugin) {
     this.plugin = plugin;
+    this.initializeInstances();
   }
 
   // Method to link cache
@@ -31,6 +44,7 @@ export class ProviderRegistry {
 
   public updateSources(newSources: CalendarInfo[]): void {
     this.sources = newSources;
+    this.initializeInstances();
   }
 
   public getSource(id: string): CalendarInfo | undefined {
@@ -74,22 +88,20 @@ export class ProviderRegistry {
   }
 
   public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
-    const calendarInfo = this.getSource(calendarId);
-    if (!calendarInfo) {
-      console.warn(`Could not find calendar info for ID ${calendarId}`);
+    const instance = this.instances.get(calendarId);
+    if (!instance) {
+      console.warn(`Could not find provider instance for calendar ID ${calendarId}`);
       return null;
     }
-    const provider = this.getProvider(calendarInfo.type);
-    if (!provider) {
-      console.warn(`Could not find provider for type ${calendarInfo.type}`);
+    const config = (instance as any).config;
+    if (!config) {
+      console.warn(`Provider instance for ${calendarId} is missing a config object.`);
       return null;
     }
-
-    const handle = provider.getEventHandle(event, (calendarInfo as any).config);
+    const handle = instance.getEventHandle(event, config);
     if (!handle) {
       return null;
     }
-
     return `${calendarId}::${handle.persistentId}`;
   }
 
@@ -132,27 +144,28 @@ export class ProviderRegistry {
     }
 
     const results: { calendarId: string; event: OFCEvent; location: EventLocation | null }[] = [];
-    const promises = this.getAllSources().map(async info => {
-      const settingsId = (info as any).id;
-      const provider = this.getProvider(info.type);
-      if (!provider || !settingsId) {
-        console.warn('Full Calendar: Could not find provider or id for source.', info);
-        return;
-      }
-      try {
-        const rawEvents = await provider.getEvents((info as any).config);
-        rawEvents.forEach(([rawEvent, location]) => {
-          const event = this.cache!.enhancer.enhance(rawEvent);
-          results.push({
-            calendarId: settingsId,
-            event,
-            location
+    const promises = [];
+
+    for (const [settingsId, instance] of this.instances.entries()) {
+      const promise = (async () => {
+        try {
+          const config = (instance as any).config;
+          const rawEvents = await instance.getEvents(config);
+          rawEvents.forEach(([rawEvent, location]) => {
+            const event = this.cache!.enhancer.enhance(rawEvent);
+            results.push({
+              calendarId: settingsId,
+              event,
+              location
+            });
           });
-        });
-      } catch (e) {
-        console.warn(`Full Calendar: Failed to load calendar source`, info, e);
-      }
-    });
+        } catch (e) {
+          const source = this.getSource(settingsId);
+          console.warn(`Full Calendar: Failed to load calendar source`, source, e);
+        }
+      })();
+      promises.push(promise);
+    }
 
     await Promise.allSettled(promises);
     return results;
@@ -162,16 +175,12 @@ export class ProviderRegistry {
     settingsId: string,
     event: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
-    const calendarInfo = this.getSource(settingsId);
-    if (!calendarInfo) {
-      throw new Error(`Calendar with ID ${settingsId} not found.`);
+    const instance = this.instances.get(settingsId);
+    if (!instance) {
+      throw new Error(`Provider instance with ID ${settingsId} not found.`);
     }
-    const provider = this.getProvider(calendarInfo.type);
-    if (!provider) {
-      throw new Error(`Provider for type ${calendarInfo.type} not found.`);
-    }
-    const config = (calendarInfo as any).config;
-    return provider.createEvent(event, config);
+    const config = (instance as any).config;
+    return instance.createEvent(event, config);
   }
 
   public async updateEventInProvider(
@@ -180,21 +189,16 @@ export class ProviderRegistry {
     oldEventData: OFCEvent,
     newEventData: OFCEvent
   ): Promise<EventLocation | null> {
-    const calendarInfo = this.getSource(calendarId);
-    if (!calendarInfo) {
-      throw new Error(`Calendar with ID ${calendarId} not found.`);
+    const instance = this.instances.get(calendarId);
+    if (!instance) {
+      throw new Error(`Provider instance with ID ${calendarId} not found.`);
     }
-    const provider = this.getProvider(calendarInfo.type);
-    if (!provider) {
-      throw new Error(`Provider for type ${calendarInfo.type} not found.`);
-    }
-
-    const config = (calendarInfo as any).config;
-    const handle = provider.getEventHandle(oldEventData, config);
+    const config = (instance as any).config;
+    const handle = instance.getEventHandle(oldEventData, config);
     if (!handle) {
       throw new Error(`Could not generate a persistent handle for the event being modified.`);
     }
-    return provider.updateEvent(handle, oldEventData, newEventData, config);
+    return instance.updateEvent(handle, oldEventData, newEventData, config);
   }
 
   public async deleteEventInProvider(
@@ -202,19 +206,15 @@ export class ProviderRegistry {
     event: OFCEvent,
     calendarId: string
   ): Promise<void> {
-    const calendarInfo = this.getSource(calendarId);
-    if (!calendarInfo) {
-      throw new Error(`Calendar with ID ${calendarId} not found.`);
+    const instance = this.instances.get(calendarId);
+    if (!instance) {
+      throw new Error(`Provider instance with ID ${calendarId} not found.`);
     }
-    const provider = this.getProvider(calendarInfo.type);
-    if (!provider) {
-      throw new Error(`Provider for type ${calendarInfo.type} not found.`);
-    }
-    const config = (calendarInfo as any).config;
-    const handle = provider.getEventHandle(event, config);
+    const config = (instance as any).config;
+    const handle = instance.getEventHandle(event, config);
 
     if (handle) {
-      await provider.deleteEvent(handle, config);
+      await instance.deleteEvent(handle, config);
     } else {
       console.warn(
         `Could not generate a persistent handle for the event being deleted. Proceeding with deletion from cache only.`
@@ -226,27 +226,26 @@ export class ProviderRegistry {
   public async handleFileUpdate(file: TFile): Promise<void> {
     if (!this.cache) return;
 
-    // Find all *local* providers that might be interested in this file.
-    const interestedProviders = [];
-    for (const info of this.getAllSources()) {
-      const provider = this.getProvider(info.type);
-      if (provider && !provider.isRemote && provider.getEventsInFile) {
-        const config = (info as any).config;
+    // Find all *local* provider instances that might be interested in this file.
+    const interestedInstances = [];
+    for (const [settingsId, instance] of this.instances.entries()) {
+      if (!instance.isRemote && instance.getEventsInFile) {
+        const config = (instance as any).config;
         let isRelevant = false;
-        if (info.type === 'local' && config.directory) {
+        if (instance.type === 'local' && config.directory) {
           isRelevant = file.path.startsWith(config.directory + '/');
-        } else if (info.type === 'dailynote') {
+        } else if (instance.type === 'dailynote') {
           const { folder } = require('obsidian-daily-notes-interface').getDailyNoteSettings();
           isRelevant = folder ? file.path.startsWith(folder + '/') : true;
         }
 
         if (isRelevant) {
-          interestedProviders.push({ provider, config, settingsId: (info as any).id });
+          interestedInstances.push({ instance, config, settingsId });
         }
       }
     }
 
-    if (interestedProviders.length === 0) {
+    if (interestedInstances.length === 0) {
       // No providers care about this file, so we can stop.
       await this.cache.syncFile(file, []);
       return;
@@ -255,8 +254,8 @@ export class ProviderRegistry {
     // Aggregate all events from all interested providers for this one file.
     const allNewEvents: { event: OFCEvent; location: EventLocation | null; calendarId: string }[] =
       [];
-    for (const { provider, config, settingsId } of interestedProviders) {
-      const eventsFromFile = await provider.getEventsInFile!(file, config);
+    for (const { instance, config, settingsId } of interestedInstances) {
+      const eventsFromFile = await instance.getEventsInFile!(file, config);
       for (const [event, location] of eventsFromFile) {
         allNewEvents.push({ event, location, calendarId: settingsId });
       }
@@ -288,33 +287,27 @@ export class ProviderRegistry {
       return;
     }
 
-    const remoteSources = this.getAllSources().filter(info => {
-      const provider = this.getProvider(info.type);
-      return provider && provider.isRemote;
-    });
+    const remoteInstances = Array.from(this.instances.entries()).filter(
+      ([_, instance]) => instance.isRemote
+    );
 
-    if (remoteSources.length === 0) {
+    if (remoteInstances.length === 0) {
       return;
     }
 
     this.revalidating = true;
     new Notice('Revalidating remote calendars...');
 
-    const promises = remoteSources.map(info => {
-      const provider = this.getProvider(info.type)!;
-      const config = (info as any).config;
-      const settingsId = (info as any).id;
-      if (!settingsId) {
-        return Promise.reject(`Calendar source is missing an ID.`);
-      }
-
-      return provider
+    const promises = remoteInstances.map(([settingsId, instance]) => {
+      const config = (instance as any).config;
+      return instance
         .getEvents(config)
         .then(events => {
           this.cache!.syncCalendar(settingsId, events);
         })
         .catch(err => {
-          const name = (info as any).name || info.type;
+          const source = this.getSource(settingsId);
+          const name = (source as any)?.name || instance.type;
           throw new Error(`Failed to revalidate calendar "${name}": ${err.message}`);
         });
     });
@@ -332,5 +325,44 @@ export class ProviderRegistry {
         new Notice('Remote calendars revalidated.');
       }
     });
+  }
+
+  private initializeInstances(): void {
+    this.instances.clear();
+    const sources = this.plugin.settings.calendarSources;
+
+    for (const source of sources) {
+      const settingsId = (source as any).id;
+      if (!settingsId) {
+        console.warn('Full Calendar: Calendar source is missing an ID.', source);
+        continue;
+      }
+
+      const config = (source as any).config;
+      let instance: CalendarProvider<any> | null = null;
+      const app = new ObsidianIO(this.plugin.app);
+
+      switch (source.type) {
+        case 'local':
+          instance = new FullNoteProvider(config as FullNoteProviderConfig, this.plugin, app);
+          break;
+        case 'dailynote':
+          instance = new DailyNoteProvider(config as DailyNoteProviderConfig, this.plugin, app);
+          break;
+        case 'ical':
+          instance = new ICSProvider(config as ICSProviderConfig, this.plugin);
+          break;
+        case 'caldav':
+          instance = new CalDAVProvider(config as CalDAVProviderConfig, this.plugin);
+          break;
+        case 'google':
+          instance = new GoogleProvider(config as GoogleProviderConfig, this.plugin);
+          break;
+      }
+
+      if (instance) {
+        this.instances.set(settingsId, instance);
+      }
+    }
   }
 }

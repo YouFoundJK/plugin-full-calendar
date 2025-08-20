@@ -187,8 +187,9 @@ describe('FullNoteCalendar Tests', () => {
         directory: dirName
       };
       const calendar = new FullNoteProvider(
-        obsidian,
-        makePlugin({ enableAdvancedCategorization: true })
+        { directory: dirName, id: 'local_1' },
+        makePlugin({ enableAdvancedCategorization: true }),
+        obsidian
       );
       const res = await calendar.getEvents({ directory: dirName, id: 'local_1' });
       expect(res.length).toBe(inputs.length);
@@ -213,8 +214,9 @@ describe('FullNoteCalendar Tests', () => {
       directory: dirName
     };
     const calendar = new FullNoteProvider(
-      obsidian,
-      makePlugin({ enableAdvancedCategorization: true })
+      { directory: dirName, id: 'local_1' },
+      makePlugin({ enableAdvancedCategorization: true }),
+      obsidian
     );
     const event = {
       title: 'Test Event',
@@ -262,8 +264,9 @@ describe('FullNoteCalendar Tests', () => {
       directory: dirName
     };
     const calendar = new FullNoteProvider(
-      obsidian,
-      makePlugin({ enableAdvancedCategorization: true })
+      { directory: dirName, id: 'local_1' },
+      makePlugin({ enableAdvancedCategorization: true }),
+      obsidian
     );
 
     const path = normalizePath(`events/${filename}`); // Use forward slash instead of join

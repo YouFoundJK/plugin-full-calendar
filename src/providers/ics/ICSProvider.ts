@@ -7,18 +7,21 @@ import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { ICSProviderConfig } from './typesICS';
 import { ICSConfigComponent } from './ICSConfigComponent';
+import FullCalendarPlugin from '../../main';
 
 const WEBCAL = 'webcal';
 
 export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
-  private settings: FullCalendarSettings;
+  private plugin: FullCalendarPlugin;
+  private config: ICSProviderConfig;
 
   readonly type = 'ical';
   readonly displayName = 'Remote Calendar (ICS)';
   readonly isRemote = true;
 
-  constructor(settings: FullCalendarSettings) {
-    this.settings = settings;
+  constructor(config: ICSProviderConfig, plugin: FullCalendarPlugin) {
+    this.plugin = plugin;
+    this.config = config;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -40,7 +43,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
 
     try {
       const response = await request({ url, method: 'GET' });
-      const displayTimezone = this.settings.displayTimezone;
+      const displayTimezone = this.plugin.settings.displayTimezone;
       if (!displayTimezone) return [];
 
       // Remove timezone conversion logic; just return raw events

@@ -14,13 +14,15 @@ import * as React from 'react';
 
 export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   private plugin: FullCalendarPlugin;
+  private config: GoogleProviderConfig;
 
   readonly type = 'google';
   readonly displayName = 'Google Calendar';
   readonly isRemote = true;
 
-  constructor(plugin: FullCalendarPlugin) {
+  constructor(config: GoogleProviderConfig, plugin: FullCalendarPlugin) {
     this.plugin = plugin;
+    this.config = config;
   }
 
   getCapabilities(config: GoogleProviderConfig): CalendarProviderCapabilities {

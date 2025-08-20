@@ -136,7 +136,6 @@ export function addCalendarButton(
                   // FIX: This object is the new format, which is okay.
                   // The `submitCallback` will add it to settings.
                   // The adapter and legacy classes will handle parsing it.
-                  provider: providerType,
                   config: finalConfig,
                   type: providerType,
                   name:
@@ -227,4 +226,5 @@ export class FullCalendarSettingTab extends PluginSettingTab {
 // These functions remain pure and outside the class.
 
 // ensureCalendarIds and sanitizeInitialView moved to ./utils to avoid loading this heavy
+// settings module (and React) during plugin startup. Keep imports above.
 // settings module (and React) during plugin startup. Keep imports above.

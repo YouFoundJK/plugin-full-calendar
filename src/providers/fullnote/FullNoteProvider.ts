@@ -61,14 +61,16 @@ const filenameForEvent = (event: OFCEvent, settings: any) =>
 export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig> {
   private app: ObsidianInterface;
   private plugin: FullCalendarPlugin;
+  private config: FullNoteProviderConfig;
 
   readonly type = 'local';
   readonly displayName = 'Local Notes';
   readonly isRemote = false;
 
-  constructor(app: ObsidianInterface, plugin: FullCalendarPlugin) {
+  constructor(config: FullNoteProviderConfig, plugin: FullCalendarPlugin, app: ObsidianInterface) {
     this.app = app;
     this.plugin = plugin;
+    this.config = config;
   }
 
   getCapabilities(): CalendarProviderCapabilities {

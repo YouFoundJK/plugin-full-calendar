@@ -3,23 +3,23 @@ import { getEventsFromICS } from '../ics/ics';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { CalDAVProviderConfig } from './typesCalDAV';
+import FullCalendarPlugin from '../../main';
 
 // Use require for robust module loading.
 const { createAccount, getCalendarObjects, AuthMethod } = require('tsdav');
 
 export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
-  // Note: The `settings` property and `constructor` are no longer needed
-  // as the displayTimezone logic was removed in a previous update.
-  // Keeping them commented out in case they are needed for future features.
-  // private settings: FullCalendarSettings;
+  private plugin: FullCalendarPlugin;
+  private config: CalDAVProviderConfig;
 
   readonly type = 'caldav';
   readonly displayName = 'CalDAV';
   readonly isRemote = true;
 
-  // constructor(settings: FullCalendarSettings) {
-  //   this.settings = settings;
-  // }
+  constructor(config: CalDAVProviderConfig, plugin: FullCalendarPlugin) {
+    this.plugin = plugin;
+    this.config = config;
+  }
 
   getCapabilities(config: CalDAVProviderConfig): CalendarProviderCapabilities {
     return { canCreate: false, canEdit: false, canDelete: false };

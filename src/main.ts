@@ -98,11 +98,15 @@ export default class FullCalendarPlugin extends Plugin {
     this.providerRegistry = new ProviderRegistry(this);
 
     // Register the providers
-    this.providerRegistry.register(new FullNoteProvider(new ObsidianIO(this.app), this));
-    this.providerRegistry.register(new DailyNoteProvider(new ObsidianIO(this.app), this));
-    this.providerRegistry.register(new ICSProvider(this.settings));
-    this.providerRegistry.register(new CalDAVProvider());
-    this.providerRegistry.register(new GoogleProvider(this));
+    this.providerRegistry.register(
+      new FullNoteProvider(null as any, this, new ObsidianIO(this.app))
+    );
+    this.providerRegistry.register(
+      new DailyNoteProvider(null as any, this, new ObsidianIO(this.app))
+    );
+    this.providerRegistry.register(new ICSProvider(null as any, this));
+    this.providerRegistry.register(new CalDAVProvider(null as any, this));
+    this.providerRegistry.register(new GoogleProvider(null as any, this));
 
     await this.loadSettings(); // This now handles setting and syncing
     await manageTimezone(this);
