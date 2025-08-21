@@ -74,10 +74,11 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
   readonly displayName = 'Local Notes';
   readonly isRemote = false;
 
-  constructor(config: FullNoteProviderConfig, plugin: FullCalendarPlugin, app: ObsidianInterface) {
+  // REPLACE the existing constructor with this one:
+  constructor(source: any, plugin: FullCalendarPlugin, app: ObsidianInterface) {
     this.app = app;
     this.plugin = plugin;
-    this.config = config;
+    this.config = (source.config || source) as FullNoteProviderConfig;
   }
 
   getCapabilities(): CalendarProviderCapabilities {

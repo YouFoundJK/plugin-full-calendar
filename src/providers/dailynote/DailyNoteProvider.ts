@@ -45,11 +45,11 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
   readonly displayName = 'Daily Note';
   readonly isRemote = false;
 
-  constructor(config: DailyNoteProviderConfig, plugin: FullCalendarPlugin, app: ObsidianInterface) {
+  constructor(source: any, plugin: FullCalendarPlugin, app: ObsidianInterface) {
     appHasDailyNotesPluginLoaded();
     this.app = app;
     this.plugin = plugin;
-    this.config = config;
+    this.config = (source.config || source) as DailyNoteProviderConfig;
   }
 
   getCapabilities(): CalendarProviderCapabilities {

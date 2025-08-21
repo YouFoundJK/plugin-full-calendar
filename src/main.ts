@@ -263,60 +263,69 @@ export default class FullCalendarPlugin extends Plugin {
   async loadSettings() {
     let loadedSettings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
-    // MIGRATION BLOCK
-    let needsSave = false;
-    const migratedSources = loadedSettings.calendarSources.map((s: any) => {
-      if (s.config) return s; // Already in new format, skip.
+    // MIGRATION BLOCK: Part 1 - One-way migration for the global googleAuth object.
+    let globalGoogleAuth = (loadedSettings as any).googleAuth || null;
+    let settingsModified = false;
 
-      needsSave = true;
-      const config: any = {};
-      const name =
-        s.name || s.directory || (s.heading ? `Daily note under "${s.heading}"` : undefined);
-
-      // Move legacy properties into a config object
-      config.directory = s.directory;
-      config.heading = s.heading;
-      config.url = s.url;
-      config.homeUrl = s.homeUrl;
-      config.username = s.username;
-      config.password = s.password;
-      // For Google, the top-level ID is the calendar's identifier, which goes in the config.
-      if (s.type === 'google') {
-        config.id = s.id;
-        config.name = s.name;
+    // MIGRATION BLOCK: Part 2 - In-memory backwards compatibility layer.
+    // This takes sources in the new flat format from data.json and transforms them
+    // into the old nested `config` format for runtime use.
+    // This allows the rest of the plugin to function without changes in Step 1.
+    const runtimeSources = loadedSettings.calendarSources.map((s: any) => {
+      // If `config` object already exists, it's in the old runtime format. Pass through.
+      if (s.config) {
+        return s;
       }
 
-      // Clean up undefined properties from the config object
-      Object.keys(config).forEach(key => config[key] === undefined && delete config[key]);
+      // If no `config` object, it's a flat source from disk.
+      // Create the `config` object for runtime.
+      settingsModified = true; // Mark that an in-memory conversion happened.
+      const config: any = {};
+      const name = s.name || s.directory || (s.heading ? `Daily note under "${s.heading}"` : null);
 
+      // Move all provider-specific properties into the config object.
+      Object.keys(s).forEach(key => {
+        if (['type', 'id', 'name', 'color'].indexOf(key) === -1) {
+          config[key] = s[key];
+        }
+      });
+
+      // Special handling for Google calendars from the oldest format.
+      // The `id` on disk was the google calendar ID, not the settings ID.
+      if (s.type === 'google' && !s.calendarId) {
+        config.id = s.id;
+        config.name = s.name;
+        // If we have a global auth token, attach it to this source's config for the provider to find.
+        if (globalGoogleAuth) {
+          config.auth = globalGoogleAuth;
+        }
+      }
+
+      // Return the new structure for runtime use.
       return {
-        id: s.id, // This is the stable settings ID, e.g., "local_1"
+        id: s.id,
         type: s.type,
-        config: config,
         color: s.color,
-        name: name
+        name: name,
+        config: config
       };
     });
 
-    if (needsSave) {
-      loadedSettings.calendarSources = migratedSources;
-      new Notice('Full Calendar has updated your calendar settings to a new provider format.');
-      // We will save later in the method, no need to save here.
+    if ((loadedSettings as any).googleAuth) {
+      delete (loadedSettings as any).googleAuth;
+      settingsModified = true;
     }
 
-    loadedSettings.calendarSources = migratedSources; // Ensure settings object has migrated sources
+    loadedSettings.calendarSources = runtimeSources; // Use the runtime-formatted sources.
 
-    // Sanitize settings using pure functions
     loadedSettings = sanitizeInitialView(loadedSettings);
-
     const { updated, sources } = ensureCalendarIds(loadedSettings.calendarSources);
-    // This now triggers the setter, which syncs the provider registry.
     this.settings = { ...loadedSettings, calendarSources: sources };
-
     this.cache.enhancer.updateSettings(this.settings);
 
-    if (updated) {
-      new Notice('Full Calendar has updated your calendar settings to a new format.');
+    if (updated || settingsModified) {
+      // Save settings if IDs were generated or if a migration/conversion occurred.
+      // This will persist the removal of the global googleAuth object.
       await this.saveData(this.settings);
     }
   }

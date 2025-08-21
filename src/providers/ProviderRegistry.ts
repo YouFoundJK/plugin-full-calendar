@@ -348,25 +348,24 @@ export class ProviderRegistry {
         continue;
       }
 
-      const config = (source as any).config;
       let instance: CalendarProvider<any> | null = null;
       const app = new ObsidianIO(this.plugin.app);
 
       switch (source.type) {
         case 'local':
-          instance = new FullNoteProvider(config as FullNoteProviderConfig, this.plugin, app);
+          instance = new FullNoteProvider(source as any, this.plugin, app);
           break;
         case 'dailynote':
-          instance = new DailyNoteProvider(config as DailyNoteProviderConfig, this.plugin, app);
+          instance = new DailyNoteProvider(source as any, this.plugin, app);
           break;
         case 'ical':
-          instance = new ICSProvider(config as ICSProviderConfig, this.plugin);
+          instance = new ICSProvider(source as any, this.plugin);
           break;
         case 'caldav':
-          instance = new CalDAVProvider(config as CalDAVProviderConfig, this.plugin);
+          instance = new CalDAVProvider(source as any, this.plugin);
           break;
         case 'google':
-          instance = new GoogleProvider(config as GoogleProviderConfig, this.plugin);
+          instance = new GoogleProvider(source as any, this.plugin);
           break;
       }
 

@@ -26,9 +26,9 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
   readonly isRemote = true;
 
   // Standardized constructor signature
-  constructor(config: CalDAVProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  constructor(source: any, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
-    this.config = config;
+    this.config = (source.config || source) as CalDAVProviderConfig;
   }
 
   getCapabilities(): CalendarProviderCapabilities {

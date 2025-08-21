@@ -46,6 +46,7 @@ export interface FullCalendarSettings {
   chrono_analyser_config: any;
   categorySettings: { name: string; color: string }[];
   googleAuth: {
+    // ADD THIS PROPERTY BACK
     refreshToken: string | null;
     accessToken: string | null;
     expiryDate: number | null;
@@ -74,7 +75,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   enableAdvancedCategorization: false,
   chrono_analyser_config: null,
   categorySettings: [],
-  googleAuth: null,
+  googleAuth: null, // ADD THIS PROPERTY BACK
   useCustomGoogleClient: false,
   googleClientId: '',
   googleClientSecret: '',

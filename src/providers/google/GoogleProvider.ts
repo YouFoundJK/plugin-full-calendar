@@ -30,9 +30,9 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   readonly isRemote = true;
 
   // Standardized constructor signature
-  constructor(config: GoogleProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  constructor(source: any, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
-    this.config = config;
+    this.config = (source.config || source) as GoogleProviderConfig;
   }
 
   getCapabilities(): CalendarProviderCapabilities {

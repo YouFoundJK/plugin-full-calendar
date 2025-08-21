@@ -28,9 +28,9 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
   readonly isRemote = true;
 
   // Standardized constructor signature
-  constructor(config: ICSProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  constructor(source: any, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
-    this.config = config;
+    this.config = (source.config || source) as ICSProviderConfig;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
