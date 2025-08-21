@@ -64,7 +64,7 @@ export class CalendarView extends ItemView {
   inSidebar: boolean;
   fullCalendarView: Calendar | null = null;
   callback: UpdateViewCallback | null = null;
-  private workspaceManager: WorkspaceManager | null = null; // <-- ADDED
+  private workspaceManager: WorkspaceManager | null = null;
   private timelineResources:
     | { id: string; title: string; parentId?: string; eventColor?: string; extendedProps?: any }[]
     | null = null;
@@ -383,7 +383,7 @@ export class CalendarView extends ItemView {
 
     this.fullCalendarView = await renderCalendar(calendarEl, sources, {
       // timeZone:
-      //   this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone, // <-- ADD THIS LINE
+      //   this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
       forceNarrow: this.inSidebar,
       // resources added lazily when entering timeline view
       enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,

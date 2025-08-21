@@ -11,16 +11,26 @@ import { GoogleProviderConfig } from './typesGCal';
 import { GoogleConfigComponent } from './GoogleConfigComponent';
 import { fetchGoogleCalendarList } from './api';
 import * as React from 'react';
+import { ObsidianInterface } from '../../ObsidianAdapter';
 
 export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
+  // Static metadata for registry
+  static readonly type = 'google';
+  static readonly displayName = 'Google Calendar';
+  static getConfigurationComponent(): FCReactComponent<any> {
+    return GoogleConfigComponent;
+  }
+
   private plugin: FullCalendarPlugin;
   private config: GoogleProviderConfig;
 
+  // Instance properties remain
   readonly type = 'google';
   readonly displayName = 'Google Calendar';
   readonly isRemote = true;
 
-  constructor(config: GoogleProviderConfig, plugin: FullCalendarPlugin) {
+  // Standardized constructor signature
+  constructor(config: GoogleProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
     this.config = config;
   }

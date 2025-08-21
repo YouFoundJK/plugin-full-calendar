@@ -33,14 +33,17 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
   const calendars = plugin.providerRegistry
     .getAllSources()
     .map(info => {
-      const provider = plugin.providerRegistry.getProviderForType(info.type);
-      if (!provider) return null;
-      const capabilities = provider.getCapabilities();
+      const instance = plugin.providerRegistry.getInstance((info as any).id);
+      if (!instance) return null;
+      const capabilities = instance.getCapabilities();
       if (!capabilities.canCreate) return null; // Filter for writable calendars
+
+      const providerClass = plugin.providerRegistry.getProviderForType(info.type);
+      if (!providerClass) return null;
       return {
         id: (info as any).id, // This is the SETTINGS ID
         type: info.type,
-        name: (info as any).name || provider.displayName
+        name: (info as any).name || (providerClass as any)?.displayName
       };
     })
     .filter((c): c is { id: string; type: CalendarInfo['type']; name: string } => !!c);
@@ -95,14 +98,17 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
   const calendars = plugin.providerRegistry
     .getAllSources()
     .map(info => {
-      const provider = plugin.providerRegistry.getProviderForType(info.type);
-      if (!provider) return null;
-      const capabilities = provider.getCapabilities();
+      const instance = plugin.providerRegistry.getInstance((info as any).id);
+      if (!instance) return null;
+      const capabilities = instance.getCapabilities();
       if (!capabilities.canEdit && !capabilities.canCreate) return null;
+
+      const providerClass = plugin.providerRegistry.getProviderForType(info.type);
+      if (!providerClass) return null;
       return {
         id: (info as any).id,
         type: info.type,
-        name: (info as any).name || provider.displayName
+        name: (info as any).name || (providerClass as any)?.displayName
       };
     })
     .filter((c): c is { id: string; type: CalendarInfo['type']; name: string } => !!c);

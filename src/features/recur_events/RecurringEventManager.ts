@@ -29,14 +29,12 @@ export class RecurringEventManager {
   private cache: EventCache;
   private plugin: FullCalendarPlugin;
 
-  // vvv ADD THIS HELPER METHOD vvv
   private _sanitizeTitleForFilename(title: string): string {
     return title
       .replace(/[\\/:"*?<>|]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }
-  // ^^^ END OF BLOCK ^^^
 
   constructor(cache: EventCache, plugin: FullCalendarPlugin) {
     this.cache = cache;

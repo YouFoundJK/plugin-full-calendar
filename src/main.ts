@@ -39,7 +39,6 @@ const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';
 export default class FullCalendarPlugin extends Plugin {
   private _settings: FullCalendarSettings = DEFAULT_SETTINGS;
 
-  // vvv ADD THIS GETTER AND SETTER vvv
   get settings(): FullCalendarSettings {
     return this._settings;
   }
@@ -51,7 +50,6 @@ export default class FullCalendarPlugin extends Plugin {
       this.providerRegistry.updateSources(this._settings.calendarSources);
     }
   }
-  // ^^^ END OF BLOCK ^^^
 
   isMobile: boolean = false;
   settingsTab?: LazySettingsTab;
@@ -97,16 +95,8 @@ export default class FullCalendarPlugin extends Plugin {
     this.isMobile = (this.app as App & { isMobile: boolean }).isMobile;
     this.providerRegistry = new ProviderRegistry(this);
 
-    // Register the providers
-    this.providerRegistry.register(
-      new FullNoteProvider(null as any, this, new ObsidianIO(this.app))
-    );
-    this.providerRegistry.register(
-      new DailyNoteProvider(null as any, this, new ObsidianIO(this.app))
-    );
-    this.providerRegistry.register(new ICSProvider(null as any, this));
-    this.providerRegistry.register(new CalDAVProvider(null as any, this));
-    this.providerRegistry.register(new GoogleProvider(null as any, this));
+    // Register all built-in providers in one call
+    this.providerRegistry.registerBuiltInProviders();
 
     await this.loadSettings(); // This now handles setting and syncing
     await manageTimezone(this);
@@ -205,7 +195,7 @@ export default class FullCalendarPlugin extends Plugin {
         this.activateView();
       }
     });
-    // vvv ADD THIS BLOCK vvv
+
     if (this.isMobile) {
       this.addCommand({
         id: 'full-calendar-open-analysis-mobile-disabled',
@@ -217,7 +207,7 @@ export default class FullCalendarPlugin extends Plugin {
         }
       });
     }
-    // ^^^ END OF BLOCK ^^^
+
     this.addCommand({
       id: 'full-calendar-open-sidebar',
       name: 'Open in sidebar',
@@ -337,6 +327,10 @@ export default class FullCalendarPlugin extends Plugin {
    * to ensure all calendars are using the new settings.
    */
   async saveSettings() {
+    // Sanitize calendar sources before saving to ensure all have IDs.
+    const { sources } = ensureCalendarIds(this.settings.calendarSources);
+    this.settings.calendarSources = sources;
+
     await this.saveData(this.settings);
     // No need to call updateSources here anymore, the setter already did.
     this.cache.enhancer.updateSettings(this.settings);

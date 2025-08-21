@@ -3,7 +3,7 @@ import { CalendarProvider, CalendarProviderCapabilities } from '../providers/Pro
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
-import { ObsidianIO } from '../ObsidianAdapter';
+import { ObsidianIO, ObsidianInterface } from '../ObsidianAdapter';
 import { FullNoteProvider } from './fullnote/FullNoteProvider';
 import { DailyNoteProvider } from './dailynote/DailyNoteProvider';
 import { ICSProvider } from './ics/ICSProvider';
@@ -19,8 +19,14 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const MILLICONDS_BETWEEN_REVALIDATIONS = 5 * MINUTE;
 
+export type CalendarProviderClass = new (
+  config: any,
+  plugin: FullCalendarPlugin,
+  app?: ObsidianInterface // Make app optional for remote providers
+) => CalendarProvider<any>;
+
 export class ProviderRegistry {
-  private providers = new Map<string, CalendarProvider<any>>();
+  private providers = new Map<string, CalendarProviderClass>();
   private instances = new Map<string, CalendarProvider<any>>();
   private sources: CalendarInfo[] = [];
 
@@ -35,6 +41,15 @@ export class ProviderRegistry {
   constructor(plugin: FullCalendarPlugin) {
     this.plugin = plugin;
     this.initializeInstances();
+  }
+
+  // Register all built-in providers in one call
+  public registerBuiltInProviders(): void {
+    this.register(FullNoteProvider as any);
+    this.register(DailyNoteProvider as any);
+    this.register(ICSProvider);
+    this.register(CalDAVProvider);
+    this.register(GoogleProvider);
   }
 
   // Method to link cache
@@ -60,27 +75,24 @@ export class ProviderRegistry {
     return source ? (source as any).config : undefined;
   }
 
-  register(provider: CalendarProvider<any>): void {
-    if (this.providers.has(provider.type)) {
-      console.warn(`Provider with type "${provider.type}" is already registered. Overwriting.`);
+  /**
+   * New registration method for provider classes (constructors).
+   */
+  public register(providerClass: CalendarProviderClass): void {
+    const providerType = (providerClass as any).type;
+    if (this.providers.has(providerType)) {
+      console.warn(
+        `Provider class with type "${providerType}" is already registered. Overwriting.`
+      );
     }
-    this.providers.set(provider.type, provider);
+    this.providers.set(providerType, providerClass);
   }
 
   /**
-   * Gets a stateless, "blueprint" provider instance for a given type.
-   * This should ONLY be used for accessing type-level information like the
-   * display name or the configuration component before an instance for a real
-   * calendar source is created.
-   *
-   * DO NOT use this for any runtime event operations.
+   * New getter for provider classes (constructors).
    */
-  public getProviderForType(type: string): CalendarProvider<any> | undefined {
+  public getProviderForType(type: string): CalendarProviderClass | undefined {
     return this.providers.get(type);
-  }
-
-  getProviders(): CalendarProvider<any>[] {
-    return Array.from(this.providers.values());
   }
 
   // Methods from IdentifierManager, adapted

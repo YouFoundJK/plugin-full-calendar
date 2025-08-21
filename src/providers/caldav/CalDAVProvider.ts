@@ -4,11 +4,20 @@ import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { CalDAVProviderConfig } from './typesCalDAV';
 import FullCalendarPlugin from '../../main';
+import { CalDAVConfigComponent } from './CalDAVConfigComponent';
+import { ObsidianInterface } from '../../ObsidianAdapter';
 
 // Use require for robust module loading.
 const { createAccount, getCalendarObjects, AuthMethod } = require('tsdav');
 
 export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
+  // Static metadata for registry
+  static readonly type = 'caldav';
+  static readonly displayName = 'CalDAV';
+  static getConfigurationComponent(): FCReactComponent<any> {
+    return CalDAVConfigComponent;
+  }
+
   private plugin: FullCalendarPlugin;
   private config: CalDAVProviderConfig;
 
@@ -16,7 +25,8 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
   readonly displayName = 'CalDAV';
   readonly isRemote = true;
 
-  constructor(config: CalDAVProviderConfig, plugin: FullCalendarPlugin) {
+  // Standardized constructor signature
+  constructor(config: CalDAVProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
     this.config = config;
   }

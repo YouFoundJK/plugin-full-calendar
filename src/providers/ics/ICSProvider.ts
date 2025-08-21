@@ -8,10 +8,18 @@ import { EventHandle, FCReactComponent } from '../typesProvider';
 import { ICSProviderConfig } from './typesICS';
 import { ICSConfigComponent } from './ICSConfigComponent';
 import FullCalendarPlugin from '../../main';
+import { ObsidianInterface } from '../../ObsidianAdapter';
 
 const WEBCAL = 'webcal';
 
 export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
+  // Static metadata for registry
+  static readonly type = 'ical';
+  static readonly displayName = 'Remote Calendar (ICS)';
+  static getConfigurationComponent(): FCReactComponent<any> {
+    return ICSConfigComponent;
+  }
+
   private plugin: FullCalendarPlugin;
   private config: ICSProviderConfig;
 
@@ -19,7 +27,8 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
   readonly displayName = 'Remote Calendar (ICS)';
   readonly isRemote = true;
 
-  constructor(config: ICSProviderConfig, plugin: FullCalendarPlugin) {
+  // Standardized constructor signature
+  constructor(config: ICSProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
     this.config = config;
   }
@@ -60,7 +69,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
 
   async updateEvent(
     handle: EventHandle,
-    oldEventData: OFCEvent, // <-- ADD THIS
+    oldEventData: OFCEvent,
     newEventData: OFCEvent
   ): Promise<EventLocation | null> {
     throw new Error('Cannot update an event on a read-only ICS calendar.');

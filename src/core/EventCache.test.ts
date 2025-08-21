@@ -12,7 +12,7 @@ jest.mock(
     TFile: class {},
     TFolder: class {},
     TAbstractFile: class {},
-    normalizePath: (path: string) => path.replace(/\\/g, '/') // <-- ADD THIS LINE
+    normalizePath: (path: string) => path.replace(/\\/g, '/')
   }),
   { virtual: true }
 );
@@ -23,11 +23,7 @@ import { EventPathLocation, StoredEvent } from './EventStore';
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import { CalendarProvider, CalendarProviderCapabilities } from '../providers/Provider';
 import { DEFAULT_SETTINGS, FullCalendarSettings } from '../types/settings';
-import EventCache, {
-  CacheEntry,
-  OFCEventSource,
-  CachedEvent // <-- ADD THIS
-} from './EventCache';
+import EventCache, { CacheEntry, OFCEventSource, CachedEvent } from './EventCache';
 import { EventHandle } from '../providers/typesProvider';
 
 jest.mock('../types/schema', () => ({
@@ -79,7 +75,6 @@ const makeCache = (events: OFCEvent[]) => {
           event: e,
           location: null
         })),
-      // ADD THIS METHOD
       getAllSources: () => [calendarInfo]
     }
   } as any;
@@ -273,7 +268,6 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
           event,
           location
         })),
-      // ADD THIS METHOD
       getAllSources: () => [calendarInfo]
     }
   } as any;

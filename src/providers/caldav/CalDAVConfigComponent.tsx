@@ -4,7 +4,7 @@ import { UrlInput } from '../../ui/components/forms/UrlInput';
 import { UsernameInput } from '../../ui/components/forms/UsernameInput';
 import { PasswordInput } from '../../ui/components/forms/PasswordInput';
 import { CalDAVProviderConfig } from './typesCalDAV';
-import { importCalendars } from '../../calendars/parsing/caldav/import';
+import { importCalendars } from './import';
 
 interface CalDAVConfigComponentProps {
   config: Partial<CalDAVProviderConfig>;

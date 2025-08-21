@@ -59,6 +59,13 @@ const filenameForEvent = (event: OFCEvent, settings: any) =>
 // =================================================================================================
 
 export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig> {
+  // Static metadata for registry
+  static readonly type = 'local';
+  static readonly displayName = 'Local Notes';
+  static getConfigurationComponent(): FCReactComponent<any> {
+    return FullNoteConfigComponent;
+  }
+
   private app: ObsidianInterface;
   private plugin: FullCalendarPlugin;
   private config: FullNoteProviderConfig;

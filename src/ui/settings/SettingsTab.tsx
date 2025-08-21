@@ -83,14 +83,15 @@ export function addCalendarButton(
         const sourceType = dropdown.getValue();
         const providerType = sourceType === 'icloud' ? 'caldav' : sourceType;
 
-        const provider = plugin.providerRegistry.getProviderForType(providerType);
-        if (!provider) {
-          // This path should ideally not be hit if dropdown options are aligned with registered providers.
+        // FIX: Use the correct method name
+        const providerClass = plugin.providerRegistry.getProviderForType(providerType);
+        if (!providerClass) {
           new Notice(`${providerType} provider is not registered.`);
           return;
         }
+        const ConfigComponent = (providerClass as any).getConfigurationComponent();
+        // --- END REPLACE BLOCK ---
 
-        const ConfigComponent = provider.getConfigurationComponent();
         let modal = new ReactModal(plugin.app, async () => {
           await plugin.loadSettings();
 
@@ -118,6 +119,7 @@ export function addCalendarButton(
           // Base props for all provider components
           const componentProps: any = {
             config: initialConfig,
+            onConfigChange: () => {}, // ADD THIS LINE
             context: {
               allDirectories: directories.filter(dir => usedDirectories.indexOf(dir) === -1),
               usedDirectories: usedDirectories,

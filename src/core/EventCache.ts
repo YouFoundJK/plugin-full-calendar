@@ -55,7 +55,7 @@ export type UpdateViewCallback = (
         toRemove: string[];
         toAdd: CacheEntry[];
       }
-    | { type: 'calendar'; calendar: OFCEventSource } //  <-- ADD THIS LINE
+    | { type: 'calendar'; calendar: OFCEventSource }
     | { type: 'resync' }
 ) => void;
 

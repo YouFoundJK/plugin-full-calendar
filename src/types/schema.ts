@@ -79,7 +79,7 @@ export const CommonSchema = z.object({
   uid: z.string().optional(), // Added line
   timezone: z.string().optional(),
   category: z.string().optional(), // This will store the parsed category.
-  subCategory: z.string().optional(), // <-- ADD THIS LINE
+  subCategory: z.string().optional(),
   recurringEventId: z.string().optional(), // The ID of the parent recurring event.
   display: z
     .enum(['auto', 'block', 'list-item', 'background', 'inverse-background', 'none'])

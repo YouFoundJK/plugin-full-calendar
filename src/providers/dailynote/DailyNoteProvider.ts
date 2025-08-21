@@ -30,6 +30,13 @@ import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
 export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConfig> {
+  // Static metadata for registry
+  static readonly type = 'dailynote';
+  static readonly displayName = 'Daily Note';
+  static getConfigurationComponent(): FCReactComponent<any> {
+    return DailyNoteConfigComponent;
+  }
+
   private app: ObsidianInterface;
   private plugin: FullCalendarPlugin;
   private config: DailyNoteProviderConfig;
