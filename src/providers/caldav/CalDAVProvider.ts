@@ -19,16 +19,16 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
   }
 
   private plugin: FullCalendarPlugin;
-  private config: CalDAVProviderConfig;
+  private source: CalDAVProviderConfig;
 
   readonly type = 'caldav';
   readonly displayName = 'CalDAV';
   readonly isRemote = true;
 
   // Standardized constructor signature
-  constructor(source: any, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  constructor(source: CalDAVProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
-    this.config = (source.config || source) as CalDAVProviderConfig;
+    this.source = source;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -45,16 +45,16 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
   async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
     try {
       const account = await createAccount({
-        server: this.config.url,
+        server: this.source.url,
         credentials: {
-          username: this.config.username,
-          password: this.config.password
+          username: this.source.username,
+          password: this.source.password
         },
         authMethod: AuthMethod.Basic
       });
 
       const caldavEvents = await getCalendarObjects({
-        calendarUrl: this.config.homeUrl,
+        calendarUrl: this.source.homeUrl,
         account
       });
 
@@ -65,7 +65,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
         .flatMap((vevent: any) => getEventsFromICS(vevent.data))
         .map((event: OFCEvent) => [event, null]);
     } catch (e) {
-      console.error(`Error fetching CalDAV events from ${this.config.url}`, e);
+      console.error(`Error fetching CalDAV events from ${this.source.url}`, e);
       return [];
     }
   }

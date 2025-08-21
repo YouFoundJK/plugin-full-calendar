@@ -22,17 +22,16 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   }
 
   private plugin: FullCalendarPlugin;
-  private config: GoogleProviderConfig;
+  private source: GoogleProviderConfig;
 
   // Instance properties remain
   readonly type = 'google';
   readonly displayName = 'Google Calendar';
   readonly isRemote = true;
 
-  // Standardized constructor signature
-  constructor(source: any, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  constructor(source: GoogleProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
-    this.config = (source.config || source) as GoogleProviderConfig;
+    this.source = source;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -57,7 +56,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
       timeMax.setFullYear(timeMax.getFullYear() + 1);
 
       const url = new URL(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.config.id)}/events`
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.source.id)}/events`
       );
       url.searchParams.set('timeMin', timeMin.toISOString());
       url.searchParams.set('timeMax', timeMax.toISOString());
@@ -105,14 +104,14 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
         })
         .filter((e: [OFCEvent, EventLocation | null] | null): e is [OFCEvent, null] => e !== null);
     } catch (e) {
-      console.error(`Error fetching events for Google Calendar "${this.config.name}":`, e);
+      console.error(`Error fetching events for Google Calendar "${this.source.name}":`, e);
       return [];
     }
   }
 
   async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      this.config.id
+      this.source.id
     )}/events`;
     const body = toGoogleEvent(event);
     const createdGEvent = await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
@@ -153,7 +152,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     } else {
       const eventId = handle.persistentId;
       const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-        this.config.id
+        this.source.id
       )}/events/${encodeURIComponent(eventId)}`;
       const body = toGoogleEvent(newEventData);
       await makeAuthenticatedRequest(this.plugin, url, 'PUT', body);
@@ -164,7 +163,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   async deleteEvent(handle: EventHandle): Promise<void> {
     const eventId = handle.persistentId;
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      this.config.id
+      this.source.id
     )}/events/${encodeURIComponent(eventId)}`;
     await makeAuthenticatedRequest(this.plugin, url, 'DELETE');
   }
@@ -194,7 +193,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     body.end = startTimeObject;
 
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      this.config.id
+      this.source.id
     )}/events`;
     await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
   }
@@ -218,7 +217,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
 
       const newGEvent = await makeAuthenticatedRequest(
         this.plugin,
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.config.id)}/events`,
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.source.id)}/events`,
         'POST',
         body
       );
@@ -236,16 +235,17 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
 
   getConfigurationComponent(): FCReactComponent<any> {
     const WrapperComponent: React.FC<any> = props => {
-      // Prepare the props for the "dumb" component here.
-      const isAuthenticated = !!this.plugin.settings.googleAuth?.refreshToken;
+      // Check for any google calendar source with a valid refresh token.
+      const isAuthenticated = this.plugin.settings.calendarSources.some(
+        s => s.type === 'google' && (s as any).auth?.refreshToken
+      );
 
       const getAvailableCalendars = async (): Promise<any[]> => {
-        // This function now lives inside the provider, where it has access to the plugin.
         const allCalendars = await fetchGoogleCalendarList(this.plugin);
         const existingGoogleIds = new Set(
           this.plugin.settings.calendarSources
             .filter(s => s.type === 'google')
-            .map(s => (s as any).config.id)
+            .map(s => (s as any).calendarId)
         );
         return allCalendars.filter(cal => !existingGoogleIds.has(cal.id));
       };

@@ -9,6 +9,44 @@ import { FullCalendarSettings } from '../../types/settings';
 import { CalendarInfo, generateCalendarId } from '../../types/calendar_settings';
 
 /**
+ * Performs all necessary migrations and sanitizations on a loaded settings object.
+ * This function is pure and does not modify the plugin state directly.
+ * @param settings The raw settings object loaded from data.json.
+ * @returns An object containing the migrated settings and a flag indicating if they need to be saved.
+ */
+export function migrateAndSanitizeSettings(settings: any): {
+  settings: FullCalendarSettings;
+  needsSave: boolean;
+} {
+  let needsSave = false;
+  let newSettings = { ...settings };
+
+  // MIGRATION 1: Global googleAuth to source-specific auth
+  const globalGoogleAuth = newSettings.googleAuth || null;
+  if (globalGoogleAuth) {
+    needsSave = true;
+    newSettings.calendarSources.forEach((s: any) => {
+      if (s.type === 'google' && !s.auth) {
+        s.auth = globalGoogleAuth;
+      }
+    });
+    delete newSettings.googleAuth;
+  }
+
+  // MIGRATION 2: Ensure all calendar sources have a stable ID.
+  const { updated, sources } = ensureCalendarIds(newSettings.calendarSources);
+  if (updated) {
+    needsSave = true;
+  }
+  newSettings.calendarSources = sources;
+
+  // SANITIZATION 1: Correct initial view if timeline is disabled.
+  newSettings = sanitizeInitialView(newSettings);
+
+  return { settings: newSettings, needsSave };
+}
+
+/**
  * Ensure each calendar source has a stable id. Pure and UI-free.
  */
 export function ensureCalendarIds(sources: any[]): { updated: boolean; sources: CalendarInfo[] } {

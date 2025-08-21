@@ -39,17 +39,17 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
   private app: ObsidianInterface;
   private plugin: FullCalendarPlugin;
-  private config: DailyNoteProviderConfig;
+  private source: DailyNoteProviderConfig;
 
   readonly type = 'dailynote';
   readonly displayName = 'Daily Note';
   readonly isRemote = false;
 
-  constructor(source: any, plugin: FullCalendarPlugin, app: ObsidianInterface) {
+  constructor(source: DailyNoteProviderConfig, plugin: FullCalendarPlugin, app: ObsidianInterface) {
     appHasDailyNotesPluginLoaded();
     this.app = app;
     this.plugin = plugin;
-    this.config = (source.config || source) as DailyNoteProviderConfig;
+    this.source = source;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -100,7 +100,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
     const cache = this.app.getMetadata(file);
     if (!cache) return [];
-    const listItems = getListsUnderHeading(this.config.heading, cache);
+    const listItems = getListsUnderHeading(this.source.heading, cache);
     const inlineEvents = await this.app.process(file, text =>
       getAllInlineEventsFromFile(text, listItems, { date })
     );
@@ -126,14 +126,14 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     let file = getDailyNote(m, getAllDailyNotes());
     if (!file) file = await createDailyNote(m);
     const metadata = await this.app.waitForMetadata(file);
-    const headingInfo = metadata.headings?.find(h => h.heading == this.config.heading);
+    const headingInfo = metadata.headings?.find(h => h.heading == this.source.heading);
     if (!headingInfo) {
-      throw new Error(`Could not find heading ${this.config.heading} in daily note ${file.path}.`);
+      throw new Error(`Could not find heading ${this.source.heading} in daily note ${file.path}.`);
     }
     let lineNumber = await this.app.rewrite(file, (contents: string) => {
       const { page, lineNumber } = addToHeading(
         contents,
-        { heading: headingInfo, item: event, headingText: this.config.heading },
+        { heading: headingInfo, item: event, headingText: this.source.heading },
         this.plugin.settings
       );
       return [page, lineNumber] as [string, number];
@@ -176,17 +176,17 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
       // Second, add the event to the new file and get its line number.
       const metadata = await this.app.waitForMetadata(newFile);
-      const headingInfo = metadata.headings?.find(h => h.heading == this.config.heading);
+      const headingInfo = metadata.headings?.find(h => h.heading == this.source.heading);
       if (!headingInfo) {
         throw new Error(
-          `Could not find heading ${this.config.heading} in daily note ${newFile.path}.`
+          `Could not find heading ${this.source.heading} in daily note ${newFile.path}.`
         );
       }
 
       const newLn = await this.app.rewrite(newFile, newFileContents => {
         const { page, lineNumber } = addToHeading(
           newFileContents,
-          { heading: headingInfo, item: newEventData, headingText: this.config.heading },
+          { heading: headingInfo, item: newEventData, headingText: this.source.heading },
           this.plugin.settings
         );
         return [page, lineNumber] as [string, number];

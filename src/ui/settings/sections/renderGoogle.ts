@@ -1,3 +1,5 @@
+// src/ui/settings/sections/renderGoogle.ts
+
 /**
  * @file renderGoogle.ts
  * @brief Renders the Google Calendar integration settings section.
@@ -6,7 +8,6 @@
 
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
-import { startGoogleLogin } from '../../../providers/google/auth';
 
 export function renderGoogleSettings(
   containerEl: HTMLElement,
@@ -60,25 +61,4 @@ export function renderGoogleSettings(
         })
     );
   }
-
-  new Setting(containerEl)
-    .setName('Google account')
-    .setDesc(
-      plugin.settings.googleAuth?.refreshToken
-        ? 'Your account is connected.'
-        : 'Connect your Google account to add calendars.'
-    )
-    .addButton(button => {
-      button
-        .setButtonText(plugin.settings.googleAuth?.refreshToken ? 'Disconnect' : 'Connect')
-        .onClick(async () => {
-          if (plugin.settings.googleAuth?.refreshToken) {
-            plugin.settings.googleAuth = null;
-            await plugin.saveSettings();
-            rerender();
-          } else {
-            startGoogleLogin(plugin);
-          }
-        });
-    });
 }

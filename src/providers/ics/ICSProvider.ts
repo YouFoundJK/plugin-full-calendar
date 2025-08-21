@@ -21,16 +21,15 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
   }
 
   private plugin: FullCalendarPlugin;
-  private config: ICSProviderConfig;
+  private source: ICSProviderConfig;
 
   readonly type = 'ical';
   readonly displayName = 'Remote Calendar (ICS)';
   readonly isRemote = true;
 
-  // Standardized constructor signature
-  constructor(source: any, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  constructor(source: ICSProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
-    this.config = (source.config || source) as ICSProviderConfig;
+    this.source = source;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -45,7 +44,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
   }
 
   async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
-    let url = this.config.url;
+    let url = this.source.url;
     if (url.startsWith(WEBCAL)) {
       url = 'https' + url.slice(WEBCAL.length);
     }

@@ -68,17 +68,16 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
   private app: ObsidianInterface;
   private plugin: FullCalendarPlugin;
-  private config: FullNoteProviderConfig;
+  private source: FullNoteProviderConfig;
 
   readonly type = 'local';
   readonly displayName = 'Local Notes';
   readonly isRemote = false;
 
-  // REPLACE the existing constructor with this one:
-  constructor(source: any, plugin: FullCalendarPlugin, app: ObsidianInterface) {
+  constructor(source: FullNoteProviderConfig, plugin: FullCalendarPlugin, app: ObsidianInterface) {
     this.app = app;
     this.plugin = plugin;
-    this.config = (source.config || source) as FullNoteProviderConfig;
+    this.source = source;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -87,7 +86,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
   getEventHandle(event: OFCEvent): EventHandle | null {
     const filename = filenameForEvent(event, this.plugin.settings);
-    const path = normalizePath(`${this.config.directory}/${filename}`);
+    const path = normalizePath(`${this.source.directory}/${filename}`);
     return { persistentId: path };
   }
 
@@ -112,9 +111,9 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
   }
 
   async getEvents(): Promise<EditableEventResponse[]> {
-    const eventFolder = this.app.getAbstractFileByPath(this.config.directory);
+    const eventFolder = this.app.getAbstractFileByPath(this.source.directory);
     if (!eventFolder || !(eventFolder instanceof TFolder)) {
-      throw new Error(`${this.config.directory} is not a valid directory.`);
+      throw new Error(`${this.source.directory} is not a valid directory.`);
     }
 
     const events: EditableEventResponse[] = [];
@@ -128,9 +127,8 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
   }
 
   async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation]> {
-    // The event is already prepared for storage by EventEnhancer.
     const path = normalizePath(
-      `${this.config.directory}/${filenameForEvent(event, this.plugin.settings)}`
+      `${this.source.directory}/${filenameForEvent(event, this.plugin.settings)}`
     );
     if (this.app.getAbstractFileByPath(path)) {
       throw new Error(`Event at ${path} already exists.`);
@@ -151,10 +149,8 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     if (!file) {
       throw new Error(`File ${path} not found.`);
     }
-
-    // The newEventData is already prepared for storage by EventEnhancer.
     const newPath = normalizePath(
-      `${this.config.directory}/${filenameForEvent(newEventData, this.plugin.settings)}`
+      `${this.source.directory}/${filenameForEvent(newEventData, this.plugin.settings)}`
     );
     if (file.path !== newPath) {
       await this.app.rename(file, newPath);

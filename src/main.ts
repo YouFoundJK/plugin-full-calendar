@@ -13,24 +13,22 @@
  */
 
 import { LazySettingsTab } from './ui/settings/LazySettingsTab';
-import type { FullCalendarSettingTab } from './ui/settings/SettingsTab';
-import { ensureCalendarIds, sanitizeInitialView } from './ui/settings/utilsSettings';
+import {
+  ensureCalendarIds,
+  sanitizeInitialView,
+  migrateAndSanitizeSettings
+} from './ui/settings/utilsSettings';
 import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
 import { toEventInput } from './core/interop';
-import { FullNoteProvider } from './providers/fullnote/FullNoteProvider';
-import { DailyNoteProvider } from './providers/dailynote/DailyNoteProvider';
-import { ObsidianIO } from './ObsidianAdapter';
 import { renderCalendar } from './ui/calendar';
 import { manageTimezone } from './features/Timezone';
 import { Notice, Plugin, TFile, App } from 'obsidian';
+
 // Heavy calendar classes are loaded lazily in the initializer map below
 import type { CalendarView } from './ui/view';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
 import { ProviderRegistry } from './providers/ProviderRegistry';
-import { ICSProvider } from './providers/ics/ICSProvider';
-import { CalDAVProvider } from './providers/caldav/CalDAVProvider';
-import { GoogleProvider } from './providers/google/GoogleProvider';
 
 // Inline the view type constants to avoid loading the heavy view module at startup
 const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
@@ -261,71 +259,17 @@ export default class FullCalendarPlugin extends Plugin {
    * Loads plugin settings from disk, merging them with default values.
    */
   async loadSettings() {
-    let loadedSettings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    let loadedData = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
-    // MIGRATION BLOCK: Part 1 - One-way migration for the global googleAuth object.
-    let globalGoogleAuth = (loadedSettings as any).googleAuth || null;
-    let settingsModified = false;
+    // All migration and sanitization logic is now encapsulated in this utility function.
+    const { settings: migratedSettings, needsSave } = migrateAndSanitizeSettings(loadedData);
 
-    // MIGRATION BLOCK: Part 2 - In-memory backwards compatibility layer.
-    // This takes sources in the new flat format from data.json and transforms them
-    // into the old nested `config` format for runtime use.
-    // This allows the rest of the plugin to function without changes in Step 1.
-    const runtimeSources = loadedSettings.calendarSources.map((s: any) => {
-      // If `config` object already exists, it's in the old runtime format. Pass through.
-      if (s.config) {
-        return s;
-      }
-
-      // If no `config` object, it's a flat source from disk.
-      // Create the `config` object for runtime.
-      settingsModified = true; // Mark that an in-memory conversion happened.
-      const config: any = {};
-      const name = s.name || s.directory || (s.heading ? `Daily note under "${s.heading}"` : null);
-
-      // Move all provider-specific properties into the config object.
-      Object.keys(s).forEach(key => {
-        if (['type', 'id', 'name', 'color'].indexOf(key) === -1) {
-          config[key] = s[key];
-        }
-      });
-
-      // Special handling for Google calendars from the oldest format.
-      // The `id` on disk was the google calendar ID, not the settings ID.
-      if (s.type === 'google' && !s.calendarId) {
-        config.id = s.id;
-        config.name = s.name;
-        // If we have a global auth token, attach it to this source's config for the provider to find.
-        if (globalGoogleAuth) {
-          config.auth = globalGoogleAuth;
-        }
-      }
-
-      // Return the new structure for runtime use.
-      return {
-        id: s.id,
-        type: s.type,
-        color: s.color,
-        name: name,
-        config: config
-      };
-    });
-
-    if ((loadedSettings as any).googleAuth) {
-      delete (loadedSettings as any).googleAuth;
-      settingsModified = true;
-    }
-
-    loadedSettings.calendarSources = runtimeSources; // Use the runtime-formatted sources.
-
-    loadedSettings = sanitizeInitialView(loadedSettings);
-    const { updated, sources } = ensureCalendarIds(loadedSettings.calendarSources);
-    this.settings = { ...loadedSettings, calendarSources: sources };
+    this.settings = migratedSettings;
     this.cache.enhancer.updateSettings(this.settings);
 
-    if (updated || settingsModified) {
-      // Save settings if IDs were generated or if a migration/conversion occurred.
-      // This will persist the removal of the global googleAuth object.
+    // Save back to disk if any migration or sanitization occurred.
+    if (needsSave) {
+      new Notice('Full Calendar has updated your calendar settings to a new format.');
       await this.saveData(this.settings);
     }
   }
@@ -336,23 +280,26 @@ export default class FullCalendarPlugin extends Plugin {
    * to ensure all calendars are using the new settings.
    */
   async saveSettings() {
+    // Create a mutable copy to work with.
+    const newSettings = { ...this.settings };
+
     // Sanitize calendar sources before saving to ensure all have IDs.
-    const { sources } = ensureCalendarIds(this.settings.calendarSources);
-    this.settings.calendarSources = sources;
+    const { sources } = ensureCalendarIds(newSettings.calendarSources);
+    newSettings.calendarSources = sources;
+
+    // Now, assign the fully-corrected settings object in one go.
+    // This triggers the setter ONCE with the final, valid data.
+    this.settings = newSettings;
 
     await this.saveData(this.settings);
-    // No need to call updateSources here anymore, the setter already did.
     this.cache.enhancer.updateSettings(this.settings);
-    // If calendarSources changed, rebuild cache; otherwise use lightweight resync
-    // This is a heuristic: callers that mutate calendarSources will trigger reset via Settings UI.
-    if (this.cache && this.cache.initialized) {
-      this.cache.resync();
-    } else {
-      this.cache.reset();
-      await this.cache.populate();
-      this.providerRegistry.revalidateRemoteCalendars();
-      this.cache.resync();
-    }
+
+    // Any change from the settings tab that adds/removes a calendar
+    // requires a full reset of the cache and providers.
+    this.cache.reset();
+    await this.cache.populate();
+    this.providerRegistry.revalidateRemoteCalendars();
+    this.cache.resync(); // Finally, update the views with the new data.
   }
 
   /**
