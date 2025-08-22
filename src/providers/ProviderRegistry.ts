@@ -241,17 +241,22 @@ export class ProviderRegistry {
     const interestedInstances = [];
     for (const [settingsId, instance] of this.instances.entries()) {
       if (!instance.isRemote && instance.getEventsInFile) {
-        const config = (instance as any).config;
+        const sourceInfo = this.getSource(settingsId);
+        if (!sourceInfo) continue;
+
         let isRelevant = false;
-        if (instance.type === 'local' && config.directory) {
-          isRelevant = file.path.startsWith(config.directory + '/');
+        if (instance.type === 'local') {
+          const directory = (sourceInfo as any).directory;
+          isRelevant = !!directory && file.path.startsWith(directory + '/');
         } else if (instance.type === 'dailynote') {
           const { folder } = require('obsidian-daily-notes-interface').getDailyNoteSettings();
           isRelevant = folder ? file.path.startsWith(folder + '/') : true;
         }
 
         if (isRelevant) {
-          interestedInstances.push({ instance, config, settingsId });
+          // The `config` property on this object is never used again,
+          // but we'll pass sourceInfo to be consistent.
+          interestedInstances.push({ instance, config: sourceInfo, settingsId });
         }
       }
     }

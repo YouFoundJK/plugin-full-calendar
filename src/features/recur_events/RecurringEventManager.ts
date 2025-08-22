@@ -46,7 +46,7 @@ export class RecurringEventManager {
     if (!calendarInfo) return null;
     const provider = this.plugin.providerRegistry.getInstance(calendarId);
     if (!provider) return null;
-    return { provider, config: (calendarInfo as any).config };
+    return { provider, config: calendarInfo };
   }
 
   /**
