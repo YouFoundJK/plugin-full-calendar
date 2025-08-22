@@ -62,7 +62,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
       timeMax.setFullYear(timeMax.getFullYear() + 1);
 
       const url = new URL(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.source.id)}/events`
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.source.calendarId)}/events`
       );
       url.searchParams.set('timeMin', timeMin.toISOString());
       url.searchParams.set('timeMax', timeMax.toISOString());
@@ -120,7 +120,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     if (!token) throw new GoogleApiError('Cannot create event: not authenticated.');
 
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      this.source.id
+      this.source.calendarId
     )}/events`;
     const body = toGoogleEvent(event);
     const createdGEvent = await makeAuthenticatedRequest(token, url, 'POST', body);
@@ -164,7 +164,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     } else {
       const eventId = handle.persistentId;
       const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-        this.source.id
+        this.source.calendarId
       )}/events/${encodeURIComponent(eventId)}`;
       const body = toGoogleEvent(newEventData);
       await makeAuthenticatedRequest(token, url, 'PUT', body);
@@ -178,7 +178,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
 
     const eventId = handle.persistentId;
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      this.source.id
+      this.source.calendarId
     )}/events/${encodeURIComponent(eventId)}`;
     await makeAuthenticatedRequest(token, url, 'DELETE');
   }
@@ -211,7 +211,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     body.end = startTimeObject;
 
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-      this.source.id
+      this.source.calendarId
     )}/events`;
     await makeAuthenticatedRequest(token, url, 'POST', body);
   }
@@ -238,7 +238,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
 
       const newGEvent = await makeAuthenticatedRequest(
         token,
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.source.id)}/events`,
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.source.calendarId)}/events`,
         'POST',
         body
       );

@@ -10,7 +10,10 @@ import { CalendarInfo } from '../../types';
 import { GoogleAccount } from '../../types/settings';
 import { generateCalendarId } from '../../types/calendar_settings';
 
-const USER_INFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const PROXY_REFRESH_URL = 'https://gcal-proxy-server.vercel.app/api/google/refresh';
+const PUBLIC_CLIENT_ID = '272284435724-ltjbog78np5lnbjhgecudaqhsfba9voi.apps.googleusercontent.com';
+const PRIMARY_CALENDAR_URL = 'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary';
 
 // Type alias for a Google source from Zod schema
 type GoogleCalendarInfo = Extract<CalendarInfo, { type: 'google' }>;
@@ -21,11 +24,6 @@ type LegacyAuth = {
   accessToken: string | null;
   expiryDate: number | null;
 };
-
-// Moved from auth.ts
-const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
-const PROXY_REFRESH_URL = 'https://gcal-proxy-server.vercel.app/api/google/refresh';
-const PUBLIC_CLIENT_ID = '272284435724-ltjbog78np5lnbjhgecudaqhsfba9voi.apps.googleusercontent.com';
 
 export class GoogleAuthManager {
   private plugin: FullCalendarPlugin;
@@ -139,14 +137,15 @@ export class GoogleAuthManager {
   }
 
   /**
-   * Fetches the user's email address from the Google API.
+   * Fetches the user's primary calendar ID, which is their email address.
    */
-  private async getUserInfo(accessToken: string): Promise<{ email: string; id: string }> {
+  private async getPrimaryCalendarId(accessToken: string): Promise<string> {
     const response = await requestUrl({
-      url: USER_INFO_URL,
+      url: PRIMARY_CALENDAR_URL,
       headers: { Authorization: `Bearer ${accessToken}` }
     });
-    return response.json;
+    // The 'id' field of the primary calendar is the user's email.
+    return response.json.id;
   }
 
   /**
@@ -158,10 +157,10 @@ export class GoogleAuthManager {
     accessToken: string;
     expiryDate: number;
   }): Promise<GoogleAccount> {
-    const userInfo = await this.getUserInfo(auth.accessToken);
+    const userEmail = await this.getPrimaryCalendarId(auth.accessToken);
     const newAccount: GoogleAccount = {
-      id: `gcal_${userInfo.id}`,
-      email: userInfo.email,
+      id: `gcal_${userEmail}`,
+      email: userEmail,
       ...auth
     };
 
@@ -174,6 +173,10 @@ export class GoogleAuthManager {
     }
     this.plugin.settings.googleAccounts = existingAccounts;
     await this.plugin.saveSettings();
+
+    // Notify UI that a Google account was added
+    this.plugin.app.workspace.trigger('full-calendar:google-account-added');
+
     return newAccount;
   }
 

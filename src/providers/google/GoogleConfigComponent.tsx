@@ -14,9 +14,16 @@ import FullCalendarPlugin from '../../main';
 import { GoogleApiError } from './request';
 import { GoogleAuthManager } from '../../features/google_auth/GoogleAuthManager'; // Import the manager
 
+// ADD this new type definition. It accurately describes what the component passes back.
+type SelectedGoogleCalendar = {
+  id: string; // The Google Calendar ID (e.g., "primary", "user@gmail.com")
+  name: string;
+  color: string;
+};
+
 interface GoogleConfigComponentProps {
   plugin: FullCalendarPlugin;
-  onSave: (configs: GoogleProviderConfig[], accountId: string) => void;
+  onSave: (configs: SelectedGoogleCalendar[], accountId: string) => void;
   onClose: () => void;
 }
 
@@ -38,18 +45,29 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
   const accountListRef = useRef<HTMLDivElement>(null);
   const calendarListRef = useRef<HTMLDivElement>(null);
 
-  // This effect listens for settings changes to update the account list,
-  // particularly after a new account is added via the OAuth flow.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const latestAccounts = plugin.settings.googleAccounts || [];
-      if (latestAccounts.length !== accounts.length) {
-        setAccounts(latestAccounts);
-      }
-    }, 500);
+  // REMOVE legacy polling useEffect:
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     const latestAccounts = plugin.settings.googleAccounts || [];
+  //     if (latestAccounts.length !== accounts.length) {
+  //       setAccounts(latestAccounts);
+  //     }
+  //   }, 500);
+  //   return () => clearInterval(interval);
+  // }, [plugin.settings.googleAccounts, accounts.length]);
 
-    return () => clearInterval(interval);
-  }, [plugin.settings.googleAccounts, accounts.length]);
+  // ADD event-driven update for accounts list:
+  useEffect(() => {
+    const handleAccountAdded = () => {
+      const latestAccounts = plugin.settings.googleAccounts || [];
+      setAccounts([...latestAccounts]);
+    };
+    // Cast workspace to any for event API
+    (plugin.app.workspace as any).on('full-calendar:google-account-added', handleAccountAdded);
+    return () => {
+      (plugin.app.workspace as any).off('full-calendar:google-account-added', handleAccountAdded);
+    };
+  }, [plugin]);
 
   const handleSelectAccount = async (account: GoogleAccount) => {
     setIsLoading(true);
