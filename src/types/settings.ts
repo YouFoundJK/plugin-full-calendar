@@ -53,16 +53,10 @@ export interface FullCalendarSettings {
   enableAdvancedCategorization: boolean;
   chrono_analyser_config: any;
   categorySettings: { name: string; color: string }[];
-  googleAuth: {
-    // ADD THIS PROPERTY BACK
-    refreshToken: string | null;
-    accessToken: string | null;
-    expiryDate: number | null;
-  } | null;
   useCustomGoogleClient: boolean;
   googleClientId: string;
   googleClientSecret: string;
-  googleAccounts: GoogleAccount[]; // ADD THIS LINE
+  googleAccounts: GoogleAccount[];
   businessHours: BusinessHoursSettings;
   enableBackgroundEvents: boolean;
   workspaces: WorkspaceSettings[];
@@ -84,11 +78,10 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   enableAdvancedCategorization: false,
   chrono_analyser_config: null,
   categorySettings: [],
-  googleAuth: null, // ADD THIS PROPERTY BACK
   useCustomGoogleClient: false,
   googleClientId: '',
   googleClientSecret: '',
-  googleAccounts: [], // ADD THIS LINE
+  googleAccounts: [],
   businessHours: {
     enabled: false,
     daysOfWeek: [1, 2, 3, 4, 5], // Monday to Friday

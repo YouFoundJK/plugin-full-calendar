@@ -5,7 +5,7 @@
  */
 
 import { Notice } from 'obsidian';
-import { FullCalendarSettings } from '../../types/settings';
+import { FullCalendarSettings, GoogleAccount } from '../../types/settings'; // Add GoogleAccount import
 import { CalendarInfo, generateCalendarId } from '../../types/calendar_settings';
 
 /**
@@ -21,17 +21,52 @@ export function migrateAndSanitizeSettings(settings: any): {
   let needsSave = false;
   let newSettings = { ...settings };
 
-  // MIGRATION 1: Global googleAuth to source-specific auth
+  // Ensure googleAccounts array exists for the migration
+  if (!newSettings.googleAccounts) {
+    newSettings.googleAccounts = [];
+  }
+
+  // MIGRATION 1: Global googleAuth to source-specific auth (from previous work, can be removed or kept for safety)
   const globalGoogleAuth = newSettings.googleAuth || null;
   if (globalGoogleAuth) {
-    needsSave = true;
+    // This logic is technically superseded by the next migration,
+    // but we can leave it for robustness during the transition.
     newSettings.calendarSources.forEach((s: any) => {
       if (s.type === 'google' && !s.auth) {
         s.auth = globalGoogleAuth;
       }
     });
-    delete newSettings.googleAuth;
   }
+
+  // === FINAL MIGRATION: Move embedded auth to centralized googleAccounts ===
+  const refreshTokenToAccountId = new Map<string, string>();
+  newSettings.calendarSources.forEach((source: any) => {
+    if (source.type === 'google' && source.auth && !source.googleAccountId) {
+      needsSave = true;
+      const refreshToken = source.auth.refreshToken;
+      if (refreshToken) {
+        if (refreshTokenToAccountId.has(refreshToken)) {
+          source.googleAccountId = refreshTokenToAccountId.get(refreshToken);
+        } else {
+          const newAccountId = `gcal_${Math.random().toString(36).substr(2, 9)}`;
+          const newAccount: GoogleAccount = {
+            id: newAccountId,
+            email: 'Migrated Account',
+            ...source.auth
+          };
+          newSettings.googleAccounts.push(newAccount);
+          refreshTokenToAccountId.set(refreshToken, newAccountId);
+          source.googleAccountId = newAccountId;
+        }
+      }
+      delete source.auth;
+    }
+  });
+  if (newSettings.googleAuth) {
+    delete newSettings.googleAuth;
+    needsSave = true;
+  }
+  // === END FINAL MIGRATION ===
 
   // MIGRATION 2: Ensure all calendar sources have a stable ID.
   const { updated, sources } = ensureCalendarIds(newSettings.calendarSources);

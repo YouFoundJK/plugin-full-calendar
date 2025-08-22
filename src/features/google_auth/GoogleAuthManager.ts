@@ -40,7 +40,7 @@ export class GoogleAuthManager {
    */
   private async refreshAccessToken(
     authObj: GoogleAccount | LegacyAuth,
-    isLegacy: boolean
+    isLegacy: boolean // This parameter is now effectively unused but safe to keep
   ): Promise<string | null> {
     const { settings } = this.plugin;
     if (!authObj.refreshToken) {
@@ -93,12 +93,14 @@ export class GoogleAuthManager {
     } catch (e) {
       console.error('Failed to refresh Google access token:', e);
 
-      if (isLegacy) {
-        // Clear out the global legacy token
-        settings.googleAuth = null;
-      } else {
-        // For multi-account, we might want to just nullify the specific account's tokens
-        // For now, let's log the error and let the user re-authenticate.
+      // For multi-account, we nullify the specific account's tokens to force re-auth.
+      if (!isLegacy && 'id' in authObj) {
+        const account = this.plugin.settings.googleAccounts.find(a => a.id === authObj.id);
+        if (account) {
+          account.accessToken = null;
+          account.refreshToken = null;
+          account.expiryDate = null;
+        }
       }
       await this.plugin.saveSettings();
       new Notice('Google authentication expired. Please reconnect your account.');
@@ -112,35 +114,28 @@ export class GoogleAuthManager {
    * embedded `auth` object model with a fallback.
    */
   public async getTokenForSource(source: GoogleCalendarInfo): Promise<string | null> {
-    // New multi-account path
-    if (source.googleAccountId) {
-      const account = this.plugin.settings.googleAccounts.find(
-        a => a.id === source.googleAccountId
+    // The ONLY path is now the multi-account path.
+    if (!source.googleAccountId) {
+      console.error(
+        'Google source is missing a googleAccountId. It may need to be re-added.',
+        source
       );
-      if (!account) {
-        console.error(`Could not find Google account with ID: ${source.googleAccountId}`);
-        return null;
-      }
-
-      if (account.accessToken && account.expiryDate && Date.now() < account.expiryDate - 60000) {
-        return account.accessToken;
-      }
-      return this.refreshAccessToken(account, false);
+      new Notice('Could not authenticate calendar. Please try re-adding it in settings.');
+      return null;
     }
 
-    // Legacy fallback path
-    if (source.auth) {
-      if (
-        source.auth.accessToken &&
-        source.auth.expiryDate &&
-        Date.now() < source.auth.expiryDate - 60000
-      ) {
-        return source.auth.accessToken;
-      }
-      return this.refreshAccessToken(source.auth, true);
+    const account = this.plugin.settings.googleAccounts.find(a => a.id === source.googleAccountId);
+    if (!account) {
+      console.error(`Could not find Google account with ID: ${source.googleAccountId}`);
+      return null;
     }
 
-    return null;
+    if (account.accessToken && account.expiryDate && Date.now() < account.expiryDate - 60000) {
+      return account.accessToken;
+    }
+    return this.refreshAccessToken(account, false);
+
+    // Legacy fallback removed.
   }
 
   /**
@@ -193,26 +188,5 @@ export class GoogleAuthManager {
       s => s.type !== 'google' || (s as any).googleAccountId !== accountId
     );
     await this.plugin.saveSettings();
-  }
-
-  /**
-   * Gets a token from the legacy global `googleAuth` object.
-   * This is used by the settings UI before a calendar source is created.
-   * In a multi-account world, this will eventually be replaced by an account picker.
-   */
-  public async getLegacyToken(): Promise<string | null> {
-    const { googleAuth } = this.plugin.settings;
-    if (!googleAuth?.refreshToken) {
-      return null;
-    }
-
-    if (
-      googleAuth.accessToken &&
-      googleAuth.expiryDate &&
-      Date.now() < googleAuth.expiryDate - 60000
-    ) {
-      return googleAuth.accessToken;
-    }
-    return this.refreshAccessToken(googleAuth, true);
   }
 }

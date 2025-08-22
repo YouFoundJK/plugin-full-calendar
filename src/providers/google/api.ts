@@ -6,7 +6,7 @@
 
 import FullCalendarPlugin from '../../main';
 import { makeAuthenticatedRequest, GoogleApiError } from './request';
-import { GoogleAuthManager } from '../../features/google_auth/GoogleAuthManager';
+import { GoogleAccount } from '../../types/settings'; // ADD this import
 
 const CALENDAR_LIST_URL = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
 
@@ -15,16 +15,18 @@ const CALENDAR_LIST_URL = 'https://www.googleapis.com/calendar/v3/users/me/calen
  * @param plugin The main plugin instance.
  * @returns A list of calendar objects from the API.
  */
-export async function fetchGoogleCalendarList(plugin: FullCalendarPlugin): Promise<any[]> {
+export async function fetchGoogleCalendarList(
+  plugin: FullCalendarPlugin,
+  account: GoogleAccount // ADD account parameter
+): Promise<any[]> {
   const allCalendars: any[] = [];
   let pageToken: string | undefined = undefined;
 
-  const authManager = new GoogleAuthManager(plugin);
-  const token = await authManager.getLegacyToken();
+  // The token now comes directly from the account object.
+  // We will handle refresh logic inside the component before calling this.
+  const token = account.accessToken;
   if (!token) {
-    throw new GoogleApiError(
-      'Not authenticated with Google. Please connect your account in settings.'
-    );
+    throw new GoogleApiError('Account is missing an access token.');
   }
 
   do {

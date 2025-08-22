@@ -12,6 +12,7 @@ import { GoogleAccount } from '../../types/settings';
 import { startGoogleLogin } from './auth';
 import FullCalendarPlugin from '../../main';
 import { GoogleApiError } from './request';
+import { GoogleAuthManager } from '../../features/google_auth/GoogleAuthManager'; // Import the manager
 
 interface GoogleConfigComponentProps {
   plugin: FullCalendarPlugin;
@@ -31,6 +32,7 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Set<string>>(new Set());
+  const authManager = new GoogleAuthManager(plugin); // Create an instance of the manager
 
   // Refs for imperative Obsidian UI components
   const accountListRef = useRef<HTMLDivElement>(null);
@@ -55,11 +57,20 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
     setSelectedAccount(account);
 
     try {
+      // Refresh token if it's expired before we use it
+      if (!account.accessToken || !account.expiryDate || Date.now() >= account.expiryDate - 60000) {
+        const newToken = await (authManager as any).refreshAccessToken(account, false);
+        if (!newToken) {
+          throw new GoogleApiError(
+            `Failed to refresh token for ${account.email}. Please try connecting the account again.`
+          );
+        }
+        account.accessToken = newToken;
+      }
+
       const { fetchGoogleCalendarList } = await import('./api');
-      // HACK: Temporarily set the global auth object for the legacy fetch function.
-      // This will be removed in the final migration step.
-      plugin.settings.googleAuth = account;
-      const allCalendars = await fetchGoogleCalendarList(plugin);
+      // REMOVE THE HACK and pass the account object directly.
+      const allCalendars = await fetchGoogleCalendarList(plugin, account);
       const existingGoogleIds = new Set(
         plugin.settings.calendarSources
           .filter(s => s.type === 'google')
@@ -68,13 +79,12 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
       setAvailableCalendars(allCalendars.filter(cal => !existingGoogleIds.has(cal.id)));
       setView('calendar-select');
     } catch (e) {
-      const message =
-        e instanceof GoogleApiError ? `API Error: ${e.message}` : 'An unknown error occurred.';
+      const message = e instanceof Error ? e.message : 'An unknown error occurred.';
       setError(`Failed to fetch calendars for ${account.email}. ${message}`);
       setView('account-select');
     } finally {
       setIsLoading(false);
-      plugin.settings.googleAuth = null; // Clean up the temporary hack
+      // REMOVE THE HACK CLEANUP
     }
   };
 

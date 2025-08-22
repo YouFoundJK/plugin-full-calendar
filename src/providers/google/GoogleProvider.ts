@@ -256,25 +256,12 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
 
   getConfigurationComponent(): FCReactComponent<any> {
     const WrapperComponent: React.FC<any> = props => {
-      // Check for any google calendar source with a valid refresh token.
-      const isAuthenticated = this.plugin.settings.calendarSources.some(
-        s => s.type === 'google' && (s as any).auth?.refreshToken
-      );
-
-      const getAvailableCalendars = async (): Promise<any[]> => {
-        const allCalendars = await fetchGoogleCalendarList(this.plugin);
-        const existingGoogleIds = new Set(
-          this.plugin.settings.calendarSources
-            .filter(s => s.type === 'google')
-            .map(s => (s as any).calendarId)
-        );
-        return allCalendars.filter(cal => !existingGoogleIds.has(cal.id));
-      };
+      // This logic is now handled inside GoogleConfigComponent, so we can simplify this.
+      // We just need to pass the plugin instance.
 
       const componentProps = {
         ...props,
-        isAuthenticated,
-        getAvailableCalendars
+        plugin: this.plugin // Pass the plugin instance
       };
 
       return React.createElement(GoogleConfigComponent, componentProps);
