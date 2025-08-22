@@ -126,7 +126,7 @@ export default class EventCache {
     this.calendars.clear();
     this._store.clear();
     this.updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
-    this.resync();
+    // this.resync();
 
     infos.forEach(info => {
       const settingsId = (info as any).id;
