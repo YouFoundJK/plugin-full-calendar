@@ -203,12 +203,16 @@ export class CalendarView extends ItemView {
     }
 
     // Get all events from each source and generate shadow events
-    for (const source of this.plugin.cache.getAllEvents()) {
-      const { events, id: calendarId } = source;
+    for (const source of this.fullCalendarView.getEventSources()) {
+      const calendarId = source.id;
+      const cachedSource = this.plugin.cache.getAllEvents().find(s => s.id === calendarId);
+      if (!cachedSource) continue;
+
+      const { events } = cachedSource;
       const settings = this.plugin.settings;
 
       const mainEvents = events
-        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings)) // REMOVED calendarId
+        .map((e: CachedEvent) => toEventInput(e.id, e.event, settings))
         .filter((e): e is EventInput => !!e);
 
       const shadowEvents = this.generateShadowEvents(mainEvents, true);
