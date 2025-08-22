@@ -119,16 +119,15 @@ export function addCalendarButton(
 
           // Base props for all provider components
           const componentProps: any = {
+            plugin: plugin, // Pass plugin for GoogleConfigComponent
             config: initialConfig,
-            onConfigChange: () => {}, // ADD THIS LINE
             context: {
               allDirectories: directories.filter(dir => usedDirectories.indexOf(dir) === -1),
               usedDirectories: usedDirectories,
               headings: headings
             },
             onClose: () => modal.close(),
-            onSave: (finalConfigs: any | any[]) => {
-              // `any` to handle single or array return
+            onSave: (finalConfigs: any | any[], accountId?: string) => {
               const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
 
               configs.forEach((finalConfig: any) => {
@@ -140,15 +139,11 @@ export function addCalendarButton(
                   ...partialSource,
                   ...finalConfig,
                   color: finalConfig.color || partialSource.color,
-                  name:
-                    finalConfig.name ||
-                    (finalConfig as any).directory ||
-                    `Daily note under "${(finalConfig as any).heading}"`
+                  name: finalConfig.name,
+                  ...(accountId && { googleAccountId: accountId }),
+                  calendarId: finalConfig.id
                 };
-                console.log(
-                  'DEBUG: 1. Final source object created by modal:',
-                  JSON.stringify(finalSource, null, 2)
-                );
+                delete (finalSource as any).id;
                 submitCallback(finalSource as unknown as CalendarInfo);
                 existingCalendarColors.push(finalSource.color);
               });
@@ -227,6 +222,11 @@ export class FullCalendarSettingTab extends PluginSettingTab {
   }
 }
 
+// These functions remain pure and outside the class.
+
+// ensureCalendarIds and sanitizeInitialView moved to ./utils to avoid loading this heavy
+// settings module (and React) during plugin startup. Keep imports above.
+// settings module (and React) during plugin startup. Keep imports above.
 // These functions remain pure and outside the class.
 
 // ensureCalendarIds and sanitizeInitialView moved to ./utils to avoid loading this heavy

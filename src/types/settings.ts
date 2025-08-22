@@ -30,6 +30,14 @@ export interface WorkspaceSettings {
   timelineExpanded?: boolean; // Timeline categories expanded by default
 }
 
+export interface GoogleAccount {
+  id: string; // A unique identifier for this account
+  email: string; // The user's email for display purposes
+  refreshToken: string | null;
+  accessToken: string | null;
+  expiryDate: number | null;
+}
+
 export interface FullCalendarSettings {
   calendarSources: CalendarInfo[];
   defaultCalendar: number;
@@ -54,6 +62,7 @@ export interface FullCalendarSettings {
   useCustomGoogleClient: boolean;
   googleClientId: string;
   googleClientSecret: string;
+  googleAccounts: GoogleAccount[]; // ADD THIS LINE
   businessHours: BusinessHoursSettings;
   enableBackgroundEvents: boolean;
   workspaces: WorkspaceSettings[];
@@ -79,6 +88,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   useCustomGoogleClient: false,
   googleClientId: '',
   googleClientSecret: '',
+  googleAccounts: [], // ADD THIS LINE
   businessHours: {
     enabled: false,
     daysOfWeek: [1, 2, 3, 4, 5], // Monday to Friday

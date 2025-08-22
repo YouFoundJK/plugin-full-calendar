@@ -14,6 +14,7 @@ import { Platform, requestUrl, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import * as http from 'http';
 import * as url from 'url';
+import { GoogleAuthManager } from '../../features/google_auth/GoogleAuthManager';
 
 // =================================================================================================
 // CONSTANTS
@@ -226,12 +227,16 @@ export async function exchangeCodeForToken(
       );
     }
 
-    plugin.settings.googleAuth = {
+    // --- REPLACEMENT BLOCK ---
+    // Use GoogleAuthManager to add the account
+    const authManager = new GoogleAuthManager(plugin);
+    await authManager.addAccount({
       refreshToken: data.refresh_token,
       accessToken: data.access_token,
       expiryDate: Date.now() + data.expires_in * 1000
-    };
-    await plugin.saveSettings();
+    });
+    // --- END REPLACEMENT BLOCK ---
+
     new Notice('Successfully connected Google Account!');
   } catch (e) {
     new Notice('Failed to connect Google Account. Check the developer console for details.');
@@ -243,81 +248,4 @@ export async function exchangeCodeForToken(
   } finally {
     pkce = null;
   }
-}
-
-async function refreshAccessToken(plugin: FullCalendarPlugin): Promise<string | null> {
-  const { settings } = plugin;
-  if (!settings.googleAuth?.refreshToken) {
-    console.error('No refresh token available.');
-    return null;
-  }
-
-  const clientId = settings.useCustomGoogleClient ? settings.googleClientId : PUBLIC_CLIENT_ID;
-
-  let tokenUrl: string;
-  let requestBody: string;
-  let requestHeaders: Record<string, string>;
-
-  if (settings.useCustomGoogleClient) {
-    // Legacy path: User provides their own credentials, talk to Google directly.
-    tokenUrl = GOOGLE_TOKEN_URL;
-    const body = new URLSearchParams({
-      grant_type: 'refresh_token',
-      client_id: clientId,
-      refresh_token: settings.googleAuth.refreshToken,
-      client_secret: settings.googleClientSecret
-    });
-    requestBody = body.toString();
-    requestHeaders = { 'Content-Type': 'application/x-www-form-urlencoded' };
-  } else {
-    // New default path: Use the public client ID and the proxy server.
-    tokenUrl = PROXY_REFRESH_URL;
-    const body = {
-      client_id: clientId,
-      refresh_token: settings.googleAuth.refreshToken
-    };
-    requestBody = JSON.stringify(body);
-    requestHeaders = { 'Content-Type': 'application/json' };
-  }
-
-  try {
-    const response = await requestUrl({
-      method: 'POST',
-      url: tokenUrl,
-      headers: requestHeaders,
-      body: requestBody
-    });
-
-    const data = response.json;
-    settings.googleAuth = {
-      ...settings.googleAuth,
-      accessToken: data.access_token,
-      expiryDate: Date.now() + data.expires_in * 1000
-    };
-    await plugin.saveData(settings);
-    return data.access_token;
-  } catch (e) {
-    console.error('Failed to refresh Google access token:', e);
-    settings.googleAuth = null;
-    await plugin.saveSettings();
-    new Notice('Google authentication expired. Please reconnect your account.');
-    return null;
-  }
-}
-
-export async function getGoogleAuthToken(plugin: FullCalendarPlugin): Promise<string | null> {
-  const { googleAuth } = plugin.settings;
-  if (!googleAuth?.refreshToken) {
-    return null;
-  }
-
-  if (
-    googleAuth.accessToken &&
-    googleAuth.expiryDate &&
-    Date.now() < googleAuth.expiryDate - 60000
-  ) {
-    return googleAuth.accessToken;
-  }
-
-  return await refreshAccessToken(plugin);
 }

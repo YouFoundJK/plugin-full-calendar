@@ -11,8 +11,6 @@
  */
 
 import { requestUrl } from 'obsidian';
-import FullCalendarPlugin from '../../main';
-import { getGoogleAuthToken } from './auth';
 
 /**
  * A custom error class for Google API requests to provide more context.
@@ -29,10 +27,9 @@ export class GoogleApiError extends Error {
 }
 
 /**
- * Makes an authenticated request to a Google API endpoint.
- * Automatically acquires and refreshes the access token.
+ * Makes an authenticated request to a Google API endpoint using a provided token.
  *
- * @param plugin The main plugin instance.
+ * @param token The OAuth 2.0 access token.
  * @param url The full URL of the API endpoint.
  * @param method The HTTP method ('GET', 'POST', etc.).
  * @param body The request body for POST/PUT requests.
@@ -40,18 +37,11 @@ export class GoogleApiError extends Error {
  * @throws {GoogleApiError} If the request fails.
  */
 export async function makeAuthenticatedRequest(
-  plugin: FullCalendarPlugin,
+  token: string,
   url: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
   body?: object
 ): Promise<any> {
-  const token = await getGoogleAuthToken(plugin);
-  if (!token) {
-    throw new GoogleApiError(
-      'Not authenticated with Google. Please connect your account in settings.'
-    );
-  }
-
   try {
     const response = await requestUrl({
       url,

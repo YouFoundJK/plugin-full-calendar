@@ -5,7 +5,8 @@
  */
 
 import FullCalendarPlugin from '../../main';
-import { makeAuthenticatedRequest } from './request';
+import { makeAuthenticatedRequest, GoogleApiError } from './request';
+import { GoogleAuthManager } from '../../features/google_auth/GoogleAuthManager';
 
 const CALENDAR_LIST_URL = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
 
@@ -18,12 +19,20 @@ export async function fetchGoogleCalendarList(plugin: FullCalendarPlugin): Promi
   const allCalendars: any[] = [];
   let pageToken: string | undefined = undefined;
 
+  const authManager = new GoogleAuthManager(plugin);
+  const token = await authManager.getLegacyToken();
+  if (!token) {
+    throw new GoogleApiError(
+      'Not authenticated with Google. Please connect your account in settings.'
+    );
+  }
+
   do {
     const url = new URL(CALENDAR_LIST_URL);
     if (pageToken) {
       url.searchParams.set('pageToken', pageToken);
     }
-    const data = await makeAuthenticatedRequest(plugin, url.toString());
+    const data = await makeAuthenticatedRequest(token, url.toString());
     if (data.items) {
       allCalendars.push(...data.items);
     }

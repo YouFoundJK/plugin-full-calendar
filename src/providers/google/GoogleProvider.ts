@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
 import { fromGoogleEvent, toGoogleEvent } from './parser_gcal';
-import { makeAuthenticatedRequest } from './request';
+import { makeAuthenticatedRequest, GoogleApiError } from './request';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
@@ -12,6 +12,7 @@ import { GoogleConfigComponent } from './GoogleConfigComponent';
 import { fetchGoogleCalendarList } from './api';
 import * as React from 'react';
 import { ObsidianInterface } from '../../ObsidianAdapter';
+import { GoogleAuthManager } from '../../features/google_auth/GoogleAuthManager';
 
 export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   // Static metadata for registry
@@ -23,6 +24,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
 
   private plugin: FullCalendarPlugin;
   private source: GoogleProviderConfig;
+  private authManager: GoogleAuthManager;
 
   // Instance properties remain
   readonly type = 'google';
@@ -32,6 +34,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   constructor(source: GoogleProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
     this.source = source;
+    this.authManager = new GoogleAuthManager(plugin);
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -46,6 +49,9 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   }
 
   async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
+    const token = await this.authManager.getTokenForSource(this.source as any);
+    if (!token) return [];
+
     const displayTimezone = this.plugin.settings.displayTimezone;
     if (!displayTimezone) return [];
 
@@ -63,7 +69,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
       url.searchParams.set('singleEvents', 'false');
       url.searchParams.set('maxResults', '2500');
 
-      const data = await makeAuthenticatedRequest(this.plugin, url.toString());
+      const data = await makeAuthenticatedRequest(token, url.toString());
       if (!data.items || !Array.isArray(data.items)) return [];
 
       const cancellations = new Map<string, Set<string>>();
@@ -110,11 +116,14 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   }
 
   async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
+    const token = await this.authManager.getTokenForSource(this.source as any);
+    if (!token) throw new GoogleApiError('Cannot create event: not authenticated.');
+
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
       this.source.id
     )}/events`;
     const body = toGoogleEvent(event);
-    const createdGEvent = await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
+    const createdGEvent = await makeAuthenticatedRequest(token, url, 'POST', body);
 
     const rawEvent = fromGoogleEvent(createdGEvent);
     if (!rawEvent) throw new Error('Could not parse event from Google API after creation.');
@@ -127,6 +136,9 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     oldEventData: OFCEvent,
     newEventData: OFCEvent
   ): Promise<EventLocation | null> {
+    const token = await this.authManager.getTokenForSource(this.source as any);
+    if (!token) throw new GoogleApiError('Cannot update event: not authenticated.');
+
     const newSkipDates = new Set(
       newEventData.type === 'rrule' || newEventData.type === 'recurring'
         ? newEventData.skipDates
@@ -155,20 +167,26 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
         this.source.id
       )}/events/${encodeURIComponent(eventId)}`;
       const body = toGoogleEvent(newEventData);
-      await makeAuthenticatedRequest(this.plugin, url, 'PUT', body);
+      await makeAuthenticatedRequest(token, url, 'PUT', body);
     }
     return null;
   }
 
   async deleteEvent(handle: EventHandle): Promise<void> {
+    const token = await this.authManager.getTokenForSource(this.source as any);
+    if (!token) throw new GoogleApiError('Cannot delete event: not authenticated.');
+
     const eventId = handle.persistentId;
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
       this.source.id
     )}/events/${encodeURIComponent(eventId)}`;
-    await makeAuthenticatedRequest(this.plugin, url, 'DELETE');
+    await makeAuthenticatedRequest(token, url, 'DELETE');
   }
 
   private async cancelInstance(parentEvent: OFCEvent, instanceDate: string): Promise<void> {
+    const token = await this.authManager.getTokenForSource(this.source as any);
+    if (!token) throw new GoogleApiError('Cannot cancel instance: not authenticated.');
+
     if (!parentEvent.uid) {
       throw new Error('Cannot cancel an instance of a recurring event that has no master UID.');
     }
@@ -195,7 +213,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
       this.source.id
     )}/events`;
-    await makeAuthenticatedRequest(this.plugin, url, 'POST', body);
+    await makeAuthenticatedRequest(token, url, 'POST', body);
   }
 
   async createInstanceOverride(
@@ -203,6 +221,9 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     instanceDate: string,
     newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
+    const token = await this.authManager.getTokenForSource(this.source as any);
+    if (!token) throw new GoogleApiError('Cannot create instance override: not authenticated.');
+
     if (newEventData.allDay === false && masterEvent.allDay === false) {
       const originalStartTime = {
         dateTime: DateTime.fromISO(`${instanceDate}T${masterEvent.startTime}`).toISO(),
@@ -216,7 +237,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
       };
 
       const newGEvent = await makeAuthenticatedRequest(
-        this.plugin,
+        token,
         `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.source.id)}/events`,
         'POST',
         body

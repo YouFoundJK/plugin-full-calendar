@@ -44,7 +44,8 @@ const calendarOptionsSchema = z.discriminatedUnion('type', [
     id: z.string(),
     name: z.string(),
     calendarId: z.string(), // Google's own ID for the calendar
-    auth: GoogleAuthSchema.optional()
+    googleAccountId: z.string().optional(), // ADD THIS LINE
+    auth: GoogleAuthSchema.optional() // This remains for backward compatibility for now
   })
 ]);
 
