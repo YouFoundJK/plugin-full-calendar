@@ -20,7 +20,7 @@ import { DateTime } from 'luxon';
 
 import { ItemView, Menu, Notice, WorkspaceLeaf } from 'obsidian';
 
-import type { Calendar, EventSourceInput, EventInput } from '@fullcalendar/core';
+import type { Calendar, EventInput } from '@fullcalendar/core';
 
 import './overrides.css';
 import FullCalendarPlugin from '../main';
@@ -28,9 +28,10 @@ import { renderCalendar } from './calendar';
 import { renderOnboarding } from './onboard';
 import { PLUGIN_SLUG, CalendarInfo } from '../types';
 import { UpdateViewCallback, CachedEvent } from '../core/EventCache';
-import { WorkspaceManager } from '../features/workspaces/WorkspaceManager';
+
 // Lazy-import heavy modules at point of use to reduce initial load time
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
+import { ViewEnhancer } from '../core/ViewEnhancer';
 
 export const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
 export const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';
@@ -64,7 +65,7 @@ export class CalendarView extends ItemView {
   inSidebar: boolean;
   fullCalendarView: Calendar | null = null;
   callback: UpdateViewCallback | null = null;
-  private workspaceManager: WorkspaceManager | null = null;
+  private viewEnhancer: ViewEnhancer | null = null;
   private timelineResources:
     | { id: string; title: string; parentId?: string; eventColor?: string; extendedProps?: any }[]
     | null = null;
@@ -101,7 +102,10 @@ export class CalendarView extends ItemView {
    * Get the text to display in the workspace switcher button.
    */
   getWorkspaceSwitcherText(): string {
-    const activeWorkspace = this.workspaceManager?.getActiveWorkspace();
+    // REPLACE:
+    // const activeWorkspace = this.workspaceManager?.getActiveWorkspace();
+    // WITH:
+    const activeWorkspace = this.viewEnhancer?.getActiveWorkspace();
     if (!activeWorkspace) {
       return 'Workspace ▾';
     }
@@ -245,7 +249,12 @@ export class CalendarView extends ItemView {
     }
 
     const categorySettings = this.plugin.settings.categorySettings || [];
-    const workspace = this.workspaceManager?.getActiveWorkspace();
+    if (!this.viewEnhancer) {
+      return resources;
+    }
+    const allCachedSources = this.plugin.cache.getAllEvents();
+    const allSources = this.viewEnhancer.getFilteredSources(allCachedSources);
+    const workspace = this.viewEnhancer?.getActiveWorkspace(); // You can now safely get the active workspace if needed for other logic.
 
     const isCategoryVisible = (name: string) => {
       if (!workspace?.categoryFilter) return true;
@@ -269,10 +278,6 @@ export class CalendarView extends ItemView {
     });
 
     const categoryMap = new Map<string, Set<string>>();
-    let allSources = this.plugin.cache.getAllEvents();
-    // VVVV MODIFY THIS LINE VVVV
-    allSources = this.workspaceManager?.filterCalendarSources(allSources) || allSources;
-    // ^^^^ END OF MODIFICATION ^^^^
     for (const source of allSources) {
       for (const cachedEvent of source.events) {
         const { category, subCategory } = cachedEvent.event;
@@ -337,8 +342,7 @@ export class CalendarView extends ItemView {
       await this.plugin.cache.populate();
     }
 
-    // Instantiate and update the WorkspaceManager with the latest settings.
-    this.workspaceManager = new WorkspaceManager(this.plugin.settings);
+    this.viewEnhancer = new ViewEnhancer(this.plugin.settings);
 
     const container = this.containerEl.children[1];
     container.empty();
@@ -352,9 +356,13 @@ export class CalendarView extends ItemView {
       return;
     }
 
-    // Get all sources from the cache and let the manager filter them.
+    if (!this.viewEnhancer) {
+      // This should not happen if onOpen is called correctly.
+      new Notice('Full Calendar view enhancer not initialized.');
+      return;
+    }
     const allSources = this.plugin.cache.getAllEvents();
-    const sources: EventSourceInput[] = this.workspaceManager.getFilteredEventSources(allSources);
+    const { sources, config: calendarConfig } = this.viewEnhancer.getEnhancedData(allSources);
 
     if (this.fullCalendarView) {
       this.fullCalendarView.destroy();
@@ -381,9 +389,6 @@ export class CalendarView extends ItemView {
       }
       currentViewType = newViewType;
     };
-
-    // Get the final, workspace-aware calendar configuration from the manager.
-    const calendarConfig = this.workspaceManager.getCalendarConfig();
 
     this.fullCalendarView = await renderCalendar(calendarEl, sources, {
       // timeZone:
@@ -684,32 +689,27 @@ export class CalendarView extends ItemView {
       this.callback = null;
     }
 
-    // VVVV REPLACE THE ENTIRE ARROW FUNCTION BODY VVVV
-    this.callback = this.plugin.cache.on('update', payload => {
-      if (!this.workspaceManager || !this.fullCalendarView) {
+    this.callback = this.plugin.cache.on('update', () => {
+      if (!this.viewEnhancer || !this.fullCalendarView) {
         return;
       }
-      // With the manager, we no longer need to interpret the payload.
-      // Treat any update as a signal to re-render the view with the latest filtered data.
 
       // 1. Update manager with latest settings in case they changed.
-      this.workspaceManager.updateSettings(this.plugin.settings);
-
+      this.viewEnhancer.updateSettings(this.plugin.settings);
       // 2. Get fresh, fully-filtered sources from the manager.
       const allCachedSources = this.plugin.cache.getAllEvents();
-      const newSources = this.workspaceManager.getFilteredEventSources(allCachedSources);
+      const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
 
       // 3. Resync the entire calendar view.
       this.fullCalendarView.removeAllEventSources();
-      newSources.forEach(source => this.fullCalendarView?.addEventSource(source));
+      sources.forEach(source => this.fullCalendarView?.addEventSource(source));
 
-      // 4. Re-add shadow events if we are in a timeline view.
-      const currentViewType = this.fullCalendarView?.view?.type || '';
-      if (currentViewType.includes('resourceTimeline')) {
+      // 4. Re-apply shadow events if needed.
+      const viewType = this.fullCalendarView.view?.type;
+      if (viewType && viewType.includes('resourceTimeline')) {
         this.addShadowEventsToView();
       }
     });
-    // ^^^^ END OF REPLACEMENT ^^^^
   }
 
   onResize(): void {
