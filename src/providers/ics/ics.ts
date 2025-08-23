@@ -20,22 +20,14 @@ import { OFCEvent, validateEvent } from '../../types';
 
 /**
  * Converts an ical.js Time object into a Luxon DateTime object.
- * This version manually constructs the DateTime from components to avoid
- * the automatic local timezone conversion of .toJSDate().
+ * This version uses .toJSDate() to correctly handle VTIMEZONE definitions
+ * and returns a UTC-based DateTime.
  */
 function icalTimeToLuxon(t: ical.Time): DateTime {
-  const components = {
-    year: t.year,
-    month: t.month,
-    day: t.day,
-    hour: t.hour,
-    minute: t.minute,
-    second: t.second
-  };
-  // The components are parsed in the event's specified timezone.
-  // If the timezone is 'Z' (UTC), we use 'utc'. Otherwise, we use the specified timezone.
-  const zone = t.timezone === 'Z' ? 'utc' : t.timezone;
-  return DateTime.fromObject(components, { zone });
+  const jsDate = t.toJSDate();
+  // Create the Luxon DateTime object and explicitly set its zone to UTC.
+  // This correctly represents the moment in time without ambiguity.
+  return DateTime.fromJSDate(jsDate, { zone: 'utc' });
 }
 
 /**
@@ -77,11 +69,9 @@ function icsToOFC(input: ical.Event): OFCEvent {
   const uid = input.uid;
   const isAllDay = input.startDate.isDate;
 
-  const timezone = isAllDay
-    ? undefined
-    : input.startDate.timezone === 'Z'
-      ? 'UTC'
-      : input.startDate.timezone;
+  // Since icalTimeToLuxon now returns a UTC DateTime, the source timezone for all
+  // timed events is UTC.
+  const timezone = isAllDay ? undefined : 'UTC';
 
   if (input.isRecurring()) {
     const rrule = rrulestr(input.component.getFirstProperty('rrule').getFirstValue().toString());
@@ -140,7 +130,12 @@ function icsToOFC(input: ical.Event): OFCEvent {
 
 // MODIFICATION: Remove settings parameter from getEventsFromICS
 export function getEventsFromICS(text: string): OFCEvent[] {
-  const jCalData = ical.parse(text);
+  // FIX: Pre-process the text to explicitly mark all-day events with VALUE=DATE.
+  // This prevents the ical.js parser from incorrectly interpreting them as
+  // malformed date-time values (e.g., "2025-08-13T::").
+  const correctedText = text.replace(/DTSTART:(\d{8})$/gm, 'DTSTART;VALUE=DATE:$1');
+
+  const jCalData = ical.parse(correctedText); // Use the corrected text
   const component = new ical.Component(jCalData);
 
   const events: ical.Event[] = component

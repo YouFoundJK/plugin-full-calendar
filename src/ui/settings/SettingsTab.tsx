@@ -127,6 +127,7 @@ export function addCalendarButton(
               headings: headings
             },
             onClose: () => modal.close(),
+            onConfigChange: () => {},
             onSave: (finalConfigs: any | any[], accountId?: string) => {
               const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
 

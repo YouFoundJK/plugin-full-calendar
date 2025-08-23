@@ -434,6 +434,11 @@ export class CalendarView extends ItemView {
             const { openFileForEvent } = await import('../utils/eventActions');
             await openFileForEvent(this.plugin.cache, this.app, info.event.id);
           } else {
+            if (!this.plugin.cache.isEventEditable(info.event.id)) {
+              new Notice('This event belongs to a read-only calendar.');
+              return;
+            }
+
             const { launchEditModal } = await import('./event_modal');
             launchEditModal(this.plugin, info.event.id);
           }
