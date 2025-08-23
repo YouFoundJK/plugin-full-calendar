@@ -396,7 +396,7 @@ export class InsightConfigModal extends Modal {
           .setIcon('trash')
           .setTooltip('Delete this group')
           .setDisabled(!isExpanded)
-          // --- FIX: REMOVE 'evt' and 'stopPropagation' ---
+          // REMOVE 'evt' and 'stopPropagation'
           .onClick(() => {
             delete this.config.insightGroups[currentGroupName];
             this.checkForUnsavedChanges();
@@ -443,7 +443,6 @@ export class InsightConfigModal extends Modal {
           });
       });
 
-    // --- The rest of the settings ---
     this.createTagInput(
       foldableContent,
       'Matching Hierarchies',
@@ -508,7 +507,6 @@ export class InsightConfigModal extends Modal {
           });
       });
   }
-  // --- END OF REPLACEMENT ---
 
   private createTagInput(
     container: HTMLElement,

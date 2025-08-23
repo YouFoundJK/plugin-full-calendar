@@ -2,7 +2,6 @@
 
 import { TFile } from 'obsidian';
 
-// Add this mock
 jest.mock(
   'obsidian',
   () => ({
@@ -16,7 +15,6 @@ jest.mock(
   }),
   { virtual: true }
 );
-// End of new code
 
 import FullCalendarPlugin from '../main';
 import { EventPathLocation, StoredEvent } from './EventStore';

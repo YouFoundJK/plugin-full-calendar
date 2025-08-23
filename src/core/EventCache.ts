@@ -882,7 +882,6 @@ export default class EventCache {
     return this._store;
   }
 
-  // Add this new method:
   public async syncFile(
     file: TFile,
     newEventsWithDetails: { event: OFCEvent; location: EventLocation | null; calendarId: string }[]

@@ -6,7 +6,7 @@
 
 import FullCalendarPlugin from '../../main';
 import { makeAuthenticatedRequest, GoogleApiError } from './request';
-import { GoogleAccount } from '../../types/settings'; // ADD this import
+import { GoogleAccount } from '../../types/settings';
 
 const CALENDAR_LIST_URL = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
 
