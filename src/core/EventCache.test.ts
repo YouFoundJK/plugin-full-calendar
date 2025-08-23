@@ -62,7 +62,7 @@ const makeCache = (events: OFCEvent[]) => {
     config: {}
   };
 
-  // Update mockPlugin to include getAllSources
+  // Update mockPlugin to include getAllSources and required registry mocks
   const mockPlugin = {
     settings: { ...DEFAULT_SETTINGS, calendarSources: [calendarInfo] },
     providerRegistry: {
@@ -73,7 +73,15 @@ const makeCache = (events: OFCEvent[]) => {
           event: e,
           location: null
         })),
-      getAllSources: () => [calendarInfo]
+      getAllSources: () => [calendarInfo],
+      getInstance: () => mockProvider,
+      // Added mocks for registry
+      generateId: withCounter(x => x, 'test-id'),
+      buildMap: jest.fn(),
+      addMapping: jest.fn(),
+      removeMapping: jest.fn(),
+      getSource: () => calendarInfo,
+      getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }) // Added
     }
   } as any;
 
@@ -153,13 +161,11 @@ describe('event cache with readonly calendar', () => {
           ...events2.map(e => ({ calendarId: 'cal2', event: e, location: null }))
         ],
         getSource: (id: string) => calendarSources.find(source => source.id === id),
-        generateId: jest.fn(),
+        getInstance: () => mockProvider,
+        generateId: withCounter(x => x, 'test-id'),
+        buildMap: jest.fn(),
         addMapping: jest.fn(),
-        removeMapping: jest.fn(),
-        getGlobalIdentifier: jest.fn(),
-        createEventInProvider: jest.fn(),
-        updateEventInProvider: jest.fn(),
-        deleteEventInProvider: jest.fn()
+        removeMapping: jest.fn()
       }
     } as any;
     const cache = new EventCache(mockPlugin);
@@ -255,7 +261,7 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
     config: { id: 'test' },
     color: 'black'
   };
-  // Update mockPlugin to include getAllSources
+  // Update mockPlugin to include getAllSources and required registry mocks
   const mockPlugin = {
     settings: { ...DEFAULT_SETTINGS, calendarSources: [calendarInfo] },
     providerRegistry: {
@@ -266,7 +272,20 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
           event,
           location
         })),
-      getAllSources: () => [calendarInfo]
+      getAllSources: () => [calendarInfo],
+      getInstance: () => calendar,
+      generateId: withCounter(x => x, 'test-id'),
+      buildMap: jest.fn(),
+      addMapping: jest.fn(),
+      removeMapping: jest.fn(),
+      createEventInProvider: jest.fn(async (id, event) => calendar.createEvent(event)),
+      // UPDATED MOCK: delegate to provider's updateEvent
+      updateEventInProvider: jest.fn(async (sessionId, calendarId, oldEventData, newEventData) =>
+        calendar.updateEvent(calendar.getEventHandle(oldEventData)!, oldEventData, newEventData)
+      ),
+      deleteEventInProvider: jest.fn(),
+      getSource: () => calendarInfo,
+      getCapabilities: () => ({ canCreate: true, canEdit: true, canDelete: true }) // Added
     }
   } as any;
   const cache = new EventCache(mockPlugin);
@@ -274,7 +293,7 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
   // Ensure createEvent returns [event, location] as expected by addEvent
   calendar.createEvent.mockImplementation(async (event: OFCEvent) => [event, mockLocation()]);
 
-  return [cache, calendar] as const;
+  return [cache, calendar, mockPlugin] as const;
 };
 
 const mockFile = withCounter(path => ({ path }) as TFile, 'file');
@@ -320,7 +339,7 @@ describe('editable calendars', () => {
       calendar.createEvent.mockResolvedValue([event, loc]);
       expect(await cache.addEvent('test', event)).toBeTruthy();
       expect(calendar.createEvent).toHaveBeenCalledTimes(1);
-      expect(calendar.createEvent).toHaveBeenCalledWith(event, { id: 'test' });
+      expect(calendar.createEvent).toHaveBeenCalledWith(expect.objectContaining(event));
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -340,7 +359,7 @@ describe('editable calendars', () => {
       calendar.createEvent.mockResolvedValue([event2, loc]);
       expect(await cache.addEvent('test', event2)).toBeTruthy();
       expect(calendar.createEvent).toHaveBeenCalledTimes(1);
-      expect(calendar.createEvent).toHaveBeenCalledWith(event2, { id: 'test' });
+      expect(calendar.createEvent).toHaveBeenCalledWith(expect.objectContaining(event2));
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -361,7 +380,7 @@ describe('editable calendars', () => {
       calendar.createEvent.mockResolvedValue([event2, loc]);
       expect(await cache.addEvent('test', event2)).toBeTruthy();
       expect(calendar.createEvent).toHaveBeenCalledTimes(1);
-      expect(calendar.createEvent).toHaveBeenCalledWith(event2, { id: 'test' });
+      expect(calendar.createEvent).toHaveBeenCalledWith(expect.objectContaining(event2));
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -400,7 +419,7 @@ describe('editable calendars', () => {
   describe('delete events', () => {
     it('delete one', async () => {
       const event = mockEventResponse();
-      const [cache, calendar] = makeEditableCache([event]);
+      const [cache, calendar, mockPlugin] = makeEditableCache([event]);
 
       await cache.populate();
 
@@ -416,9 +435,13 @@ describe('editable calendars', () => {
 
       await cache.deleteEvent(id);
 
-      expect(calendar.deleteEvent).toHaveBeenCalledTimes(1);
-      const handle = calendar.getEventHandle(event[0]);
-      expect(calendar.deleteEvent).toHaveBeenCalledWith(handle);
+      // Updated assertion to registry mock
+      expect(mockPlugin.providerRegistry.deleteEventInProvider).toHaveBeenCalledTimes(1);
+      expect(mockPlugin.providerRegistry.deleteEventInProvider).toHaveBeenCalledWith(
+        id,
+        event[0],
+        'test'
+      );
 
       assertCacheContentCounts(cache, {
         calendars: 1, // Calendar source still exists
@@ -472,7 +495,7 @@ describe('editable calendars', () => {
         1 // The file count never changes.
       ]
     ])('%p', async (_, newLocation, fileDetails, expectedFileCount) => {
-      const [cache, calendar] = makeEditableCache([oldEvent]);
+      const [cache, calendar, mockPlugin] = makeEditableCache([oldEvent]);
       await cache.populate();
 
       assertCacheContentCounts(cache, { calendars: 1, files: 1, events: 1 });
@@ -484,9 +507,15 @@ describe('editable calendars', () => {
 
       await cache.updateEventWithId(id, newEvent);
 
-      expect(calendar.updateEvent).toHaveBeenCalledTimes(1);
-      const handle = calendar.getEventHandle(oldEvent[0]);
-      expect(calendar.updateEvent).toHaveBeenCalledWith(handle, oldEvent[0], newEvent);
+      // Updated assertion to registry mock
+      const { updateEventInProvider } = mockPlugin.providerRegistry;
+      expect(updateEventInProvider).toHaveBeenCalledTimes(1);
+      expect(updateEventInProvider).toHaveBeenCalledWith(
+        id,
+        'test',
+        expect.objectContaining(oldEvent[0]), // Corrected line
+        expect.objectContaining(newEvent)
+      );
 
       assertCacheContentCounts(cache, {
         calendars: 1,

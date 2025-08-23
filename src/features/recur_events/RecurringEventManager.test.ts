@@ -27,7 +27,7 @@ jest.mock(
 );
 
 // Mock dependencies
-jest.mock('../EventCache');
+jest.mock('../../core/EventCache');
 
 describe('RecurringEventManager', () => {
   let manager: RecurringEventManager;
