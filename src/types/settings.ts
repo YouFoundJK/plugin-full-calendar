@@ -59,6 +59,7 @@ export interface FullCalendarSettings {
   googleAccounts: GoogleAccount[];
   businessHours: BusinessHoursSettings;
   enableBackgroundEvents: boolean;
+  enableReminders: boolean; // ADD THIS LINE
   workspaces: WorkspaceSettings[];
   activeWorkspace: string | null; // Workspace ID, null means default view
 }
@@ -89,6 +90,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     endTime: '17:00'
   },
   enableBackgroundEvents: true,
+  enableReminders: false,
   workspaces: [],
   activeWorkspace: null
 };

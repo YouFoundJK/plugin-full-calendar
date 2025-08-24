@@ -89,4 +89,15 @@ export function renderGeneralSettings(
         await plugin.saveSettings();
       });
     });
+
+  new Setting(containerEl)
+    .setName('Enable event reminders')
+    .setDesc('Show a desktop notification 10 minutes before an event starts.')
+    .addToggle(toggle => {
+      toggle.setValue(plugin.settings.enableReminders).onChange(async value => {
+        plugin.settings.enableReminders = value;
+        await plugin.saveSettings();
+        rerender();
+      });
+    });
 }

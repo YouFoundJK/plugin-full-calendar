@@ -12,6 +12,7 @@
  * @license See LICENSE.md
  */
 
+import { NotificationManager } from './features/NotificationManager'; // ADD THIS IMPORT
 import { LazySettingsTab } from './ui/settings/LazySettingsTab';
 import {
   ensureCalendarIds,
@@ -36,6 +37,8 @@ const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';
 
 export default class FullCalendarPlugin extends Plugin {
   private _settings: FullCalendarSettings = DEFAULT_SETTINGS;
+
+  notificationManager!: NotificationManager;
 
   get settings(): FullCalendarSettings {
     return this._settings;
@@ -103,6 +106,10 @@ export default class FullCalendarPlugin extends Plugin {
     this.providerRegistry.setCache(this.cache);
 
     this.cache.reset();
+
+    // ADD: Start NotificationManager after providerRegistry is initialized
+    this.notificationManager = new NotificationManager(this);
+    this.notificationManager.update(this.settings);
 
     // Respond to obsidian events
     this.registerEvent(
@@ -251,6 +258,9 @@ export default class FullCalendarPlugin extends Plugin {
    * It cleans up by detaching all calendar and sidebar views.
    */
   onunload() {
+    if (this.notificationManager) {
+      this.notificationManager.unload();
+    }
     this.app.workspace.detachLeavesOfType(FULL_CALENDAR_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(FULL_CALENDAR_SIDEBAR_VIEW_TYPE);
   }
@@ -292,7 +302,9 @@ export default class FullCalendarPlugin extends Plugin {
     this.settings = newSettings;
 
     await this.saveData(this.settings);
-    this.cache.enhancer.updateSettings(this.settings);
+    if (this.notificationManager) {
+      this.notificationManager.update(this.settings);
+    }
 
     // Any change from the settings tab that adds/removes a calendar
     // requires a full reset of the cache and providers.

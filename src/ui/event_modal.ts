@@ -59,6 +59,7 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
       availableCategories,
       enableCategory: plugin.settings.enableAdvancedCategorization,
       enableBackgroundEvents: plugin.settings.enableBackgroundEvents,
+      enableReminders: plugin.settings.enableReminders, // ADD THIS PROP
       submit: async (data, calendarIndex) => {
         const calendarId = calendars[calendarIndex].id;
         try {
@@ -145,6 +146,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
       availableCategories,
       enableCategory: plugin.settings.enableAdvancedCategorization,
       enableBackgroundEvents: plugin.settings.enableBackgroundEvents,
+      enableReminders: plugin.settings.enableReminders, // ADD THIS PROP
       submit: async (data, calendarIndex) => {
         try {
           const newCalendarSettingsId = calendars[calendarIndex].id;

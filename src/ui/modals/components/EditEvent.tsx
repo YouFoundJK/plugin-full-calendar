@@ -86,6 +86,7 @@ interface EditEventProps {
   availableCategories?: string[];
   enableCategory: boolean;
   enableBackgroundEvents?: boolean;
+  enableReminders: boolean; // ADD THIS
   open?: () => Promise<void>;
   deleteEvent?: () => Promise<void>;
   onAttemptEditInherited?: () => void;
@@ -117,6 +118,7 @@ export const EditEvent = ({
   availableCategories = [],
   enableCategory,
   enableBackgroundEvents = false,
+  enableReminders, // ADD THIS
   onAttemptEditInherited
 }: EditEventProps) => {
   const isChildOverride = !!initialEvent?.recurringEventId;
@@ -176,6 +178,9 @@ export const EditEvent = ({
   const [display, setDisplay] = useState<
     'auto' | 'block' | 'list-item' | 'background' | 'inverse-background' | 'none'
   >(initialEvent?.display || 'auto');
+
+  // Add state for endReminder
+  const [endReminder, setEndReminder] = useState(initialEvent?.endReminder || false);
 
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -260,6 +265,7 @@ export const EditEvent = ({
       category: category || undefined,
       display: display !== 'auto' ? display : undefined,
       subCategory: parsedSubCategory,
+      endReminder: endReminder || undefined, // ADD THIS LINE
       ...timeInfo,
       ...eventData
     } as OFCEvent;
@@ -407,7 +413,6 @@ export const EditEvent = ({
           </div>
           <div className="setting-item-control options-group">
             <label title={isChildOverride ? disabledTooltip : ''}>
-              {' '}
               <input
                 type="checkbox"
                 checked={allDay}
@@ -437,6 +442,21 @@ export const EditEvent = ({
                   disabled={isRecurring}
                 />{' '}
                 Completed
+              </label>
+            )}
+            {/* ADD THIS WRAPPER AROUND THE REMINDER CHECKBOX LABEL */}
+            {enableReminders && (
+              <label
+                className={allDay || !endTime ? 'is-disabled' : ''}
+                title={allDay || !endTime ? 'An end reminder requires a specific end time.' : ''}
+              >
+                <input
+                  type="checkbox"
+                  checked={endReminder}
+                  onChange={e => setEndReminder(e.target.checked)}
+                  disabled={allDay || !endTime}
+                />{' '}
+                Remind 10m before end
               </label>
             )}
           </div>
