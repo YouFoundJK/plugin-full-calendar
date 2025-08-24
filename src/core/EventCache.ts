@@ -41,7 +41,6 @@ import { Notice, TFile } from 'obsidian';
 
 import FullCalendarPlugin from '../main';
 import EventStore, { StoredEvent } from './EventStore';
-import { RecurringEventManager } from '../features/recur_events/RecurringEventManager';
 import { CalendarInfo, OFCEvent, validateEvent, EventLocation } from '../types';
 import { CalendarProvider } from '../providers/Provider';
 import { EventEnhancer } from './EventEnhancer';
@@ -90,7 +89,10 @@ export default class EventCache {
 
   private _plugin: FullCalendarPlugin;
   private _store = new EventStore();
-  private recurringEventManager: RecurringEventManager;
+  // RecurringEventManager is now nullable and lazily loaded
+  private recurringEventManager:
+    | import('../features/recur_events/RecurringEventManager').RecurringEventManager
+    | null = null;
 
   calendars = new Map<string, CalendarProvider<any>>();
   initialized = false;
@@ -102,7 +104,8 @@ export default class EventCache {
   constructor(plugin: FullCalendarPlugin) {
     this._plugin = plugin;
     this.enhancer = new EventEnhancer(this.plugin.settings);
-    this.recurringEventManager = new RecurringEventManager(this, this._plugin);
+    // REMOVE direct instantiation
+    // this.recurringEventManager = new RecurringEventManager(this, this._plugin);
   }
 
   get plugin(): FullCalendarPlugin {
@@ -402,13 +405,14 @@ export default class EventCache {
       throw new Error(`Calendar of type "${provider.type}" does not support deleting events.`);
     }
 
-    if (
-      !options?.force &&
-      (await this.recurringEventManager.handleDelete(eventId, event, options))
-    ) {
-      // The recurring manager handled the deletion logic (e.g., by showing a modal).
-      // It will call back into `deleteEvent` with `force:true` if needed.
-      return;
+    // Use lazy RecurringEventManager
+    if (!options?.force) {
+      const recurringManager = await this.getRecurringEventManager();
+      if (await recurringManager.handleDelete(eventId, event, options)) {
+        // The recurring manager handled the deletion logic (e.g., by showing a modal).
+        // It will call back into `deleteEvent` with `force:true` if needed.
+        return;
+      }
     }
 
     const handle = provider.getEventHandle(event);
@@ -524,9 +528,9 @@ export default class EventCache {
       throw new Error(`Calendar of type "${provider.type}" does not support editing events.`);
     }
 
-    // Let the recurring manager intercept and potentially take over the entire update process
-    // if a recurring parent's title/file is being renamed.
-    const handledByRecurringManager = await this.recurringEventManager.handleUpdate(
+    // Use lazy RecurringEventManager
+    const recurringManager = await this.getRecurringEventManager();
+    const handledByRecurringManager = await recurringManager.handleUpdate(
       oldEvent,
       newEvent,
       calendarId
@@ -684,12 +688,25 @@ export default class EventCache {
     return this.updateEventWithId(id, newEvent, options);
   }
 
+  private async getRecurringEventManager(): Promise<
+    import('../features/recur_events/RecurringEventManager').RecurringEventManager
+  > {
+    if (!this.recurringEventManager) {
+      const { RecurringEventManager } = await import(
+        '../features/recur_events/RecurringEventManager'
+      );
+      this.recurringEventManager = new RecurringEventManager(this, this.plugin);
+    }
+    return this.recurringEventManager;
+  }
+
   async toggleRecurringInstance(
     eventId: string,
     instanceDate: string,
     isDone: boolean
   ): Promise<void> {
-    await this.recurringEventManager.toggleRecurringInstance(eventId, instanceDate, isDone);
+    const recurringManager = await this.getRecurringEventManager();
+    await recurringManager.toggleRecurringInstance(eventId, instanceDate, isDone);
     this.flushUpdateQueue([], []);
   }
 
@@ -699,11 +716,8 @@ export default class EventCache {
     newEventData: OFCEvent
   ): Promise<void> {
     const eventForStorage = this.enhancer.prepareForStorage(newEventData);
-    await this.recurringEventManager.modifyRecurringInstance(
-      masterEventId,
-      instanceDate,
-      eventForStorage
-    );
+    const recurringManager = await this.getRecurringEventManager();
+    await recurringManager.modifyRecurringInstance(masterEventId, instanceDate, eventForStorage);
     this.flushUpdateQueue([], []);
   }
 

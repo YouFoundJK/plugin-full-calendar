@@ -4,16 +4,6 @@ import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
 import { ObsidianIO, ObsidianInterface } from '../ObsidianAdapter';
-import { FullNoteProvider } from './fullnote/FullNoteProvider';
-import { DailyNoteProvider } from './dailynote/DailyNoteProvider';
-import { ICSProvider } from './ics/ICSProvider';
-import { CalDAVProvider } from './caldav/CalDAVProvider';
-import { GoogleProvider } from './google/GoogleProvider';
-import { FullNoteProviderConfig } from './fullnote/typesLocal';
-import { DailyNoteProviderConfig } from './dailynote/typesDaily';
-import { ICSProviderConfig } from './ics/typesICS';
-import { CalDAVProviderConfig } from './caldav/typesCalDAV';
-import { GoogleProviderConfig } from './google/typesGCal';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -22,11 +12,13 @@ const MILLICONDS_BETWEEN_REVALIDATIONS = 5 * MINUTE;
 export type CalendarProviderClass = new (
   config: any,
   plugin: FullCalendarPlugin,
-  app?: ObsidianInterface // Make app optional for remote providers
+  app?: ObsidianInterface
 ) => CalendarProvider<any>;
 
+type ProviderLoader = () => Promise<{ [key: string]: CalendarProviderClass }>;
+
 export class ProviderRegistry {
-  private providers = new Map<string, CalendarProviderClass>();
+  private providers = new Map<string, ProviderLoader>();
   private instances = new Map<string, CalendarProvider<any>>();
   private sources: CalendarInfo[] = [];
 
@@ -37,19 +29,25 @@ export class ProviderRegistry {
   private identifierToSessionIdMap: Map<string, string> = new Map();
   private identifierMapPromise: Promise<void> | null = null;
 
-  // Updated constructor
   constructor(plugin: FullCalendarPlugin) {
     this.plugin = plugin;
-    this.initializeInstances();
+    // initializeInstances is now called from main.ts after settings are loaded.
   }
 
   // Register all built-in providers in one call
   public registerBuiltInProviders(): void {
-    this.register(FullNoteProvider as any);
-    this.register(DailyNoteProvider as any);
-    this.register(ICSProvider);
-    this.register(CalDAVProvider);
-    this.register(GoogleProvider);
+    this.register('local', () => import('./fullnote/FullNoteProvider'));
+    this.register('dailynote', () => import('./dailynote/DailyNoteProvider'));
+    this.register('ical', () => import('./ics/ICSProvider'));
+    this.register('caldav', () => import('./caldav/CalDAVProvider'));
+    this.register('google', () => import('./google/GoogleProvider'));
+  }
+
+  public register(type: string, loader: ProviderLoader): void {
+    if (this.providers.has(type)) {
+      console.warn(`Provider loader for type "${type}" is already registered. Overwriting.`);
+    }
+    this.providers.set(type, loader);
   }
 
   // Method to link cache
@@ -59,7 +57,7 @@ export class ProviderRegistry {
 
   public updateSources(newSources: CalendarInfo[]): void {
     this.sources = newSources;
-    this.initializeInstances();
+    // Instances will be re-initialized from main.ts
   }
 
   public getSource(id: string): CalendarInfo | undefined {
@@ -75,24 +73,52 @@ export class ProviderRegistry {
     return source ? (source as any).config : undefined;
   }
 
-  /**
-   * New registration method for provider classes (constructors).
-   */
-  public register(providerClass: CalendarProviderClass): void {
-    const providerType = (providerClass as any).type;
-    if (this.providers.has(providerType)) {
-      console.warn(
-        `Provider class with type "${providerType}" is already registered. Overwriting.`
-      );
+  public async getProviderForType(type: string): Promise<CalendarProviderClass | undefined> {
+    const loader = this.providers.get(type);
+    if (!loader) {
+      console.error(`Full Calendar: No provider loader found for type "${type}".`);
+      return undefined;
     }
-    this.providers.set(providerType, providerClass);
+    try {
+      const module = await loader();
+      const ProviderClass = Object.values(module).find(
+        (exported: any) => exported?.type === type
+      ) as CalendarProviderClass | undefined;
+
+      if (!ProviderClass) {
+        console.error(
+          `Full Calendar: Could not find a provider class with type "${type}" in the loaded module.`
+        );
+        return undefined;
+      }
+      return ProviderClass;
+    } catch (err) {
+      console.error(`Full Calendar: Error loading provider for type "${type}".`, err);
+      return undefined;
+    }
   }
 
-  /**
-   * New getter for provider classes (constructors).
-   */
-  public getProviderForType(type: string): CalendarProviderClass | undefined {
-    return this.providers.get(type);
+  public async initializeInstances(): Promise<void> {
+    this.instances.clear();
+    const sources = this.plugin.settings.calendarSources;
+
+    for (const source of sources) {
+      const settingsId = (source as any).id;
+      if (!settingsId) {
+        console.warn('Full Calendar: Calendar source is missing an ID.', source);
+        continue;
+      }
+
+      const ProviderClass = await this.getProviderForType(source.type);
+
+      if (ProviderClass) {
+        const app = new ObsidianIO(this.plugin.app);
+        const instance = new ProviderClass(source as any, this.plugin, app);
+        this.instances.set(settingsId, instance);
+      } else {
+        // Warning is already logged in getProviderForType
+      }
+    }
   }
 
   // Methods from IdentifierManager, adapted
@@ -254,8 +280,6 @@ export class ProviderRegistry {
         }
 
         if (isRelevant) {
-          // The `config` property on this object is never used again,
-          // but we'll pass sourceInfo to be consistent.
           interestedInstances.push({ instance, config: sourceInfo, settingsId });
         }
       }
@@ -340,44 +364,6 @@ export class ProviderRegistry {
         new Notice('Remote calendars revalidated.');
       }
     });
-  }
-
-  private initializeInstances(): void {
-    this.instances.clear();
-    const sources = this.plugin.settings.calendarSources;
-
-    for (const source of sources) {
-      const settingsId = (source as any).id;
-      if (!settingsId) {
-        console.warn('Full Calendar: Calendar source is missing an ID.', source);
-        continue;
-      }
-
-      let instance: CalendarProvider<any> | null = null;
-      const app = new ObsidianIO(this.plugin.app);
-
-      switch (source.type) {
-        case 'local':
-          instance = new FullNoteProvider(source as any, this.plugin, app);
-          break;
-        case 'dailynote':
-          instance = new DailyNoteProvider(source as any, this.plugin, app);
-          break;
-        case 'ical':
-          instance = new ICSProvider(source as any, this.plugin);
-          break;
-        case 'caldav':
-          instance = new CalDAVProvider(source as any, this.plugin);
-          break;
-        case 'google':
-          instance = new GoogleProvider(source as any, this.plugin);
-          break;
-      }
-
-      if (instance) {
-        this.instances.set(settingsId, instance);
-      }
-    }
   }
 
   public getInstance(id: string): CalendarProvider<any> | undefined {

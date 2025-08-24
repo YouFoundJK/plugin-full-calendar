@@ -92,10 +92,17 @@ export class CalendarView extends ItemView {
    * Switch to a specific workspace by ID.
    * @param workspaceId - The workspace ID to switch to, or null for default view
    */
+  private workspaceSwitchTimeout: any = null;
   async switchToWorkspace(workspaceId: string | null) {
+    if (this.workspaceSwitchTimeout) {
+      clearTimeout(this.workspaceSwitchTimeout);
+    }
     this.plugin.settings.activeWorkspace = workspaceId;
     await this.plugin.saveSettings();
-    await this.onOpen(); // Re-render the calendar with new settings
+    // Debounce re-render to avoid redundant reloads
+    this.workspaceSwitchTimeout = setTimeout(() => {
+      this.onOpen(); // Re-render the calendar with new settings
+    }, 100);
   }
 
   /**
@@ -221,9 +228,18 @@ export class CalendarView extends ItemView {
 
       const shadowEvents = this.generateShadowEvents(mainEvents, true);
 
-      shadowEvents.forEach(shadowEvent => {
-        this.fullCalendarView?.addEvent(shadowEvent, calendarId);
-      });
+      // Throttle bulk shadow event additions for smoother UI
+      let i = 0;
+      const addNext = () => {
+        if (i < shadowEvents.length) {
+          requestAnimationFrame(() => {
+            this.fullCalendarView?.addEvent(shadowEvents[i], calendarId);
+            i++;
+            addNext();
+          });
+        }
+      };
+      addNext();
     }
   }
 
@@ -701,8 +717,12 @@ export class CalendarView extends ItemView {
       const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
 
       // 3. Resync the entire calendar view.
-      this.fullCalendarView.removeAllEventSources();
-      sources.forEach(source => this.fullCalendarView?.addEventSource(source));
+      if (this.fullCalendarView) {
+        requestAnimationFrame(() => {
+          this.fullCalendarView!.removeAllEventSources();
+          sources.forEach(source => this.fullCalendarView!.addEventSource(source));
+        });
+      }
 
       // 4. Re-apply shadow events if needed.
       const viewType = this.fullCalendarView.view?.type;
@@ -714,7 +734,9 @@ export class CalendarView extends ItemView {
 
   onResize(): void {
     if (this.fullCalendarView) {
-      this.fullCalendarView.render();
+      requestAnimationFrame(() => {
+        this.fullCalendarView!.render();
+      });
     }
   }
 

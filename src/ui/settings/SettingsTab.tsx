@@ -48,7 +48,6 @@ import { renderWorkspaceSettings } from './sections/renderWorkspaces';
 // Import the new React components
 import './changelog.css';
 import { renderFooter } from './components/renderFooter';
-import { Changelog } from './components/Changelog';
 import { renderWhatsNew } from './sections/renderWhatsNew';
 
 export function addCalendarButton(
@@ -84,14 +83,12 @@ export function addCalendarButton(
         const sourceType = dropdown.getValue();
         const providerType = sourceType === 'icloud' ? 'caldav' : sourceType;
 
-        // FIX: Use the correct method name
-        const providerClass = plugin.providerRegistry.getProviderForType(providerType);
+        const providerClass = await plugin.providerRegistry.getProviderForType(providerType);
         if (!providerClass) {
           new Notice(`${providerType} provider is not registered.`);
           return;
         }
         const ConfigComponent = (providerClass as any).getConfigurationComponent();
-        // --- END REPLACE BLOCK ---
 
         let modal = new ReactModal(plugin.app, async () => {
           await plugin.loadSettings();
@@ -172,17 +169,18 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     this.registry = registry;
   }
 
-  display(): void {
+  async display(): Promise<void> {
     this.containerEl.empty();
     if (this.showFullChangelog) {
-      this._renderFullChangelog();
+      await this._renderFullChangelog(); // This now handles its own async rendering
     } else {
-      this._renderMainSettings();
+      await this._renderMainSettings();
     }
   }
 
-  private _renderFullChangelog(): void {
+  private async _renderFullChangelog(): Promise<void> {
     const root = ReactDOM.createRoot(this.containerEl);
+    const { Changelog } = await import('./components/Changelog');
     root.render(
       createElement(Changelog, {
         onBack: () => {
@@ -193,7 +191,28 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     );
   }
 
-  private _renderMainSettings(): void {
+  private async _renderMainSettings(): Promise<void> {
+    // Defer loading of heavy settings sections
+    const [
+      renderGeneralSettings,
+      renderAppearanceSettings,
+      renderWorkspaceSettings,
+      renderCategorizationSettings,
+      renderWhatsNew,
+      renderCalendarManagement,
+      renderGoogleSettings,
+      renderFooter
+    ] = await Promise.all([
+      import('./sections/renderGeneral').then(m => m.renderGeneralSettings),
+      import('./sections/renderAppearance').then(m => m.renderAppearanceSettings),
+      import('./sections/renderWorkspaces').then(m => m.renderWorkspaceSettings),
+      import('./sections/renderCategorization').then(m => m.renderCategorizationSettings),
+      import('./sections/renderWhatsNew').then(m => m.renderWhatsNew),
+      import('./sections/renderCalendars').then(m => m.renderCalendarManagement),
+      import('./sections/renderGoogle').then(m => m.renderGoogleSettings),
+      import('./components/renderFooter').then(m => m.renderFooter)
+    ]);
+
     renderGeneralSettings(this.containerEl, this.plugin, () => this.display());
     renderAppearanceSettings(this.containerEl, this.plugin, () => this.display());
     renderWorkspaceSettings(this.containerEl, this.plugin, () => this.display());

@@ -100,6 +100,8 @@ export default class FullCalendarPlugin extends Plugin {
     this.providerRegistry.registerBuiltInProviders();
 
     await this.loadSettings(); // This now handles setting and syncing
+    await this.providerRegistry.initializeInstances();
+
     await manageTimezone(this);
 
     // Link the two singletons.
