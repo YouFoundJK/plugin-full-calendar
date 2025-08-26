@@ -309,7 +309,8 @@ export class ProviderRegistry {
     if (!this.cache) return;
     // For a delete, the new state of the file is "no events".
     // The cache will diff this against its old state and remove everything.
-    await this.cache.syncFile({ path } as TFile, []);
+    // Provide a minimal file-like object; syncFile only requires a .path property via TFile shape.
+    await this.cache.syncFile({ path } as any, []);
   }
 
   // Add these properties for remote revalidation

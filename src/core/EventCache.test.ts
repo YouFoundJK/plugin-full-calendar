@@ -296,7 +296,8 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
   return [cache, calendar, mockPlugin] as const;
 };
 
-const mockFile = withCounter(path => ({ path }) as TFile, 'file');
+// Minimal file-like object; only path is used by store logic.
+const mockFile = withCounter(path => ({ path }) as any, 'file');
 const mockLocation = (withLine = false): EventLocation => ({
   file: mockFile(),
   lineNumber: withLine ? Math.floor(Math.random() * 100) : undefined
@@ -616,7 +617,7 @@ describe('editable calendars', () => {
         location,
         calendarId: 'test'
       }));
-      await cache.syncFile(file as TFile, newEventsForSync);
+      await cache.syncFile(file as any, newEventsForSync);
 
       assertCacheContentCounts(cache, {
         calendars: 1,
