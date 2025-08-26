@@ -564,7 +564,8 @@ export function renderErrorLog(
   if (processingErrors.length === 0) {
     errorLogSummary.textContent =
       'No processing issues found. All data is sourced from the main Full Calendar cache.';
-    errorLogContainer.style.display = 'none';
+    errorLogContainer.addClass('is-hidden');
+    errorLogContainer.removeClass('is-visible');
     return;
   }
 
@@ -586,5 +587,6 @@ export function renderErrorLog(
     const reasonLabel = safeCreateEl(content, 'strong', { text: 'Reason: ' });
     content.appendChild(document.createTextNode(err.reason || 'No specific reason provided.'));
   });
-  errorLogContainer.style.display = 'block';
+  errorLogContainer.removeClass('is-hidden');
+  errorLogContainer.addClass('is-visible');
 }

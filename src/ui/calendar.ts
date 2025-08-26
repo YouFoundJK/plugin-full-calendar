@@ -337,8 +337,7 @@ export async function renderCalendar(
     eventDidMount: ({ event, el, textColor }) => {
       // Don't add context menu or checkboxes to shadow events
       if (event.extendedProps.isShadow) {
-        el.style.pointerEvents = 'none';
-        el.style.cursor = 'default';
+        el.addClass('fc-event-shadow');
         return;
       }
 

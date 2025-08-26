@@ -477,12 +477,14 @@ export class UIService {
 
     const showNextTip = () => {
       if (!this.proTipTextEl) return;
-      this.proTipTextEl.style.opacity = '0';
+      this.proTipTextEl.removeClass('is-opaque');
+      this.proTipTextEl.addClass('is-transparent');
       setTimeout(() => {
         if (!this.proTipTextEl) return;
         this.currentTipIndex = (this.currentTipIndex + 1) % this.proTips.length;
         this.proTipTextEl.textContent = this.proTips[this.currentTipIndex];
-        this.proTipTextEl.style.opacity = '1';
+        this.proTipTextEl.removeClass('is-transparent');
+        this.proTipTextEl.addClass('is-opaque');
       }, 150);
     };
 

@@ -80,7 +80,8 @@ class AutocompleteComponent {
   private onBlur = () => {
     // Delay hiding to allow click events on suggestions to fire
     setTimeout(() => {
-      this.suggestionsEl.style.display = 'none';
+      this.suggestionsEl.removeClass('is-visible');
+      this.suggestionsEl.addClass('is-hidden');
     }, 200);
   };
 
@@ -98,12 +99,14 @@ class AutocompleteComponent {
 
         this.isSelectionInProgress = true;
         this.onSelectCallback(valueToSubmit);
-        this.suggestionsEl.style.display = 'none';
+        this.suggestionsEl.removeClass('is-visible');
+        this.suggestionsEl.addClass('is-hidden');
         this.inputEl.blur();
         this.isSelectionInProgress = false;
         break;
       case 'Escape':
-        this.suggestionsEl.style.display = 'none';
+        this.suggestionsEl.removeClass('is-visible');
+        this.suggestionsEl.addClass('is-hidden');
         break;
       case 'ArrowDown':
       case 'ArrowUp':
@@ -140,15 +143,18 @@ class AutocompleteComponent {
           e.preventDefault(); // Prevent blur event from firing first
           this.isSelectionInProgress = true;
           this.onSelectCallback(item);
-          this.suggestionsEl.style.display = 'none';
+          this.suggestionsEl.removeClass('is-visible');
+          this.suggestionsEl.addClass('is-hidden');
           this.isSelectionInProgress = false;
         });
 
         this.suggestionsEl.appendChild(div);
       });
-      this.suggestionsEl.style.display = 'block';
+      this.suggestionsEl.removeClass('is-hidden');
+      this.suggestionsEl.addClass('is-visible');
     } else {
-      this.suggestionsEl.style.display = 'none';
+      this.suggestionsEl.removeClass('is-visible');
+      this.suggestionsEl.addClass('is-hidden');
     }
   };
 

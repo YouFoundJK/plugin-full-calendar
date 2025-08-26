@@ -90,13 +90,14 @@ export class DetailPopup {
 
     this.overlayEl.classList.add('visible');
     this.popupEl.classList.add('visible');
-    // Use the App instance to find the correct body element for overflow prevention
-    this.app.workspace.containerEl.ownerDocument.body.style.overflow = 'hidden';
+    const body = this.app.workspace.containerEl.ownerDocument.body;
+    body.classList.add('no-scroll');
   };
 
   public hide = () => {
     this.overlayEl.classList.remove('visible');
     this.popupEl.classList.remove('visible');
-    this.app.workspace.containerEl.ownerDocument.body.style.overflow = '';
+    const body = this.app.workspace.containerEl.ownerDocument.body;
+    body.classList.remove('no-scroll');
   };
 }
