@@ -12,7 +12,8 @@
  * @license See LICENSE.md
  */
 
-import { NotificationManager } from './features/NotificationManager'; // ADD THIS IMPORT
+import { NotificationManager } from './features/NotificationManager';
+import { StatusBarManager } from './features/statusbar/StatusBarManager'; // added
 import { LazySettingsTab } from './ui/settings/LazySettingsTab';
 import {
   ensureCalendarIds,
@@ -38,6 +39,7 @@ export default class FullCalendarPlugin extends Plugin {
   private _settings: FullCalendarSettings = DEFAULT_SETTINGS;
 
   notificationManager!: NotificationManager;
+  statusBarManager!: StatusBarManager; // added
 
   get settings(): FullCalendarSettings {
     return this._settings;
@@ -110,7 +112,9 @@ export default class FullCalendarPlugin extends Plugin {
 
     // ADD: Start NotificationManager after providerRegistry is initialized
     this.notificationManager = new NotificationManager(this);
-    this.notificationManager.update(this.settings); // Initial update
+    this.notificationManager.update(this.settings);
+    this.statusBarManager = new StatusBarManager(this); // added
+    this.statusBarManager.update(this.settings); // added
     const workspaceEvents = this.app.workspace as unknown as {
       // Keep `any` here because Obsidian's internal event system passes heterogeneous arguments.
       // Localising the unsafeness avoids polluting the rest of the codebase.
@@ -124,6 +128,12 @@ export default class FullCalendarPlugin extends Plugin {
       workspaceEvents.on(
         'full-calendar:settings-updated',
         this.notificationManager.update.bind(this.notificationManager)
+      )
+    );
+    this.registerEvent(
+      workspaceEvents.on(
+        'full-calendar:settings-updated',
+        this.statusBarManager.update.bind(this.statusBarManager) // added
       )
     );
     this.registerEvent(
@@ -281,6 +291,9 @@ export default class FullCalendarPlugin extends Plugin {
   onunload() {
     if (this.notificationManager) {
       this.notificationManager.unload();
+    }
+    if (this.statusBarManager) {
+      this.statusBarManager.unload(); // added
     }
     if (this.providerRegistry) {
       this.providerRegistry.stopListening();

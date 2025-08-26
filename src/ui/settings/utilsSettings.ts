@@ -59,7 +59,8 @@ export function migrateAndSanitizeSettings(settings: unknown): {
     enableBackgroundEvents: raw.enableBackgroundEvents ?? true,
     enableReminders: raw.enableReminders ?? false,
     workspaces: raw.workspaces || [],
-    activeWorkspace: raw.activeWorkspace ?? null
+    activeWorkspace: raw.activeWorkspace ?? null,
+    showEventInStatusBar: (raw as Partial<FullCalendarSettings>).showEventInStatusBar ?? false
   } as FullCalendarSettings & { calendarSources: (CalendarInfo | GoogleSourceWithAuth)[] } & {
     googleAuth?: LegacyGoogleAuth;
   };

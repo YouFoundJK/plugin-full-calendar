@@ -66,6 +66,7 @@ export interface FullCalendarSettings {
   enableReminders: boolean; // ADD THIS LINE
   workspaces: WorkspaceSettings[];
   activeWorkspace: string | null; // Workspace ID, null means default view
+  showEventInStatusBar: boolean; // added
 }
 
 export const DEFAULT_SETTINGS: FullCalendarSettings = {
@@ -96,7 +97,8 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   enableBackgroundEvents: true,
   enableReminders: false,
   workspaces: [],
-  activeWorkspace: null
+  activeWorkspace: null,
+  showEventInStatusBar: false // added
 };
 
 // Utility functions for workspace management

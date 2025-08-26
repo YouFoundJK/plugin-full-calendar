@@ -1,6 +1,9 @@
 // src/core/EventCache.test.ts
 
-import { TFile } from 'obsidian';
+import { CalendarInfo, EventLocation, OFCEvent } from '../types';
+import { CalendarProvider } from '../providers/Provider';
+import { DEFAULT_SETTINGS } from '../types/settings';
+import EventCache, { CacheEntry, OFCEventSource, CachedEvent } from './EventCache';
 
 jest.mock(
   'obsidian',
@@ -16,13 +19,14 @@ jest.mock(
   { virtual: true }
 );
 
-import FullCalendarPlugin from '../main';
-import { EventPathLocation, StoredEvent } from './EventStore';
-import { CalendarInfo, EventLocation, OFCEvent } from '../types';
-import { CalendarProvider, CalendarProviderCapabilities } from '../providers/Provider';
-import { DEFAULT_SETTINGS, FullCalendarSettings } from '../types/settings';
-import EventCache, { CacheEntry, OFCEventSource, CachedEvent } from './EventCache';
-import { EventHandle } from '../providers/typesProvider';
+// Mock TimeEngine to prevent real timer/window usage in tests
+jest.mock('./TimeEngine', () => ({
+  TimeEngine: jest.fn().mockImplementation(() => ({
+    start: jest.fn(),
+    stop: jest.fn(),
+    scheduleCacheRebuild: jest.fn()
+  }))
+}));
 
 jest.mock('../types/schema', () => ({
   validateEvent: (e: any) => e
