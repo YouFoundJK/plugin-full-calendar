@@ -527,11 +527,9 @@ export class InsightConfigModal extends Modal {
     const wrapper = setting.controlEl.createDiv({ cls: 'autocomplete-wrapper' });
     const tagInputContainer = wrapper.createDiv({ cls: 'tag-input-container' });
     const tagsEl = tagInputContainer.createDiv({ cls: 'tags' });
-    const inputEl = tagInputContainer.createEl('input', {
-      type: 'text',
-      cls: 'tag-input',
-      placeholder
-    });
+    const inputEl = tagInputContainer.createEl('input', { cls: 'tag-input' });
+    inputEl.setAttribute('type', 'text');
+    inputEl.setAttribute('placeholder', placeholder);
 
     const renderTags = () => {
       tagsEl.empty();

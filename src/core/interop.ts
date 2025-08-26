@@ -173,7 +173,7 @@ export function toEventInput(
   // Assign category-level coloring
   if (settings.enableAdvancedCategorization && frontmatter.category) {
     const categorySetting = (settings.categorySettings || []).find(
-      (c: any) => c.name === frontmatter.category
+      (c: { name: string; color: string }) => c.name === frontmatter.category
     );
     if (categorySetting) {
       const { color, textColor } = getCalendarColors(categorySetting.color);

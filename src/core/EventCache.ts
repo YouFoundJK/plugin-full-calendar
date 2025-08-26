@@ -141,7 +141,7 @@ export default class EventCache {
     // this.resync();
 
     infos.forEach(info => {
-      const settingsId = (info as any).id;
+      const settingsId = info.id;
       if (!settingsId) {
         console.warn('Full Calendar: Calendar source is missing an ID.', info);
         return;
@@ -226,7 +226,6 @@ export default class EventCache {
       const events = eventsByCalendar.get(calId) || [];
       const calendarInfo = this.plugin.providerRegistry.getSource(calId);
       if (!calendarInfo) continue;
-      const config = (calendarInfo as any).config || {};
       const capabilities = provider.getCapabilities();
       const editable = capabilities.canCreate || capabilities.canEdit || capabilities.canDelete;
       result.push({
@@ -251,7 +250,6 @@ export default class EventCache {
     if (!provider) return false;
     const calendarInfo = this.plugin.providerRegistry.getSource(details.calendarId);
     if (!calendarInfo) return false;
-    const config = (calendarInfo as any).config;
     const capabilities = provider.getCapabilities();
     return capabilities.canCreate || capabilities.canEdit || capabilities.canDelete;
   }
@@ -407,7 +405,7 @@ export default class EventCache {
       throw new Error(`Event with ID ${eventId} not found for deletion.`);
     }
     const { event, calendarId } = originalDetails;
-    const { provider, config } = this.getProviderForEvent(eventId);
+    const { provider } = this.getProviderForEvent(eventId);
 
     // Step 2: Pre-flight checks and recurring event logic
     if (!provider.getCapabilities().canDelete) {
@@ -529,7 +527,7 @@ export default class EventCache {
       throw new Error(`Event with ID ${eventId} not present in event store.`);
     }
 
-    const { provider, config, event: oldEvent } = this.getProviderForEvent(eventId);
+    const { provider, event: oldEvent } = this.getProviderForEvent(eventId);
     const calendarId = originalDetails.calendarId;
 
     // Step 2: Pre-flight checks and recurring event logic
@@ -983,6 +981,6 @@ export default class EventCache {
     if (!calendarInfo) {
       throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
     }
-    return { provider, config: (calendarInfo as any).config, location, event };
+    return { provider, location, event };
   }
 }

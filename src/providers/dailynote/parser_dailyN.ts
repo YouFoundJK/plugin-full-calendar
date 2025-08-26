@@ -152,12 +152,11 @@ export const getInlineEventFromLine = (
     return null;
   }
 
-  let eventData: any = {};
-  eventData.title = rawTitle;
+  const eventData: Partial<OFCEvent> = { title: rawTitle };
 
   const allDay = !('startTime' in attrs && !!attrs.startTime);
 
-  const attrsForValidation = {
+  const attrsForValidation: Record<string, unknown> = {
     ...eventData,
     completed: checkboxTodo(text),
     ...globals,
@@ -165,11 +164,11 @@ export const getInlineEventFromLine = (
     allDay
   };
 
-  if (!attrsForValidation.date) {
-    attrsForValidation.date = '1970-01-01';
+  if (!('date' in attrsForValidation)) {
+    attrsForValidation['date'] = '1970-01-01';
   }
 
-  return validateEvent(attrsForValidation);
+  return validateEvent(attrsForValidation as OFCEvent);
 };
 
 export function getAllInlineEventsFromFile(

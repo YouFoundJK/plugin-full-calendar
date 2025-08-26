@@ -88,7 +88,8 @@ export class NotificationManager {
             S: RRule.SA
           };
 
-          const ruleOptions: any = { dtstart, freq: RRule.WEEKLY };
+          // Use Partial<Options> from rrule for proper typing.
+          const ruleOptions: Partial<import('rrule').Options> = { dtstart, freq: RRule.WEEKLY };
           if (event.daysOfWeek) {
             ruleOptions.byweekday = event.daysOfWeek.map(c => weekdays[c as keyof typeof weekdays]);
           } else if (event.dayOfMonth) {

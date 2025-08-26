@@ -32,6 +32,15 @@ import { UpdateViewCallback, CachedEvent } from '../core/EventCache';
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
 import { ViewEnhancer } from '../core/ViewEnhancer';
 
+// Narrowed resource shape used for timeline views.
+interface ResourceItem {
+  id: string;
+  title: string;
+  parentId?: string;
+  eventColor?: string;
+  extendedProps?: Record<string, unknown>;
+}
+
 export const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
 export const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';
 
@@ -65,9 +74,7 @@ export class CalendarView extends ItemView {
   fullCalendarView: Calendar | null = null;
   callback: UpdateViewCallback | null = null;
   private viewEnhancer: ViewEnhancer | null = null;
-  private timelineResources:
-    | { id: string; title: string; parentId?: string; eventColor?: string; extendedProps?: any }[]
-    | null = null;
+  private timelineResources: ResourceItem[] | null = null;
   private settingsListener: (() => Promise<void>) | null = null; // Added for view-config pub/sub
 
   constructor(leaf: WorkspaceLeaf, plugin: FullCalendarPlugin, inSidebar = false) {
@@ -92,7 +99,7 @@ export class CalendarView extends ItemView {
    * Switch to a specific workspace by ID.
    * @param workspaceId - The workspace ID to switch to, or null for default view
    */
-  private workspaceSwitchTimeout: any = null;
+  private workspaceSwitchTimeout: ReturnType<typeof setTimeout> | null = null;
   async switchToWorkspace(workspaceId: string | null) {
     if (this.workspaceSwitchTimeout) {
       clearTimeout(this.workspaceSwitchTimeout);
@@ -246,20 +253,8 @@ export class CalendarView extends ItemView {
   /**
    * Lazily build resources for timeline views based on current settings and cache.
    */
-  private buildTimelineResources(): {
-    id: string;
-    title: string;
-    parentId?: string;
-    eventColor?: string;
-    extendedProps?: any;
-  }[] {
-    const resources: {
-      id: string;
-      title: string;
-      parentId?: string;
-      eventColor?: string;
-      extendedProps: any;
-    }[] = [];
+  private buildTimelineResources(): ResourceItem[] {
+    const resources: ResourceItem[] = [];
     if (!this.plugin.settings.enableAdvancedCategorization) {
       return resources;
     }
@@ -567,9 +562,13 @@ export class CalendarView extends ItemView {
             );
             return !!didModify;
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error(e);
-          new Notice(e.message);
+          if (e instanceof Error) {
+            new Notice(e.message);
+          } else {
+            new Notice('Failed to modify event.');
+          }
           return false;
         }
       },
@@ -694,8 +693,7 @@ export class CalendarView extends ItemView {
       this.addShadowEventsToView();
     }
 
-    // @ts-ignore
-    window.fc = this.fullCalendarView;
+    window.fc = this.fullCalendarView ?? undefined;
 
     this.registerDomEvent(this.containerEl, 'mouseenter', () => {
       this.plugin.providerRegistry.revalidateRemoteCalendars();
@@ -708,17 +706,21 @@ export class CalendarView extends ItemView {
 
     // Remove previous settingsListener if present
     if (this.settingsListener) {
-      (this.plugin.app.workspace as any).off(
-        'full-calendar:view-config-changed',
-        this.settingsListener
-      );
+      (
+        this.plugin.app.workspace as unknown as {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          off: (name: string, cb: (...a: any[]) => void) => void;
+        }
+      ).off('full-calendar:view-config-changed', this.settingsListener);
     }
     // Register new settingsListener for view-config changes
     this.settingsListener = () => this.onOpen();
-    (this.plugin.app.workspace as any).on(
-      'full-calendar:view-config-changed',
-      this.settingsListener
-    );
+    (
+      this.plugin.app.workspace as unknown as {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        on: (name: string, cb: (...a: any[]) => void) => void;
+      }
+    ).on('full-calendar:view-config-changed', this.settingsListener);
 
     this.callback = this.plugin.cache.on('update', () => {
       if (!this.viewEnhancer || !this.fullCalendarView) {
@@ -765,10 +767,12 @@ export class CalendarView extends ItemView {
       this.callback = null;
     }
     if (this.settingsListener) {
-      (this.plugin.app.workspace as any).off(
-        'full-calendar:view-config-changed',
-        this.settingsListener
-      );
+      (
+        this.plugin.app.workspace as unknown as {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          off: (name: string, cb: (...a: any[]) => void) => void;
+        }
+      ).off('full-calendar:view-config-changed', this.settingsListener);
       this.settingsListener = null;
     }
   }
