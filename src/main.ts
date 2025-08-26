@@ -277,8 +277,8 @@ export default class FullCalendarPlugin extends Plugin {
     if (this.providerRegistry) {
       this.providerRegistry.stopListening();
     }
-    this.app.workspace.detachLeavesOfType(FULL_CALENDAR_VIEW_TYPE);
-    this.app.workspace.detachLeavesOfType(FULL_CALENDAR_SIDEBAR_VIEW_TYPE);
+    // NOTE: Per Obsidian plugin guidelines, do NOT detach leaves of custom views here.
+    // Obsidian will handle stale views; detaching in onunload is considered an anti-pattern.
   }
 
   /**
