@@ -44,6 +44,68 @@ interface ResourceItem {
 export const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
 export const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';
 
+// REMOVE OLD CONSTANTS
+/*
+const ZOOM_LEVELS = [
+  { slotDuration: '01:00:00', slotLabelInterval: '01:00' }, // Level 0: Zoomed Out
+  { slotDuration: '00:30:00', slotLabelInterval: '01:00' }, // Level 1: Default
+  { slotDuration: '00:15:00', slotLabelInterval: '00:30' }, // Level 2: Zoomed In
+  { slotDuration: '00:05:00', slotLabelInterval: '00:15' } // Level 3: Max Zoom
+];
+const DEFAULT_ZOOM_INDEX = 1;
+*/
+
+// ADD NEW CONFIGURATION OBJECT
+const VIEW_ZOOM_CONFIG: {
+  [viewPrefix: string]: {
+    defaultIndex: number;
+    levels: { slotDuration: string; slotLabelInterval: string }[];
+  };
+} = {
+  timeGrid: {
+    defaultIndex: 1,
+    levels: [
+      { slotDuration: '01:00:00', slotLabelInterval: '01:00:00' },
+      { slotDuration: '00:30:00', slotLabelInterval: '01:00:00' }, // Default
+      { slotDuration: '00:15:00', slotLabelInterval: '00:30:00' },
+      { slotDuration: '00:05:00', slotLabelInterval: '00:15:00' }
+    ]
+  },
+  resourceTimelineWeek: {
+    defaultIndex: 2, // Start more zoomed out
+    levels: [
+      { slotDuration: '06:00:00', slotLabelInterval: '06:00:00' },
+      { slotDuration: '04:00:00', slotLabelInterval: '04:00:00' },
+      { slotDuration: '02:00:00', slotLabelInterval: '02:00:00' }, // Default
+      { slotDuration: '01:00:00', slotLabelInterval: '01:00:00' }
+    ]
+  },
+  resourceTimeline: {
+    defaultIndex: 1, // Same as timeGrid, for resourceTimelineDay
+    levels: [
+      { slotDuration: '01:00:00', slotLabelInterval: '01:00:00' },
+      { slotDuration: '00:30:00', slotLabelInterval: '01:00:00' }, // Default
+      { slotDuration: '00:15:00', slotLabelInterval: '00:30:00' },
+      { slotDuration: '00:05:00', slotLabelInterval: '00:15:00' }
+    ]
+  }
+};
+// END NEW CONFIGURATION
+
+function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T {
+  let inThrottle: boolean;
+  let lastResult: ReturnType<T>;
+
+  return function (this: ThisParameterType<T>, ...args: Parameters<T>): ReturnType<T> {
+    if (!inThrottle) {
+      inThrottle = true;
+      setTimeout(() => (inThrottle = false), limit);
+      lastResult = func.apply(this, args);
+    }
+    return lastResult;
+  } as T;
+}
+
 export function getCalendarColors(color: string | null | undefined): {
   color: string;
   textColor: string;
@@ -75,12 +137,67 @@ export class CalendarView extends ItemView {
   callback: UpdateViewCallback | null = null;
   private viewEnhancer: ViewEnhancer | null = null;
   private timelineResources: ResourceItem[] | null = null;
+  // private currentZoomIndex: number = DEFAULT_ZOOM_INDEX; // REMOVE THIS LINE
+  private zoomIndexByView: { [viewType: string]: number } = {}; // ADD THIS LINE
+  private throttledZoom: (event: WheelEvent) => void;
 
   constructor(leaf: WorkspaceLeaf, plugin: FullCalendarPlugin, inSidebar = false) {
     super(leaf);
     this.plugin = plugin;
     this.inSidebar = inSidebar;
+    this.throttledZoom = throttle(this.handleWheelZoom.bind(this), 100);
   }
+
+  // ADD THIS HELPER METHOD
+  private findBestZoomConfigKey(viewType: string): string | null {
+    let bestMatchKey: string | null = null;
+    for (const key in VIEW_ZOOM_CONFIG) {
+      if (viewType.startsWith(key)) {
+        if (!bestMatchKey || key.length > bestMatchKey.length) {
+          bestMatchKey = key;
+        }
+      }
+    }
+    return bestMatchKey;
+  }
+  // END HELPER METHOD
+
+  // REPLACE the old handleWheelZoom method with this new version
+  private handleWheelZoom(event: WheelEvent): void {
+    if (!this.fullCalendarView || !(event.ctrlKey || event.metaKey)) {
+      return;
+    }
+
+    const viewType = this.fullCalendarView.view.type;
+    const configKey = this.findBestZoomConfigKey(viewType);
+
+    if (!configKey) {
+      return; // This view type doesn't support zooming.
+    }
+
+    event.preventDefault();
+
+    const config = VIEW_ZOOM_CONFIG[configKey];
+    const maxZoom = config.levels.length - 1;
+    const currentZoom = this.zoomIndexByView[configKey] ?? config.defaultIndex;
+
+    const direction = event.deltaY < 0 ? 'in' : 'out';
+
+    let newIndex = currentZoom;
+    if (direction === 'in' && currentZoom < maxZoom) {
+      newIndex++;
+    } else if (direction === 'out' && currentZoom > 0) {
+      newIndex--;
+    }
+
+    if (newIndex !== currentZoom) {
+      this.zoomIndexByView[configKey] = newIndex;
+      const newZoomLevels = config.levels[newIndex];
+      this.fullCalendarView.setOption('slotDuration', newZoomLevels.slotDuration);
+      this.fullCalendarView.setOption('slotLabelInterval', newZoomLevels.slotLabelInterval);
+    }
+  }
+  // END REPLACEMENT
 
   getIcon(): string {
     return 'calendar-glyph';
@@ -358,6 +475,15 @@ export class CalendarView extends ItemView {
     container.empty();
     let calendarEl = container.createEl('div');
 
+    this.registerDomEvent(
+      calendarEl,
+      'wheel',
+      (event: WheelEvent) => {
+        this.throttledZoom(event);
+      },
+      { passive: false }
+    );
+
     if (
       this.plugin.settings.calendarSources.filter((s: CalendarInfo) => s.type !== 'FOR_TEST_ONLY')
         .length === 0
@@ -399,6 +525,21 @@ export class CalendarView extends ItemView {
           this.removeShadowEventsFromView();
         }
       }
+
+      // ADD THIS BLOCK
+      // Apply the correct zoom level for the new view.
+      const configKey = this.findBestZoomConfigKey(newViewType);
+      if (configKey) {
+        const config = VIEW_ZOOM_CONFIG[configKey];
+        const zoomIndex = this.zoomIndexByView[configKey] ?? config.defaultIndex;
+        const zoomLevels = config.levels[zoomIndex];
+
+        // This ensures the view snaps to its stored/default zoom when changed.
+        this.fullCalendarView?.setOption('slotDuration', zoomLevels.slotDuration);
+        this.fullCalendarView?.setOption('slotLabelInterval', zoomLevels.slotLabelInterval);
+      }
+      // END BLOCK
+
       currentViewType = newViewType;
     };
     this.fullCalendarView = await renderCalendar(calendarEl, sources, {
