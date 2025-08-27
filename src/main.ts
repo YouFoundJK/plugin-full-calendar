@@ -109,6 +109,7 @@ export default class FullCalendarPlugin extends Plugin {
     this.providerRegistry.listenForSourceChanges();
 
     this.cache.reset();
+    this.cache.listenForSettingsChanges(this.app.workspace); // ADD THIS LINE
 
     // ADD: Start NotificationManager after providerRegistry is initialized
     this.notificationManager = new NotificationManager(this);
@@ -297,6 +298,9 @@ export default class FullCalendarPlugin extends Plugin {
     }
     if (this.providerRegistry) {
       this.providerRegistry.stopListening();
+    }
+    if (this.cache) {
+      this.cache.stopListening();
     }
     // NOTE: Per Obsidian plugin guidelines, do NOT detach leaves of custom views here.
     // Obsidian will handle stale views; detaching in onunload is considered an anti-pattern.

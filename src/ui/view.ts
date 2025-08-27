@@ -75,7 +75,6 @@ export class CalendarView extends ItemView {
   callback: UpdateViewCallback | null = null;
   private viewEnhancer: ViewEnhancer | null = null;
   private timelineResources: ResourceItem[] | null = null;
-  private settingsListener: (() => Promise<void>) | null = null; // Added for view-config pub/sub
 
   constructor(leaf: WorkspaceLeaf, plugin: FullCalendarPlugin, inSidebar = false) {
     super(leaf);
@@ -704,26 +703,15 @@ export class CalendarView extends ItemView {
       this.callback = null;
     }
 
-    // Remove previous settingsListener if present
-    if (this.settingsListener) {
-      (
-        this.plugin.app.workspace as unknown as {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          off: (name: string, cb: (...a: any[]) => void) => void;
-        }
-      ).off('full-calendar:view-config-changed', this.settingsListener);
-    }
-    // Register new settingsListener for view-config changes
-    this.settingsListener = () => this.onOpen();
-    (
-      this.plugin.app.workspace as unknown as {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        on: (name: string, cb: (...a: any[]) => void) => void;
-      }
-    ).on('full-calendar:view-config-changed', this.settingsListener);
-
-    this.callback = this.plugin.cache.on('update', () => {
+    // MODIFY THE CALLBACK:
+    this.callback = this.plugin.cache.on('update', info => {
       if (!this.viewEnhancer || !this.fullCalendarView) {
+        return;
+      }
+
+      // ADD: handle resync event
+      if (info.type === 'resync') {
+        this.onOpen();
         return;
       }
 
@@ -765,15 +753,6 @@ export class CalendarView extends ItemView {
     if (this.callback) {
       this.plugin.cache.off('update', this.callback);
       this.callback = null;
-    }
-    if (this.settingsListener) {
-      (
-        this.plugin.app.workspace as unknown as {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          off: (name: string, cb: (...a: any[]) => void) => void;
-        }
-      ).off('full-calendar:view-config-changed', this.settingsListener);
-      this.settingsListener = null;
     }
   }
 }

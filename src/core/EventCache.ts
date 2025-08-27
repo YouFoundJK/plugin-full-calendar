@@ -97,6 +97,10 @@ export default class EventCache {
     | null = null;
   private timeEngine: TimeEngine; // ADDED
 
+  // ADD: Listener for view config changes
+  private viewConfigListener: (() => void) | null = null;
+  private workspaceEmitter: import('obsidian').Workspace | null = null;
+
   calendars = new Map<string, CalendarProvider<any>>();
   initialized = false;
 
@@ -110,6 +114,34 @@ export default class EventCache {
     this.timeEngine = new TimeEngine(this); // ADDED
     // REMOVE direct instantiation
     // this.recurringEventManager = new RecurringEventManager(this, this._plugin);
+  }
+
+  // ADD: Listen for settings changes
+  public listenForSettingsChanges(workspace: import('obsidian').Workspace): void {
+    this.workspaceEmitter = workspace;
+    const emitter = workspace as unknown as {
+      on: (name: string, cb: () => void) => void;
+    };
+    this.viewConfigListener = () => {
+      this.onSettingsChanged();
+    };
+    emitter.on('full-calendar:view-config-changed', this.viewConfigListener);
+  }
+
+  public stopListening(): void {
+    if (this.viewConfigListener && this.workspaceEmitter) {
+      const emitter = this.workspaceEmitter as unknown as {
+        off: (name: string, cb: () => void) => void;
+      };
+      emitter.off('full-calendar:view-config-changed', this.viewConfigListener);
+      this.viewConfigListener = null;
+      this.workspaceEmitter = null;
+    }
+  }
+
+  private async onSettingsChanged(): Promise<void> {
+    await this.populate();
+    this.resync();
   }
 
   /**
