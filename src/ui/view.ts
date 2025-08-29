@@ -563,6 +563,14 @@ export class CalendarView extends ItemView {
             }
           : false;
       })(),
+      // Pass workspace-aware granular view settings
+      firstDay: calendarConfig.firstDay,
+      timeFormat24h: calendarConfig.timeFormat24h,
+      slotMinTime: calendarConfig.slotMinTime,
+      slotMaxTime: calendarConfig.slotMaxTime,
+      weekends: calendarConfig.weekends,
+      hiddenDays: calendarConfig.hiddenDays,
+      dayMaxEvents: calendarConfig.dayMaxEvents,
       customButtons: {
         workspace: {
           text: this.getWorkspaceSwitcherText(),
@@ -730,8 +738,6 @@ export class CalendarView extends ItemView {
           }
         } catch (e) {}
       },
-      firstDay: this.plugin.settings.firstDay,
-      timeFormat24h: this.plugin.settings.timeFormat24h,
       openContextMenuForEvent: async (e, mouseEvent) => {
         const menu = new Menu();
         if (!this.plugin.cache) {
