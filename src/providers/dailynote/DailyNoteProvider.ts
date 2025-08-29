@@ -134,9 +134,9 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     if (!file) file = await createDailyNote(m);
     const metadata = await this.app.waitForMetadata(file);
     const headingInfo = metadata.headings?.find(h => h.heading == this.source.heading);
-    if (!headingInfo) {
-      throw new Error(`Could not find heading ${this.source.heading} in daily note ${file.path}.`);
-    }
+    // if (!headingInfo) {
+    //   throw new Error(`Could not find heading ${this.source.heading} in daily note ${file.path}.`);
+    // }
     let lineNumber = await this.app.rewrite(file, (contents: string) => {
       const { page, lineNumber } = addToHeading(
         contents,
@@ -184,11 +184,11 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       // Second, add the event to the new file and get its line number.
       const metadata = await this.app.waitForMetadata(newFile);
       const headingInfo = metadata.headings?.find(h => h.heading == this.source.heading);
-      if (!headingInfo) {
-        throw new Error(
-          `Could not find heading ${this.source.heading} in daily note ${newFile.path}.`
-        );
-      }
+      // if (!headingInfo) {
+      //   throw new Error(
+      //     `Could not find heading ${this.source.heading} in daily note ${newFile.path}.`
+      //   );
+      // }
 
       const newLn = await this.app.rewrite(newFile, newFileContents => {
         const { page, lineNumber } = addToHeading(
