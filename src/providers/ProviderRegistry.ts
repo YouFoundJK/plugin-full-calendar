@@ -53,6 +53,7 @@ export class ProviderRegistry {
     this.register('ical', () => import('./ics/ICSProvider'));
     this.register('caldav', () => import('./caldav/CalDAVProvider'));
     this.register('google', () => import('./google/GoogleProvider'));
+    this.register('tasks', () => import('./tasks/TasksPluginProvider'));
   }
 
   public register(type: string, loader: ProviderLoader): void {
@@ -296,6 +297,9 @@ export class ProviderRegistry {
         } else if (instance.type === 'dailynote') {
           const { folder } = require('obsidian-daily-notes-interface').getDailyNoteSettings();
           isRelevant = folder ? file.path.startsWith(folder + '/') : true;
+        } else if (instance.type === 'tasks') {
+          // Tasks provider is interested in all markdown files
+          isRelevant = file.extension === 'md';
         }
 
         if (isRelevant) {
