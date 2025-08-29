@@ -24,6 +24,7 @@ import type {
 
 import { Menu } from 'obsidian';
 import type { PluginDef } from '@fullcalendar/core';
+import { createDateNavigation, DateNavigation } from './DateNavigation';
 
 let didPatchRRule = false;
 
@@ -49,6 +50,8 @@ interface ExtraRenderProps {
   timeFormat24h?: boolean;
   openContextMenuForEvent?: (event: EventApi, mouseEvent: MouseEvent) => Promise<void>;
   toggleTask?: (event: EventApi, isComplete: boolean) => Promise<boolean>;
+  dateRightClick?: (date: Date, mouseEvent: MouseEvent) => void;
+  viewRightClick?: (mouseEvent: MouseEvent, calendar: Calendar) => void;
   forceNarrow?: boolean;
   resources?: { id: string; title: string; eventColor?: string }[];
   onViewChange?: () => void; // Add view change callback
@@ -109,6 +112,8 @@ export async function renderCalendar(
     eventMouseEnter,
     openContextMenuForEvent,
     toggleTask,
+    dateRightClick,
+    viewRightClick,
     customButtons,
     resources,
     onViewChange,
@@ -155,8 +160,10 @@ export async function renderCalendar(
     .filter(Boolean)
     .join(',');
 
-  // Add workspace button to the left side of toolbar when not narrow
-  const leftToolbarGroup = !isNarrow ? 'workspace prev,next today' : 'prev,next today';
+  // Add workspace and navigate buttons to the left side of toolbar when not narrow
+  const leftToolbarGroup = !isNarrow
+    ? 'workspace prev,next today,navigate'
+    : 'prev,next today,navigate';
 
   // The comma between 'analysis' and the view group creates the visual separation.
   const rightToolbarGroup = [!isNarrow ? 'analysis' : null, viewButtonGroup]
@@ -173,7 +180,7 @@ export async function renderCalendar(
 
   const footerToolbar = isNarrow
     ? {
-        left: 'today,prev,next',
+        left: 'today,navigate,prev,next',
         right: rightToolbarGroup // Analysis is already filtered out for narrow views.
       }
     : false;
@@ -240,6 +247,14 @@ export async function renderCalendar(
         );
       }
       menu.showAtMouseEvent(ev);
+    }
+  };
+
+  // Add the "Navigate" dropdown - will be configured after calendar creation
+  customButtonConfig.navigate = {
+    text: '▾',
+    click: (ev: MouseEvent) => {
+      // This will be replaced after calendar creation
     }
   };
 
@@ -347,6 +362,15 @@ export async function renderCalendar(
         info.view.calendar.unselect();
       }),
 
+    // Handle date clicks (including right-clicks for navigation menu)
+    dateClick: info => {
+      // Only handle right-clicks for date navigation
+      if (info.jsEvent.button === 2 && dateRightClick) {
+        info.jsEvent.preventDefault();
+        dateRightClick(info.date, info.jsEvent);
+      }
+    },
+
     editable: modifyEvent && true,
     eventDrop: modifyEventCallback,
     eventResize: modifyEventCallback,
@@ -405,6 +429,30 @@ export async function renderCalendar(
 
     longPressDelay: 250
   });
+
   cal.render();
+
+  // Set up date navigation after calendar is created
+  const dateNavigation = createDateNavigation(cal, containerEl);
+
+  // Update the navigate button click handler
+  const navigateButton = containerEl.querySelector('.fc-navigate-button') as HTMLButtonElement;
+  if (navigateButton) {
+    navigateButton.addEventListener('click', (ev: MouseEvent) => {
+      dateNavigation.showNavigationMenu(ev);
+    });
+  }
+
+  // Add general right-click handler to calendar container for view-level navigation
+  if (viewRightClick) {
+    containerEl.addEventListener('contextmenu', (event: MouseEvent) => {
+      // Only handle if not handled by specific date or event right-clicks
+      if (!event.defaultPrevented) {
+        event.preventDefault();
+        viewRightClick(event, cal);
+      }
+    });
+  }
+
   return cal;
 }
