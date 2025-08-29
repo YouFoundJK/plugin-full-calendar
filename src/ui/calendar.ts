@@ -51,6 +51,7 @@ interface ExtraRenderProps {
   openContextMenuForEvent?: (event: EventApi, mouseEvent: MouseEvent) => Promise<void>;
   toggleTask?: (event: EventApi, isComplete: boolean) => Promise<boolean>;
   dateRightClick?: (date: Date, mouseEvent: MouseEvent) => void;
+  viewRightClick?: (mouseEvent: MouseEvent, calendar: Calendar) => void;
   forceNarrow?: boolean;
   resources?: { id: string; title: string; eventColor?: string }[];
   onViewChange?: () => void; // Add view change callback
@@ -112,6 +113,7 @@ export async function renderCalendar(
     openContextMenuForEvent,
     toggleTask,
     dateRightClick,
+    viewRightClick,
     customButtons,
     resources,
     onViewChange,
@@ -438,6 +440,17 @@ export async function renderCalendar(
   if (navigateButton) {
     navigateButton.addEventListener('click', (ev: MouseEvent) => {
       dateNavigation.showNavigationMenu(ev);
+    });
+  }
+
+  // Add general right-click handler to calendar container for view-level navigation
+  if (viewRightClick) {
+    containerEl.addEventListener('contextmenu', (event: MouseEvent) => {
+      // Only handle if not handled by specific date or event right-clicks
+      if (!event.defaultPrevented) {
+        event.preventDefault();
+        viewRightClick(event, cal);
+      }
     });
   }
 

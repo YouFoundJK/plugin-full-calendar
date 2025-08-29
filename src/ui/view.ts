@@ -828,6 +828,13 @@ export class CalendarView extends ItemView {
           this.dateNavigation = createDateNavigation(this.fullCalendarView, calendarEl);
         }
         this.dateNavigation?.showDateContextMenu(mouseEvent, date);
+      },
+      viewRightClick: (mouseEvent: MouseEvent, calendar: any) => {
+        // Set up date navigation after calendar is created if not already done
+        if (!this.dateNavigation && this.fullCalendarView) {
+          this.dateNavigation = createDateNavigation(this.fullCalendarView, calendarEl);
+        }
+        this.dateNavigation?.showViewContextMenu(mouseEvent, calendar);
       }
     });
 

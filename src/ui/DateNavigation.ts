@@ -115,7 +115,7 @@ export class DateNavigation {
   }
 
   /**
-   * Handles navigation for right-click context menu
+   * Handles navigation for right-click context menu on specific dates
    */
   public showDateContextMenu(event: MouseEvent, clickedDate: Date): void {
     const context = this.getCurrentContext();
@@ -123,8 +123,8 @@ export class DateNavigation {
 
     // Add view options for the specific date
     const viewOptions = [
-      { view: 'dayGridMonth', label: 'View Month' },
-      { view: 'timeGridWeek', label: 'View Week' },
+      { view: context.isNarrow ? 'timeGrid3Days' : 'dayGridMonth', label: 'View Month' },
+      { view: context.isNarrow ? 'timeGrid3Days' : 'timeGridWeek', label: 'View Week' },
       { view: 'timeGridDay', label: 'View Day' }
     ];
 
@@ -137,6 +137,124 @@ export class DateNavigation {
     });
 
     menu.showAtMouseEvent(event);
+  }
+
+  /**
+   * Handles navigation for general view right-click context menu
+   */
+  public showViewContextMenu(event: MouseEvent, calendar: Calendar): void {
+    const context = this.getCurrentContext();
+
+    // For view-level right-clicks, use the current view's date or detect date from position
+    let contextDate = context.currentDate;
+
+    // Try to get a more specific date based on the clicked position
+    // This uses FullCalendar's internal method to get date from coordinates
+    try {
+      // Get the date at the clicked position if possible
+      const dateAtPosition = this.getDateFromPosition(event, calendar);
+      if (dateAtPosition) {
+        contextDate = dateAtPosition;
+      }
+    } catch (e) {
+      // Fallback to current view date if position detection fails
+      console.debug('Could not determine date from position, using current view date:', e);
+    }
+
+    const menu = new Menu();
+
+    // Add view options for the detected/current date
+    const viewOptions = [
+      { view: context.isNarrow ? 'timeGrid3Days' : 'dayGridMonth', label: 'View Month' },
+      { view: context.isNarrow ? 'timeGrid3Days' : 'timeGridWeek', label: 'View Week' },
+      { view: 'timeGridDay', label: 'View Day' }
+    ];
+
+    viewOptions.forEach(({ view, label }) => {
+      menu.addItem(item => {
+        item.setTitle(label).onClick(() => {
+          this.navigateToDate(contextDate, view);
+        });
+      });
+    });
+
+    menu.showAtMouseEvent(event);
+  }
+
+  /**
+   * Attempts to get the date at a specific mouse position in the calendar
+   */
+  private getDateFromPosition(event: MouseEvent, calendar: Calendar): Date | null {
+    try {
+      // Get the calendar view element
+      const viewEl = calendar.el.querySelector('.fc-view');
+      if (!viewEl) return null;
+
+      const rect = viewEl.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      // Get current view info
+      const view = calendar.view;
+      const viewType = view.type;
+
+      // For different view types, calculate the approximate date
+      if (viewType.includes('dayGrid')) {
+        // Month view - calculate based on grid position
+        return this.getDateFromMonthGrid(x, y, rect, view);
+      } else if (viewType.includes('timeGrid')) {
+        // Week/day view - calculate based on column position
+        return this.getDateFromTimeGrid(x, y, rect, view);
+      } else {
+        // For other views, return current date
+        return view.currentStart;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  private getDateFromMonthGrid(x: number, y: number, rect: DOMRect, view: any): Date {
+    // Simple approximation for month view
+    // This is a basic implementation - could be enhanced
+    const startOfMonth = new Date(view.currentStart);
+    const cellWidth = rect.width / 7; // 7 days per week
+    const headerHeight = 30; // Approximate header height
+    const cellHeight = (rect.height - headerHeight) / 6; // Typically 6 weeks shown
+
+    const col = Math.floor(x / cellWidth);
+    const row = Math.floor((y - headerHeight) / cellHeight);
+
+    const dayOffset = row * 7 + col;
+    const targetDate = new Date(startOfMonth);
+    targetDate.setDate(startOfMonth.getDate() + dayOffset);
+
+    return targetDate;
+  }
+
+  private getDateFromTimeGrid(x: number, y: number, rect: DOMRect, view: any): Date {
+    // Simple approximation for week/day view
+    const startOfView = new Date(view.currentStart);
+    const endOfView = new Date(view.currentEnd);
+    const daysInView = Math.ceil(
+      (endOfView.getTime() - startOfView.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    const allDayHeight = 50; // Approximate all-day area height
+    const headerHeight = 30; // Approximate header height
+    const timeGridX = x;
+
+    let dayIndex = 0;
+    if (daysInView > 1) {
+      const dayWidth = rect.width / daysInView;
+      dayIndex = Math.floor(timeGridX / dayWidth);
+      dayIndex = Math.max(0, Math.min(dayIndex, daysInView - 1));
+    }
+
+    const targetDate = new Date(startOfView);
+    targetDate.setDate(startOfView.getDate() + dayIndex);
+
+    return targetDate;
   }
 
   private getCurrentContext(): NavigationContext {
