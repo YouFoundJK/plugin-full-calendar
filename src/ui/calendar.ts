@@ -54,6 +54,13 @@ interface ExtraRenderProps {
   onViewChange?: () => void; // Add view change callback
   businessHours?: boolean | object; // Support for business hours
   // timeZone?: string;
+
+  // New granular view configuration properties
+  slotMinTime?: string;
+  slotMaxTime?: string;
+  weekends?: boolean;
+  hiddenDays?: number[];
+  dayMaxEvents?: number | boolean;
 }
 
 export async function renderCalendar(
@@ -299,7 +306,7 @@ export async function renderCalendar(
       (isNarrow ? 'timeGrid3Days' : 'timeGridWeek'),
     nowIndicator: true,
     scrollTimeReset: false,
-    dayMaxEvents: true,
+    dayMaxEvents: settings?.dayMaxEvents !== undefined ? settings.dayMaxEvents : true, // Use setting override or default to true
     headerToolbar,
     footerToolbar,
     // Cast at usage point to satisfy FullCalendar without polluting variable with any
@@ -323,6 +330,11 @@ export async function renderCalendar(
     },
 
     firstDay: settings?.firstDay,
+    // New granular view configuration settings
+    ...(settings?.slotMinTime !== undefined && { slotMinTime: settings.slotMinTime }),
+    ...(settings?.slotMaxTime !== undefined && { slotMaxTime: settings.slotMaxTime }),
+    ...(settings?.weekends !== undefined && { weekends: settings.weekends }),
+    ...(settings?.hiddenDays !== undefined && { hiddenDays: settings.hiddenDays }),
     ...(settings?.timeFormat24h && {
       eventTimeFormat: {
         hour: 'numeric',
