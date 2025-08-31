@@ -79,6 +79,7 @@ function Username<T extends Partial<CalendarInfo>>({ source }: BasicProps<T>) {
 interface CalendarSettingsProps {
   sources: CalendarInfo[];
   submit: (payload: CalendarInfo[]) => void;
+  plugin: FullCalendarPlugin;
 }
 
 // ✅ Expose this type in `settings.tsx`
@@ -118,10 +119,11 @@ export class CalendarSettings
     return (
       <div style={{ width: '100%' }}>
         {this.state.sources.map((s, idx) => (
-          <CalendarSettingRow
+          <StranglerCalendarSettingRow
             key={idx}
             setting={s}
-            onColorChange={color =>
+            plugin={this.props.plugin}
+            onColorChange={(color: string) =>
               this.setState(state => ({
                 sources: [
                   ...state.sources.slice(0, idx),
@@ -167,7 +169,46 @@ interface CalendarSettingsRowProps {
   deleteCalendar: () => void;
 }
 
-export const CalendarSettingRow = ({
+// Strangler Component - Step 2: Routes between old and new rendering paths
+interface StranglerRowProps {
+  setting: Partial<CalendarInfo>;
+  onColorChange: (s: string) => void;
+  deleteCalendar: () => void;
+  plugin: FullCalendarPlugin;
+}
+
+export const StranglerCalendarSettingRow = ({
+  setting,
+  onColorChange,
+  deleteCalendar,
+  plugin
+}: StranglerRowProps) => {
+  const registry = plugin.providerRegistry;
+  const provider = setting.id ? registry.getInstance(setting.id) : null;
+  
+  // If the provider has the NEW method, use the NEW rendering path
+  if (provider && provider.getSettingsRowComponent) {
+    return (
+      <ProviderAwareCalendarSettingRow
+        setting={setting}
+        onColorChange={onColorChange}
+        deleteCalendar={deleteCalendar}
+        plugin={plugin}
+      />
+    );
+  }
+  
+  // Otherwise, use the LEGACY rendering path
+  return (
+    <LegacyCalendarSettingRow
+      setting={setting}
+      onColorChange={onColorChange}
+      deleteCalendar={deleteCalendar}
+    />
+  );
+};
+
+export const LegacyCalendarSettingRow = ({
   setting,
   onColorChange,
   deleteCalendar
