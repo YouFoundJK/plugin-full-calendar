@@ -41,7 +41,7 @@ export interface CalendarProvider<TConfig> {
     onClose: () => void;
   }>;
 
-  getSettingsRowComponent?(): FCReactComponent<{
+  getSettingsRowComponent(): FCReactComponent<{
     source: Partial<import('../types').CalendarInfo>;
   }>;
 }
