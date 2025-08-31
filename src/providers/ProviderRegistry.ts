@@ -4,6 +4,7 @@ import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
 import { ObsidianIO, ObsidianInterface } from '../ObsidianAdapter';
+import { TasksBacklogManager } from './tasks/TasksBacklogManager';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -41,8 +42,12 @@ export class ProviderRegistry {
   private identifierToSessionIdMap: Map<string, string> = new Map();
   private identifierMapPromise: Promise<void> | null = null;
 
+  // Tasks backlog manager for lifecycle management
+  private tasksBacklogManager: TasksBacklogManager;
+
   constructor(plugin: FullCalendarPlugin) {
     this.plugin = plugin;
+    this.tasksBacklogManager = new TasksBacklogManager(plugin);
     // initializeInstances is now called from main.ts after settings are loaded.
   }
 
@@ -513,10 +518,27 @@ export class ProviderRegistry {
 
     // This is the "nuclear reset" logic moved from main.ts
     await this.initializeInstances();
+
+    // Manage Tasks Backlog view lifecycle based on provider availability
+    if (this.hasProviderOfType('tasks')) {
+      if (!this.tasksBacklogManager.getIsLoaded()) {
+        this.tasksBacklogManager.onload();
+      }
+    } else {
+      if (this.tasksBacklogManager.getIsLoaded()) {
+        this.tasksBacklogManager.onunload();
+      }
+    }
+
     this.cache.reset();
     await this.cache.populate();
     this.revalidateRemoteCalendars();
     this.cache.resync();
+
+    // Refresh backlog views if they exist
+    if (this.tasksBacklogManager.getIsLoaded()) {
+      this.tasksBacklogManager.refreshViews();
+    }
   };
 
   public listenForSourceChanges(): void {
@@ -534,5 +556,18 @@ export class ProviderRegistry {
         off: (name: string, cb: () => void) => void;
       }
     ).off('full-calendar:sources-changed', this.onSourcesChanged);
+  }
+
+  public getActiveProviders(): CalendarProvider<unknown>[] {
+    return Array.from(this.instances.values());
+  }
+
+  public hasProviderOfType(type: string): boolean {
+    for (const instance of this.instances.values()) {
+      if (instance.type === type) {
+        return true;
+      }
+    }
+    return false;
   }
 }
