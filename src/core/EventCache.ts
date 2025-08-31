@@ -807,24 +807,25 @@ export default class EventCache {
   /**
    * Schedules an undated task by adding a due date to it.
    * This is specifically designed for drag-and-drop from the Tasks Backlog to the calendar.
-   * 
+   *
    * @param taskId Unique identifier for the task (filePath::lineNumber)
    * @param date Date to schedule the task for
    */
   public async scheduleTask(taskId: string, date: Date): Promise<void> {
     // Find the Tasks provider instance
-    const tasksProvider = this.plugin.providerRegistry.getActiveProviders()
+    const tasksProvider = this.plugin.providerRegistry
+      .getActiveProviders()
       .find(provider => provider.type === 'tasks') as any;
-    
+
     if (!tasksProvider) {
       throw new Error('No Tasks provider found. Cannot schedule task.');
     }
-    
+
     // Check if the provider has the scheduleTask method (from our implementation)
     if (typeof tasksProvider.scheduleTask !== 'function') {
       throw new Error('Tasks provider does not support task scheduling.');
     }
-    
+
     // Delegate to the Tasks provider's schedule method
     await tasksProvider.scheduleTask(taskId, date);
   }

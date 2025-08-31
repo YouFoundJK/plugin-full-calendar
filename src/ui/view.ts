@@ -848,7 +848,7 @@ export class CalendarView extends ItemView {
           if (!this.plugin.cache) {
             throw new Error('Event cache not available');
           }
-          
+
           await this.plugin.cache.scheduleTask(taskId, date);
           new Notice('Task scheduled successfully');
         } catch (error) {

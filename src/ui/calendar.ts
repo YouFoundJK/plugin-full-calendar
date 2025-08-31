@@ -443,13 +443,15 @@ export async function renderCalendar(
 
     // Enable drag-and-drop from external sources (e.g., Tasks Backlog)
     droppable: drop && true,
-    drop: drop && (info => {
-      // Get the task ID from the dragged element's data transfer
-      const taskId = info.draggedEl.getAttribute('data-task-id');
-      if (taskId) {
-        drop(taskId, info.date);
-      }
-    }),
+    drop:
+      drop &&
+      (info => {
+        // Get the task ID from the dragged element's data transfer
+        const taskId = info.draggedEl.getAttribute('data-task-id');
+        if (taskId) {
+          drop(taskId, info.date);
+        }
+      }),
 
     longPressDelay: 250
   });
