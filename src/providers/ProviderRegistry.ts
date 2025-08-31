@@ -4,6 +4,7 @@ import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
 import { ObsidianIO, ObsidianInterface } from '../ObsidianAdapter';
+import { TasksBacklogManager } from './tasks/TasksBacklogManager';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -41,8 +42,12 @@ export class ProviderRegistry {
   private identifierToSessionIdMap: Map<string, string> = new Map();
   private identifierMapPromise: Promise<void> | null = null;
 
+  // Tasks backlog manager
+  private tasksBacklogManager: TasksBacklogManager;
+
   constructor(plugin: FullCalendarPlugin) {
     this.plugin = plugin;
+    this.tasksBacklogManager = new TasksBacklogManager(plugin);
     // initializeInstances is now called from main.ts after settings are loaded.
   }
 
@@ -420,11 +425,34 @@ export class ProviderRegistry {
 
     // This is the "nuclear reset" logic moved from main.ts
     await this.initializeInstances();
+
+    // Check if any Tasks providers are active and manage backlog accordingly
+    this.manageTasksBacklog();
+
     this.cache.reset();
     await this.cache.populate();
     this.revalidateRemoteCalendars();
     this.cache.resync();
   };
+
+  /**
+   * Manages the Tasks backlog view based on active Tasks providers
+   */
+  private manageTasksBacklog(): void {
+    const hasTasksProvider = this.sources.some(source => source.type === 'tasks');
+
+    if (hasTasksProvider) {
+      // Load the backlog if Tasks providers are present
+      if (!this.tasksBacklogManager.isBacklogLoaded()) {
+        this.tasksBacklogManager.onload();
+      }
+    } else {
+      // Unload the backlog if no Tasks providers are present
+      if (this.tasksBacklogManager.isBacklogLoaded()) {
+        this.tasksBacklogManager.onunload();
+      }
+    }
+  }
 
   public listenForSourceChanges(): void {
     // Obsidian's Workspace interface doesn't declare custom events; cast only the event emitter portion

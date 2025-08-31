@@ -29,6 +29,7 @@ const GoogleAuthSchema = z
 const calendarOptionsSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('local'), id: z.string(), directory: z.string() }),
   z.object({ type: z.literal('dailynote'), id: z.string(), heading: z.string() }),
+  z.object({ type: z.literal('tasks'), id: z.string(), displayName: z.string().optional() }),
   z.object({ type: z.literal('ical'), id: z.string(), url: z.string().url() }),
   z.object({
     type: z.literal('caldav'),
