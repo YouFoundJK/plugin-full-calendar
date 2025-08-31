@@ -58,8 +58,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksPluginProvider
   }
 
   getCapabilities(): CalendarProviderCapabilities {
-    // Start with read-only capabilities for Step 1
-    return { canCreate: false, canEdit: false, canDelete: false };
+    return { canCreate: true, canEdit: true, canDelete: true };
   }
 
   getEventHandle(event: OFCEvent): EventHandle | null {
@@ -200,6 +199,89 @@ export class TasksPluginProvider implements CalendarProvider<TasksPluginProvider
   }
 
   /**
+   * Gets the Tasks plugin instance if available
+   */
+  private getTasksPlugin(): any | null {
+    const tasksPlugin = (this.plugin.app as any).plugins?.plugins?.['obsidian-tasks-plugin'];
+    if (!tasksPlugin || !tasksPlugin.apiV1) {
+      console.error('Tasks plugin not found or API not available');
+      return null;
+    }
+    return tasksPlugin;
+  }
+
+  /**
+   * Converts an OFCEvent to a task line string using Tasks plugin settings
+   */
+  private _ofcEventToTaskLine(event: OFCEvent): string {
+    const tasksPlugin = this.getTasksPlugin();
+    if (!tasksPlugin) {
+      // Fallback to default format if Tasks plugin not available
+      const dateStr = (event as any).date;
+      return `- [ ] ${event.title} 📅 ${dateStr}`;
+    }
+
+    // Query Tasks plugin settings for date format and emoji
+    // Note: This might need to be adjusted based on actual Tasks plugin API structure
+    const settings = tasksPlugin.settings || {};
+    const dueDateEmoji = settings.dueDateEmoji || '📅';
+    
+    let taskLine = `- [ ] ${event.title}`;
+    
+    // Add due date if present
+    if ((event as any).date) {
+      const dateStr = (event as any).date;
+      taskLine += ` ${dueDateEmoji} ${dateStr}`;
+      
+      // Add time if present
+      if ((event as any).startTime) {
+        taskLine += ` ${(event as any).startTime}`;
+      }
+    }
+    
+    return taskLine;
+  }
+
+  /**
+   * Safely finds a task line in a file using the persistent ID
+   */
+  private async _findTaskLine(handle: EventHandle): Promise<{
+    file: any;
+    lineNumber: number;
+    originalLine: string;
+  } | null> {
+    const parts = handle.persistentId.split('::');
+    if (parts.length < 2) {
+      return null;
+    }
+
+    const [filePath, lineNumberStr] = parts;
+    const lineNumber = parseInt(lineNumberStr, 10);
+    
+    const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+    if (!file) {
+      return null;
+    }
+
+    try {
+      const content = await this.app.read(file as any);
+      const lines = content.split('\n');
+      
+      if (lineNumber >= 0 && lineNumber < lines.length) {
+        return {
+          file,
+          lineNumber,
+          originalLine: lines[lineNumber]
+        };
+      }
+    } catch (error) {
+      console.error(`Error reading file ${filePath}:`, error);
+    }
+
+    return null;
+  }
+
+  /**
    * Returns undated tasks for the backlog view (will be implemented in Step 3)
    */
   public async getUndatedTasks(): Promise<ParsedUndatedTask[]> {
@@ -224,7 +306,32 @@ export class TasksPluginProvider implements CalendarProvider<TasksPluginProvider
   // Required methods for CalendarProvider interface (will be implemented in Step 2)
 
   async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
-    throw new Error('Tasks provider create functionality not yet implemented');
+    if (event.type !== 'single') {
+      throw new Error('Tasks provider can only create single events.');
+    }
+
+    const tasksPlugin = this.getTasksPlugin();
+    if (!tasksPlugin) {
+      throw new Error('Tasks plugin is not available. Please ensure the Obsidian Tasks plugin is installed and enabled.');
+    }
+
+    try {
+      // Convert OFCEvent to task line format
+      const prefilledTaskLine = this._ofcEventToTaskLine(event);
+      
+      // Call the Tasks API to open the creation modal
+      // The user will confirm and the Tasks plugin handles the file write
+      await tasksPlugin.apiV1.createTaskLineModal(prefilledTaskLine);
+      
+      // Invalidate cache to trigger re-scan
+      this._invalidateCache();
+      
+      // Return the event as-is since Tasks plugin handles the actual creation
+      return [event, null];
+    } catch (error) {
+      console.error('Error creating task via Tasks plugin:', error);
+      throw new Error(`Failed to create task: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async updateEvent(
@@ -232,11 +339,59 @@ export class TasksPluginProvider implements CalendarProvider<TasksPluginProvider
     oldEventData: OFCEvent,
     newEventData: OFCEvent
   ): Promise<EventLocation | null> {
-    throw new Error('Tasks provider update functionality not yet implemented');
+    const tasksPlugin = this.getTasksPlugin();
+    if (!tasksPlugin) {
+      throw new Error('Tasks plugin is not available. Please ensure the Obsidian Tasks plugin is installed and enabled.');
+    }
+
+    try {
+      // Find the current task line
+      const taskInfo = await this._findTaskLine(handle);
+      if (!taskInfo) {
+        throw new Error(`Could not find task with handle ${handle.persistentId}`);
+      }
+
+      const { originalLine } = taskInfo;
+      
+      // Convert new event to task line format
+      const newTaskLine = this._ofcEventToTaskLine(newEventData);
+      
+      // Call the Tasks API to open the edit modal
+      await tasksPlugin.apiV1.editTaskLineModal(originalLine, newTaskLine);
+      
+      // Invalidate cache to trigger re-scan
+      this._invalidateCache();
+      
+      return null;
+    } catch (error) {
+      console.error('Error updating task via Tasks plugin:', error);
+      throw new Error(`Failed to update task: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async deleteEvent(handle: EventHandle): Promise<void> {
-    throw new Error('Tasks provider delete functionality not yet implemented');
+    try {
+      // Find the task line to delete
+      const taskInfo = await this._findTaskLine(handle);
+      if (!taskInfo) {
+        throw new Error(`Could not find task with handle ${handle.persistentId}`);
+      }
+
+      const { file, lineNumber } = taskInfo;
+      
+      // Delete the line directly since Tasks plugin has no delete API
+      await this.app.rewrite(file, (contents: string) => {
+        const lines = contents.split('\n');
+        lines.splice(lineNumber, 1); // Remove the specific line
+        return lines.join('\n');
+      });
+      
+      // Invalidate cache to trigger re-scan
+      this._invalidateCache();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      throw new Error(`Failed to delete task: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async createInstanceOverride(

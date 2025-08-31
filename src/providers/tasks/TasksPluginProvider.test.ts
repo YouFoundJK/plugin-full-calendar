@@ -24,6 +24,14 @@ describe('TasksPluginProvider', () => {
       app: {
         vault: {
           getMarkdownFiles: jest.fn(() => [])
+        },
+        plugins: {
+          plugins: {
+            'obsidian-tasks-plugin': {
+              apiV1: {},
+              settings: { dueDateEmoji: '📅' }
+            }
+          }
         }
       }
     } as unknown as FullCalendarPlugin;
@@ -35,13 +43,41 @@ describe('TasksPluginProvider', () => {
     provider = new TasksPluginProvider(config, mockPlugin, mockApp);
   });
 
+  describe('_ofcEventToTaskLine (private method testing)', () => {
+    it('should convert all-day event to task line', () => {
+      const event = {
+        type: 'single' as const,
+        title: 'Test Task',
+        date: '2025-01-15',
+        allDay: true
+      } as any;
+
+      // Access private method for testing
+      const taskLine = (provider as any)._ofcEventToTaskLine(event);
+      expect(taskLine).toBe('- [ ] Test Task 📅 2025-01-15');
+    });
+
+    it('should convert timed event to task line', () => {
+      const event = {
+        type: 'single' as const,
+        title: 'Timed Task',
+        date: '2025-01-16',
+        startTime: '14:30',
+        allDay: false
+      } as any;
+
+      const taskLine = (provider as any)._ofcEventToTaskLine(event);
+      expect(taskLine).toBe('- [ ] Timed Task 📅 2025-01-16 14:30');
+    });
+  });
+
   describe('getCapabilities', () => {
-    it('should return read-only capabilities for Step 1', () => {
+    it('should return writable capabilities for Step 2', () => {
       const capabilities = provider.getCapabilities();
       expect(capabilities).toEqual({
-        canCreate: false,
-        canEdit: false,
-        canDelete: false
+        canCreate: true,
+        canEdit: true,
+        canDelete: true
       });
     });
   });
