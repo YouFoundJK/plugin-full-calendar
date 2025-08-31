@@ -70,6 +70,7 @@ export function addCalendarButton(
         (dropdown = d.addOptions({
           local: 'Full note',
           dailynote: 'Daily Note',
+          tasks: 'Obsidian Tasks',
           icloud: 'iCloud',
           caldav: 'CalDAV',
           ical: 'Remote (.ics format)',
