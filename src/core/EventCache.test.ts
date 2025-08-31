@@ -56,7 +56,8 @@ const makeCache = (events: OFCEvent[]) => {
     updateEvent: jest.fn(),
     deleteEvent: jest.fn(),
     createInstanceOverride: jest.fn(),
-    getConfigurationComponent: jest.fn()
+    getConfigurationComponent: jest.fn(),
+    getSettingsRowComponent: jest.fn()
   };
 
   const calendarInfo: CalendarInfo = {
@@ -146,7 +147,8 @@ describe('event cache with readonly calendar', () => {
       updateEvent: jest.fn(),
       deleteEvent: jest.fn(),
       createInstanceOverride: jest.fn(),
-      getConfigurationComponent: jest.fn()
+      getConfigurationComponent: jest.fn(),
+      getSettingsRowComponent: jest.fn()
     };
 
     const calendarSources = [
@@ -272,7 +274,8 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
     updateEvent: jest.fn(),
     deleteEvent: jest.fn(),
     createInstanceOverride: jest.fn(),
-    getConfigurationComponent: jest.fn()
+    getConfigurationComponent: jest.fn(),
+    getSettingsRowComponent: jest.fn()
   };
 
   const calendarInfo: CalendarInfo = {
@@ -702,7 +705,8 @@ describe('editable calendars', () => {
         updateEvent: jest.fn(),
         deleteEvent: jest.fn(),
         createInstanceOverride: jest.fn(),
-        getConfigurationComponent: jest.fn()
+        getConfigurationComponent: jest.fn(),
+        getSettingsRowComponent: jest.fn()
       };
 
       const remoteProvider: CalendarProvider<any> = {
@@ -720,7 +724,8 @@ describe('editable calendars', () => {
         updateEvent: jest.fn(),
         deleteEvent: jest.fn(),
         createInstanceOverride: jest.fn(),
-        getConfigurationComponent: jest.fn()
+        getConfigurationComponent: jest.fn(),
+        getSettingsRowComponent: jest.fn()
       };
 
       const calendarSources = [
@@ -807,7 +812,8 @@ describe('editable calendars', () => {
         updateEvent: jest.fn(),
         deleteEvent: jest.fn(),
         createInstanceOverride: jest.fn(),
-        getConfigurationComponent: jest.fn()
+        getConfigurationComponent: jest.fn(),
+        getSettingsRowComponent: jest.fn()
       });
 
       const calendarSources = [

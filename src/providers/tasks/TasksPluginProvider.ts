@@ -20,6 +20,7 @@ import { EventHandle, FCReactComponent } from '../typesProvider';
 import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent } from './TasksConfigComponent';
 import { TasksParser, ParsedTask } from './TasksParser';
+import React from 'react';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
@@ -57,6 +58,27 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   getConfigurationComponent(): FCReactComponent<any> {
     return TasksConfigComponent;
+  }
+
+  getSettingsRowComponent(): FCReactComponent<{
+    source: Partial<import('../../types').CalendarInfo>;
+  }> {
+    // Minimal row component: display provider display name (or configured custom name if available)
+    const Row: React.FC<{ source: Partial<import('../../types').CalendarInfo> }> = ({ source }) => {
+      // Some calendar types have a name property, others do not.
+      const name = (source as any).name ?? this.displayName;
+      return React.createElement(
+        'div',
+        { className: 'setting-item-control ofc-settings-row-tasks-provider' },
+        React.createElement('input', {
+          disabled: true,
+          type: 'text',
+          value: name,
+          className: 'fc-setting-input'
+        })
+      );
+    };
+    return Row;
   }
 
   getEventHandle(event: OFCEvent): EventHandle | null {

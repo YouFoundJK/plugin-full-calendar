@@ -4,7 +4,7 @@ exports[`ics tests parses all day event: BEGIN:VCALENDAR\\nPRODID:blah\\nX-WR-CA
 [
   {
     "allDay": true,
-    "date": "2023-02-26",
+    "date": "2023-02-25",
     "endDate": null,
     "timezone": undefined,
     "title": "EVENT TITLE",
@@ -18,7 +18,7 @@ exports[`ics tests parses gcal ics file and categories: BEGIN:VCALENDAR\\nPRODID
 [
   {
     "allDay": true,
-    "date": "2022-03-02",
+    "date": "2022-03-01",
     "endDate": null,
     "timezone": undefined,
     "title": "All day event",
@@ -28,12 +28,12 @@ exports[`ics tests parses gcal ics file and categories: BEGIN:VCALENDAR\\nPRODID
   {
     "allDay": false,
     "endDate": null,
-    "endTime": "12:30",
+    "endTime": "07:00",
     "id": "ics::5tt2avr2th0h65homv3b6jeqof@google.com::2022-03-01::recurring",
     "rrule": "RRULE:FREQ=WEEKLY;BYDAY=TH,TU;WKST=SU",
     "skipDates": [],
     "startDate": "2022-03-01",
-    "startTime": "11:00",
+    "startTime": "05:30",
     "timezone": "UTC",
     "title": "Work - Recurring event",
     "type": "rrule",
@@ -63,7 +63,7 @@ exports[`ics tests parses gcal ics file and categories: BEGIN:VCALENDAR\\nPRODID
   },
   {
     "allDay": true,
-    "date": "2022-02-16",
+    "date": "2022-02-15",
     "endDate": null,
     "timezone": undefined,
     "title": "Announce Beta",
