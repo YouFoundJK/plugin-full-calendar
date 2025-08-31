@@ -27,41 +27,43 @@ export class TasksParser {
     const completed = this.parseCompletion(completionChar);
     const cleanContent = content.trim();
 
-    // Look for due date patterns (📅 YYYY-MM-DD or 📅 YYYY-MM-DD HH:MM)
-    const dueDateMatch = cleanContent.match(/📅\s*(\d{4}-\d{2}-\d{2})(?:\s+(\d{1,2}:\d{2}))?/);
-    
-    if (dueDateMatch) {
-      const [, dateStr, timeStr] = dueDateMatch;
+    // Look for any date patterns from Tasks plugin emojis
+    // Priority order: Due date (📅) > Start date (🛫) > Scheduled date (⏰)
+    const datePatterns = [
+      { emoji: '📅', type: 'due' },      // Due date (primary)
+      { emoji: '🛫', type: 'start' },   // Start date
+      { emoji: '⏰', type: 'scheduled' } // Scheduled date
+    ];
+
+    for (const pattern of datePatterns) {
+      const regex = new RegExp(`${pattern.emoji}\\s*(\\d{4}-\\d{2}-\\d{2})(?:\\s+(\\d{1,2}:\\d{2}))?`);
+      const dateMatch = cleanContent.match(regex);
       
-      // Validate the date
-      const parsedDate = DateTime.fromISO(dateStr);
-      if (!parsedDate.isValid) {
-        // Invalid date, treat as undated
+      if (dateMatch) {
+        const [, dateStr, timeStr] = dateMatch;
+        
+        // Validate the date
+        const parsedDate = DateTime.fromISO(dateStr);
+        if (!parsedDate.isValid) {
+          // Invalid date, continue to next pattern or treat as undated
+          continue;
+        }
+
         return {
-          type: 'undated',
+          type: 'dated',
           task: {
             content: cleanContent,
+            date: dateStr,
+            time: timeStr,
             completed,
             filePath,
             lineNumber
           }
         };
       }
-
-      return {
-        type: 'dated',
-        task: {
-          content: cleanContent,
-          date: dateStr,
-          time: timeStr,
-          completed,
-          filePath,
-          lineNumber
-        }
-      };
     }
 
-    // No due date found, this is an undated task
+    // No valid date found, this is an undated task
     return {
       type: 'undated',
       task: {
@@ -91,9 +93,26 @@ export class TasksParser {
   }
 
   /**
-   * Extracts the task content without the due date emoji and date
+   * Extracts the task content without any Tasks plugin emojis and metadata
    */
   public getTaskContentWithoutDate(content: string): string {
-    return content.replace(/📅\s*\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{2})?/g, '').trim();
+    // Remove all common Tasks plugin emojis and their associated data
+    let cleaned = content;
+    
+    // Date-related emojis with dates/times
+    cleaned = cleaned.replace(/[📅🛫⏰]\s*\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{2})?/g, '');
+    
+    // Other common Tasks plugin emojis (these typically don't have dates)
+    // Priority emoji (🔺, ⏫, 🔼, 🔽, ⏬)
+    cleaned = cleaned.replace(/[🔺⏫🔼🔽⏬]/g, '');
+    
+    // Recurrence rule emoji 🔁 (followed by RRULE text)
+    cleaned = cleaned.replace(/🔁[^🌟🏷️📝💬🆔❌✅]*/g, '');
+    
+    // Other metadata emojis that might have text after them
+    cleaned = cleaned.replace(/[🌟🏷️📝💬🆔]/g, '');
+    
+    // Clean up multiple spaces and trim
+    return cleaned.replace(/\s+/g, ' ').trim();
   }
 }

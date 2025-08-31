@@ -13,6 +13,7 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 import { TasksPluginProvider } from './TasksPluginProvider';
 import { ParsedUndatedTask } from './typesTask';
+import { TasksParser } from './TasksParser';
 import FullCalendarPlugin from '../../main';
 
 export const TASKS_BACKLOG_VIEW_TYPE = 'tasks-backlog-view';
@@ -24,10 +25,12 @@ export class TasksBacklogView extends ItemView {
   private displayedCount = 0;
   private readonly INITIAL_LOAD_COUNT = 200;
   private readonly LOAD_MORE_COUNT = 100;
+  private parser: TasksParser;
 
   constructor(leaf: WorkspaceLeaf, plugin: FullCalendarPlugin) {
     super(leaf);
     this.plugin = plugin;
+    this.parser = new TasksParser();
   }
 
   getViewType(): string {
@@ -142,10 +145,13 @@ export class TasksBacklogView extends ItemView {
       attr: { draggable: 'true' }
     });
 
+    // Clean the task content of any task plugin emojis before displaying
+    const cleanContent = this.parser.getTaskContentWithoutDate(task.content);
+
     // Task content
     const contentEl = taskEl.createDiv({ cls: 'tasks-backlog-item-content' });
     contentEl.createEl('span', { 
-      text: task.content,
+      text: cleanContent,
       cls: 'tasks-backlog-item-text'
     });
 
