@@ -399,6 +399,51 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
   }
 
+  /**
+   * Schedules an undated task by adding a due date to it.
+   * This method is called when a task is dragged from the backlog to the calendar.
+   * 
+   * @param taskId Unique identifier for the task (filePath::lineNumber)
+   * @param date Date to schedule the task for
+   */
+  public async scheduleTask(taskId: string, date: Date): Promise<void> {
+    try {
+      // Find the original task line using the taskId handle
+      const handle = { persistentId: taskId };
+      const { taskLine: originalLine } = await this._findTaskByHandle(handle);
+      
+      // Get the due date emoji and format from Tasks plugin settings
+      const dueDateEmoji = getDueDateEmoji();
+      
+      // Format the date in YYYY-MM-DD format (standard Tasks plugin format)
+      const formattedDate = date.toISOString().split('T')[0];
+      
+      // Create the new task line with the due date added
+      // If the task already has a due date, we'll replace it; otherwise add it
+      let newTaskLine: string;
+      
+      // Simple approach: add the due date to the end of the task line if it doesn't already exist
+      if (originalLine.includes(dueDateEmoji)) {
+        // Replace existing due date
+        const dueDateRegex = new RegExp(`${dueDateEmoji}\\s*\\d{4}-\\d{2}-\\d{2}`, 'g');
+        newTaskLine = originalLine.replace(dueDateRegex, `${dueDateEmoji} ${formattedDate}`);
+      } else {
+        // Add new due date
+        newTaskLine = originalLine.trim() + ` ${dueDateEmoji} ${formattedDate}`;
+      }
+      
+      // Use the Tasks plugin API to edit the task
+      const tasksAPI = this._getTasksPluginAPI();
+      await tasksAPI.editTaskLineModal(originalLine, newTaskLine);
+      
+      // Invalidate cache to reflect the changes
+      this._invalidateCache();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to schedule task: ${errorMessage}`);
+    }
+  }
+
   async createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,

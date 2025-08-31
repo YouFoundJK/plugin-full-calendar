@@ -841,6 +841,21 @@ export class CalendarView extends ItemView {
           this.dateNavigation = createDateNavigation(this.fullCalendarView, calendarEl);
         }
         this.dateNavigation?.showViewContextMenu(mouseEvent, calendar);
+      },
+      // Enable drag-and-drop from Tasks Backlog
+      drop: async (taskId: string, date: Date) => {
+        try {
+          if (!this.plugin.cache) {
+            throw new Error('Event cache not available');
+          }
+          
+          await this.plugin.cache.scheduleTask(taskId, date);
+          new Notice('Task scheduled successfully');
+        } catch (error) {
+          console.error('Failed to schedule task:', error);
+          const message = error instanceof Error ? error.message : 'Unknown error occurred';
+          new Notice(`Failed to schedule task: ${message}`);
+        }
       }
     });
 
