@@ -71,6 +71,26 @@ describe('TasksPluginProvider', () => {
     });
   });
 
+  describe('scheduleTask', () => {
+    it('should throw error when Tasks plugin is not available', async () => {
+      const mockPluginWithoutTasks = {
+        app: {
+          vault: {
+            getMarkdownFiles: jest.fn(() => [])
+          }
+        }
+      } as unknown as FullCalendarPlugin;
+
+      const mockApp = {
+        read: jest.fn(() => Promise.resolve(''))
+      } as unknown as ObsidianInterface;
+
+      const providerWithoutTasks = new TasksPluginProvider(config, mockPluginWithoutTasks, mockApp);
+
+      await expect(providerWithoutTasks.scheduleTask('test.md::1', new Date())).rejects.toThrow('Tasks plugin is not available');
+    });
+  });
+
   describe('getCapabilities', () => {
     it('should return writable capabilities for Step 2', () => {
       const capabilities = provider.getCapabilities();

@@ -172,11 +172,15 @@ export class TasksBacklogView extends ItemView {
    * Sets up drag and drop handlers for a task item
    */
   private setupDragHandlers(taskEl: HTMLElement, task: ParsedUndatedTask): void {
+    const taskId = `${task.filePath}::${task.lineNumber}`;
+    
+    // Set data attribute for calendar drop handling
+    taskEl.setAttribute('data-task-id', taskId);
+    
     taskEl.addEventListener('dragstart', (e) => {
       if (!e.dataTransfer) return;
       
       // Store the task ID for drop handling
-      const taskId = `${task.filePath}::${task.lineNumber}`;
       e.dataTransfer.setData('text/plain', taskId);
       e.dataTransfer.effectAllowed = 'move';
       

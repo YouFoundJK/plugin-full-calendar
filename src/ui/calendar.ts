@@ -54,6 +54,7 @@ interface ExtraRenderProps {
   onViewChange?: () => void; // Add view change callback
   businessHours?: boolean | object; // Support for business hours
   // timeZone?: string;
+  drop?: (taskId: string, date: Date) => Promise<void>; // Add drop callback for task scheduling
 }
 
 export async function renderCalendar(
@@ -112,7 +113,8 @@ export async function renderCalendar(
     customButtons,
     resources,
     onViewChange,
-    businessHours
+    businessHours,
+    drop
   } = settings || {};
 
   // Wrap eventClick to ignore shadow events
@@ -402,6 +404,18 @@ export async function renderCalendar(
     },
 
     viewDidMount: onViewChange,
+
+    // Enable drop functionality for task scheduling
+    droppable: drop && true,
+    drop:
+      drop &&
+      (async info => {
+        // Extract task ID from the drop data
+        const taskId = info.draggedEl.getAttribute('data-task-id');
+        if (taskId) {
+          await drop(taskId, info.date);
+        }
+      }),
 
     longPressDelay: 250
   });

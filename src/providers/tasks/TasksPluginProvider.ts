@@ -290,6 +290,71 @@ export class TasksPluginProvider implements CalendarProvider<TasksPluginProvider
   }
 
   /**
+   * Schedules an undated task by adding a due date to it
+   */
+  public async scheduleTask(taskId: string, date: Date): Promise<void> {
+    const tasksPlugin = this.getTasksPlugin();
+    if (!tasksPlugin) {
+      throw new Error('Tasks plugin is not available. Please ensure the Obsidian Tasks plugin is installed and enabled.');
+    }
+
+    try {
+      // Find the current task line
+      const parts = taskId.split('::');
+      if (parts.length < 2) {
+        throw new Error(`Invalid task ID format: ${taskId}`);
+      }
+
+      const [filePath, lineNumberStr] = parts;
+      const lineNumber = parseInt(lineNumberStr, 10);
+      
+      const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+      if (!file) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      const content = await this.app.read(file as any);
+      const lines = content.split('\n');
+      
+      if (lineNumber >= 0 && lineNumber < lines.length) {
+        const originalLine = lines[lineNumber];
+        
+        // Parse the task to get the clean content
+        const parseResult = this.parser.parseLine(originalLine, filePath, lineNumber);
+        if (parseResult.type === 'none') {
+          throw new Error('Line is not a valid task');
+        }
+
+        // Get the task content without any existing due date
+        const taskContent = this.parser.getTaskContentWithoutDate(parseResult.task.content);
+        
+        // Query Tasks plugin settings for date format and emoji
+        const settings = tasksPlugin.settings || {};
+        const dueDateEmoji = settings.dueDateEmoji || '📅';
+        
+        // Format the date (YYYY-MM-DD format)
+        const formattedDate = date.toISOString().split('T')[0];
+        
+        // Create the new task line with due date
+        const completionChar = parseResult.type === 'undated' && parseResult.task.completed === true ? 'x' : 
+                              parseResult.type === 'undated' && parseResult.task.completed === 'cancelled' ? '-' : ' ';
+        const newTaskLine = `- [${completionChar}] ${taskContent} ${dueDateEmoji} ${formattedDate}`;
+        
+        // Call the Tasks API to edit the task
+        await tasksPlugin.apiV1.editTaskLineModal(originalLine, newTaskLine);
+        
+        // Invalidate cache to trigger re-scan
+        this._invalidateCache();
+      } else {
+        throw new Error(`Invalid line number: ${lineNumber}`);
+      }
+    } catch (error) {
+      console.error('Error scheduling task via Tasks plugin:', error);
+      throw new Error(`Failed to schedule task: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
    * File update handler - invalidates cache
    */
   public handleFileUpdate(file: TFile): void {

@@ -819,6 +819,27 @@ export class CalendarView extends ItemView {
           }
           return false;
         }
+      },
+
+      // Drop callback for task scheduling from backlog
+      drop: async (taskId: string, date: Date) => {
+        try {
+          await this.plugin.cache.scheduleTask(taskId, date);
+          new Notice('Task scheduled successfully');
+
+          // Refresh the backlog view if it's open
+          if (this.plugin.providerRegistry) {
+            const tasksBacklogManager = (this.plugin.providerRegistry as any).tasksBacklogManager;
+            if (tasksBacklogManager && tasksBacklogManager.refreshBacklogView) {
+              await tasksBacklogManager.refreshBacklogView();
+            }
+          }
+        } catch (error) {
+          console.error('Error scheduling task:', error);
+          new Notice(
+            `Failed to schedule task: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
       }
     });
 

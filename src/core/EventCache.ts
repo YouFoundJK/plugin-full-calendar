@@ -232,6 +232,38 @@ export default class EventCache {
     return this.plugin.providerRegistry.getSessionId(globalIdentifier);
   }
 
+  /**
+   * Schedules an undated task by adding a due date to it.
+   * This method delegates to the TasksPluginProvider to handle the scheduling.
+   */
+  public async scheduleTask(taskId: string, date: Date): Promise<void> {
+    // Find the Tasks provider that can handle this task
+    const sources = this.plugin.providerRegistry.getAllSources();
+    const tasksSource = sources.find((source: any) => source.type === 'tasks');
+
+    if (!tasksSource) {
+      throw new Error('No Tasks calendar source configured');
+    }
+
+    // Get the provider instance
+    const instances = (this.plugin.providerRegistry as any).instances;
+    const tasksProvider = instances.get(tasksSource.id);
+
+    if (!tasksProvider || typeof tasksProvider.scheduleTask !== 'function') {
+      throw new Error('Tasks provider not available or does not support scheduling');
+    }
+
+    try {
+      // Delegate to the Tasks provider
+      await tasksProvider.scheduleTask(taskId, date);
+    } catch (error) {
+      console.error('Error scheduling task:', error);
+      throw new Error(
+        `Failed to schedule task: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
   // ====================================================================
   //                         PUBLIC API - EVENT QUERIES
   // ====================================================================
