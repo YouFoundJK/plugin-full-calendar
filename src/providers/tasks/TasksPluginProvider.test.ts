@@ -134,4 +134,69 @@ describe('TasksPluginProvider', () => {
       }).toThrow('TasksPluginProvider requires an Obsidian app interface.');
     });
   });
+
+  describe('caching functionality', () => {
+    it('should use cache for subsequent calls', async () => {
+      // Setup mock to track calls
+      mockPlugin.app.vault.getMarkdownFiles = jest.fn().mockReturnValue([
+        { path: 'test.md' }
+      ]);
+      mockApp.read = jest.fn().mockResolvedValue('- [ ] Test task 📅 2024-01-15');
+
+      // First call should scan vault
+      await provider.getEvents();
+      const firstCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
+
+      // Second call should use cache (no additional vault scans)
+      await provider.getEvents();
+      const secondCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
+
+      // Should only scan once if cache is working
+      expect(secondCallCount).toBe(firstCallCount);
+    });
+
+    it('should invalidate cache and rescan after file changes', async () => {
+      mockPlugin.app.vault.getMarkdownFiles = jest.fn().mockReturnValue([]);
+
+      // Initial scan
+      await provider.getEvents();
+      const initialCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
+
+      // Simulate file update
+      provider.handleFileUpdate();
+
+      // Next scan should re-read files
+      await provider.getEvents();
+      const afterInvalidationCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
+
+      // Should have made additional calls after cache invalidation
+      expect(afterInvalidationCallCount).toBeGreaterThan(initialCallCount);
+    });
+
+    it('should provide undated tasks method', async () => {
+      mockPlugin.app.vault.getMarkdownFiles = jest.fn().mockReturnValue([]);
+
+      // Should not throw and should return array
+      const undatedTasks = await provider.getUndatedTasks();
+      expect(Array.isArray(undatedTasks)).toBe(true);
+    });
+
+    it('should invalidate cache when files are deleted', async () => {
+      mockPlugin.app.vault.getMarkdownFiles = jest.fn().mockReturnValue([]);
+
+      // Initial scan
+      await provider.getEvents();
+      const initialCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
+
+      // Simulate file deletion
+      provider.handleFileDelete();
+
+      // Next scan should re-read files
+      await provider.getEvents();
+      const afterInvalidationCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
+
+      // Should have made additional calls after cache invalidation
+      expect(afterInvalidationCallCount).toBeGreaterThan(initialCallCount);
+    });
+  });
 });

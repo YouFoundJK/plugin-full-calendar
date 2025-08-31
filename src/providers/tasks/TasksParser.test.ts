@@ -20,36 +20,46 @@ describe('TasksParser', () => {
       const line = '- [ ] Complete the report 📅 2024-01-15';
       const result = parser.parseLine(line, 'test.md', 1);
 
-      expect(result).not.toBeNull();
-      expect(result!.title).toBe('Complete the report');
-      expect(result!.date.toFormat('yyyy-MM-dd')).toBe('2024-01-15');
-      expect(result!.isDone).toBe(false);
-      expect(result!.location.path).toBe('test.md');
-      expect(result!.location.lineNumber).toBe(1);
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Complete the report');
+        expect(result.task.date.toFormat('yyyy-MM-dd')).toBe('2024-01-15');
+        expect(result.task.isDone).toBe(false);
+        expect(result.task.location.path).toBe('test.md');
+        expect(result.task.location.lineNumber).toBe(1);
+      }
     });
 
     it('should parse a completed task', () => {
       const line = '- [x] Buy groceries 📅 2024-01-10';
       const result = parser.parseLine(line, 'test.md', 5);
 
-      expect(result).not.toBeNull();
-      expect(result!.title).toBe('Buy groceries');
-      expect(result!.isDone).toBe(true);
-      expect(result!.location.lineNumber).toBe(5);
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Buy groceries');
+        expect(result.task.isDone).toBe(true);
+        expect(result.task.location.lineNumber).toBe(5);
+      }
     });
 
-    it('should return null for non-checklist items', () => {
+    it('should return none for non-checklist items', () => {
       const line = 'Just a regular line of text 📅 2024-01-15';
       const result = parser.parseLine(line, 'test.md', 1);
 
-      expect(result).toBeNull();
+      expect(result.type).toBe('none');
     });
 
-    it('should return null for tasks without due dates', () => {
+    it('should return undated for tasks without due dates', () => {
       const line = '- [ ] Task without date';
       const result = parser.parseLine(line, 'test.md', 1);
 
-      expect(result).toBeNull();
+      expect(result.type).toBe('undated');
+      if (result.type === 'undated') {
+        expect(result.task.title).toBe('Task without date');
+        expect(result.task.isDone).toBe(false);
+        expect(result.task.location.path).toBe('test.md');
+        expect(result.task.location.lineNumber).toBe(1);
+      }
     });
 
     it('should handle different date formats', () => {
@@ -63,37 +73,58 @@ describe('TasksParser', () => {
 
       testCases.forEach((line, index) => {
         const result = parser.parseLine(line, 'test.md', index + 1);
-        expect(result).not.toBeNull();
-        expect(result!.title).toBe(`Task ${index + 1}`);
-        // All should parse to the same date (January 15, 2024)
-        expect(result!.date.month).toBe(1);
-        expect(result!.date.day).toBe(15);
-        expect(result!.date.year).toBe(2024);
+        expect(result.type).toBe('dated');
+        if (result.type === 'dated') {
+          expect(result.task.title).toBe(`Task ${index + 1}`);
+          // All should parse to the same date (January 15, 2024)
+          expect(result.task.date.month).toBe(1);
+          expect(result.task.date.day).toBe(15);
+          expect(result.task.date.year).toBe(2024);
+        }
       });
     });
 
-    it('should return null for invalid dates', () => {
+    it('should return undated for invalid dates', () => {
       const line = '- [ ] Task with bad date 📅 invalid-date';
       const result = parser.parseLine(line, 'test.md', 1);
 
-      expect(result).toBeNull();
+      expect(result.type).toBe('undated');
+      if (result.type === 'undated') {
+        expect(result.task.title).toBe('Task with bad date');
+        expect(result.task.isDone).toBe(false);
+      }
     });
 
     it('should handle tasks with extra content after date', () => {
       const line = '- [ ] Meeting 📅 2024-01-15 #important @john';
       const result = parser.parseLine(line, 'test.md', 1);
 
-      expect(result).not.toBeNull();
-      expect(result!.title).toBe('Meeting');
-      expect(result!.date.toFormat('yyyy-MM-dd')).toBe('2024-01-15');
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Meeting');
+        expect(result.task.date.toFormat('yyyy-MM-dd')).toBe('2024-01-15');
+      }
     });
 
     it('should clean task titles by removing emoji', () => {
       const line = '- [ ] Important task ⭐ 📅 2024-01-15 🔥';
       const result = parser.parseLine(line, 'test.md', 1);
 
-      expect(result).not.toBeNull();
-      expect(result!.title).toBe('Important task ⭐');
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Important task ⭐');
+      }
+    });
+
+    it('should handle completed undated tasks', () => {
+      const line = '- [x] Completed task without date';
+      const result = parser.parseLine(line, 'test.md', 1);
+
+      expect(result.type).toBe('undated');
+      if (result.type === 'undated') {
+        expect(result.task.title).toBe('Completed task without date');
+        expect(result.task.isDone).toBe(true);
+      }
     });
   });
 

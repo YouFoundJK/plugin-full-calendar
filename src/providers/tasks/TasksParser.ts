@@ -26,18 +26,42 @@ export interface ParsedTask {
   };
 }
 
+export interface ParsedDatedTask {
+  title: string;
+  date: DateTime;
+  isDone: boolean;
+  location: {
+    path: string;
+    lineNumber: number;
+  };
+}
+
+export interface ParsedUndatedTask {
+  title: string;
+  isDone: boolean;
+  location: {
+    path: string;
+    lineNumber: number;
+  };
+}
+
+export type ParsedTaskResult = 
+  | { type: 'dated'; task: ParsedDatedTask }
+  | { type: 'undated'; task: ParsedUndatedTask }
+  | { type: 'none' };
+
 export class TasksParser {
   /**
    * Parses a single line of text for task information.
    * @param line The line of text to parse
    * @param filePath The path to the file containing this line
    * @param lineNumber The line number (1-based)
-   * @returns A ParsedTask object if the line contains a valid task with due date, null otherwise
+   * @returns A ParsedTaskResult discriminated union indicating the type of task found
    */
-  parseLine(line: string, filePath: string, lineNumber: number): ParsedTask | null {
+  parseLine(line: string, filePath: string, lineNumber: number): ParsedTaskResult {
     // Check if the line is a checklist item
     if (!/^\s*-\s*\[[\sx]\]\s*/.test(line)) {
-      return null;
+      return { type: 'none' };
     }
 
     const dueDateEmoji = getDueDateEmoji();
@@ -45,7 +69,7 @@ export class TasksParser {
     // Extract checklist content without checkbox syntax
     const contentMatch = line.match(/^\s*-\s*\[[\sx]\]\s*(.*)$/);
     if (!contentMatch) {
-      return null;
+      return { type: 'none' };
     }
 
     const content = contentMatch[1];
@@ -55,34 +79,85 @@ export class TasksParser {
     const { before: titlePart, after: afterEmoji, found } = splitBySymbol(content, dueDateEmoji);
 
     if (!found) {
-      return null; // No due date found
+      // This is an undated task
+      const cleanedTitle = cleanTaskTitle(titlePart || content).trim();
+      if (!cleanedTitle) {
+        return { type: 'none' }; // Empty title
+      }
+
+      return {
+        type: 'undated',
+        task: {
+          title: cleanedTitle,
+          isDone: isCompleted,
+          location: {
+            path: filePath,
+            lineNumber
+          }
+        }
+      };
     }
 
     // Extract the date from the text after the emoji
     const dateString = extractDate(afterEmoji);
     if (!dateString) {
-      return null; // No valid date found
+      // Has emoji but no valid date - treat as undated
+      const cleanedTitle = cleanTaskTitle(titlePart).trim();
+      if (!cleanedTitle) {
+        return { type: 'none' };
+      }
+
+      return {
+        type: 'undated',
+        task: {
+          title: cleanedTitle,
+          isDone: isCompleted,
+          location: {
+            path: filePath,
+            lineNumber
+          }
+        }
+      };
     }
 
     // Parse the date using Luxon
     const date = this.parseDate(dateString);
     if (!date || !date.isValid) {
-      return null; // Invalid date
+      // Invalid date - treat as undated
+      const cleanedTitle = cleanTaskTitle(titlePart).trim();
+      if (!cleanedTitle) {
+        return { type: 'none' };
+      }
+
+      return {
+        type: 'undated',
+        task: {
+          title: cleanedTitle,
+          isDone: isCompleted,
+          location: {
+            path: filePath,
+            lineNumber
+          }
+        }
+      };
     }
 
     // Clean the title by removing any remaining emoji and metadata
     const cleanedTitle = cleanTaskTitle(titlePart).trim();
     if (!cleanedTitle) {
-      return null; // Empty title
+      return { type: 'none' }; // Empty title
     }
 
     return {
-      title: cleanedTitle,
-      date,
-      isDone: isCompleted,
-      location: {
-        path: filePath,
-        lineNumber
+      type: 'dated',
+      task: {
+        title: cleanedTitle,
+        date,
+        isDone: isCompleted,
+        location: {
+          path: filePath,
+          lineNumber
+        }
       }
     };
   }
@@ -91,16 +166,22 @@ export class TasksParser {
    * Parses all tasks from a file's content.
    * @param content The complete file content
    * @param filePath The path to the file
-   * @returns Array of ParsedTask objects
+   * @returns Array of ParsedTask objects (for backward compatibility, only dated tasks)
    */
   parseFileContent(content: string, filePath: string): ParsedTask[] {
     const checklistItems = parseChecklistItems(content);
     const tasks: ParsedTask[] = [];
 
     for (const item of checklistItems) {
-      const task = this.parseLine(item.line, filePath, item.lineNumber);
-      if (task) {
-        tasks.push(task);
+      const result = this.parseLine(item.line, filePath, item.lineNumber);
+      if (result.type === 'dated') {
+        // Convert ParsedDatedTask to ParsedTask for backward compatibility
+        tasks.push({
+          title: result.task.title,
+          date: result.task.date,
+          isDone: result.task.isDone,
+          location: result.task.location
+        });
       }
     }
 
