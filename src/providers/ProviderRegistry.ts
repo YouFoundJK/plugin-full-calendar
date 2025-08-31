@@ -53,6 +53,8 @@ export class ProviderRegistry {
     this.register('ical', () => import('./ics/ICSProvider'));
     this.register('caldav', () => import('./caldav/CalDAVProvider'));
     this.register('google', () => import('./google/GoogleProvider'));
+    // TODO: Re-enable tasks provider once type issues are resolved
+    // this.register('tasks', () => import('./tasks/TasksPluginProvider'));
   }
 
   public register(type: string, loader: ProviderLoader): void {

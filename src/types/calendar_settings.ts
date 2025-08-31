@@ -45,6 +45,11 @@ const calendarOptionsSchema = z.discriminatedUnion('type', [
     name: z.string(),
     calendarId: z.string(), // Google's own ID for the calendar
     googleAccountId: z.string().optional()
+  }),
+  z.object({
+    type: z.literal('tasks'),
+    id: z.string(),
+    name: z.string()
   })
 ]);
 
