@@ -90,7 +90,8 @@ export class TasksBacklogView extends ItemView {
         this.renderError('Failed to load tasks');
       }
     } else {
-      this.renderEmpty('No Tasks calendar configured');
+      // Show helpful message when no Tasks calendar is configured
+      this.renderEmpty('No Tasks calendar source configured.\n\nTo use the Tasks Backlog:\n1. Go to Full Calendar settings\n2. Add a new calendar source\n3. Select "Obsidian Tasks" as the type\n4. Configure the Tasks calendar settings');
     }
   }
 
@@ -226,7 +227,20 @@ export class TasksBacklogView extends ItemView {
     container.empty();
 
     const emptyEl = container.createDiv({ cls: 'tasks-backlog-empty' });
-    emptyEl.createEl('p', { text: message, cls: 'tasks-backlog-empty-text' });
+    
+    // Handle multi-line messages by splitting on \n
+    const lines = message.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line) {
+        emptyEl.createEl('p', { 
+          text: line, 
+          cls: i === 0 ? 'tasks-backlog-empty-text' : 'tasks-backlog-empty-instruction'
+        });
+      } else {
+        emptyEl.createEl('br');
+      }
+    }
   }
 
   /**

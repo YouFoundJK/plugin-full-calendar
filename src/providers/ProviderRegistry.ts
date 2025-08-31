@@ -140,6 +140,10 @@ export class ProviderRegistry {
         // Warning is already logged in getProviderForType
       }
     }
+
+    // Update sources and manage backlog after instances are initialized
+    this.sources = sources;
+    this.manageTasksBacklog();
   }
 
   // Methods from IdentifierManager, adapted
@@ -439,18 +443,10 @@ export class ProviderRegistry {
    * Manages the Tasks backlog view based on active Tasks providers
    */
   private manageTasksBacklog(): void {
-    const hasTasksProvider = this.sources.some(source => source.type === 'tasks');
-
-    if (hasTasksProvider) {
-      // Load the backlog if Tasks providers are present
-      if (!this.tasksBacklogManager.isBacklogLoaded()) {
-        this.tasksBacklogManager.onload();
-      }
-    } else {
-      // Unload the backlog if no Tasks providers are present
-      if (this.tasksBacklogManager.isBacklogLoaded()) {
-        this.tasksBacklogManager.onunload();
-      }
+    // Always load the backlog view so users can access it
+    // The view itself will handle showing appropriate messages when no Tasks providers are configured
+    if (!this.tasksBacklogManager.isBacklogLoaded()) {
+      this.tasksBacklogManager.onload();
     }
   }
 

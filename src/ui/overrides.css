@@ -97,6 +97,12 @@
 	font-style: italic;
 }
 
+.tasks-backlog-empty-instruction {
+	color: var(--text-muted);
+	font-size: 0.9rem;
+	margin-top: 0.5rem;
+}
+
 .tasks-backlog-instructions {
 	padding: 1rem;
 	border-top: 1px solid var(--background-modifier-border);
