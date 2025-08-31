@@ -147,8 +147,23 @@ export const ProviderAwareCalendarSettingRow = ({
     </div>
   );
 
-  // All providers now implement the required method - get the provider-specific content
+  // All providers should implement the required method - get the provider-specific content
   if (provider) {
+    // Defensive check: if provider doesn't have the new method, provide fallback
+    if (typeof provider.getSettingsRowComponent !== 'function') {
+      console.warn('Full Calendar: Provider instance missing getSettingsRowComponent method. Using fallback display. Please reload the plugin.');
+      
+      // Fallback rendering - display basic info about the calendar source
+      const displayName = (setting as any).name || setting.type || 'Unknown';
+      return (
+        <ChromeWrapper>
+          <div className="setting-item-control">
+            <span>{displayName} calendar</span>
+          </div>
+        </ChromeWrapper>
+      );
+    }
+    
     const ProviderContent = provider.getSettingsRowComponent();
     return (
       <ChromeWrapper>
