@@ -17,6 +17,7 @@ import * as React from 'react';
 import { CalendarInfo } from '../../../types';
 import { SourceWith } from '../../components/forms/common';
 import { UrlInput } from '../../components/forms/UrlInput';
+import FullCalendarPlugin from '../../../main';
 
 interface BasicProps<T extends Partial<CalendarInfo>> {
   source: T;
@@ -201,5 +202,58 @@ export const CalendarSettingRow = ({
         onChange={e => onColorChange(e.target.value)}
       />
     </div>
+  );
+};
+
+// New Provider-Aware Calendar Setting Row (Step 1: Foundation - dormant)
+interface ProviderAwareCalendarSettingsRowProps {
+  setting: Partial<CalendarInfo>;
+  onColorChange: (s: string) => void;
+  deleteCalendar: () => void;
+  plugin: FullCalendarPlugin;
+}
+
+export const ProviderAwareCalendarSettingRow = ({
+  setting,
+  onColorChange,
+  deleteCalendar,
+  plugin
+}: ProviderAwareCalendarSettingsRowProps) => {
+  const registry = plugin.providerRegistry;
+  const provider = setting.id ? registry.getInstance(setting.id) : null;
+  
+  // Chrome: Common parts for all calendar sources
+  const ChromeWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="setting-item">
+      <button type="button" onClick={deleteCalendar} className="fc-setting-delete-btn">
+        ✕
+      </button>
+      {children}
+      <input
+        type="color"
+        value={setting.color}
+        className="fc-setting-color-input"
+        onChange={e => onColorChange(e.target.value)}
+      />
+    </div>
+  );
+
+  // If provider implements the new method, use it
+  if (provider && provider.getSettingsRowComponent) {
+    const ProviderContent = provider.getSettingsRowComponent();
+    return (
+      <ChromeWrapper>
+        <ProviderContent source={setting} />
+      </ChromeWrapper>
+    );
+  }
+
+  // Fallback: This should never be reached in Step 1, but keeps the component complete
+  return (
+    <ChromeWrapper>
+      <div className="setting-item-control">
+        <span>Provider not found or method not implemented</span>
+      </div>
+    </ChromeWrapper>
   );
 };
