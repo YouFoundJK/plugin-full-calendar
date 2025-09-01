@@ -10,7 +10,6 @@ export interface CalendarProviderCapabilities {
 export interface CalendarProvider<TConfig> {
   readonly type: string;
   readonly displayName: string;
-  readonly isRemote: boolean;
   readonly loadPriority: number;
 
   getCapabilities(): CalendarProviderCapabilities;

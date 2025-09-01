@@ -51,7 +51,7 @@ describe('TasksPluginProvider', () => {
       expect(TasksPluginProvider.displayName).toBe('Obsidian Tasks');
       expect(provider.type).toBe('tasks');
       expect(provider.displayName).toBe('Obsidian Tasks');
-      expect(provider.isRemote).toBe(false);
+      expect(provider.loadPriority).toBe(30);
     });
 
     it('should return writable capabilities', () => {
