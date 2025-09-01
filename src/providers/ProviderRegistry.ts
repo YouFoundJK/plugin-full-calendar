@@ -235,76 +235,37 @@ export class ProviderRegistry {
   }
 
   /**
-   * Fetch events from local providers only (non-blocking for remote calendars).
-   * Returns immediately with local events, allowing UI to display them without waiting for remote calendars.
+   * Fetch events from all providers using priority-based ordering.
+   * Local providers (loadPriority < 100) load synchronously for immediate display.
+   * Remote providers (loadPriority >= 100) load asynchronously and call onProviderComplete.
    */
-  public async fetchLocalEvents(): Promise<
-    { calendarId: string; event: OFCEvent; location: EventLocation | null }[]
-  > {
-    if (!this.cache) {
-      throw new Error('Cache not set on ProviderRegistry');
-    }
-
-    const results: { calendarId: string; event: OFCEvent; location: EventLocation | null }[] = [];
-    const promises = [];
-
-    // Only process local (non-remote) providers
-    for (const [settingsId, instance] of this.instances.entries()) {
-      if (!instance.isRemote) {
-        const promise = (async () => {
-          try {
-            const rawEvents = await instance.getEvents();
-            rawEvents.forEach(([rawEvent, location]) => {
-              const event = this.cache!.enhancer.enhance(rawEvent);
-              results.push({
-                calendarId: settingsId,
-                event,
-                location
-              });
-            });
-          } catch (e) {
-            const source = this.getSource(settingsId);
-            console.warn(`Full Calendar: Failed to load local calendar source`, source, e);
-          }
-        })();
-        promises.push(promise);
-      }
-    }
-
-    await Promise.allSettled(promises);
-    return results;
-  }
-
-  /**
-   * Fetch events from remote providers with priority ordering.
-   * Loads remote calendars in background without blocking UI.
-   * Priority: ICS > CalDAV > Google Calendar
-   */
-  public async fetchRemoteEventsWithPriority(
+  public async fetchAllByPriority(
     onProviderComplete?: (
       calendarId: string,
       events: { event: OFCEvent; location: EventLocation | null }[]
     ) => void
-  ): Promise<void> {
+  ): Promise<{ event: OFCEvent; location: EventLocation | null; calendarId: string }[]> {
     if (!this.cache) {
       throw new Error('Cache not set on ProviderRegistry');
     }
 
-    // Group remote providers by priority
-    const remoteProviders = Array.from(this.instances.entries()).filter(
-      ([_, instance]) => instance.isRemote
+    const results: { event: OFCEvent; location: EventLocation | null; calendarId: string }[] = [];
+
+    // Sort all providers by loadPriority (lower number = higher priority)
+    const prioritizedProviders = Array.from(this.instances.entries()).sort(
+      ([, a], [, b]) => a.loadPriority - b.loadPriority
     );
 
-    // Define priority order: ical (ICS) > caldav (CalDAV) > google (Google Calendar)
-    const priorityOrder = ['ical', 'caldav', 'google'];
-    const prioritizedProviders = remoteProviders.sort(([, a], [, b]) => {
-      const aPriority = priorityOrder.indexOf(a.type);
-      const bPriority = priorityOrder.indexOf(b.type);
-      return (aPriority === -1 ? 999 : aPriority) - (bPriority === -1 ? 999 : bPriority);
-    });
+    // Split providers into local (priority < 100) and remote (priority >= 100)
+    const localProviders = prioritizedProviders.filter(
+      ([, provider]) => provider.loadPriority < 100
+    );
+    const remoteProviders = prioritizedProviders.filter(
+      ([, provider]) => provider.loadPriority >= 100
+    );
 
-    // Load each remote provider sequentially to respect priority
-    for (const [settingsId, instance] of prioritizedProviders) {
+    // Load local providers synchronously for immediate display
+    for (const [settingsId, instance] of localProviders) {
       try {
         const rawEvents = await instance.getEvents();
         const events = rawEvents.map(([rawEvent, location]) => ({
@@ -312,16 +273,44 @@ export class ProviderRegistry {
           location
         }));
 
-        // Notify callback immediately when this provider completes
-        if (onProviderComplete) {
-          onProviderComplete(settingsId, events);
-        }
+        // Add to results for immediate return
+        events.forEach(({ event, location }) => {
+          results.push({ event, location, calendarId: settingsId });
+        });
+
+        // Don't call callback for local providers - they are handled directly by EventCache
       } catch (e) {
         const source = this.getSource(settingsId);
-        console.warn(`Full Calendar: Failed to load remote calendar source`, source, e);
-        // Continue with next provider even if this one fails
+        console.warn(`Full Calendar: Failed to load local calendar source`, source, e);
       }
     }
+
+    // Load remote providers asynchronously in background
+    if (remoteProviders.length > 0) {
+      (async () => {
+        for (const [settingsId, instance] of remoteProviders) {
+          try {
+            const rawEvents = await instance.getEvents();
+            const events = rawEvents.map(([rawEvent, location]) => ({
+              event: this.cache!.enhancer.enhance(rawEvent),
+              location
+            }));
+
+            // Call callback when this provider completes
+            if (onProviderComplete) {
+              onProviderComplete(settingsId, events);
+            }
+          } catch (e) {
+            const source = this.getSource(settingsId);
+            console.warn(`Full Calendar: Failed to load remote calendar source`, source, e);
+          }
+        }
+      })().catch(error => {
+        console.error('Full Calendar: Error loading remote calendars:', error);
+      });
+    }
+
+    return results;
   }
 
   public async createEventInProvider(
