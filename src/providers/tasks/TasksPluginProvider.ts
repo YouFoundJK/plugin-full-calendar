@@ -167,6 +167,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     return null;
   }
 
+  public isFileRelevant(file: TFile): boolean {
+    // Tasks provider is interested in all markdown files.
+    return file.extension === 'md';
+  }
+
   /**
    * Converts a ParsedTask to an OFCEvent.
    */

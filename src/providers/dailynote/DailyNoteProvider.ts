@@ -101,6 +101,12 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     return null;
   }
 
+  public isFileRelevant(file: TFile): boolean {
+    // Encapsulates the logic of checking the daily note folder.
+    const { folder } = getDailyNoteSettings();
+    return folder ? file.path.startsWith(folder + '/') : true;
+  }
+
   private async _findEventLineNumber(file: TFile, persistentId: string): Promise<number> {
     const content = await this.app.read(file);
     const lines = content.split('\n');

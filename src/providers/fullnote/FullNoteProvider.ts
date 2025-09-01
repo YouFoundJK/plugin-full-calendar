@@ -120,6 +120,11 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return { persistentId: path };
   }
 
+  public isFileRelevant(file: TFile): boolean {
+    const directory = this.source.directory;
+    return !!directory && file.path.startsWith(directory + '/');
+  }
+
   public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
     const metadata = this.app.getMetadata(file);
     if (!metadata?.frontmatter) {
