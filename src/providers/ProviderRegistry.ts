@@ -513,16 +513,8 @@ export class ProviderRegistry {
     // This is the "nuclear reset" logic moved from main.ts
     await this.initializeInstances();
 
-    // Manage Tasks Backlog view lifecycle based on provider availability
-    if (this.hasProviderOfType('tasks')) {
-      if (!this.tasksBacklogManager.getIsLoaded()) {
-        this.tasksBacklogManager.onload();
-      }
-    } else {
-      if (this.tasksBacklogManager.getIsLoaded()) {
-        this.tasksBacklogManager.onunload();
-      }
-    }
+    // Use the centralized backlog lifecycle management
+    this.syncBacklogManagerLifecycle();
 
     this.cache.reset();
     await this.cache.populate();
@@ -534,6 +526,24 @@ export class ProviderRegistry {
       this.tasksBacklogManager.refreshViews();
     }
   };
+
+  /**
+   * Synchronizes the Tasks Backlog Manager lifecycle based on provider availability.
+   * This method centralizes the logic for loading/unloading the backlog based on
+   * whether any Tasks providers are currently configured.
+   */
+  public syncBacklogManagerLifecycle(): void {
+    // Manage Tasks Backlog view lifecycle based on provider availability
+    if (this.hasProviderOfType('tasks')) {
+      if (!this.tasksBacklogManager.getIsLoaded()) {
+        this.tasksBacklogManager.onload();
+      }
+    } else {
+      if (this.tasksBacklogManager.getIsLoaded()) {
+        this.tasksBacklogManager.onunload();
+      }
+    }
+  }
 
   public listenForSourceChanges(): void {
     // Obsidian's Workspace interface doesn't declare custom events; cast only the event emitter portion

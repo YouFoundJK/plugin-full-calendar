@@ -7,6 +7,7 @@
 
 import { TasksPluginProvider } from './TasksPluginProvider';
 import { TasksProviderConfig } from './typesTask';
+import { TFile } from 'obsidian';
 
 // Mock the dependencies
 jest.mock('../../ObsidianAdapter');
@@ -159,22 +160,19 @@ describe('TasksPluginProvider', () => {
       expect(secondCallCount).toBe(firstCallCount);
     });
 
-    it('should invalidate cache and rescan after file changes', async () => {
+    it('should cache results and avoid redundant scans', async () => {
       mockPlugin.app.vault.getMarkdownFiles = jest.fn().mockReturnValue([]);
 
       // Initial scan
       await provider.getEvents();
       const initialCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
 
-      // Simulate file update
-      provider.handleFileUpdate();
-
-      // Next scan should re-read files
+      // Second call should use cache
       await provider.getEvents();
-      const afterInvalidationCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
+      const secondCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
 
-      // Should have made additional calls after cache invalidation
-      expect(afterInvalidationCallCount).toBeGreaterThan(initialCallCount);
+      // Should not have made additional calls due to caching
+      expect(secondCallCount).toEqual(initialCallCount);
     });
 
     it('should provide undated tasks method', async () => {
@@ -185,22 +183,20 @@ describe('TasksPluginProvider', () => {
       expect(Array.isArray(undatedTasks)).toBe(true);
     });
 
-    it('should invalidate cache when files are deleted', async () => {
-      mockPlugin.app.vault.getMarkdownFiles = jest.fn().mockReturnValue([]);
+    it('should provide surgical file parsing via getEventsInFile', async () => {
+      // Create a mock file with task content
+      const mockFile = { path: 'test.md', extension: 'md' } as TFile;
 
-      // Initial scan
-      await provider.getEvents();
-      const initialCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
+      // Mock the file reading to return task content
+      mockApp.read.mockResolvedValue('- [ ] Test task 📅 2023-01-01');
 
-      // Simulate file deletion
-      provider.handleFileDelete();
+      // Should parse tasks from the specific file
+      const events = await provider.getEventsInFile(mockFile);
 
-      // Next scan should re-read files
-      await provider.getEvents();
-      const afterInvalidationCallCount = mockPlugin.app.vault.getMarkdownFiles.mock.calls.length;
-
-      // Should have made additional calls after cache invalidation
-      expect(afterInvalidationCallCount).toBeGreaterThan(initialCallCount);
+      expect(Array.isArray(events)).toBe(true);
+      expect(mockApp.read).toHaveBeenCalledWith(mockFile);
+      // Should not trigger full vault scan
+      expect(mockPlugin.app.vault.getMarkdownFiles).not.toHaveBeenCalled();
     });
   });
 });
