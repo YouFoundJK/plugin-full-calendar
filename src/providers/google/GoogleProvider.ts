@@ -9,7 +9,6 @@ import { EventHandle, FCReactComponent } from '../typesProvider';
 import { GoogleProviderConfig } from './typesGCal';
 
 import { GoogleConfigComponent } from './GoogleConfigComponent';
-import { fetchGoogleCalendarList } from './api';
 import * as React from 'react';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { GoogleAuthManager } from '../../features/google_auth/GoogleAuthManager';

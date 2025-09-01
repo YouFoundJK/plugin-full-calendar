@@ -11,7 +11,6 @@
  */
 
 import { TFile } from 'obsidian';
-import { DateTime } from 'luxon';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';

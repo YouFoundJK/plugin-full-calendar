@@ -118,6 +118,22 @@ export class ProviderRegistry {
     }
   }
 
+  public async addInstance(source: CalendarInfo): Promise<void> {
+    const settingsId = source.id;
+    if (!settingsId || this.instances.has(settingsId)) {
+      return; // Do nothing if ID is missing or instance already exists.
+    }
+
+    const ProviderClass = await this.getProviderForType(source.type);
+    if (ProviderClass) {
+      const app = new ObsidianIO(this.plugin.app);
+      const instance = new ProviderClass(source, this.plugin, app);
+      this.instances.set(settingsId, instance);
+      // Also update the internal sources list to keep it in sync.
+      this.sources.push(source);
+    }
+  }
+
   public async initializeInstances(): Promise<void> {
     this.instances.clear();
     const sources = this.plugin.settings.calendarSources;

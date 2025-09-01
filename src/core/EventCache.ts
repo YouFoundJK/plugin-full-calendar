@@ -45,7 +45,7 @@ import EventStore, { StoredEvent } from './EventStore';
 import { OFCEvent, EventLocation } from '../types';
 import { CalendarProvider } from '../providers/Provider';
 import { EventEnhancer } from './EventEnhancer';
-import { TimeEngine, TimeState } from './TimeEngine'; // ADDED import
+import { TimeEngine, TimeState } from './TimeEngine';
 
 export type CacheEntry = { event: OFCEvent; id: string; calendarId: string };
 

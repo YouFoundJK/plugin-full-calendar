@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { TFile, TFolder, normalizePath } from 'obsidian';
+import { TFile, normalizePath } from 'obsidian';
 import { load } from 'js-yaml'; // Import 'load' from js-yaml
 
 import { ObsidianInterface } from '../../ObsidianAdapter';
@@ -13,7 +13,6 @@ import FullCalendarPlugin from '../../main';
 
 // Import the new provider and its types
 import { FullNoteProvider } from './FullNoteProvider';
-import { FullNoteProviderConfig } from './typesLocal';
 
 // Mock Obsidian module
 jest.mock(

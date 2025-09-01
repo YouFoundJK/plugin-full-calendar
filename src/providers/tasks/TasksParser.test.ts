@@ -5,7 +5,6 @@
  * @license See LICENSE.md
  */
 
-import { DateTime } from 'luxon';
 import { TasksParser } from './TasksParser';
 
 describe('TasksParser', () => {

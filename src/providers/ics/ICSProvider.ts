@@ -1,5 +1,4 @@
 import { request } from 'obsidian';
-import { FullCalendarSettings } from '../../types/settings';
 import { OFCEvent, EventLocation } from '../../types';
 import { getEventsFromICS } from './ics';
 import * as React from 'react';

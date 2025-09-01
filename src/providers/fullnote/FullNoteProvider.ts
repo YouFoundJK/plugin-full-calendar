@@ -12,7 +12,6 @@ import { EventHandle, FCReactComponent } from '../typesProvider';
 import { FullNoteProviderConfig } from './typesLocal';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { FullNoteConfigComponent } from './FullNoteConfigComponent';
-import { convertEvent } from '../../features/Timezone';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 

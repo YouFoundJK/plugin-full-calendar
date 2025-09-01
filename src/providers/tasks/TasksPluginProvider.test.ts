@@ -5,7 +5,6 @@
  * @license See LICENSE.md
  */
 
-import { TFile } from 'obsidian';
 import { TasksPluginProvider } from './TasksPluginProvider';
 import { TasksProviderConfig } from './typesTask';
 

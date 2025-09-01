@@ -15,11 +15,7 @@
 import { NotificationManager } from './features/NotificationManager';
 import { StatusBarManager } from './features/statusbar/StatusBarManager'; // added
 import { LazySettingsTab } from './ui/settings/LazySettingsTab';
-import {
-  ensureCalendarIds,
-  sanitizeInitialView,
-  migrateAndSanitizeSettings
-} from './ui/settings/utilsSettings';
+import { ensureCalendarIds, migrateAndSanitizeSettings } from './ui/settings/utilsSettings';
 import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
 import { toEventInput } from './core/interop';
