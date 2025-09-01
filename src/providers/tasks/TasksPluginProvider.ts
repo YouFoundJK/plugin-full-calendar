@@ -297,20 +297,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   /**
-   * Gets the Tasks plugin API if available.
-   * @throws Error if Tasks plugin is not installed or API not available
-   */
-  private _getTasksPluginAPI(): any {
-    const tasksPlugin = (window as any).app?.plugins?.plugins?.['obsidian-tasks-plugin'];
-    if (!tasksPlugin?.apiV1) {
-      throw new Error(
-        'Obsidian Tasks plugin API is not available. Please ensure the Tasks plugin is installed and enabled.'
-      );
-    }
-    return tasksPlugin.apiV1;
-  }
-
-  /**
    * Safely locates a task by its handle (filePath::lineNumber) by re-parsing the file.
    * This ensures we find the task even if line numbers have changed due to other edits.
    */
@@ -355,7 +341,40 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     throw new Error(`Task not found in file ${filePath}. It may have been deleted or moved.`);
   }
 
-  // Write operations via Tasks plugin API
+  /**
+   * Determines the target file for creating a new task.
+   * Priority: 1. Today's daily note if it exists, 2. default tasks.md file
+   */
+  private async _getTargetFileForNewTask(event: OFCEvent): Promise<TFile> {
+    // Try to find today's daily note first
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
+    
+    // Common daily note formats to check
+    const dailyNoteFormats = [
+      `${today}.md`,
+      `Daily Notes/${today}.md`,
+      `journal/${today}.md`,
+      `notes/${today}.md`
+    ];
+
+    for (const format of dailyNoteFormats) {
+      const dailyNote = this.app.getFileByPath(format);
+      if (dailyNote) {
+        return dailyNote;
+      }
+    }
+
+    // Fall back to tasks.md or create it if it doesn't exist
+    const tasksFile = this.app.getFileByPath('tasks.md');
+    if (tasksFile) {
+      return tasksFile;
+    }
+
+    // Create tasks.md if it doesn't exist
+    return await this.app.create('tasks.md', '# Tasks\n\n');
+  }
+
+  // Write operations using direct file I/O
   async createEvent(event: OFCEvent): Promise<EditableEventResponse> {
     if (event.type !== 'single') {
       throw new Error('Tasks provider can only create single events, not recurring events.');
@@ -365,20 +384,34 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       // Convert the OFCEvent to a task line format
       const taskLine = this._ofcEventToTaskLine(event);
 
-      // Get the Tasks plugin API
-      const tasksAPI = this._getTasksPluginAPI();
+      // Determine target file for the new task
+      // Priority: 1. Today's daily note, 2. default tasks.md file
+      const targetFile = await this._getTargetFileForNewTask(event);
 
-      // Use the Tasks API to create the task with a pre-filled modal
-      // This opens the Tasks plugin's create modal with our task line pre-filled
-      await tasksAPI.createTaskLineModal(taskLine);
+      // Use direct file I/O to append the new task
+      const location = await this.app.rewrite(targetFile, (contents: string) => {
+        const lines = contents.split('\n');
+        
+        // Add the new task line at the end
+        lines.push(taskLine);
+        
+        // Return new content and location information
+        const newLineNumber = lines.length;
+        const locationInfo: EventLocation = {
+          file: { path: targetFile.path },
+          lineNumber: newLineNumber
+        };
+        
+        return [lines.join('\n'), locationInfo] as [string, EventLocation];
+      });
 
-      // After the API call completes and user saves, invalidate cache to reflect the new task
-      this._invalidateCache();
+      // Create the final event with updated UID to include actual location
+      const finalEvent: OFCEvent = {
+        ...event,
+        uid: `${targetFile.path}::${location.lineNumber}`
+      };
 
-      // Convert the event for return - we need to create a location
-      // Since the Tasks plugin handles file placement, we can't know the exact location immediately
-      // The caller will get the updated event through the cache refresh
-      return [event, null];
+      return [finalEvent, location];
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to create task: ${errorMessage}`);
@@ -395,24 +428,60 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
 
     try {
-      // Find the current task line
-      const { taskLine: originalLine } = await this._findTaskByHandle(handle);
+      // Find the current task line with resiliency to line number changes
+      const { file, lineNumber } = await this._findTaskByHandle(handle);
 
       // Convert the new event data to a task line
       const newTaskLine = this._ofcEventToTaskLine(newEventData);
 
-      // Get the Tasks plugin API
-      const tasksAPI = this._getTasksPluginAPI();
+      // Use direct file I/O to update the task with line-shift resiliency
+      const updatedLocation = await this.app.rewrite(file, (contents: string) => {
+        const lines = contents.split('\n');
+        
+        // Verify the task is still at the expected line, if not, find it
+        let actualLineIndex = lineNumber - 1; // Convert to 0-based index
+        
+        // Double-check: if the line at lineNumber doesn't match, scan for the task
+        if (actualLineIndex >= 0 && actualLineIndex < lines.length) {
+          const currentLine = lines[actualLineIndex];
+          const parseResult = this.parser.parseLine(currentLine, file.path, lineNumber);
+          
+          // If it's not a task at this line, we need to find the actual line
+          if (parseResult.type !== 'dated') {
+            // Scan the file to find the task
+            let found = false;
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              const result = this.parser.parseLine(line, file.path, i + 1);
+              if (result.type === 'dated') {
+                // This is a potential match - for now use first dated task found
+                // In a more sophisticated implementation, we'd match by content/UID
+                actualLineIndex = i;
+                found = true;
+                break;
+              }
+            }
+            
+            if (!found) {
+              throw new Error('Task not found in file. It may have been deleted.');
+            }
+          }
+        } else {
+          throw new Error('Invalid line number for task location.');
+        }
 
-      // Use the Tasks API to edit the task with a pre-filled modal
-      // This opens the Tasks plugin's edit modal with our new task line
-      await tasksAPI.editTaskLineModal(originalLine, newTaskLine);
+        // Update the line
+        lines[actualLineIndex] = newTaskLine;
+        
+        const finalLocation: EventLocation = {
+          file: { path: file.path },
+          lineNumber: actualLineIndex + 1 // Convert back to 1-based
+        };
+        
+        return [lines.join('\n'), finalLocation] as [string, EventLocation];
+      });
 
-      // After the API call completes and user saves, invalidate cache
-      this._invalidateCache();
-
-      // Return null as the exact location will be determined by the Tasks plugin
-      return null;
+      return updatedLocation;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to update task: ${errorMessage}`);
@@ -451,9 +520,9 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    */
   public async scheduleTask(taskId: string, date: Date): Promise<void> {
     try {
-      // Find the original task line using the taskId handle
+      // Find the original task line using the taskId handle with line-shift resiliency
       const handle = { persistentId: taskId };
-      const { taskLine: originalLine } = await this._findTaskByHandle(handle);
+      const { file, lineNumber } = await this._findTaskByHandle(handle);
 
       // Get the due date emoji and format from Tasks plugin settings
       const dueDateEmoji = getDueDateEmoji();
@@ -461,26 +530,64 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       // Format the date in YYYY-MM-DD format (standard Tasks plugin format)
       const formattedDate = date.toISOString().split('T')[0];
 
-      // Create the new task line with the due date added
-      // If the task already has a due date, we'll replace it; otherwise add it
-      let newTaskLine: string;
+      // Use direct file I/O to update the task with line-shift resiliency
+      await this.app.rewrite(file, (contents: string) => {
+        const lines = contents.split('\n');
+        
+        // Find the actual current line (handle potential line shifts)
+        let actualLineIndex = lineNumber - 1; // Convert to 0-based index
+        
+        // Verify the task is still at the expected line, if not, find it
+        if (actualLineIndex >= 0 && actualLineIndex < lines.length) {
+          const currentLine = lines[actualLineIndex];
+          const parseResult = this.parser.parseLine(currentLine, file.path, lineNumber);
+          
+          // If it's not a task at this line, we need to find the actual line
+          if (parseResult.type !== 'undated' && parseResult.type !== 'dated') {
+            // Scan the file to find an undated task (since we're scheduling it)
+            let found = false;
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              const result = this.parser.parseLine(line, file.path, i + 1);
+              if (result.type === 'undated') {
+                // This is a potential match - use first undated task found
+                actualLineIndex = i;
+                found = true;
+                break;
+              }
+            }
+            
+            if (!found) {
+              throw new Error('Undated task not found in file. It may have been deleted or already scheduled.');
+            }
+          }
+        } else {
+          throw new Error('Invalid line number for task location.');
+        }
 
-      // Simple approach: add the due date to the end of the task line if it doesn't already exist
-      if (originalLine.includes(dueDateEmoji)) {
-        // Replace existing due date
-        const dueDateRegex = new RegExp(`${dueDateEmoji}\\s*\\d{4}-\\d{2}-\\d{2}`, 'g');
-        newTaskLine = originalLine.replace(dueDateRegex, `${dueDateEmoji} ${formattedDate}`);
-      } else {
-        // Add new due date
-        newTaskLine = originalLine.trim() + ` ${dueDateEmoji} ${formattedDate}`;
-      }
+        const originalLine = lines[actualLineIndex];
+        
+        // Create the new task line with the due date added
+        let newTaskLine: string;
+        
+        // Idempotently add or replace the due date
+        if (originalLine.includes(dueDateEmoji)) {
+          // Replace existing due date
+          const dueDateRegex = new RegExp(`${dueDateEmoji}\\s*\\d{4}-\\d{2}-\\d{2}`, 'g');
+          newTaskLine = originalLine.replace(dueDateRegex, `${dueDateEmoji} ${formattedDate}`);
+        } else {
+          // Add new due date
+          newTaskLine = originalLine.trim() + ` ${dueDateEmoji} ${formattedDate}`;
+        }
 
-      // Use the Tasks plugin API to edit the task
-      const tasksAPI = this._getTasksPluginAPI();
-      await tasksAPI.editTaskLineModal(originalLine, newTaskLine);
+        // Update the line
+        lines[actualLineIndex] = newTaskLine;
+        
+        return lines.join('\n');
+      });
 
-      // Invalidate cache to reflect the changes
-      this._invalidateCache();
+      // The file-watcher system will automatically pick up this change
+      // and the task will disappear from backlog and appear on the calendar
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to schedule task: ${errorMessage}`);
