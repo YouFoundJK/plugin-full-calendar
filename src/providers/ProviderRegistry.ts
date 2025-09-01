@@ -256,9 +256,9 @@ export class ProviderRegistry {
       ([, a], [, b]) => a.loadPriority - b.loadPriority
     );
 
-    // Split providers into local (priority < 100) and remote (priority >= 100)
-    const localProviders = prioritizedProviders.filter(([, provider]) => provider.loadPriority < 100);
-    const remoteProviders = prioritizedProviders.filter(([, provider]) => provider.loadPriority >= 100);
+    // Split providers into local and remote using the isRemote property
+    const localProviders = prioritizedProviders.filter(([, provider]) => !provider.isRemote);
+    const remoteProviders = prioritizedProviders.filter(([, provider]) => provider.isRemote);
 
     // Load local providers synchronously for immediate display
     for (const [settingsId, instance] of localProviders) {
@@ -268,7 +268,7 @@ export class ProviderRegistry {
           event: this.cache!.enhancer.enhance(rawEvent),
           location
         }));
-        
+
         // Add to results for immediate return
         events.forEach(({ event, location }) => {
           results.push({ event, location, calendarId: settingsId });

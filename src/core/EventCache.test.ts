@@ -48,6 +48,7 @@ const makeCache = (events: OFCEvent[]) => {
   const mockProvider: CalendarProvider<any> = {
     type: 'FOR_TEST_ONLY',
     displayName: 'Test Provider',
+    isRemote: false,
     loadPriority: 50,
     getEvents: async () => events.map(e => [e, null] as [OFCEvent, null]),
     getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
@@ -87,7 +88,12 @@ const makeCache = (events: OFCEvent[]) => {
       fetchRemoteEventsWithPriority: async () => {
         // No-op for tests since our mock provider is not remote
       },
-      fetchAllByPriority: async (onProviderComplete?: (calendarId: string, events: { event: OFCEvent; location: EventLocation | null }[]) => void) => {
+      fetchAllByPriority: async (
+        onProviderComplete?: (
+          calendarId: string,
+          events: { event: OFCEvent; location: EventLocation | null }[]
+        ) => void
+      ) => {
         // Return local events, don't call callback for them
         const localEvents = events.map(e => ({
           event: e,
@@ -149,6 +155,7 @@ describe('event cache with readonly calendar', () => {
     const mockProvider: CalendarProvider<any> = {
       type: 'FOR_TEST_ONLY',
       displayName: 'Test Provider',
+      isRemote: false,
       loadPriority: 50,
       getEvents: async () => events1.map(e => [e, null]),
       getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
@@ -192,11 +199,24 @@ describe('event cache with readonly calendar', () => {
         fetchRemoteEventsWithPriority: async () => {
           // No-op for tests since our mock providers are not remote
         },
-        fetchAllByPriority: async (onProviderComplete?: (calendarId: string, events: { event: OFCEvent; location: EventLocation | null }[]) => void) => {
+        fetchAllByPriority: async (
+          onProviderComplete?: (
+            calendarId: string,
+            events: { event: OFCEvent; location: EventLocation | null }[]
+          ) => void
+        ) => {
           // Return local events immediately, no callback for them
           const localResults = [
-            ...events1.map(e => ({ event: e, location: null as EventLocation | null, calendarId: 'cal1' })),
-            ...events2.map(e => ({ event: e, location: null as EventLocation | null, calendarId: 'cal2' }))
+            ...events1.map(e => ({
+              event: e,
+              location: null as EventLocation | null,
+              calendarId: 'cal1'
+            })),
+            ...events2.map(e => ({
+              event: e,
+              location: null as EventLocation | null,
+              calendarId: 'cal2'
+            }))
           ];
           // No callback for local providers - they're handled directly
           return localResults;
@@ -280,6 +300,7 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
   const calendar: jest.Mocked<CalendarProvider<any>> = {
     type: 'FOR_TEST_ONLY',
     displayName: 'Editable Test Provider',
+    isRemote: false,
     loadPriority: 50,
     getEvents: jest.fn(async () => events),
     getEventsInFile: jest.fn(async () => []),
@@ -323,7 +344,12 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
       fetchRemoteEventsWithPriority: async () => {
         // No-op for tests since our mock providers are not remote
       },
-      fetchAllByPriority: async (onProviderComplete?: (calendarId: string, events: { event: OFCEvent; location: EventLocation | null }[]) => void) => {
+      fetchAllByPriority: async (
+        onProviderComplete?: (
+          calendarId: string,
+          events: { event: OFCEvent; location: EventLocation | null }[]
+        ) => void
+      ) => {
         // Return local events, no callback for them
         const localResults = events.map(([event, location]) => ({
           event,
@@ -726,6 +752,7 @@ describe('editable calendars', () => {
       const localProvider: CalendarProvider<any> = {
         type: 'local',
         displayName: 'Local Provider',
+        isRemote: false,
         loadPriority: 10,
         getEvents: jest.fn().mockResolvedValue([[localEvent, null]]),
         getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
@@ -741,6 +768,7 @@ describe('editable calendars', () => {
       const remoteProvider: CalendarProvider<any> = {
         type: 'ical',
         displayName: 'Remote ICS Provider',
+        isRemote: true,
         loadPriority: 100,
         getEvents: jest
           .fn()
@@ -783,14 +811,14 @@ describe('editable calendars', () => {
           fetchAllByPriority: jest.fn().mockImplementation(async onProviderComplete => {
             // Return local events immediately, simulate remote async
             const localResults = [{ event: localEvent, location: null, calendarId: 'local1' }];
-            
+
             // Simulate async loading of remote provider
             setTimeout(() => {
               if (onProviderComplete) {
                 onProviderComplete('remote1', [{ event: remoteEvent, location: null }]);
               }
             }, 50);
-            
+
             return localResults;
           }),
           generateId: withCounter(x => x, 'test-id'),
@@ -842,6 +870,7 @@ describe('editable calendars', () => {
       const createRemoteProvider = (type: string, event: OFCEvent): CalendarProvider<any> => ({
         type,
         displayName: `${type} Provider`,
+        isRemote: true,
         loadPriority: type === 'ical' ? 100 : type === 'caldav' ? 110 : 120,
         getEvents: jest.fn().mockImplementation(async () => {
           loadOrder.push(type);
@@ -911,7 +940,11 @@ describe('editable calendars', () => {
           }),
           fetchAllByPriority: jest.fn().mockImplementation(async onProviderComplete => {
             // Return empty for local (these are all remote providers in this test)
-            const localResults: { event: OFCEvent; location: EventLocation | null; calendarId: string }[] = [];
+            const localResults: {
+              event: OFCEvent;
+              location: EventLocation | null;
+              calendarId: string;
+            }[] = [];
 
             // Simulate unified priority-based loading using the new loadPriority values
             const instances = new Map([
@@ -921,8 +954,8 @@ describe('editable calendars', () => {
             ]);
 
             // Sort by loadPriority (lower = higher priority)
-            const prioritizedProviders = Array.from(instances.entries()).sort(([, a], [, b]) => 
-              a.loadPriority - b.loadPriority
+            const prioritizedProviders = Array.from(instances.entries()).sort(
+              ([, a], [, b]) => a.loadPriority - b.loadPriority
             );
 
             for (const [settingsId, instance] of prioritizedProviders) {
@@ -940,7 +973,7 @@ describe('editable calendars', () => {
                 // Continue with next provider
               }
             }
-            
+
             return localResults;
           }),
           generateId: withCounter(x => x, 'test-id'),

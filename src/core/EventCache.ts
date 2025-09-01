@@ -202,13 +202,15 @@ export default class EventCache {
     this.reset();
 
     // Use the unified priority-based loading approach
-    const localEvents = await this.plugin.providerRegistry.fetchAllByPriority((calendarId, events) => {
-      // Handle remote events via callback
-      const eventsForSync: [OFCEvent, EventLocation | null][] = events.map(
-        ({ event, location }) => [event, location]
-      );
-      this.syncCalendar(calendarId, eventsForSync);
-    });
+    const localEvents = await this.plugin.providerRegistry.fetchAllByPriority(
+      (calendarId, events) => {
+        // Handle remote events via callback
+        const eventsForSync: [OFCEvent, EventLocation | null][] = events.map(
+          ({ event, location }) => [event, location]
+        );
+        this.syncCalendar(calendarId, eventsForSync);
+      }
+    );
 
     // Add local events directly to store for immediate display
     localEvents.forEach(({ calendarId, event, location }) => {

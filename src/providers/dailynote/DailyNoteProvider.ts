@@ -69,6 +69,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
   readonly type = 'dailynote';
   readonly displayName = 'Daily Note';
+  readonly isRemote = false;
   readonly loadPriority = 20;
 
   constructor(

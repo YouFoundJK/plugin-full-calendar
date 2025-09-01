@@ -49,6 +49,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
 
   readonly type = 'ical';
   readonly displayName = 'Remote Calendar (ICS)';
+  readonly isRemote = true;
   readonly loadPriority = 100;
 
   constructor(source: ICSProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
