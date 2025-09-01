@@ -70,6 +70,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   /**
    * Invalidates the cached task data, forcing a re-scan on next access.
+   * Currently used only by write operations (create/update/delete).
+   * TODO: Remove this in Steps 3-4 when write operations are re-architected.
    */
   private _invalidateCache(): void {
     this._datedTasks = null;
@@ -78,7 +80,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   /**
    * Performs a single-pass scan of the vault for both dated and undated tasks.
-   * Uses caching to avoid redundant scans.
+   * Used only for initial cache population. Subsequent updates are handled surgically
+   * by the ProviderRegistry via getEventsInFile() method.
    */
   private async _scanVaultForTasks(): Promise<void> {
     // Return immediately if cache is already populated
@@ -211,34 +214,27 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   async getEvents(): Promise<EditableEventResponse[]> {
-    // Ensure cache is populated with single-pass scan
-    await this._scanVaultForTasks();
-
-    // Return cached dated tasks
-    return this._datedTasks!; // We know it's not null after _scanVaultForTasks()
+    // Use single-pass caching for initial population
+    // Subsequent updates are handled surgically by ProviderRegistry via getEventsInFile
+    if (this._datedTasks === null) {
+      await this._scanVaultForTasks();
+    }
+    
+    return this._datedTasks!; // We know it's not null after check above
   }
 
   /**
-   * Public method to expose undated tasks for future backlog functionality.
+   * Public method to expose undated tasks for backlog functionality.
    * @returns Array of undated tasks
    */
   public async getUndatedTasks(): Promise<ParsedUndatedTask[]> {
-    // Ensure cache is populated
-    await this._scanVaultForTasks();
+    // Use single-pass caching for initial population  
+    // Subsequent updates are handled surgically by ProviderRegistry
+    if (this._undatedTasks === null) {
+      await this._scanVaultForTasks();
+    }
 
-    // Return cached undated tasks
-    return this._undatedTasks!; // We know it's not null after _scanVaultForTasks()
-  }
-
-  /**
-   * Public methods for cache invalidation (to be called by file watchers).
-   */
-  public handleFileUpdate(): void {
-    this._invalidateCache();
-  }
-
-  public handleFileDelete(): void {
-    this._invalidateCache();
+    return this._undatedTasks!; // We know it's not null after check above
   }
 
   /**
