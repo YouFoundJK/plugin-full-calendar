@@ -49,6 +49,7 @@ const makeCache = (events: OFCEvent[]) => {
     type: 'FOR_TEST_ONLY',
     displayName: 'Test Provider',
     isRemote: false,
+    loadPriority: 50,
     getEvents: async () => events.map(e => [e, null] as [OFCEvent, null]),
     getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
     getEventHandle: (e: OFCEvent) => ({ persistentId: e.title }),
@@ -140,6 +141,7 @@ describe('event cache with readonly calendar', () => {
       type: 'FOR_TEST_ONLY',
       displayName: 'Test Provider',
       isRemote: false,
+      loadPriority: 50,
       getEvents: async () => events1.map(e => [e, null]),
       getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
       getEventHandle: (e: OFCEvent) => ({ persistentId: e.title }),
@@ -262,6 +264,7 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
     type: 'FOR_TEST_ONLY',
     displayName: 'Editable Test Provider',
     isRemote: false,
+    loadPriority: 50,
     getEvents: jest.fn(async () => events),
     getEventsInFile: jest.fn(async () => []),
     getCapabilities: jest.fn(() => ({
@@ -698,6 +701,7 @@ describe('editable calendars', () => {
         type: 'local',
         displayName: 'Local Provider',
         isRemote: false,
+        loadPriority: 10,
         getEvents: jest.fn().mockResolvedValue([[localEvent, null]]),
         getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
         getEventHandle: (e: OFCEvent) => ({ persistentId: e.title }),
@@ -713,6 +717,7 @@ describe('editable calendars', () => {
         type: 'ical',
         displayName: 'Remote ICS Provider',
         isRemote: true,
+        loadPriority: 100,
         getEvents: jest
           .fn()
           .mockImplementation(
@@ -802,6 +807,7 @@ describe('editable calendars', () => {
         type,
         displayName: `${type} Provider`,
         isRemote: true,
+        loadPriority: type === 'ical' ? 100 : type === 'caldav' ? 110 : 120,
         getEvents: jest.fn().mockImplementation(async () => {
           loadOrder.push(type);
           return [[event, null]];

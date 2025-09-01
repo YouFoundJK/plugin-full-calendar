@@ -53,6 +53,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   readonly type = 'google';
   readonly displayName = 'Google Calendar';
   readonly isRemote = true;
+  readonly loadPriority = 120;
 
   constructor(source: GoogleProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
