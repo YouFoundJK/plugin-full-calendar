@@ -39,16 +39,17 @@ describe('Tasks Provider Surgical File Watching', () => {
       getFileByPath: jest.fn(),
     } as unknown as jest.Mocked<ObsidianInterface>;
 
+    const mockVaultGetMarkdownFiles = jest.fn().mockReturnValue([]);
+    
     mockPlugin = {
       app: {
         vault: {
-          getMarkdownFiles: jest.fn().mockReturnValue([])
+          getMarkdownFiles: mockVaultGetMarkdownFiles
         }
       }
-    } as Partial<FullCalendarPlugin>;
+    } as unknown as Partial<FullCalendarPlugin>;
 
     const config: TasksProviderConfig = {
-      type: 'tasks',
       name: 'Test Tasks',
       id: 'test-tasks'
     };
@@ -81,7 +82,8 @@ describe('Tasks Provider Surgical File Watching', () => {
       expect(mockParser.parseFileContent).toHaveBeenCalledWith(fileContent, mockFile.path);
       
       // Should NOT trigger full vault scan
-      expect(mockPlugin.app?.vault.getMarkdownFiles).not.toHaveBeenCalled();
+      const mockGetMarkdownFiles = (mockPlugin as any).app.vault.getMarkdownFiles;
+      expect(mockGetMarkdownFiles).not.toHaveBeenCalled();
       
       // Should return events array
       expect(Array.isArray(events)).toBe(true);
@@ -122,21 +124,22 @@ describe('Tasks Provider Surgical File Watching', () => {
 
   describe('caching behavior', () => {
     it('should only scan vault once for initial population', async () => {
-      mockPlugin.app!.vault.getMarkdownFiles = jest.fn().mockReturnValue([]);
+      const mockGetMarkdownFiles = jest.fn().mockReturnValue([]);
+      (mockPlugin as any).app.vault.getMarkdownFiles = mockGetMarkdownFiles;
 
       // First call should trigger scan
       await provider.getEvents();
-      const firstScanCount = mockPlugin.app!.vault.getMarkdownFiles.mock.calls.length;
+      const firstScanCount = mockGetMarkdownFiles.mock.calls.length;
       expect(firstScanCount).toBe(1);
 
       // Second call should use cache
       await provider.getEvents();
-      const secondScanCount = mockPlugin.app!.vault.getMarkdownFiles.mock.calls.length;
+      const secondScanCount = mockGetMarkdownFiles.mock.calls.length;
       expect(secondScanCount).toBe(1); // No additional scans
 
       // Third call should still use cache
       await provider.getUndatedTasks();
-      const thirdScanCount = mockPlugin.app!.vault.getMarkdownFiles.mock.calls.length;
+      const thirdScanCount = mockGetMarkdownFiles.mock.calls.length;
       expect(thirdScanCount).toBe(1); // No additional scans
     });
   });
