@@ -383,19 +383,8 @@ export class ProviderRegistry {
         const sourceInfo = this.getSource(settingsId);
         if (!sourceInfo) continue;
 
-        let isRelevant = false;
-        if (instance.type === 'local') {
-          if (sourceInfo.type === 'local') {
-            const directory = sourceInfo.directory;
-            isRelevant = !!directory && file.path.startsWith(directory + '/');
-          }
-        } else if (instance.type === 'dailynote') {
-          const { folder } = require('obsidian-daily-notes-interface').getDailyNoteSettings();
-          isRelevant = folder ? file.path.startsWith(folder + '/') : true;
-        } else if (instance.type === 'tasks') {
-          // Tasks provider is interested in all markdown files
-          isRelevant = file.extension === 'md';
-        }
+        // Delegate file relevance check to the provider itself
+        const isRelevant = instance.isFileRelevant ? instance.isFileRelevant(file) : false;
 
         if (isRelevant) {
           interestedInstances.push({ instance, config: sourceInfo, settingsId });
