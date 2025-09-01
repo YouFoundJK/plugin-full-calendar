@@ -528,7 +528,6 @@ export class CalendarView extends ItemView {
         }
       }
 
-      // ADD THIS BLOCK
       // Apply the correct zoom level for the new view.
       const configKey = this.findBestZoomConfigKey(newViewType);
       if (configKey) {
@@ -540,7 +539,6 @@ export class CalendarView extends ItemView {
         this.fullCalendarView?.setOption('slotDuration', zoomLevels.slotDuration);
         this.fullCalendarView?.setOption('slotLabelInterval', zoomLevels.slotLabelInterval);
       }
-      // END BLOCK
 
       currentViewType = newViewType;
     };
@@ -907,8 +905,11 @@ export class CalendarView extends ItemView {
       // 3. Resync the entire calendar view.
       if (this.fullCalendarView) {
         requestAnimationFrame(() => {
-          this.fullCalendarView!.removeAllEventSources();
-          sources.forEach(source => this.fullCalendarView!.addEventSource(source));
+          // Add a final guard right before using the object to prevent race conditions.
+          if (this.fullCalendarView) {
+            this.fullCalendarView.removeAllEventSources();
+            sources.forEach(source => this.fullCalendarView!.addEventSource(source));
+          }
         });
       }
 
