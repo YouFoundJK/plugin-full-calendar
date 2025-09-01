@@ -97,6 +97,9 @@ export default class FullCalendarPlugin extends Plugin {
 
     await this.loadSettings(); // This now handles setting and syncing
     await this.providerRegistry.initializeInstances();
+    
+    // Ensure Tasks Backlog view is available immediately if a Tasks calendar exists
+    this.providerRegistry.syncBacklogManagerLifecycle();
 
     await manageTimezone(this);
 
