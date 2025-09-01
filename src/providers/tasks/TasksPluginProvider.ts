@@ -37,9 +37,15 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private source: TasksProviderConfig;
   private parser: TasksParser;
 
-  // Caching properties for single-pass scan
-  private _datedTasks: [OFCEvent, EventLocation | null][] | null = null;
+  // Cache for undated tasks (backlog functionality only)
+  // Dated tasks are now handled by the central EventCache via getEventsInFile
   private _undatedTasks: ParsedUndatedTask[] | null = null;
+  
+  // Track whether initial full scan has been done for getEvents()
+  private _initialEventsScanDone: boolean = false;
+  
+  // Cache for initial getEvents() result to avoid redundant scans
+  private _initialEventsResult: EditableEventResponse[] | null = null;
 
   readonly type = 'tasks';
   readonly displayName = 'Obsidian Tasks';
@@ -69,28 +75,53 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   /**
-   * Invalidates the cached task data, forcing a re-scan on next access.
-   * Currently used only by write operations (create/update/delete).
-   * TODO: Remove this in Steps 3-4 when write operations are re-architected.
+   * Handles file updates by invalidating the cache.
+   * Called by ProviderRegistry when a markdown file changes.
+   * This ensures the cache is refreshed on the next access.
    */
-  private _invalidateCache(): void {
-    this._datedTasks = null;
-    this._undatedTasks = null;
+  public handleFileUpdate(file: TFile): void {
+    if (this.isFileRelevant(file)) {
+      this._invalidateCache();
+    }
   }
 
   /**
-   * Performs a single-pass scan of the vault for both dated and undated tasks.
-   * Used only for initial cache population. Subsequent updates are handled surgically
-   * by the ProviderRegistry via getEventsInFile() method.
+   * Handles file deletions by invalidating the cache.
+   * Called by ProviderRegistry when a markdown file is deleted.
+   * This ensures the cache is refreshed on the next access.
    */
-  private async _scanVaultForTasks(): Promise<void> {
-    // Return immediately if cache is already populated
-    if (this._datedTasks !== null) {
+  public handleFileDelete(filePath: string): void {
+    // For Tasks provider, we need to invalidate cache for any markdown file deletion
+    // since we can't easily determine relevance without the file content
+    if (filePath.endsWith('.md')) {
+      this._invalidateCache();
+    }
+  }
+
+  /**
+   * Invalidates the cached task data, forcing a re-scan on next access.
+   * Currently used only for undated tasks cache and write operations.
+   * Dated tasks are now managed by EventCache via surgical file updates.
+   */
+  private _invalidateCache(): void {
+    this._undatedTasks = null;
+    this._initialEventsScanDone = false;
+    this._initialEventsResult = null;
+  }
+
+  /**
+   * Performs a unified scan of the vault for both dated and undated tasks.
+   * Used for initial cache population for both getEvents() and getUndatedTasks().
+   * This ensures a single file read per file for maximum efficiency.
+   */
+  private async _scanVaultForAllTasks(): Promise<void> {
+    // Return immediately if both caches are already populated
+    if (this._undatedTasks !== null && this._initialEventsResult !== null) {
       return;
     }
 
     // Initialize caches
-    this._datedTasks = [];
+    const allEvents: EditableEventResponse[] = [];
     this._undatedTasks = [];
 
     // Scan all markdown files in the vault
@@ -106,7 +137,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           const result = this.parser.parseLine(lines[lineNumber], file.path, lineNumber + 1);
 
           if (result.type === 'dated') {
-            // Convert to OFCEvent and add to dated tasks cache
+            // Add to dated events result
             const event = this.parseTaskToOFCEvent({
               title: result.task.title,
               date: result.task.date,
@@ -117,7 +148,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
               file: { path: file.path },
               lineNumber: result.task.location.lineNumber
             };
-            this._datedTasks.push([event, location]);
+            allEvents.push([event, location]);
           } else if (result.type === 'undated') {
             // Add to undated tasks cache
             this._undatedTasks.push(result.task);
@@ -128,6 +159,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         // Continue with other files
       }
     }
+
+    // Cache the results
+    this._initialEventsResult = allEvents;
+    this._initialEventsScanDone = true;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -214,13 +249,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   async getEvents(): Promise<EditableEventResponse[]> {
-    // Use single-pass caching for initial population
+    // For dated tasks, the EventCache is now the source of truth via getEventsInFile()
+    // This method is only called for initial population, so we'll do a unified scan once
     // Subsequent updates are handled surgically by ProviderRegistry via getEventsInFile
-    if (this._datedTasks === null) {
-      await this._scanVaultForTasks();
+    
+    // Only scan if we haven't done the initial scan yet
+    if (!this._initialEventsScanDone) {
+      await this._scanVaultForAllTasks();
     }
 
-    return this._datedTasks!; // We know it's not null after check above
+    return this._initialEventsResult || [];
   }
 
   /**
@@ -228,10 +266,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    * @returns Array of undated tasks
    */
   public async getUndatedTasks(): Promise<ParsedUndatedTask[]> {
-    // Use single-pass caching for initial population
+    // Use unified scanning for initial population
     // Subsequent updates are handled surgically by ProviderRegistry
     if (this._undatedTasks === null) {
-      await this._scanVaultForTasks();
+      await this._scanVaultForAllTasks();
     }
 
     return this._undatedTasks!; // We know it's not null after check above
