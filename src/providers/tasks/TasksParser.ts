@@ -13,7 +13,7 @@
 
 import { DateTime } from 'luxon';
 import { parseChecklistItems } from './utils/markdown';
-import { splitBySymbol, extractDate, cleanTaskTitle, cleanTaskTitleRobust } from './utils/splitter';
+import { splitBySymbol, extractDate, cleanTaskTitleRobust } from './utils/splitter';
 import { getTaskDateEmojis, TASK_EMOJIS } from './TasksSettings';
 
 export interface ParsedTask {

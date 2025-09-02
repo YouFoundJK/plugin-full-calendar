@@ -68,7 +68,7 @@ export function extractDate(text: string): string | null {
  * @param dateString The date string to validate
  * @returns true if the date string represents a valid date, false otherwise
  */
-function isValidDateString(dateString: string): boolean {
+export function isValidDateString(dateString: string): boolean {
   const formats = [
     'yyyy-MM-dd', // 2024-01-15
     'yyyy/MM/dd', // 2024/01/15
@@ -87,26 +87,6 @@ function isValidDateString(dateString: string): boolean {
   // Also try ISO parsing as fallback
   const isoDate = DateTime.fromISO(dateString);
   return isoDate.isValid;
-}
-
-/**
- * Removes emoji and metadata from the end of a task title.
- * @deprecated Use cleanTaskTitleRobust instead for better handling of dates and mixed content
- */
-export function cleanTaskTitle(
-  title: string,
-  symbols: string[] = ['📅', '🛫', '⏳', '✅', '❌', '⏰', '🔁']
-): string {
-  let cleaned = title;
-
-  for (const symbol of symbols) {
-    const index = cleaned.indexOf(symbol);
-    if (index !== -1) {
-      cleaned = cleaned.substring(0, index).trim();
-    }
-  }
-
-  return cleaned;
 }
 
 /**
