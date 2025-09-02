@@ -13,7 +13,7 @@
 
 import { DateTime } from 'luxon';
 import { parseChecklistItems } from './utils/markdown';
-import { splitBySymbol, extractDate, cleanTaskTitle } from './utils/splitter';
+import { splitBySymbol, extractDate, cleanTaskTitleRobust } from './utils/splitter';
 import { getTaskDateEmojis, TASK_EMOJIS } from './TasksSettings';
 
 export interface ParsedTask {
@@ -102,33 +102,9 @@ export class TasksParser {
       }
     }
 
-    // Clean the title by surgically removing date emojis and their associated dates
-    // Only clean if we actually found valid dates
-    let cleanedTitle = content;
-
-    if (foundDates.length > 0) {
-      // Remove each date emoji and its associated date
-      for (const [emoji] of dateEmojis) {
-        let currentContent = cleanedTitle;
-        const { before, after, found } = splitBySymbol(currentContent, emoji);
-        if (found) {
-          const dateString = extractDate(after);
-          if (dateString) {
-            // Check if this date was actually parsed successfully
-            const parsedDate = this.parseDate(dateString);
-            if (parsedDate && parsedDate.isValid) {
-              // Remove the emoji and the date, preserving the rest
-              const afterDateRemoved = after.replace(dateString, '').trim();
-              cleanedTitle = (before + ' ' + afterDateRemoved).replace(/\s+/g, ' ').trim();
-            }
-          }
-        }
-      }
-    }
-
-    // Always clean completion emojis
-    cleanedTitle = cleanedTitle.replace(TASK_EMOJIS.DONE, '').replace(TASK_EMOJIS.CANCELLED, '');
-    cleanedTitle = cleanedTitle.replace(/\s+/g, ' ').trim();
+    // Clean the title using the robust cleaning utility
+    // This removes all task metadata emojis and their associated data
+    const cleanedTitle = cleanTaskTitleRobust(content, TASK_EMOJIS);
 
     if (!cleanedTitle) {
       return { type: 'none' }; // Empty title
@@ -136,46 +112,10 @@ export class TasksParser {
 
     // If no dates found, this is an undated task
     if (foundDates.length === 0) {
-      // For undated tasks, we should still clean up any date emoji that had invalid dates
-      // This matches the original behavior where tasks with invalid dates get cleaned
-      let undatedTitle = content;
-
-      // Remove date emojis and any invalid date strings that follow them
-      for (const [emoji] of dateEmojis) {
-        const { before, after, found } = splitBySymbol(undatedTitle, emoji);
-        if (found) {
-          const dateString = extractDate(after);
-          if (dateString) {
-            // Remove the emoji and the invalid date string
-            const afterDateRemoved = after.replace(dateString, '').trim();
-            undatedTitle = (before + ' ' + afterDateRemoved).replace(/\s+/g, ' ').trim();
-          } else {
-            // Remove the emoji and the first word after it (likely the invalid date)
-            // but preserve any other content that might be tags, etc.
-            const afterParts = after.trim().split(/\s+/);
-            if (afterParts.length > 0 && afterParts[0]) {
-              // Remove the first word (likely invalid date) but keep the rest
-              const remainingAfter = afterParts.slice(1).join(' ');
-              undatedTitle = (before + ' ' + remainingAfter).replace(/\s+/g, ' ').trim();
-            } else {
-              undatedTitle = before.trim();
-            }
-          }
-        }
-      }
-
-      // Remove completion emojis
-      undatedTitle = undatedTitle.replace(TASK_EMOJIS.DONE, '').replace(TASK_EMOJIS.CANCELLED, '');
-      undatedTitle = undatedTitle.replace(/\s+/g, ' ').trim();
-
-      if (!undatedTitle) {
-        return { type: 'none' }; // Empty title
-      }
-
       return {
         type: 'undated',
         task: {
-          title: undatedTitle,
+          title: cleanedTitle,
           isDone: finalIsDone,
           location: {
             path: filePath,
