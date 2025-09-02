@@ -63,7 +63,7 @@ export function extractDate(text: string): string | null {
 /**
  * Removes emoji and metadata from the end of a task title.
  */
-export function cleanTaskTitle(title: string, symbols: string[] = ['📅', '⏰', '🔁']): string {
+export function cleanTaskTitle(title: string, symbols: string[] = ['📅', '🛫', '⏳', '✅', '❌', '⏰', '🔁']): string {
   let cleaned = title;
 
   for (const symbol of symbols) {

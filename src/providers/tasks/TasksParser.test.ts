@@ -29,6 +29,104 @@ describe('TasksParser', () => {
       }
     });
 
+    // New tests for enhanced parsing
+    it('should parse a task with start date only', () => {
+      const line = '- [ ] Task with start date 🛫 2024-01-15';
+      const result = parser.parseLine(line, 'test.md', 1);
+
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Task with start date');
+        expect(result.task.startDate?.toFormat('yyyy-MM-dd')).toBe('2024-01-15');
+        expect(result.task.endDate).toBeUndefined();
+        expect(result.task.date.toFormat('yyyy-MM-dd')).toBe('2024-01-15'); // Legacy compatibility
+      }
+    });
+
+    it('should parse a task with scheduled date only', () => {
+      const line = '- [ ] Task with scheduled date ⏳ 2024-01-15';
+      const result = parser.parseLine(line, 'test.md', 1);
+
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Task with scheduled date');
+        expect(result.task.startDate?.toFormat('yyyy-MM-dd')).toBe('2024-01-15');
+        expect(result.task.endDate).toBeUndefined();
+        expect(result.task.date.toFormat('yyyy-MM-dd')).toBe('2024-01-15'); // Legacy compatibility
+      }
+    });
+
+    it('should parse a multi-day task with start and due dates', () => {
+      const line = '- [ ] Multi-day project 🛫 2024-01-15 📅 2024-01-18';
+      const result = parser.parseLine(line, 'test.md', 1);
+
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Multi-day project');
+        expect(result.task.startDate?.toFormat('yyyy-MM-dd')).toBe('2024-01-15');
+        expect(result.task.endDate?.toFormat('yyyy-MM-dd')).toBe('2024-01-18');
+        expect(result.task.date.toFormat('yyyy-MM-dd')).toBe('2024-01-15'); // Primary date is start date
+      }
+    });
+
+    it('should parse a task with scheduled and due dates', () => {
+      const line = '- [ ] Task with schedule and due ⏳ 2024-01-15 📅 2024-01-18';
+      const result = parser.parseLine(line, 'test.md', 1);
+
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Task with schedule and due');
+        expect(result.task.startDate?.toFormat('yyyy-MM-dd')).toBe('2024-01-15');
+        expect(result.task.endDate?.toFormat('yyyy-MM-dd')).toBe('2024-01-18');
+        expect(result.task.date.toFormat('yyyy-MM-dd')).toBe('2024-01-15'); // Primary date is start date
+      }
+    });
+
+    it('should prefer start date over scheduled date when both present', () => {
+      const line = '- [ ] Task with both start and scheduled 🛫 2024-01-10 ⏳ 2024-01-15 📅 2024-01-18';
+      const result = parser.parseLine(line, 'test.md', 1);
+
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Task with both start and scheduled');
+        expect(result.task.startDate?.toFormat('yyyy-MM-dd')).toBe('2024-01-10'); // Start has precedence
+        expect(result.task.endDate?.toFormat('yyyy-MM-dd')).toBe('2024-01-18');
+        expect(result.task.date.toFormat('yyyy-MM-dd')).toBe('2024-01-10');
+      }
+    });
+
+    it('should recognize completed tasks with done emoji', () => {
+      const line = '- [x] Completed task ✅ 📅 2024-01-15';
+      const result = parser.parseLine(line, 'test.md', 1);
+
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Completed task');
+        expect(result.task.isDone).toBe(true);
+      }
+    });
+
+    it('should recognize cancelled tasks', () => {
+      const line = '- [ ] Cancelled task ❌ 📅 2024-01-15';
+      const result = parser.parseLine(line, 'test.md', 1);
+
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title).toBe('Cancelled task');
+        expect(result.task.isDone).toBe(true); // Cancelled is treated as done
+      }
+    });
+
+    it('should clean title by removing all task emojis', () => {
+      const line = '- [ ] Complex task 🛫 2024-01-15 📅 2024-01-18 ✅ #tag @person';
+      const result = parser.parseLine(line, 'test.md', 1);
+
+      expect(result.type).toBe('dated');
+      if (result.type === 'dated') {
+        expect(result.task.title.trim()).toBe('Complex task #tag @person'); // Should preserve non-date metadata
+      }
+    });
+
     it('should parse a completed task', () => {
       const line = '- [x] Buy groceries 📅 2024-01-10';
       const result = parser.parseLine(line, 'test.md', 5);
@@ -89,7 +187,7 @@ describe('TasksParser', () => {
 
       expect(result.type).toBe('undated');
       if (result.type === 'undated') {
-        expect(result.task.title).toBe('Task with bad date');
+        expect(result.task.title.trim()).toBe('Task with bad date'); // Invalid date gets removed but title preserved
         expect(result.task.isDone).toBe(false);
       }
     });
@@ -100,7 +198,7 @@ describe('TasksParser', () => {
 
       expect(result.type).toBe('dated');
       if (result.type === 'dated') {
-        expect(result.task.title).toBe('Meeting');
+        expect(result.task.title.trim()).toBe('Meeting #important @john'); // Should preserve tags and mentions
         expect(result.task.date.toFormat('yyyy-MM-dd')).toBe('2024-01-15');
       }
     });
@@ -111,7 +209,7 @@ describe('TasksParser', () => {
 
       expect(result.type).toBe('dated');
       if (result.type === 'dated') {
-        expect(result.task.title).toBe('Important task ⭐');
+        expect(result.task.title.trim()).toBe('Important task ⭐ 🔥'); // Should preserve non-date emojis
       }
     });
 

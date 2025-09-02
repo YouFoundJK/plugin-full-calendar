@@ -11,7 +11,7 @@ import { TFile } from 'obsidian';
 
 // Mock the dependencies
 jest.mock('../../ObsidianAdapter');
-jest.mock('./TasksParser');
+// NOTE: NOT mocking TasksParser so we can test the real enhanced parsing functionality
 
 describe('TasksPluginProvider', () => {
   let provider: TasksPluginProvider;
@@ -139,6 +139,141 @@ describe('TasksPluginProvider', () => {
       expect(() => {
         new TasksPluginProvider(config, mockPlugin);
       }).toThrow('TasksPluginProvider requires an Obsidian app interface.');
+    });
+  });
+
+  describe('enhanced parsing functionality', () => {
+    it('should create multi-day events from tasks with start and due dates', async () => {
+      const mockFile = { path: 'test.md', extension: 'md' } as TFile;
+      
+      // Task with both start and due date
+      const taskContent = '- [ ] Multi-day project 🛫 2024-01-15 📅 2024-01-18';
+      mockApp.read.mockResolvedValue(taskContent);
+
+      const events = await provider.getEventsInFile(mockFile);
+
+      expect(events).toHaveLength(1);
+      const [event, location] = events[0];
+      expect(event.title).toBe('Multi-day project');
+      if (event.type === 'single') {
+        expect(event.date).toBe('2024-01-15');
+        expect(event.endDate).toBe('2024-01-18');
+      }
+      expect(event.allDay).toBe(true);
+    });
+
+    it('should handle single-day events with start date', async () => {
+      const mockFile = { path: 'test.md', extension: 'md' } as TFile;
+      
+      const taskContent = '- [ ] Single day task 🛫 2024-01-15';
+      mockApp.read.mockResolvedValue(taskContent);
+
+      const events = await provider.getEventsInFile(mockFile);
+
+      expect(events).toHaveLength(1);
+      const [event, location] = events[0];
+      expect(event.title).toBe('Single day task');
+      if (event.type === 'single') {
+        expect(event.date).toBe('2024-01-15');
+        expect(event.endDate).toBe(null);
+      }
+    });
+
+    it('should handle scheduled dates as start dates', async () => {
+      const mockFile = { path: 'test.md', extension: 'md' } as TFile;
+      
+      const taskContent = '- [ ] Scheduled task ⏳ 2024-01-15 📅 2024-01-18';
+      mockApp.read.mockResolvedValue(taskContent);
+
+      const events = await provider.getEventsInFile(mockFile);
+
+      expect(events).toHaveLength(1);
+      const [event, location] = events[0];
+      expect(event.title).toBe('Scheduled task');
+      if (event.type === 'single') {
+        expect(event.date).toBe('2024-01-15');  // Scheduled date becomes start date
+        expect(event.endDate).toBe('2024-01-18');
+      }
+    });
+
+    it('should recognize completion emojis', async () => {
+      const mockFile = { path: 'test.md', extension: 'md' } as TFile;
+      
+      const taskContent = '- [ ] Completed task ✅ 📅 2024-01-15';
+      mockApp.read.mockResolvedValue(taskContent);
+
+      const events = await provider.getEventsInFile(mockFile);
+
+      expect(events).toHaveLength(1);
+      const [event, location] = events[0];
+      expect(event.title).toBe('Completed task');
+      if (event.type === 'single') {
+        expect(event.completed).toBeTruthy();
+      }
+    });
+
+    it('should preserve metadata while cleaning titles', async () => {
+      const mockFile = { path: 'test.md', extension: 'md' } as TFile;
+      
+      const taskContent = '- [ ] Task with metadata 🛫 2024-01-15 #important @john';
+      mockApp.read.mockResolvedValue(taskContent);
+
+      const events = await provider.getEventsInFile(mockFile);
+
+      expect(events).toHaveLength(1);
+      const [event, location] = events[0];
+      expect(event.title.trim()).toBe('Task with metadata #important @john');
+    });
+  });
+
+  describe('task serialization', () => {
+    it('should create single-day task lines', () => {
+      const event = {
+        type: 'single' as const,
+        title: 'Test task',
+        date: '2024-01-15',
+        endDate: null,
+        allDay: true
+      };
+
+      // Access the private method via any cast for testing
+      const taskLine = (provider as any)._ofcEventToTaskLine(event);
+      
+      expect(taskLine).toMatch(/- \[ \] Test task 📅 2024-01-15/);
+    });
+
+    it('should create multi-day task lines', () => {
+      const event = {
+        type: 'single' as const,
+        title: 'Multi-day task',
+        date: '2024-01-15',
+        endDate: '2024-01-18',
+        allDay: true
+      };
+
+      const taskLine = (provider as any)._ofcEventToTaskLine(event);
+      
+      expect(taskLine).toMatch(/- \[ \] Multi-day task 🛫 2024-01-15 📅 2024-01-18/);
+    });
+  });
+
+  describe('file target for new tasks', () => {
+    it('should target FMR Tasks integration.md for new tasks', async () => {
+      const targetFileName = 'FMR Tasks integration.md';
+      mockApp.getFileByPath.mockReturnValue(null);
+      mockApp.create.mockResolvedValue({ path: targetFileName });
+
+      const event = {
+        type: 'single' as const,
+        title: 'New task',
+        date: '2024-01-15',
+        allDay: true
+      };
+
+      // Access the private method for testing
+      const targetFile = await (provider as any)._getTargetFileForNewTask(event);
+
+      expect(mockApp.create).toHaveBeenCalledWith(targetFileName, '# Tasks\n\n');
     });
   });
 

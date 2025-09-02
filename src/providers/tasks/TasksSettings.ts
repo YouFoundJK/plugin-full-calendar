@@ -15,6 +15,15 @@ export interface TasksPluginSettings {
   // Add other settings as needed
 }
 
+// Standard task emojis used by the Obsidian Tasks plugin
+export const TASK_EMOJIS = {
+  DUE: '📅', // Due date
+  START: '🛫', // Start date  
+  SCHEDULED: '⏳', // Scheduled date
+  DONE: '✅', // Done/completion
+  CANCELLED: '❌' // Cancelled
+} as const;
+
 // Extend Window interface to include Obsidian's app object
 declare global {
   interface Window {
@@ -55,4 +64,32 @@ export function getTasksPluginSettings(): TasksPluginSettings {
  */
 export function getDueDateEmoji(): string {
   return getTasksPluginSettings().globalFilter;
+}
+
+/**
+ * Gets the start date emoji used by the Tasks plugin.
+ * @returns The emoji used for start dates (🛫)
+ */
+export function getStartDateEmoji(): string {
+  return TASK_EMOJIS.START;
+}
+
+/**
+ * Gets the scheduled date emoji used by the Tasks plugin.
+ * @returns The emoji used for scheduled dates (⏳)
+ */
+export function getScheduledDateEmoji(): string {
+  return TASK_EMOJIS.SCHEDULED;
+}
+
+/**
+ * Gets all task date emojis in order of precedence for parsing.
+ * @returns Array of [emoji, type] tuples
+ */
+export function getTaskDateEmojis(): Array<[string, 'start' | 'scheduled' | 'due']> {
+  return [
+    [getStartDateEmoji(), 'start'],
+    [getScheduledDateEmoji(), 'scheduled'], 
+    [getDueDateEmoji(), 'due']
+  ];
 }
