@@ -6,6 +6,7 @@
  */
 
 import { TasksParser } from './TasksParser';
+import { cleanTaskTitleRobust } from './utils/splitter';
 
 describe('TasksParser', () => {
   let parser: TasksParser;
@@ -264,6 +265,128 @@ No checkboxes or due dates.`;
       const results = parser.parseFileContent(content, 'notes.md');
 
       expect(results).toHaveLength(0);
+    });
+  });
+});
+
+describe('cleanTaskTitleRobust', () => {
+  describe('basic functionality', () => {
+    it('should return unchanged title when no task emojis are present', () => {
+      expect(cleanTaskTitleRobust('Simple task with no metadata')).toBe('Simple task with no metadata');
+      expect(cleanTaskTitleRobust('Task with regular emojis 🚀 ⭐ 🎉')).toBe('Task with regular emojis 🚀 ⭐ 🎉');
+    });
+
+    it('should handle empty or whitespace-only strings', () => {
+      expect(cleanTaskTitleRobust('')).toBe('');
+      expect(cleanTaskTitleRobust('   ')).toBe('');
+      expect(cleanTaskTitleRobust('\t\n  ')).toBe('');
+    });
+  });
+
+  describe('date-related emoji cleaning', () => {
+    it('should remove due date emoji and associated date', () => {
+      expect(cleanTaskTitleRobust('Complete report 📅 2024-01-15')).toBe('Complete report');
+      expect(cleanTaskTitleRobust('Meeting 📅 2024/01/15')).toBe('Meeting');
+      expect(cleanTaskTitleRobust('Task 📅 15-01-2024')).toBe('Task');
+    });
+
+    it('should remove start date emoji and associated date', () => {
+      expect(cleanTaskTitleRobust('Project kickoff 🛫 2024-01-15')).toBe('Project kickoff');
+      expect(cleanTaskTitleRobust('Begin work 🛫 2024/01/15')).toBe('Begin work');
+    });
+
+    it('should remove scheduled date emoji and associated date', () => {
+      expect(cleanTaskTitleRobust('Review meeting ⏳ 2024-01-15')).toBe('Review meeting');
+      expect(cleanTaskTitleRobust('Call client ⏳ 2024/01/15')).toBe('Call client');
+    });
+
+    it('should remove date created emoji and associated date', () => {
+      expect(cleanTaskTitleRobust('New task ➕ 2024-01-15')).toBe('New task');
+    });
+
+    it('should remove date emoji even when no valid date follows', () => {
+      expect(cleanTaskTitleRobust('Task 📅 invalid-date')).toBe('Task invalid-date');
+      expect(cleanTaskTitleRobust('Task 📅 sometext')).toBe('Task sometext');
+      expect(cleanTaskTitleRobust('Task 📅')).toBe('Task');
+    });
+  });
+
+  describe('completion emoji cleaning', () => {
+    it('should remove completion emojis without affecting dates', () => {
+      expect(cleanTaskTitleRobust('Finished task ✅')).toBe('Finished task');
+      expect(cleanTaskTitleRobust('Cancelled work ❌')).toBe('Cancelled work');
+    });
+
+    it('should handle completion emojis with following text', () => {
+      expect(cleanTaskTitleRobust('Done task ✅ with notes')).toBe('Done task with notes');
+      expect(cleanTaskTitleRobust('Cancelled ❌ due to reasons')).toBe('Cancelled due to reasons');
+    });
+  });
+
+  describe('mixed emoji scenarios', () => {
+    it('should handle multiple different emojis in various orders', () => {
+      expect(cleanTaskTitleRobust('Task 📅 2024-01-15 ✅')).toBe('Task');
+      expect(cleanTaskTitleRobust('Work ✅ 📅 2024-01-15')).toBe('Work');
+      expect(cleanTaskTitleRobust('Project 🛫 2024-01-10 📅 2024-01-15 ✅')).toBe('Project');
+    });
+
+    it('should preserve user content between task emojis', () => {
+      expect(cleanTaskTitleRobust('Review PR #42 🚀 📅 2024-09-01 ✅')).toBe('Review PR #42 🚀');
+      expect(cleanTaskTitleRobust('Meeting with @john #work ⏳ 2024-01-15 📅 2024-01-18')).toBe('Meeting with @john #work');
+    });
+
+    it('should handle emojis at the beginning of the title', () => {
+      expect(cleanTaskTitleRobust('📅 2024-01-15 Important task')).toBe('Important task');
+      expect(cleanTaskTitleRobust('✅ 🛫 2024-01-10 Task completed')).toBe('Task completed');
+    });
+
+    it('should handle multiple occurrences of the same emoji', () => {
+      expect(cleanTaskTitleRobust('Task 📅 2024-01-15 more text 📅 2024-01-20')).toBe('Task more text');
+      expect(cleanTaskTitleRobust('Work ✅ done ✅ really')).toBe('Work done really');
+    });
+  });
+
+  describe('complex real-world scenarios', () => {
+    it('should handle the example from the issue description', () => {
+      expect(cleanTaskTitleRobust('Review PR #42 🚀 📅 2025-09-01 ✅')).toBe('Review PR #42 🚀');
+    });
+
+    it('should handle tasks with all types of metadata', () => {
+      const input = 'Finalize Q3 report 🛫 2025-08-01 📅 2025-08-15 ⏳ 2025-08-10 ➕ 2025-07-20 ✅ ❌';
+      expect(cleanTaskTitleRobust(input)).toBe('Finalize Q3 report');
+    });
+
+    it('should preserve links and other markdown syntax', () => {
+      expect(cleanTaskTitleRobust('Check [[Important Note]] 📅 2024-01-15'))
+        .toBe('Check [[Important Note]]');
+      expect(cleanTaskTitleRobust('Review [GitHub PR](https://github.com/repo/pr/1) ✅'))
+        .toBe('Review [GitHub PR](https://github.com/repo/pr/1)');
+    });
+
+    it('should handle edge cases with special spacing', () => {
+      expect(cleanTaskTitleRobust('Task   📅   2024-01-15   ✅   ')).toBe('Task');
+      expect(cleanTaskTitleRobust('   📅 2024-01-15 Task with leading spaces')).toBe('Task with leading spaces');
+    });
+
+    it('should handle tasks with invalid date formats gracefully', () => {
+      expect(cleanTaskTitleRobust('Task 📅 2024-13-40 more content')).toBe('Task 2024-13-40 more content');
+      expect(cleanTaskTitleRobust('Task 📅 not-a-date ✅')).toBe('Task not-a-date');
+    });
+  });
+
+  describe('edge cases and robustness', () => {
+    it('should handle emojis within words (though unlikely)', () => {
+      expect(cleanTaskTitleRobust('prefix📅2024-01-15suffix')).toBe('prefix 2024-01-15suffix');
+    });
+
+    it('should handle overlapping/adjacent emojis', () => {
+      expect(cleanTaskTitleRobust('Task📅2024-01-15✅❌')).toBe('Task');
+    });
+
+    it('should maintain proper spacing after cleaning', () => {
+      expect(cleanTaskTitleRobust('A 📅 2024-01-15 B ✅ C')).toBe('A B C');
+      expect(cleanTaskTitleRobust('Start 🛫 2024-01-10 middle 📅 2024-01-15 end'))
+        .toBe('Start middle end');
     });
   });
 });
