@@ -120,6 +120,7 @@ export function cleanTaskTitle(
  * 
  * @param title The raw task title containing potential metadata
  * @param taskEmojis Object containing all task emoji definitions (defaults to TASK_EMOJIS)
+ * @param removeInvalidDateText Whether to remove text after date emojis if it's not a valid date (for backward compatibility)
  * @returns The cleaned title with only the descriptive text and user content
  * 
  * @example
@@ -131,7 +132,8 @@ export function cleanTaskTitle(
  */
 export function cleanTaskTitleRobust(
   title: string,
-  taskEmojis: Record<string, string> = TASK_EMOJIS
+  taskEmojis: Record<string, string> = TASK_EMOJIS,
+  removeInvalidDateText = true
 ): string {
   if (!title || typeof title !== 'string') {
     return '';
@@ -178,8 +180,28 @@ export function cleanTaskTitleRobust(
           // Valid date found, remove both emoji and date
           const afterDateRemoved = after.replace(dateString, '').trim();
           cleaned = (before + ' ' + afterDateRemoved).replace(/\s+/g, ' ').trim();
+        } else if (removeInvalidDateText && after.trim()) {
+          // No valid date found, check if we should remove first word for backward compatibility
+          const afterParts = after.trim().split(/\s+/);
+          if (afterParts.length > 0 && afterParts[0]) {
+            const firstWord = afterParts[0];
+            // Only remove first word if it doesn't look like a date pattern at all
+            const looksLikeDatePattern = /\d{4}[-/\.]\d{1,2}[-/\.]\d{4}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}|\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}/.test(firstWord);
+            
+            if (!looksLikeDatePattern) {
+              // First word doesn't look like a date - remove it for backward compatibility
+              const remainingAfter = afterParts.slice(1).join(' ');
+              cleaned = (before + ' ' + remainingAfter).replace(/\s+/g, ' ').trim();
+            } else {
+              // First word looks like a date pattern (even if invalid) - preserve it
+              cleaned = (before + ' ' + after).replace(/\s+/g, ' ').trim();
+            }
+          } else {
+            // Just remove the emoji
+            cleaned = (before + ' ' + after).replace(/\s+/g, ' ').trim();
+          }
         } else {
-          // No valid date found, just remove the emoji
+          // Just remove the emoji (preserve all text after)
           cleaned = (before + ' ' + after).replace(/\s+/g, ' ').trim();
         }
       } else if (completionEmojis.has(emoji)) {

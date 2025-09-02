@@ -7,6 +7,7 @@
 
 import { TasksParser } from './TasksParser';
 import { cleanTaskTitleRobust } from './utils/splitter';
+import { TASK_EMOJIS } from './TasksSettings';
 
 describe('TasksParser', () => {
   let parser: TasksParser;
@@ -189,7 +190,7 @@ describe('TasksParser', () => {
 
       expect(result.type).toBe('undated');
       if (result.type === 'undated') {
-        expect(result.task.title.trim()).toBe('Task with bad date'); // Invalid date gets removed but title preserved
+        expect(result.task.title.trim()).toBe('Task with bad date'); // Invalid date gets removed for backward compatibility
         expect(result.task.isDone).toBe(false);
       }
     });
@@ -305,8 +306,8 @@ describe('cleanTaskTitleRobust', () => {
     });
 
     it('should remove date emoji even when no valid date follows', () => {
-      expect(cleanTaskTitleRobust('Task 📅 invalid-date')).toBe('Task invalid-date');
-      expect(cleanTaskTitleRobust('Task 📅 sometext')).toBe('Task sometext');
+      expect(cleanTaskTitleRobust('Task 📅 invalid-date')).toBe('Task'); // non-date-pattern text gets removed for backward compatibility
+      expect(cleanTaskTitleRobust('Task 📅 sometext')).toBe('Task');
       expect(cleanTaskTitleRobust('Task 📅')).toBe('Task');
     });
   });
@@ -370,13 +371,18 @@ describe('cleanTaskTitleRobust', () => {
 
     it('should handle tasks with invalid date formats gracefully', () => {
       expect(cleanTaskTitleRobust('Task 📅 2024-13-40 more content')).toBe('Task 2024-13-40 more content');
-      expect(cleanTaskTitleRobust('Task 📅 not-a-date ✅')).toBe('Task not-a-date');
+      expect(cleanTaskTitleRobust('Task 📅 not-a-date ✅')).toBe('Task'); // not-a-date gets removed for backward compatibility
+    });
+
+    it('should preserve invalid date text when removeInvalidDateText is false', () => {
+      expect(cleanTaskTitleRobust('Task 📅 not-a-date', TASK_EMOJIS, false)).toBe('Task not-a-date');
+      expect(cleanTaskTitleRobust('Task 📅 invalid-date more text', TASK_EMOJIS, false)).toBe('Task invalid-date more text');
     });
   });
 
   describe('edge cases and robustness', () => {
     it('should handle emojis within words (though unlikely)', () => {
-      expect(cleanTaskTitleRobust('prefix📅2024-01-15suffix')).toBe('prefix 2024-01-15suffix');
+      expect(cleanTaskTitleRobust('prefix📅2024-01-15suffix')).toBe('prefix 2024-01-15suffix'); // Date pattern is preserved
     });
 
     it('should handle overlapping/adjacent emojis', () => {
