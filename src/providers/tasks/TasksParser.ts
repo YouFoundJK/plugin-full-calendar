@@ -14,11 +14,13 @@
 import { DateTime } from 'luxon';
 import { parseChecklistItems } from './utils/markdown';
 import { splitBySymbol, extractDate, cleanTaskTitle } from './utils/splitter';
-import { getDueDateEmoji } from './TasksSettings';
+import { getTaskDateEmojis, TASK_EMOJIS } from './TasksSettings';
 
 export interface ParsedTask {
   title: string;
-  date: DateTime;
+  startDate?: DateTime; // Start date (🛫) or scheduled date (⏳)
+  endDate?: DateTime; // Due date (📅)
+  date: DateTime; // Legacy compatibility - the primary date for display
   isDone: boolean;
   location: {
     path: string;
@@ -28,7 +30,9 @@ export interface ParsedTask {
 
 export interface ParsedDatedTask {
   title: string;
-  date: DateTime;
+  startDate?: DateTime; // Start date (🛫) or scheduled date (⏳)
+  endDate?: DateTime; // Due date (📅)
+  date: DateTime; // Legacy compatibility - the primary date for display
   isDone: boolean;
   location: {
     path: string;
@@ -64,8 +68,6 @@ export class TasksParser {
       return { type: 'none' };
     }
 
-    const dueDateEmoji = getDueDateEmoji();
-
     // Extract checklist content without checkbox syntax
     const contentMatch = line.match(/^\s*-\s*\[[\sx]\]\s*(.*)$/);
     if (!contentMatch) {
@@ -75,21 +77,106 @@ export class TasksParser {
     const content = contentMatch[1];
     const isCompleted = /^\s*-\s*\[x\]\s*/i.test(line);
 
-    // Check if the content contains the due date emoji
-    const { before: titlePart, after: afterEmoji, found } = splitBySymbol(content, dueDateEmoji);
+    // Look for completion status emojis first
+    const isDoneFromEmoji =
+      content.includes(TASK_EMOJIS.DONE) || content.includes(TASK_EMOJIS.CANCELLED);
+    const finalIsDone = isCompleted || isDoneFromEmoji;
 
-    if (!found) {
-      // This is an undated task
-      const cleanedTitle = cleanTaskTitle(titlePart || content).trim();
-      if (!cleanedTitle) {
+    // Parse all date emojis found in the content
+    const dateEmojis = getTaskDateEmojis();
+    const foundDates: { type: 'start' | 'scheduled' | 'due'; date: DateTime }[] = [];
+    let workingContent = content;
+
+    for (const [emoji, dateType] of dateEmojis) {
+      const { before, after, found } = splitBySymbol(workingContent, emoji);
+      if (found) {
+        const dateString = extractDate(after);
+        if (dateString) {
+          const parsedDate = this.parseDate(dateString);
+          if (parsedDate && parsedDate.isValid) {
+            foundDates.push({ type: dateType, date: parsedDate });
+            // Update working content to remove this emoji and date for next iteration
+            workingContent = before + ' ' + after.replace(dateString, '').trim();
+          }
+        }
+      }
+    }
+
+    // Clean the title by surgically removing date emojis and their associated dates
+    // Only clean if we actually found valid dates
+    let cleanedTitle = content;
+
+    if (foundDates.length > 0) {
+      // Remove each date emoji and its associated date
+      for (const [emoji] of dateEmojis) {
+        let currentContent = cleanedTitle;
+        const { before, after, found } = splitBySymbol(currentContent, emoji);
+        if (found) {
+          const dateString = extractDate(after);
+          if (dateString) {
+            // Check if this date was actually parsed successfully
+            const parsedDate = this.parseDate(dateString);
+            if (parsedDate && parsedDate.isValid) {
+              // Remove the emoji and the date, preserving the rest
+              const afterDateRemoved = after.replace(dateString, '').trim();
+              cleanedTitle = (before + ' ' + afterDateRemoved).replace(/\s+/g, ' ').trim();
+            }
+          }
+        }
+      }
+    }
+
+    // Always clean completion emojis
+    cleanedTitle = cleanedTitle.replace(TASK_EMOJIS.DONE, '').replace(TASK_EMOJIS.CANCELLED, '');
+    cleanedTitle = cleanedTitle.replace(/\s+/g, ' ').trim();
+
+    if (!cleanedTitle) {
+      return { type: 'none' }; // Empty title
+    }
+
+    // If no dates found, this is an undated task
+    if (foundDates.length === 0) {
+      // For undated tasks, we should still clean up any date emoji that had invalid dates
+      // This matches the original behavior where tasks with invalid dates get cleaned
+      let undatedTitle = content;
+
+      // Remove date emojis and any invalid date strings that follow them
+      for (const [emoji] of dateEmojis) {
+        const { before, after, found } = splitBySymbol(undatedTitle, emoji);
+        if (found) {
+          const dateString = extractDate(after);
+          if (dateString) {
+            // Remove the emoji and the invalid date string
+            const afterDateRemoved = after.replace(dateString, '').trim();
+            undatedTitle = (before + ' ' + afterDateRemoved).replace(/\s+/g, ' ').trim();
+          } else {
+            // Remove the emoji and the first word after it (likely the invalid date)
+            // but preserve any other content that might be tags, etc.
+            const afterParts = after.trim().split(/\s+/);
+            if (afterParts.length > 0 && afterParts[0]) {
+              // Remove the first word (likely invalid date) but keep the rest
+              const remainingAfter = afterParts.slice(1).join(' ');
+              undatedTitle = (before + ' ' + remainingAfter).replace(/\s+/g, ' ').trim();
+            } else {
+              undatedTitle = before.trim();
+            }
+          }
+        }
+      }
+
+      // Remove completion emojis
+      undatedTitle = undatedTitle.replace(TASK_EMOJIS.DONE, '').replace(TASK_EMOJIS.CANCELLED, '');
+      undatedTitle = undatedTitle.replace(/\s+/g, ' ').trim();
+
+      if (!undatedTitle) {
         return { type: 'none' }; // Empty title
       }
 
       return {
         type: 'undated',
         task: {
-          title: cleanedTitle,
-          isDone: isCompleted,
+          title: undatedTitle,
+          isDone: finalIsDone,
           location: {
             path: filePath,
             lineNumber
@@ -98,62 +185,47 @@ export class TasksParser {
       };
     }
 
-    // Extract the date from the text after the emoji
-    const dateString = extractDate(afterEmoji);
-    if (!dateString) {
-      // Has emoji but no valid date - treat as undated
-      const cleanedTitle = cleanTaskTitle(titlePart).trim();
-      if (!cleanedTitle) {
-        return { type: 'none' };
-      }
+    // Determine start and end dates based on found dates
+    let startDate: DateTime | undefined;
+    let endDate: DateTime | undefined;
+    let primaryDate: DateTime;
 
-      return {
-        type: 'undated',
-        task: {
-          title: cleanedTitle,
-          isDone: isCompleted,
-          location: {
-            path: filePath,
-            lineNumber
-          }
-        }
-      };
+    // Find start date (🛫 or ⏳ in that order of preference)
+    const startDateEntry =
+      foundDates.find(d => d.type === 'start') || foundDates.find(d => d.type === 'scheduled');
+    if (startDateEntry) {
+      startDate = startDateEntry.date;
     }
 
-    // Parse the date using Luxon
-    const date = this.parseDate(dateString);
-    if (!date || !date.isValid) {
-      // Invalid date - treat as undated
-      const cleanedTitle = cleanTaskTitle(titlePart).trim();
-      if (!cleanedTitle) {
-        return { type: 'none' };
-      }
-
-      return {
-        type: 'undated',
-        task: {
-          title: cleanedTitle,
-          isDone: isCompleted,
-          location: {
-            path: filePath,
-            lineNumber
-          }
-        }
-      };
+    // Find due date (📅)
+    const dueDateEntry = foundDates.find(d => d.type === 'due');
+    if (dueDateEntry) {
+      endDate = dueDateEntry.date;
     }
 
-    // Clean the title by removing any remaining emoji and metadata
-    const cleanedTitle = cleanTaskTitle(titlePart).trim();
-    if (!cleanedTitle) {
-      return { type: 'none' }; // Empty title
+    // Determine primary date for legacy compatibility
+    if (startDate && endDate) {
+      // Multi-day event: primary date is start date
+      primaryDate = startDate;
+    } else if (startDate) {
+      // Only start date: single-day event
+      primaryDate = startDate;
+    } else if (endDate) {
+      // Only due date: single-day event
+      primaryDate = endDate;
+    } else {
+      // Should not happen given foundDates.length > 0, but fallback to first found
+      primaryDate = foundDates[0].date;
     }
 
     return {
       type: 'dated',
       task: {
         title: cleanedTitle,
-        date,
-        isDone: isCompleted,
+        startDate,
+        endDate,
+        date: primaryDate, // Legacy compatibility
+        isDone: finalIsDone,
         location: {
           path: filePath,
           lineNumber

@@ -19,7 +19,7 @@ import { EventHandle, FCReactComponent } from '../typesProvider';
 import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent } from './TasksConfigComponent';
 import { TasksParser, ParsedTask, ParsedUndatedTask } from './TasksParser';
-import { getDueDateEmoji } from './TasksSettings';
+import { getDueDateEmoji, getStartDateEmoji, getScheduledDateEmoji } from './TasksSettings';
 import React from 'react';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
@@ -214,12 +214,40 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    * Converts a ParsedTask to an OFCEvent.
    */
   private parseTaskToOFCEvent(task: ParsedTask): OFCEvent {
+    // Determine if this is a multi-day event
+    const hasStartDate = task.startDate && task.startDate.isValid;
+    const hasEndDate = task.endDate && task.endDate.isValid;
+
+    // Compare dates by their string representation to avoid timezone/time issues
+    const isMultiDay =
+      hasStartDate &&
+      hasEndDate &&
+      task.startDate!.toFormat('yyyy-MM-dd') !== task.endDate!.toFormat('yyyy-MM-dd');
+
+    let date: string;
+    let endDate: string | null = null;
+
+    if (isMultiDay) {
+      // Multi-day event: use start date as date, due date as endDate
+      date = task.startDate!.toFormat('yyyy-MM-dd');
+      endDate = task.endDate!.toFormat('yyyy-MM-dd');
+    } else if (hasStartDate) {
+      // Single-day event with start date
+      date = task.startDate!.toFormat('yyyy-MM-dd');
+    } else if (hasEndDate) {
+      // Single-day event with due date
+      date = task.endDate!.toFormat('yyyy-MM-dd');
+    } else {
+      // Fallback to legacy date field
+      date = task.date.toFormat('yyyy-MM-dd');
+    }
+
     return {
       type: 'single',
       title: task.title,
-      date: task.date.toFormat('yyyy-MM-dd'),
+      date,
       allDay: true, // Tasks with due dates are typically all-day events
-      endDate: null,
+      endDate,
       timezone: undefined,
       uid: `${task.location.path}::${task.location.lineNumber}`, // Unique identifier
       completed: task.isDone ? task.date.toISO() : false // Use task completion as event completion
@@ -277,21 +305,30 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   /**
    * Converts an OFCEvent to a task line string compatible with Obsidian Tasks format.
-   * Queries the Tasks plugin settings for correct due date emoji and format.
+   * Handles both single-day and multi-day events by using appropriate emoji.
    */
   private _ofcEventToTaskLine(event: OFCEvent): string {
     if (event.type !== 'single') {
       throw new Error('Tasks provider can only handle single events, not recurring events.');
     }
 
-    // Get the due date emoji from Tasks plugin settings
-    const dueDateEmoji = getDueDateEmoji();
+    // Format the primary date
+    const formattedStartDate = event.date.split('T')[0];
+    let taskLine = `- [ ] ${event.title}`;
 
-    // Format the date in YYYY-MM-DD format (standard Tasks plugin format)
-    const formattedDate = event.date.split('T')[0];
+    // Determine if this is a multi-day event
+    if (event.endDate && event.endDate !== event.date) {
+      // Multi-day event: add start date and due date
+      const formattedEndDate = event.endDate.split('T')[0];
+      const startEmoji = getStartDateEmoji();
+      const dueEmoji = getDueDateEmoji();
 
-    // Construct the task line: - [ ] Title 📅 YYYY-MM-DD
-    const taskLine = `- [ ] ${event.title} ${dueDateEmoji} ${formattedDate}`;
+      taskLine += ` ${startEmoji} ${formattedStartDate} ${dueEmoji} ${formattedEndDate}`;
+    } else {
+      // Single-day event: use due date emoji (default behavior)
+      const dueEmoji = getDueDateEmoji();
+      taskLine += ` ${dueEmoji} ${formattedStartDate}`;
+    }
 
     return taskLine;
   }
@@ -343,35 +380,20 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   /**
    * Determines the target file for creating a new task.
-   * Priority: 1. Today's daily note if it exists, 2. default tasks.md file
+   * Uses the designated file "FMR Tasks integration.md" at vault root.
    */
   private async _getTargetFileForNewTask(event: OFCEvent): Promise<TFile> {
-    // Try to find today's daily note first
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
+    const targetFileName = 'FMR Tasks integration.md';
 
-    // Common daily note formats to check
-    const dailyNoteFormats = [
-      `${today}.md`,
-      `Daily Notes/${today}.md`,
-      `journal/${today}.md`,
-      `notes/${today}.md`
-    ];
-
-    for (const format of dailyNoteFormats) {
-      const dailyNote = this.app.getFileByPath(format);
-      if (dailyNote) {
-        return dailyNote;
-      }
+    // Check if the target file already exists
+    const existingFile = this.app.getFileByPath(targetFileName);
+    if (existingFile) {
+      return existingFile;
     }
 
-    // Fall back to tasks.md or create it if it doesn't exist
-    const tasksFile = this.app.getFileByPath('tasks.md');
-    if (tasksFile) {
-      return tasksFile;
-    }
-
-    // Create tasks.md if it doesn't exist
-    return await this.app.create('tasks.md', '# Tasks\n\n');
+    // Create the file if it doesn't exist
+    const initialContent = '# Tasks\n\n';
+    return await this.app.create(targetFileName, initialContent);
   }
 
   // Write operations using direct file I/O
