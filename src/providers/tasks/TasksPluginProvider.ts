@@ -610,6 +610,9 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
       // The file-watcher system will automatically pick up this change
       // and the task will disappear from backlog and appear on the calendar
+      
+      // Invalidate cache to force refresh on next data request
+      this._invalidateCache();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to schedule task: ${errorMessage}`);
