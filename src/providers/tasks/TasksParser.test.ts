@@ -242,19 +242,19 @@ describe('TasksParser', () => {
 
       const results = parser.parseFileContent(content, 'tasks.md');
 
-      expect(results).toHaveLength(3);
+      expect(results.dated).toHaveLength(3);
 
-      expect(results[0].title).toBe('First task');
-      expect(results[0].isDone).toBe(false);
-      expect(results[0].location.lineNumber).toBe(3);
+      expect(results.dated[0].title).toBe('First task');
+      expect(results.dated[0].isDone).toBe(false);
+      expect(results.dated[0].location.lineNumber).toBe(3);
 
-      expect(results[1].title).toBe('Second task');
-      expect(results[1].isDone).toBe(true);
-      expect(results[1].location.lineNumber).toBe(4);
+      expect(results.dated[1].title).toBe('Second task');
+      expect(results.dated[1].isDone).toBe(true);
+      expect(results.dated[1].location.lineNumber).toBe(4);
 
-      expect(results[2].title).toBe('Another task');
-      expect(results[2].date.toFormat('yyyy-MM-dd')).toBe('2024-02-01');
-      expect(results[2].location.lineNumber).toBe(9);
+      expect(results.dated[2].title).toBe('Another task');
+      expect(results.dated[2].date.toFormat('yyyy-MM-dd')).toBe('2024-02-01');
+      expect(results.dated[2].location.lineNumber).toBe(9);
     });
 
     it('should return empty array for content without tasks', () => {
@@ -265,7 +265,7 @@ No checkboxes or due dates.`;
 
       const results = parser.parseFileContent(content, 'notes.md');
 
-      expect(results).toHaveLength(0);
+      expect(results.dated).toHaveLength(0);
     });
   });
 });

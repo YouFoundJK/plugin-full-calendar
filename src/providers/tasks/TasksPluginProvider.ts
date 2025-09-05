@@ -11,6 +11,8 @@
  */
 
 import { TFile } from 'obsidian';
+import { DateTime } from 'luxon';
+
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
@@ -263,11 +265,46 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
     try {
-      const content = await this.app.read(file);
-      const tasks = this.parser.parseFileContent(content, file.path);
+      // Ensure internal caches are populated before attempting a surgical update.
+      await this._ensureCacheIsPopulated();
 
+      const content = await this.app.read(file);
+      // 1. Parse the file ONCE to get both dated and undated tasks.
+      const { dated: newDatedTasks, undated: newUndatedTasks } = this.parser.parseFileContent(
+        content,
+        file.path
+      );
+
+      // 2. Surgically update the internal caches.
+      if (this._datedTasks) {
+        // Remove all old dated events from this file.
+        this._datedTasks = this._datedTasks.filter(
+          ([, location]) => location?.file.path !== file.path
+        );
+        // Add all new dated events from this file.
+        for (const task of newDatedTasks) {
+          const event = this.parseTaskToOFCEvent(task);
+          const location: EventLocation = {
+            file: { path: file.path },
+            lineNumber: task.location.lineNumber
+          };
+          this._datedTasks.push([event, location]);
+        }
+      }
+
+      if (this._undatedTasks) {
+        // Remove all old undated tasks from this file.
+        this._undatedTasks = this._undatedTasks.filter(task => task.location.path !== file.path);
+        // Add all new undated tasks from this file.
+        this._undatedTasks.push(...newUndatedTasks);
+      }
+
+      // 3. Trigger a refresh of any open backlog views.
+      this.plugin.providerRegistry.refreshBacklogViews();
+
+      // 4. Return only the dated events, as expected by the ProviderRegistry's syncFile flow.
       const events: EditableEventResponse[] = [];
-      for (const task of tasks) {
+      for (const task of newDatedTasks) {
         const event = this.parseTaskToOFCEvent(task);
         const location: EventLocation = {
           file: { path: file.path },
@@ -275,7 +312,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         };
         events.push([event, location]);
       }
-
       return events;
     } catch (error) {
       console.warn(`Failed to parse tasks from file ${file.path}:`, error);
@@ -540,76 +576,75 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    */
   public async scheduleTask(taskId: string, date: Date): Promise<void> {
     try {
-      // Find the original task line using the taskId handle with line-shift resiliency
-      const handle = { persistentId: taskId };
-      const { file, lineNumber } = await this._findTaskByHandle(handle);
+      // 1. Ensure caches are populated before we try to modify them.
+      await this._ensureCacheIsPopulated();
 
-      // Get the due date emoji and format from Tasks plugin settings
+      if (!taskId.includes('::')) {
+        throw new Error('Invalid task ID format.');
+      }
+
+      // 2. Parse taskId and get the file.
+      const [filePath, lineNumberStr] = taskId.split('::');
+      const lineNumber = parseInt(lineNumberStr, 10); // 1-based
+      const file = this.app.getFileByPath(filePath);
+
+      if (!file) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      // 3. Read the file and validate the target line.
+      const content = await this.app.read(file);
+      const lines = content.split('\n');
+      const lineIndex = lineNumber - 1; // 0-based
+
+      if (lineIndex < 0 || lineIndex >= lines.length) {
+        throw new Error(`Line number ${lineNumber} is out of bounds for file ${filePath}.`);
+      }
+
+      const originalLine = lines[lineIndex];
+      const parseResult = this.parser.parseLine(originalLine, filePath, lineNumber);
+
+      if (parseResult.type !== 'undated') {
+        throw new Error(
+          'The dragged item is not an undated task. It may have been modified or deleted.'
+        );
+      }
+
+      // 4. Modify the line and rewrite the file.
       const dueDateEmoji = getDueDateEmoji();
 
       // Format the date in YYYY-MM-DD format (standard Tasks plugin format)
-      const formattedDate = date.toISOString().split('T')[0];
+      const formattedDate = DateTime.fromJSDate(date).toFormat('yyyy-MM-dd');
+      const updatedLine = `${originalLine.trim()} ${dueDateEmoji} ${formattedDate}`;
 
-      // Use direct file I/O to update the task with line-shift resiliency
-      await this.app.rewrite(file, (contents: string) => {
-        const lines = contents.split('\n');
+      lines[lineIndex] = updatedLine;
+      await this.app.rewrite(file, () => lines.join('\n'));
 
-        // Find the actual current line (handle potential line shifts)
-        let actualLineIndex = lineNumber - 1; // Convert to 0-based index
+      // 5. Perform a surgical cache update instead of a full invalidation.
+      if (this._undatedTasks && this._datedTasks) {
+        // a. Remove from undated tasks cache
+        const undatedTaskIndex = this._undatedTasks.findIndex(
+          task => task.location.path === filePath && task.location.lineNumber === lineNumber
+        );
 
-        // Verify the task is still at the expected line, if not, find it
-        if (actualLineIndex >= 0 && actualLineIndex < lines.length) {
-          const currentLine = lines[actualLineIndex];
-          const parseResult = this.parser.parseLine(currentLine, file.path, lineNumber);
-
-          // If it's not a task at this line, we need to find the actual line
-          if (parseResult.type !== 'undated' && parseResult.type !== 'dated') {
-            // Scan the file to find an undated task (since we're scheduling it)
-            let found = false;
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i];
-              const result = this.parser.parseLine(line, file.path, i + 1);
-              if (result.type === 'undated') {
-                // This is a potential match - use first undated task found
-                actualLineIndex = i;
-                found = true;
-                break;
-              }
-            }
-
-            if (!found) {
-              throw new Error(
-                'Undated task not found in file. It may have been deleted or already scheduled.'
-              );
-            }
-          }
-        } else {
-          throw new Error('Invalid line number for task location.');
+        if (undatedTaskIndex > -1) {
+          this._undatedTasks.splice(undatedTaskIndex, 1);
         }
 
-        const originalLine = lines[actualLineIndex];
-
-        // Create the new task line with the due date added
-        let newTaskLine: string;
-
-        // Idempotently add or replace the due date
-        if (originalLine.includes(dueDateEmoji)) {
-          // Replace existing due date
-          const dueDateRegex = new RegExp(`${dueDateEmoji}\\s*\\d{4}-\\d{2}-\\d{2}`, 'g');
-          newTaskLine = originalLine.replace(dueDateRegex, `${dueDateEmoji} ${formattedDate}`);
-        } else {
-          // Add new due date
-          newTaskLine = originalLine.trim() + ` ${dueDateEmoji} ${formattedDate}`;
+        // b. Add to dated tasks cache by re-parsing the now-dated line
+        const newParseResult = this.parser.parseLine(updatedLine, filePath, lineNumber);
+        if (newParseResult.type === 'dated') {
+          const newOFCEvent = this.parseTaskToOFCEvent(newParseResult.task);
+          const newLocation: EventLocation = {
+            file: { path: filePath },
+            lineNumber: lineNumber
+          };
+          this._datedTasks.push([newOFCEvent, newLocation]);
         }
-
-        // Update the line
-        lines[actualLineIndex] = newTaskLine;
-
-        return lines.join('\n');
-      });
-
-      // The file-watcher system will automatically pick up this change
-      // and the task will disappear from backlog and appear on the calendar
+      } else {
+        // Fallback to invalidation if caches weren't populated for some reason
+        this._invalidateCache();
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to schedule task: ${errorMessage}`);

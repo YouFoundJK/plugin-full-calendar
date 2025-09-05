@@ -31,6 +31,15 @@ export type CalendarProviderClass = new (
 type ProviderLoader = () => Promise<{ [key: string]: CalendarProviderClass }>;
 
 export class ProviderRegistry {
+  /**
+   * Triggers a refresh of any open Tasks Backlog views.
+   * This is called by the Tasks provider when its internal data changes.
+   */
+  public refreshBacklogViews(): void {
+    if (this.tasksBacklogManager.getIsLoaded()) {
+      this.tasksBacklogManager.refreshViews();
+    }
+  }
   private providers = new Map<string, ProviderLoader>();
   private instances = new Map<string, CalendarProvider<unknown>>();
   private sources: CalendarInfo[] = [];

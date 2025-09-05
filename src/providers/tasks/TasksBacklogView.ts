@@ -11,6 +11,7 @@
  */
 
 import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { Draggable } from '@fullcalendar/interaction';
 import FullCalendarPlugin from '../../main';
 import { TasksPluginProvider } from './TasksPluginProvider';
 import { ParsedUndatedTask } from './TasksParser';
@@ -25,6 +26,7 @@ export class TasksBacklogView extends ItemView {
   private displayedTasks: ParsedUndatedTask[] = [];
   private readonly TASKS_PER_PAGE = 200;
   private currentPage = 1;
+  private draggable: Draggable | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: FullCalendarPlugin) {
     super(leaf);
@@ -58,6 +60,9 @@ export class TasksBacklogView extends ItemView {
 
   onClose(): Promise<void> {
     // Clean up any event listeners or resources
+    if (this.draggable) {
+      this.draggable.destroy();
+    }
     return Promise.resolve();
   }
 
@@ -195,27 +200,16 @@ export class TasksBacklogView extends ItemView {
         text: `${task.location.path}:${task.location.lineNumber}`,
         cls: 'tasks-backlog-location'
       });
-
-      // Add drag event handlers
-      this.setupDragHandlers(taskItem);
     }
-  }
 
-  /**
-   * Sets up drag and drop handlers for a task item.
-   */
-  private setupDragHandlers(taskItem: HTMLElement): void {
-    taskItem.addEventListener('dragstart', e => {
-      const taskId = taskItem.getAttribute('data-task-id');
-      if (taskId && e.dataTransfer) {
-        e.dataTransfer.setData('text/plain', taskId);
-        e.dataTransfer.effectAllowed = 'move';
-        taskItem.addClass('tasks-backlog-dragging');
-      }
-    });
-
-    taskItem.addEventListener('dragend', () => {
-      taskItem.removeClass('tasks-backlog-dragging');
+    // Set up FullCalendar's Draggable API for the entire task list
+    if (this.draggable) {
+      this.draggable.destroy();
+    }
+    this.draggable = new Draggable(tasksList, {
+      itemSelector: '.tasks-backlog-item'
+      // No eventData needed as the drop callback in view.ts
+      // reads the data-task-id attribute directly.
     });
   }
 

@@ -166,21 +166,26 @@ export class TasksParser {
    * Parses all tasks from a file's content.
    * @param content The complete file content
    * @param filePath The path to the file
-   * @returns Array of ParsedDatedTask objects
+   * @returns An object containing arrays of both dated and undated tasks.
    */
-  parseFileContent(content: string, filePath: string): ParsedDatedTask[] {
+  parseFileContent(
+    content: string,
+    filePath: string
+  ): { dated: ParsedDatedTask[]; undated: ParsedUndatedTask[] } {
     const checklistItems = parseChecklistItems(content);
-    const tasks: ParsedDatedTask[] = [];
+    const dated: ParsedDatedTask[] = [];
+    const undated: ParsedUndatedTask[] = [];
 
     for (const item of checklistItems) {
       const result = this.parseLine(item.line, filePath, item.lineNumber);
       if (result.type === 'dated') {
-        // Push the full dated task object, preserving startDate and endDate
-        tasks.push(result.task);
+        dated.push(result.task);
+      } else if (result.type === 'undated') {
+        undated.push(result.task);
       }
     }
 
-    return tasks;
+    return { dated, undated };
   }
 
   /**

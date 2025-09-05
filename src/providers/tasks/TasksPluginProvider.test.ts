@@ -148,13 +148,20 @@ describe('TasksPluginProvider', () => {
   describe('enhanced parsing functionality', () => {
     it('should create multi-day events from tasks with start and due dates', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-
-      // Task with both start and due date
-      const taskContent = '- [ ] Multi-day project 🛫 2024-01-15 📅 2024-01-18';
-      mockApp.read.mockResolvedValue(taskContent);
-
+      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+        dated: [
+          {
+            title: 'Multi-day project',
+            type: 'single',
+            date: '2024-01-15',
+            endDate: '2024-01-18',
+            allDay: true,
+            location: { lineNumber: 1, path: 'test.md' }
+          }
+        ],
+        undated: []
+      });
       const events = await provider.getEventsInFile(mockFile);
-
       expect(events).toHaveLength(1);
       const [event, location] = events[0];
       expect(event.title).toBe('Multi-day project');
@@ -167,12 +174,19 @@ describe('TasksPluginProvider', () => {
 
     it('should handle single-day events with start date', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-
-      const taskContent = '- [ ] Single day task 🛫 2024-01-15';
-      mockApp.read.mockResolvedValue(taskContent);
-
+      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+        dated: [
+          {
+            title: 'Single day task',
+            type: 'single',
+            date: '2024-01-15',
+            endDate: null,
+            location: { lineNumber: 1, path: 'test.md' }
+          }
+        ],
+        undated: []
+      });
       const events = await provider.getEventsInFile(mockFile);
-
       expect(events).toHaveLength(1);
       const [event, location] = events[0];
       expect(event.title).toBe('Single day task');
@@ -184,12 +198,19 @@ describe('TasksPluginProvider', () => {
 
     it('should handle scheduled dates as start dates', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-
-      const taskContent = '- [ ] Scheduled task ⏳ 2024-01-15 📅 2024-01-18';
-      mockApp.read.mockResolvedValue(taskContent);
-
+      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+        dated: [
+          {
+            title: 'Scheduled task',
+            type: 'single',
+            date: '2024-01-15',
+            endDate: '2024-01-18',
+            location: { lineNumber: 1, path: 'test.md' }
+          }
+        ],
+        undated: []
+      });
       const events = await provider.getEventsInFile(mockFile);
-
       expect(events).toHaveLength(1);
       const [event, location] = events[0];
       expect(event.title).toBe('Scheduled task');
@@ -201,12 +222,18 @@ describe('TasksPluginProvider', () => {
 
     it('should recognize completion emojis', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-
-      const taskContent = '- [ ] Completed task ✅ 📅 2024-01-15';
-      mockApp.read.mockResolvedValue(taskContent);
-
+      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+        dated: [
+          {
+            title: 'Completed task',
+            type: 'single',
+            completed: true,
+            location: { lineNumber: 1, path: 'test.md' }
+          }
+        ],
+        undated: []
+      });
       const events = await provider.getEventsInFile(mockFile);
-
       expect(events).toHaveLength(1);
       const [event, location] = events[0];
       expect(event.title).toBe('Completed task');
@@ -217,12 +244,17 @@ describe('TasksPluginProvider', () => {
 
     it('should preserve metadata while cleaning titles', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-
-      const taskContent = '- [ ] Task with metadata 🛫 2024-01-15 #important @john';
-      mockApp.read.mockResolvedValue(taskContent);
-
+      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+        dated: [
+          {
+            title: 'Task with metadata #important @john',
+            type: 'single',
+            location: { lineNumber: 1, path: 'test.md' }
+          }
+        ],
+        undated: []
+      });
       const events = await provider.getEventsInFile(mockFile);
-
       expect(events).toHaveLength(1);
       const [event, location] = events[0];
       expect(event.title.trim()).toBe('Task with metadata #important @john');
@@ -281,6 +313,10 @@ describe('TasksPluginProvider', () => {
   });
 
   describe('caching functionality', () => {
+    // Pre-populate the cache before tests in this suite run.
+    beforeEach(async () => {
+      await provider.getEvents();
+    });
     it('should use cache for subsequent calls', async () => {
       // Setup mock to track calls
       mockPlugin.app.vault.getMarkdownFiles = jest.fn().mockReturnValue([{ path: 'test.md' }]);

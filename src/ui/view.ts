@@ -27,6 +27,7 @@ import FullCalendarPlugin from '../main';
 import { renderOnboarding } from './onboard';
 import { PLUGIN_SLUG, CalendarInfo } from '../types';
 import { UpdateViewCallback, CachedEvent } from '../core/EventCache';
+import { TasksBacklogView, TASKS_BACKLOG_VIEW_TYPE } from '../providers/tasks/TasksBacklogView';
 
 // Lazy-import heavy modules at point of use to reduce initial load time
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
@@ -849,6 +850,18 @@ export class CalendarView extends ItemView {
 
           await this.plugin.cache.scheduleTask(taskId, date);
           new Notice('Task scheduled successfully');
+
+          // Refresh the backlog view to remove the newly scheduled task
+          const backlogLeaves = this.app.workspace.getLeavesOfType(TASKS_BACKLOG_VIEW_TYPE);
+          for (const leaf of backlogLeaves) {
+            if (leaf.view instanceof TasksBacklogView) {
+              leaf.view.refresh();
+            }
+          }
+
+          // Re-fetch events for the main calendar to show the new event
+          // A full `onOpen()` is a robust way to ensure all filters are reapplied
+          this.onOpen();
         } catch (error) {
           console.error('Failed to schedule task:', error);
           const message = error instanceof Error ? error.message : 'Unknown error occurred';

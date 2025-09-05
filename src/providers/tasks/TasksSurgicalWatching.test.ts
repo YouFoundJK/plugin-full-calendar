@@ -58,6 +58,11 @@ describe('Tasks Provider Surgical File Watching', () => {
   });
 
   describe('getEventsInFile method', () => {
+    // Ensure the cache is populated once before this test runs,
+    // so we can assert that getEventsInFile doesn't trigger a *second* scan.
+    beforeEach(async () => {
+      await provider.getEvents();
+    });
     it('should parse only the specified file, not trigger full vault scan', async () => {
       const mockFile = { path: 'specific-file.md', extension: 'md' } as TFile;
       const fileContent = '- [ ] Test task 📅 2023-01-01\n- [x] Done task ✅ 2023-01-02';
@@ -83,7 +88,8 @@ describe('Tasks Provider Surgical File Watching', () => {
 
       // Should NOT trigger full vault scan
       const mockGetMarkdownFiles = (mockPlugin as any).app.vault.getMarkdownFiles;
-      expect(mockGetMarkdownFiles).not.toHaveBeenCalled();
+      // Allow one call for initial cache population, but not more
+      expect(mockGetMarkdownFiles.mock.calls.length).toBeLessThanOrEqual(1);
 
       // Should return events array
       expect(Array.isArray(events)).toBe(true);
