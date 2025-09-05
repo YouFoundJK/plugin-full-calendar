@@ -273,8 +273,12 @@ No checkboxes or due dates.`;
 describe('cleanTaskTitleRobust', () => {
   describe('basic functionality', () => {
     it('should return unchanged title when no task emojis are present', () => {
-      expect(cleanTaskTitleRobust('Simple task with no metadata')).toBe('Simple task with no metadata');
-      expect(cleanTaskTitleRobust('Task with regular emojis 🚀 ⭐ 🎉')).toBe('Task with regular emojis 🚀 ⭐ 🎉');
+      expect(cleanTaskTitleRobust('Simple task with no metadata')).toBe(
+        'Simple task with no metadata'
+      );
+      expect(cleanTaskTitleRobust('Task with regular emojis 🚀 ⭐ 🎉')).toBe(
+        'Task with regular emojis 🚀 ⭐ 🎉'
+      );
     });
 
     it('should handle empty or whitespace-only strings', () => {
@@ -333,7 +337,9 @@ describe('cleanTaskTitleRobust', () => {
 
     it('should preserve user content between task emojis', () => {
       expect(cleanTaskTitleRobust('Review PR #42 🚀 📅 2024-09-01 ✅')).toBe('Review PR #42 🚀');
-      expect(cleanTaskTitleRobust('Meeting with @john #work ⏳ 2024-01-15 📅 2024-01-18')).toBe('Meeting with @john #work');
+      expect(cleanTaskTitleRobust('Meeting with @john #work ⏳ 2024-01-15 📅 2024-01-18')).toBe(
+        'Meeting with @john #work'
+      );
     });
 
     it('should handle emojis at the beginning of the title', () => {
@@ -342,7 +348,9 @@ describe('cleanTaskTitleRobust', () => {
     });
 
     it('should handle multiple occurrences of the same emoji', () => {
-      expect(cleanTaskTitleRobust('Task 📅 2024-01-15 more text 📅 2024-01-20')).toBe('Task more text');
+      expect(cleanTaskTitleRobust('Task 📅 2024-01-15 more text 📅 2024-01-20')).toBe(
+        'Task more text'
+      );
       expect(cleanTaskTitleRobust('Work ✅ done ✅ really')).toBe('Work done really');
     });
   });
@@ -353,30 +361,41 @@ describe('cleanTaskTitleRobust', () => {
     });
 
     it('should handle tasks with all types of metadata', () => {
-      const input = 'Finalize Q3 report 🛫 2025-08-01 📅 2025-08-15 ⏳ 2025-08-10 ➕ 2025-07-20 ✅ ❌';
+      const input =
+        'Finalize Q3 report 🛫 2025-08-01 📅 2025-08-15 ⏳ 2025-08-10 ➕ 2025-07-20 ✅ ❌';
       expect(cleanTaskTitleRobust(input)).toBe('Finalize Q3 report');
     });
 
     it('should preserve links and other markdown syntax', () => {
-      expect(cleanTaskTitleRobust('Check [[Important Note]] 📅 2024-01-15'))
-        .toBe('Check [[Important Note]]');
-      expect(cleanTaskTitleRobust('Review [GitHub PR](https://github.com/repo/pr/1) ✅'))
-        .toBe('Review [GitHub PR](https://github.com/repo/pr/1)');
+      expect(cleanTaskTitleRobust('Check [[Important Note]] 📅 2024-01-15')).toBe(
+        'Check [[Important Note]]'
+      );
+      expect(cleanTaskTitleRobust('Review [GitHub PR](https://github.com/repo/pr/1) ✅')).toBe(
+        'Review [GitHub PR](https://github.com/repo/pr/1)'
+      );
     });
 
     it('should handle edge cases with special spacing', () => {
       expect(cleanTaskTitleRobust('Task   📅   2024-01-15   ✅   ')).toBe('Task');
-      expect(cleanTaskTitleRobust('   📅 2024-01-15 Task with leading spaces')).toBe('Task with leading spaces');
+      expect(cleanTaskTitleRobust('   📅 2024-01-15 Task with leading spaces')).toBe(
+        'Task with leading spaces'
+      );
     });
 
     it('should handle tasks with invalid date formats gracefully', () => {
-      expect(cleanTaskTitleRobust('Task 📅 2024-13-40 more content')).toBe('Task 2024-13-40 more content');
+      expect(cleanTaskTitleRobust('Task 📅 2024-13-40 more content')).toBe(
+        'Task 2024-13-40 more content'
+      );
       expect(cleanTaskTitleRobust('Task 📅 not-a-date ✅')).toBe('Task'); // not-a-date gets removed for backward compatibility
     });
 
     it('should preserve invalid date text when removeInvalidDateText is false', () => {
-      expect(cleanTaskTitleRobust('Task 📅 not-a-date', TASK_EMOJIS, false)).toBe('Task not-a-date');
-      expect(cleanTaskTitleRobust('Task 📅 invalid-date more text', TASK_EMOJIS, false)).toBe('Task invalid-date more text');
+      expect(cleanTaskTitleRobust('Task 📅 not-a-date', TASK_EMOJIS, false)).toBe(
+        'Task not-a-date'
+      );
+      expect(cleanTaskTitleRobust('Task 📅 invalid-date more text', TASK_EMOJIS, false)).toBe(
+        'Task invalid-date more text'
+      );
     });
   });
 
@@ -391,8 +410,9 @@ describe('cleanTaskTitleRobust', () => {
 
     it('should maintain proper spacing after cleaning', () => {
       expect(cleanTaskTitleRobust('A 📅 2024-01-15 B ✅ C')).toBe('A B C');
-      expect(cleanTaskTitleRobust('Start 🛫 2024-01-10 middle 📅 2024-01-15 end'))
-        .toBe('Start middle end');
+      expect(cleanTaskTitleRobust('Start 🛫 2024-01-10 middle 📅 2024-01-15 end')).toBe(
+        'Start middle end'
+      );
     });
   });
 });

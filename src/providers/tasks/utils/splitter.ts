@@ -91,22 +91,22 @@ export function isValidDateString(dateString: string): boolean {
 
 /**
  * Robustly removes task metadata emojis and their associated values from a task title.
- * 
+ *
  * This function surgically removes all Tasks plugin metadata while preserving user content:
  * - For date-related emojis (📅, 🛫, ⏳, ➕): removes both emoji and subsequent date string
  * - For completion emojis (✅, ❌): removes just the emoji
  * - Preserves all other content including user emojis, tags, links
  * - Handles emojis in any order and multiple occurrences
- * 
+ *
  * @param title The raw task title containing potential metadata
  * @param taskEmojis Object containing all task emoji definitions (defaults to TASK_EMOJIS)
  * @param removeInvalidDateText Whether to remove text after date emojis if it's not a valid date (for backward compatibility)
  * @returns The cleaned title with only the descriptive text and user content
- * 
+ *
  * @example
- * cleanTaskTitleRobust("Review PR #42 🚀 📅 2025-09-01 ✅") 
+ * cleanTaskTitleRobust("Review PR #42 🚀 📅 2025-09-01 ✅")
  * // Returns: "Review PR #42 🚀"
- * 
+ *
  * cleanTaskTitleRobust("Meeting with team ⏳ 2025-08-15 🛫 2025-08-10 #work")
  * // Returns: "Meeting with team #work"
  */
@@ -118,41 +118,41 @@ export function cleanTaskTitleRobust(
   if (!title || typeof title !== 'string') {
     return '';
   }
-  
+
   let cleaned = title.trim();
-  
+
   // Handle pure whitespace strings
   if (!cleaned) {
     return '';
   }
-  
+
   // Define which emojis should have their associated dates removed
   const dateEmojis = new Set([
-    taskEmojis.DUE,      // 📅
-    taskEmojis.START,    // 🛫
+    taskEmojis.DUE, // 📅
+    taskEmojis.START, // 🛫
     taskEmojis.SCHEDULED, // ⏳
     taskEmojis.DATE_CREATED // ➕
   ]);
-  
+
   // Define which emojis should just be removed (no date parsing)
   const completionEmojis = new Set([
-    taskEmojis.DONE,     // ✅
+    taskEmojis.DONE, // ✅
     taskEmojis.CANCELLED // ❌
   ]);
-  
+
   // Combine all emojis for processing
   const allTaskEmojis = [...dateEmojis, ...completionEmojis];
-  
+
   // Process each type of emoji
   for (const emoji of allTaskEmojis) {
     // Keep processing until no more instances of this emoji are found
     while (true) {
       const { before, after, found } = splitBySymbol(cleaned, emoji);
-      
+
       if (!found) {
         break; // No more instances of this emoji
       }
-      
+
       if (dateEmojis.has(emoji)) {
         // For date-related emojis, remove emoji + associated date
         const dateString = extractDate(after);
@@ -166,8 +166,11 @@ export function cleanTaskTitleRobust(
           if (afterParts.length > 0 && afterParts[0]) {
             const firstWord = afterParts[0];
             // Only remove first word if it doesn't look like a date pattern at all
-            const looksLikeDatePattern = /\d{4}[-/\.]\d{1,2}[-/\.]\d{4}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}|\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}/.test(firstWord);
-            
+            const looksLikeDatePattern =
+              /\d{4}[-/\.]\d{1,2}[-/\.]\d{4}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}|\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}/.test(
+                firstWord
+              );
+
             if (!looksLikeDatePattern) {
               // First word doesn't look like a date - remove it for backward compatibility
               const remainingAfter = afterParts.slice(1).join(' ');
@@ -190,6 +193,6 @@ export function cleanTaskTitleRobust(
       }
     }
   }
-  
+
   return cleaned;
 }

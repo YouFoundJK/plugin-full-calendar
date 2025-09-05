@@ -37,15 +37,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private source: TasksProviderConfig;
   private parser: TasksParser;
 
-  // Cache for undated tasks (backlog functionality only)
-  // Dated tasks are now handled by the central EventCache via getEventsInFile
+  // Unified cache for the single-pass scan
   private _undatedTasks: ParsedUndatedTask[] | null = null;
+  private _datedTasks: EditableEventResponse[] | null = null;
 
-  // Track whether initial full scan has been done for getEvents()
-  private _initialEventsScanDone: boolean = false;
-
-  // Cache for initial getEvents() result to avoid redundant scans
-  private _initialEventsResult: EditableEventResponse[] | null = null;
+  // Promise to ensure the scan only runs once, even with concurrent calls.
+  private _scanPromise: Promise<void> | null = null;
 
   readonly type = 'tasks';
   readonly displayName = 'Obsidian Tasks';
@@ -105,8 +102,20 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    */
   private _invalidateCache(): void {
     this._undatedTasks = null;
-    this._initialEventsScanDone = false;
-    this._initialEventsResult = null;
+    this._datedTasks = null;
+    this._scanPromise = null; // And reset the promise
+  }
+
+  /**
+   * Ensures that the vault has been scanned for tasks.
+   * Uses a promise to prevent race conditions where multiple callers
+   * trigger a scan at the same time.
+   */
+  private _ensureCacheIsPopulated(): Promise<void> {
+    if (this._scanPromise === null) {
+      this._scanPromise = this._scanVaultForAllTasks();
+    }
+    return this._scanPromise;
   }
 
   /**
@@ -116,7 +125,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    */
   private async _scanVaultForAllTasks(): Promise<void> {
     // Return immediately if both caches are already populated
-    if (this._undatedTasks !== null && this._initialEventsResult !== null) {
+    if (this._undatedTasks !== null && this._datedTasks !== null) {
       return;
     }
 
@@ -161,8 +170,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
 
     // Cache the results
-    this._initialEventsResult = allEvents;
-    this._initialEventsScanDone = true;
+    this._datedTasks = allEvents;
   }
 
   getCapabilities(): CalendarProviderCapabilities {
@@ -281,12 +289,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     // This method is only called for initial population, so we'll do a unified scan once
     // Subsequent updates are handled surgically by ProviderRegistry via getEventsInFile
 
-    // Only scan if we haven't done the initial scan yet
-    if (!this._initialEventsScanDone) {
-      await this._scanVaultForAllTasks();
-    }
-
-    return this._initialEventsResult || [];
+    await this._ensureCacheIsPopulated();
+    return this._datedTasks || [];
   }
 
   /**
@@ -294,13 +298,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    * @returns Array of undated tasks
    */
   public async getUndatedTasks(): Promise<ParsedUndatedTask[]> {
-    // Use unified scanning for initial population
-    // Subsequent updates are handled surgically by ProviderRegistry
-    if (this._undatedTasks === null) {
-      await this._scanVaultForAllTasks();
-    }
-
-    return this._undatedTasks!; // We know it's not null after check above
+    await this._ensureCacheIsPopulated();
+    return this._undatedTasks || [];
   }
 
   /**
