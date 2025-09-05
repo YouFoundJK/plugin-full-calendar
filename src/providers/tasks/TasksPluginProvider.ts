@@ -18,8 +18,8 @@ import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent } from './TasksConfigComponent';
-import { TasksParser, ParsedTask, ParsedUndatedTask } from './TasksParser';
-import { getDueDateEmoji, getStartDateEmoji, getScheduledDateEmoji } from './TasksSettings';
+import { TasksParser, ParsedUndatedTask, ParsedDatedTask } from './TasksParser';
+import { getDueDateEmoji, getStartDateEmoji } from './TasksSettings';
 import React from 'react';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
@@ -221,44 +221,43 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   /**
    * Converts a ParsedTask to an OFCEvent.
    */
-  private parseTaskToOFCEvent(task: ParsedTask): OFCEvent {
-    // Determine if this is a multi-day event
-    const hasStartDate = task.startDate && task.startDate.isValid;
-    const hasEndDate = task.endDate && task.endDate.isValid;
-
-    // Compare dates by their string representation to avoid timezone/time issues
-    const isMultiDay =
-      hasStartDate &&
-      hasEndDate &&
-      task.startDate!.toFormat('yyyy-MM-dd') !== task.endDate!.toFormat('yyyy-MM-dd');
-
+  private parseTaskToOFCEvent(task: ParsedDatedTask): OFCEvent {
     let date: string;
     let endDate: string | null = null;
 
-    if (isMultiDay) {
-      // Multi-day event: use start date as date, due date as endDate
+    const hasStartDate = task.startDate && task.startDate.isValid;
+    const hasEndDate = task.endDate && task.endDate.isValid;
+
+    if (hasStartDate) {
+      // If there's a start date, it's always the primary date.
       date = task.startDate!.toFormat('yyyy-MM-dd');
-      endDate = task.endDate!.toFormat('yyyy-MM-dd');
-    } else if (hasStartDate) {
-      // Single-day event with start date
-      date = task.startDate!.toFormat('yyyy-MM-dd');
+      if (
+        hasEndDate &&
+        task.startDate!.toFormat('yyyy-MM-dd') !== task.endDate!.toFormat('yyyy-MM-dd')
+      ) {
+        // If there's also an end date and it's different, it's a multi-day event.
+        endDate = task.endDate!.toFormat('yyyy-MM-dd');
+      }
     } else if (hasEndDate) {
-      // Single-day event with due date
+      // If there's only an end date (due date), that's the primary date.
       date = task.endDate!.toFormat('yyyy-MM-dd');
     } else {
-      // Fallback to legacy date field
+      // Fallback for any unexpected case.
       date = task.date.toFormat('yyyy-MM-dd');
     }
+
+    // For the completion timestamp, prefer the end date if it exists, otherwise the primary date.
+    const completionTimestampSource = task.endDate || task.startDate || task.date;
 
     return {
       type: 'single',
       title: task.title,
       date,
-      allDay: true, // Tasks with due dates are typically all-day events
+      allDay: true,
       endDate,
       timezone: undefined,
-      uid: `${task.location.path}::${task.location.lineNumber}`, // Unique identifier
-      completed: task.isDone ? task.date.toISO() : false // Use task completion as event completion
+      uid: `${task.location.path}::${task.location.lineNumber}`,
+      completed: task.isDone ? completionTimestampSource.toISO() : false
     };
   }
 

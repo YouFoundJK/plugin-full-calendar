@@ -16,18 +16,6 @@ import { parseChecklistItems } from './utils/markdown';
 import { splitBySymbol, extractDate, cleanTaskTitleRobust } from './utils/splitter';
 import { getTaskDateEmojis, TASK_EMOJIS } from './TasksSettings';
 
-export interface ParsedTask {
-  title: string;
-  startDate?: DateTime; // Start date (🛫) or scheduled date (⏳)
-  endDate?: DateTime; // Due date (📅)
-  date: DateTime; // Legacy compatibility - the primary date for display
-  isDone: boolean;
-  location: {
-    path: string;
-    lineNumber: number;
-  };
-}
-
 export interface ParsedDatedTask {
   title: string;
   startDate?: DateTime; // Start date (🛫) or scheduled date (⏳)
@@ -178,22 +166,17 @@ export class TasksParser {
    * Parses all tasks from a file's content.
    * @param content The complete file content
    * @param filePath The path to the file
-   * @returns Array of ParsedTask objects (for backward compatibility, only dated tasks)
+   * @returns Array of ParsedDatedTask objects
    */
-  parseFileContent(content: string, filePath: string): ParsedTask[] {
+  parseFileContent(content: string, filePath: string): ParsedDatedTask[] {
     const checklistItems = parseChecklistItems(content);
-    const tasks: ParsedTask[] = [];
+    const tasks: ParsedDatedTask[] = [];
 
     for (const item of checklistItems) {
       const result = this.parseLine(item.line, filePath, item.lineNumber);
       if (result.type === 'dated') {
-        // Convert ParsedDatedTask to ParsedTask for backward compatibility
-        tasks.push({
-          title: result.task.title,
-          date: result.task.date,
-          isDone: result.task.isDone,
-          location: result.task.location
-        });
+        // Push the full dated task object, preserving startDate and endDate
+        tasks.push(result.task);
       }
     }
 

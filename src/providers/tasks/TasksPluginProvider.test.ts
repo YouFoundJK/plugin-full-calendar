@@ -24,7 +24,10 @@ describe('TasksPluginProvider', () => {
       read: jest.fn(),
       getAbstractFileByPath: jest.fn(),
       getFileByPath: jest.fn(),
-      getMetadata: jest.fn()
+      getMetadata: jest.fn(),
+      create: jest.fn(),
+      rewrite: jest.fn(),
+      delete: jest.fn()
     };
 
     // Mock FullCalendarPlugin
