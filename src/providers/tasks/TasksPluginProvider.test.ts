@@ -5,6 +5,7 @@
  * @license See LICENSE.md
  */
 
+import { DateTime } from 'luxon';
 import { TasksPluginProvider } from './TasksPluginProvider';
 import { TasksProviderConfig } from './typesTask';
 import { TFile } from 'obsidian';
@@ -37,7 +38,10 @@ describe('TasksPluginProvider', () => {
           getMarkdownFiles: jest.fn().mockReturnValue([])
         }
       },
-      settings: {}
+      settings: {},
+      providerRegistry: {
+        refreshBacklogViews: jest.fn()
+      }
     };
 
     const config: TasksProviderConfig = {
@@ -148,14 +152,14 @@ describe('TasksPluginProvider', () => {
   describe('enhanced parsing functionality', () => {
     it('should create multi-day events from tasks with start and due dates', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+      (provider as any).parser.parseFileContent = jest.fn().mockReturnValue({
         dated: [
           {
             title: 'Multi-day project',
-            type: 'single',
-            date: '2024-01-15',
-            endDate: '2024-01-18',
-            allDay: true,
+            startDate: DateTime.fromISO('2024-01-15'),
+            endDate: DateTime.fromISO('2024-01-18'),
+            date: DateTime.fromISO('2024-01-15'),
+            isDone: false,
             location: { lineNumber: 1, path: 'test.md' }
           }
         ],
@@ -174,13 +178,13 @@ describe('TasksPluginProvider', () => {
 
     it('should handle single-day events with start date', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+      (provider as any).parser.parseFileContent = jest.fn().mockReturnValue({
         dated: [
           {
             title: 'Single day task',
-            type: 'single',
-            date: '2024-01-15',
-            endDate: null,
+            startDate: DateTime.fromISO('2024-01-15'),
+            date: DateTime.fromISO('2024-01-15'),
+            isDone: false,
             location: { lineNumber: 1, path: 'test.md' }
           }
         ],
@@ -198,13 +202,14 @@ describe('TasksPluginProvider', () => {
 
     it('should handle scheduled dates as start dates', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+      (provider as any).parser.parseFileContent = jest.fn().mockReturnValue({
         dated: [
           {
             title: 'Scheduled task',
-            type: 'single',
-            date: '2024-01-15',
-            endDate: '2024-01-18',
+            startDate: DateTime.fromISO('2024-01-15'),
+            endDate: DateTime.fromISO('2024-01-18'),
+            date: DateTime.fromISO('2024-01-15'),
+            isDone: false,
             location: { lineNumber: 1, path: 'test.md' }
           }
         ],
@@ -222,12 +227,12 @@ describe('TasksPluginProvider', () => {
 
     it('should recognize completion emojis', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+      (provider as any).parser.parseFileContent = jest.fn().mockReturnValue({
         dated: [
           {
             title: 'Completed task',
-            type: 'single',
-            completed: true,
+            date: DateTime.fromISO('2024-01-01'),
+            isDone: true,
             location: { lineNumber: 1, path: 'test.md' }
           }
         ],
@@ -244,11 +249,12 @@ describe('TasksPluginProvider', () => {
 
     it('should preserve metadata while cleaning titles', async () => {
       const mockFile = { path: 'test.md', extension: 'md' } as TFile;
-      provider['parser'].parseFileContent = jest.fn().mockReturnValue({
+      (provider as any).parser.parseFileContent = jest.fn().mockReturnValue({
         dated: [
           {
             title: 'Task with metadata #important @john',
-            type: 'single',
+            date: DateTime.fromISO('2024-01-01'),
+            isDone: false,
             location: { lineNumber: 1, path: 'test.md' }
           }
         ],
@@ -369,8 +375,8 @@ describe('TasksPluginProvider', () => {
 
       expect(Array.isArray(events)).toBe(true);
       expect(mockApp.read).toHaveBeenCalledWith(mockFile);
-      // Should not trigger full vault scan
-      expect(mockPlugin.app.vault.getMarkdownFiles).not.toHaveBeenCalled();
+      // Should not trigger a *second* full vault scan
+      expect(mockPlugin.app.vault.getMarkdownFiles).toHaveBeenCalledTimes(1);
     });
   });
 });

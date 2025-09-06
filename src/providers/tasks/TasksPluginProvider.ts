@@ -346,14 +346,17 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       throw new Error('Tasks provider can only handle single events, not recurring events.');
     }
 
+    if (!event.date) {
+      throw new Error('Event is missing a date.');
+    }
     // Format the primary date
-    const formattedStartDate = event.date.split('T')[0];
+    const formattedStartDate = DateTime.fromISO(event.date).toFormat('yyyy-MM-dd');
     let taskLine = `- [ ] ${event.title}`;
 
     // Determine if this is a multi-day event
     if (event.endDate && event.endDate !== event.date) {
       // Multi-day event: add start date and due date
-      const formattedEndDate = event.endDate.split('T')[0];
+      const formattedEndDate = DateTime.fromISO(event.endDate).toFormat('yyyy-MM-dd');
       const startEmoji = getStartDateEmoji();
       const dueEmoji = getDueDateEmoji();
 

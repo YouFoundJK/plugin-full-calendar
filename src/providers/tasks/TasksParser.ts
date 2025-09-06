@@ -43,6 +43,30 @@ export type ParsedTaskResult =
   | { type: 'none' };
 
 export class TasksParser {
+  // New: Patterns that, if found in a line, will cause the line to be entirely ignored.
+  // This prevents parsing other plugin's metadata as duplicate events.
+  private EXCLUSION_PATTERNS: RegExp[] = [
+    // Example: Dataview inline fields or similar structures
+    // For now, specifically targeting `[StartTime::` for exclusion
+    /\s\[startTime::/ // Exclude any line containing this pattern
+  ];
+
+  /**
+   * Checks if a given line contains any patterns that indicate it should be excluded
+   * from further task parsing. This helps prevent double-counting events from
+   * other plugins or specific metadata.
+   * @param line The input line from the markdown file.
+   * @returns True if the line should be excluded, false otherwise.
+   */
+  private _isLineExcluded(line: string): boolean {
+    for (const pattern of this.EXCLUSION_PATTERNS) {
+      if (pattern.test(line)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * Parses a single line of text for task information.
    * @param line The line of text to parse
@@ -51,6 +75,11 @@ export class TasksParser {
    * @returns A ParsedTaskResult discriminated union indicating the type of task found
    */
   parseLine(line: string, filePath: string, lineNumber: number): ParsedTaskResult {
+    // New: Global filter to exclude lines based on specific patterns (e.g., other plugin's metadata)
+    if (this._isLineExcluded(line)) {
+      return { type: 'none' };
+    }
+
     // Check if the line is a checklist item
     if (!/^\s*-\s*\[[\sx]\]\s*/.test(line)) {
       return { type: 'none' };
