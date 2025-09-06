@@ -226,6 +226,153 @@ describe('TasksParser', () => {
         expect(result.task.isDone).toBe(true);
       }
     });
+
+    it('should respect Tasks plugin global filter when set', () => {
+      // Mock Tasks plugin with global filter
+      const originalWindow = global.window;
+      global.window = {
+        app: {
+          plugins: {
+            plugins: {
+              'obsidian-tasks-plugin': {
+                settings: {
+                  globalFilter: '#task'
+                }
+              }
+            }
+          }
+        }
+      } as any;
+
+      const line1 = '- [ ] This is a task #task 📅 2024-01-15';
+      const line2 = '- [ ] This is not a task 📅 2024-01-15';
+
+      const result1 = parser.parseLine(line1, 'test.md', 1);
+      const result2 = parser.parseLine(line2, 'test.md', 2);
+
+      expect(result1.type).toBe('dated'); // Should be parsed as it contains #task
+      expect(result2.type).toBe('none'); // Should be ignored as it doesn't contain #task
+
+      // Restore original window
+      global.window = originalWindow;
+    });
+
+    it('should treat all checklist items as tasks when no global filter is set', () => {
+      // Mock Tasks plugin with no global filter
+      const originalWindow = global.window;
+      global.window = {
+        app: {
+          plugins: {
+            plugins: {
+              'obsidian-tasks-plugin': {
+                settings: {
+                  globalFilter: ''
+                }
+              }
+            }
+          }
+        }
+      } as any;
+
+      const line1 = '- [ ] Task with tag #work 📅 2024-01-15';
+      const line2 = '- [ ] Task without tag 📅 2024-01-15';
+
+      const result1 = parser.parseLine(line1, 'test.md', 1);
+      const result2 = parser.parseLine(line2, 'test.md', 2);
+
+      expect(result1.type).toBe('dated'); // Should be parsed
+      expect(result2.type).toBe('dated'); // Should also be parsed
+
+      // Restore original window
+      global.window = originalWindow;
+    });
+
+    it('should use custom status symbols from Tasks plugin', () => {
+      // Mock Tasks plugin with custom status settings
+      const originalWindow = global.window;
+      global.window = {
+        app: {
+          plugins: {
+            plugins: {
+              'obsidian-tasks-plugin': {
+                settings: {
+                  statusSettings: {
+                    coreStatuses: [
+                      {
+                        symbol: '!',
+                        name: 'Important',
+                        nextStatusSymbol: 'x',
+                        availableAsInitialStatus: true,
+                        type: 'DONE'
+                      },
+                      {
+                        symbol: '/',
+                        name: 'In Progress',
+                        nextStatusSymbol: 'x',
+                        availableAsInitialStatus: true,
+                        type: 'IN_PROGRESS'
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      } as any;
+
+      const completedLine = '- [!] Custom completed task 📅 2024-01-15';
+      const inProgressLine = '- [/] In progress task 📅 2024-01-15';
+      const todoLine = '- [ ] Regular todo task 📅 2024-01-15';
+
+      const completedResult = parser.parseLine(completedLine, 'test.md', 1);
+      const inProgressResult = parser.parseLine(inProgressLine, 'test.md', 2);
+      const todoResult = parser.parseLine(todoLine, 'test.md', 3);
+
+      expect(completedResult.type).toBe('dated');
+      if (completedResult.type === 'dated') {
+        expect(completedResult.task.isDone).toBe(true); // Custom '!' should be recognized as done
+      }
+
+      expect(inProgressResult.type).toBe('dated');
+      if (inProgressResult.type === 'dated') {
+        expect(inProgressResult.task.isDone).toBe(false); // Custom '/' should not be recognized as done
+      }
+
+      expect(todoResult.type).toBe('dated');
+      if (todoResult.type === 'dated') {
+        expect(todoResult.task.isDone).toBe(false); // Regular ' ' should not be done
+      }
+
+      // Restore original window
+      global.window = originalWindow;
+    });
+
+    it('should use removeTagsFromTaskTitle setting when provided', () => {
+      const settingsWithTagRemoval = {
+        removeTagsFromTaskTitle: true
+      } as any; // Mock minimal settings
+
+      const settingsWithoutTagRemoval = {
+        removeTagsFromTaskTitle: false
+      } as any; // Mock minimal settings
+
+      const parserWithTagRemoval = new TasksParser(settingsWithTagRemoval);
+      const parserWithoutTagRemoval = new TasksParser(settingsWithoutTagRemoval);
+
+      const line = '- [ ] Review PR #urgent #project 📅 2024-01-15';
+
+      const resultWithTagRemoval = parserWithTagRemoval.parseLine(line, 'test.md', 1);
+      const resultWithoutTagRemoval = parserWithoutTagRemoval.parseLine(line, 'test.md', 1);
+
+      expect(resultWithTagRemoval.type).toBe('dated');
+      expect(resultWithoutTagRemoval.type).toBe('dated');
+
+      if (resultWithTagRemoval.type === 'dated' && resultWithoutTagRemoval.type === 'dated') {
+        expect(resultWithTagRemoval.task.title).toBe('Review PR'); // Tags removed
+        expect(resultWithoutTagRemoval.task.title).toBe('Review PR #urgent #project'); // Tags preserved
+      }
+    });
   });
 
   describe('parseFileContent', () => {
@@ -413,6 +560,72 @@ describe('cleanTaskTitleRobust', () => {
       expect(cleanTaskTitleRobust('Start 🛫 2024-01-10 middle 📅 2024-01-15 end')).toBe(
         'Start middle end'
       );
+    });
+  });
+
+  describe('tag removal functionality', () => {
+    it('should preserve tags when removeTags is false (default)', () => {
+      expect(cleanTaskTitleRobust('Review PR #urgent #project', TASK_EMOJIS, true, false)).toBe(
+        'Review PR #urgent #project'
+      );
+      expect(cleanTaskTitleRobust('Meeting with team #work 📅 2024-01-15')).toBe(
+        'Meeting with team #work'
+      );
+    });
+
+    it('should remove tags when removeTags is true', () => {
+      expect(cleanTaskTitleRobust('Review PR #urgent #project', TASK_EMOJIS, true, true)).toBe(
+        'Review PR'
+      );
+      expect(cleanTaskTitleRobust('Meeting with team #work', TASK_EMOJIS, true, true)).toBe(
+        'Meeting with team'
+      );
+    });
+
+    it('should remove both task metadata and tags when removeTags is true', () => {
+      expect(
+        cleanTaskTitleRobust(
+          'Complete task #urgent 📅 2024-01-15 ✅ #project',
+          TASK_EMOJIS,
+          true,
+          true
+        )
+      ).toBe('Complete task');
+      expect(
+        cleanTaskTitleRobust(
+          'Meeting #work 🛫 2024-01-10 📅 2024-01-15 #important',
+          TASK_EMOJIS,
+          true,
+          true
+        )
+      ).toBe('Meeting');
+    });
+
+    it('should handle tags at different positions', () => {
+      expect(cleanTaskTitleRobust('#urgent Review PR', TASK_EMOJIS, true, true)).toBe('Review PR');
+      expect(cleanTaskTitleRobust('Review #urgent PR', TASK_EMOJIS, true, true)).toBe('Review PR');
+      expect(cleanTaskTitleRobust('Review PR #urgent', TASK_EMOJIS, true, true)).toBe('Review PR');
+    });
+
+    it('should handle multiple tags', () => {
+      expect(
+        cleanTaskTitleRobust('#project #urgent Review #important PR #work', TASK_EMOJIS, true, true)
+      ).toBe('Review PR');
+    });
+
+    it('should preserve other content like @mentions and regular text', () => {
+      expect(cleanTaskTitleRobust('Review PR @john #urgent', TASK_EMOJIS, true, true)).toBe(
+        'Review PR @john'
+      );
+      expect(
+        cleanTaskTitleRobust('Meeting with @team #work 📅 2024-01-15', TASK_EMOJIS, true, true)
+      ).toBe('Meeting with @team');
+    });
+
+    it('should handle edge cases with tags', () => {
+      expect(cleanTaskTitleRobust('#', TASK_EMOJIS, true, true)).toBe('#'); // Single # should be preserved
+      expect(cleanTaskTitleRobust('# Header', TASK_EMOJIS, true, true)).toBe('# Header'); // Markdown header should be preserved
+      expect(cleanTaskTitleRobust('Task with #', TASK_EMOJIS, true, true)).toBe('Task with #'); // Trailing # should be preserved
     });
   });
 });

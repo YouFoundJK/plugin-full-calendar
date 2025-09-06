@@ -14,7 +14,8 @@
 import { DateTime } from 'luxon';
 import { parseChecklistItems } from './utils/markdown';
 import { splitBySymbol, extractDate, cleanTaskTitleRobust } from './utils/splitter';
-import { getTaskDateEmojis, TASK_EMOJIS } from './TasksSettings';
+import { getTaskDateEmojis, TASK_EMOJIS, getTasksPluginSettings, isDone } from './TasksSettings';
+import { FullCalendarSettings } from '../../types/settings';
 
 export interface ParsedDatedTask {
   title: string;
@@ -51,6 +52,13 @@ export class TasksParser {
     /\s\[startTime::/ // Exclude any line containing this pattern
   ];
 
+  // Store settings to access tag removal preference
+  private settings: FullCalendarSettings | null = null;
+
+  constructor(settings?: FullCalendarSettings) {
+    this.settings = settings || null;
+  }
+
   /**
    * Checks if a given line contains any patterns that indicate it should be excluded
    * from further task parsing. This helps prevent double-counting events from
@@ -68,6 +76,25 @@ export class TasksParser {
   }
 
   /**
+   * Checks if a line should be considered a task based on the Tasks plugin's global filter.
+   * If no global filter is set, all checklist items are considered tasks.
+   * @param line The input line from the markdown file.
+   * @returns True if the line should be treated as a task, false otherwise.
+   */
+  private _isTaskLine(line: string): boolean {
+    const settings = getTasksPluginSettings();
+    const globalFilter = settings.globalFilter;
+
+    // If no global filter is set, all checklist items are considered tasks
+    if (!globalFilter || globalFilter.trim() === '') {
+      return true;
+    }
+
+    // Check if the line contains the global filter text
+    return line.includes(globalFilter);
+  }
+
+  /**
    * Parses a single line of text for task information.
    * @param line The line of text to parse
    * @param filePath The path to the file containing this line
@@ -75,29 +102,38 @@ export class TasksParser {
    * @returns A ParsedTaskResult discriminated union indicating the type of task found
    */
   parseLine(line: string, filePath: string, lineNumber: number): ParsedTaskResult {
-    // New: Global filter to exclude lines based on specific patterns (e.g., other plugin's metadata)
+    // First check: Global filter from Tasks plugin to respect user's task definition
+    if (!this._isTaskLine(line)) {
+      return { type: 'none' };
+    }
+
+    // Second check: Exclude lines based on specific patterns (e.g., other plugin's metadata)
     if (this._isLineExcluded(line)) {
       return { type: 'none' };
     }
 
-    // Check if the line is a checklist item
-    if (!/^\s*-\s*\[[\sx]\]\s*/.test(line)) {
+    // Check if the line is a checklist item (any character in brackets)
+    if (!/^\s*-\s*\[.\]\s*/.test(line)) {
       return { type: 'none' };
     }
 
     // Extract checklist content without checkbox syntax
-    const contentMatch = line.match(/^\s*-\s*\[[\sx]\]\s*(.*)$/);
+    const contentMatch = line.match(/^\s*-\s*\[.\]\s*(.*)$/);
     if (!contentMatch) {
       return { type: 'none' };
     }
 
     const content = contentMatch[1];
-    const isCompleted = /^\s*-\s*\[x\]\s*/i.test(line);
 
-    // Look for completion status emojis first
+    // Extract the status symbol from the brackets and use the isDone utility
+    const statusMatch = line.match(/^\s*-\s*\[(.)\]\s*/);
+    const statusSymbol = statusMatch ? statusMatch[1] : ' ';
+    const isCompletedFromStatus = isDone(statusSymbol);
+
+    // Look for completion status emojis as additional completion indicators
     const isDoneFromEmoji =
       content.includes(TASK_EMOJIS.DONE) || content.includes(TASK_EMOJIS.CANCELLED);
-    const finalIsDone = isCompleted || isDoneFromEmoji;
+    const finalIsDone = isCompletedFromStatus || isDoneFromEmoji;
 
     // Parse all date emojis found in the content
     const dateEmojis = getTaskDateEmojis();
@@ -121,7 +157,9 @@ export class TasksParser {
 
     // Clean the title using the robust cleaning utility
     // This removes all task metadata emojis and their associated data
-    const cleanedTitle = cleanTaskTitleRobust(content, TASK_EMOJIS);
+    // Optionally remove tags based on user setting
+    const removeTagsSetting = this.settings?.removeTagsFromTaskTitle ?? false;
+    const cleanedTitle = cleanTaskTitleRobust(content, TASK_EMOJIS, true, removeTagsSetting);
 
     if (!cleanedTitle) {
       return { type: 'none' }; // Empty title

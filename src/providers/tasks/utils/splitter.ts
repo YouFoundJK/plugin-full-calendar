@@ -95,25 +95,28 @@ export function isValidDateString(dateString: string): boolean {
  * This function surgically removes all Tasks plugin metadata while preserving user content:
  * - For date-related emojis (📅, 🛫, ⏳, ➕): removes both emoji and subsequent date string
  * - For completion emojis (✅, ❌): removes just the emoji
+ * - Optionally removes tags (#tag) for cleaner calendar display
  * - Preserves all other content including user emojis, tags, links
  * - Handles emojis in any order and multiple occurrences
  *
  * @param title The raw task title containing potential metadata
  * @param taskEmojis Object containing all task emoji definitions (defaults to TASK_EMOJIS)
  * @param removeInvalidDateText Whether to remove text after date emojis if it's not a valid date (for backward compatibility)
+ * @param removeTags Whether to remove #tags from the title for cleaner display
  * @returns The cleaned title with only the descriptive text and user content
  *
  * @example
  * cleanTaskTitleRobust("Review PR #42 🚀 📅 2025-09-01 ✅")
  * // Returns: "Review PR #42 🚀"
  *
- * cleanTaskTitleRobust("Meeting with team ⏳ 2025-08-15 🛫 2025-08-10 #work")
- * // Returns: "Meeting with team #work"
+ * cleanTaskTitleRobust("Meeting with team ⏳ 2025-08-15 🛫 2025-08-10 #work", TASK_EMOJIS, true, true)
+ * // Returns: "Meeting with team"
  */
 export function cleanTaskTitleRobust(
   title: string,
   taskEmojis: Record<string, string> = TASK_EMOJIS,
-  removeInvalidDateText = true
+  removeInvalidDateText = true,
+  removeTags = false
 ): string {
   if (!title || typeof title !== 'string') {
     return '';
@@ -192,6 +195,15 @@ export function cleanTaskTitleRobust(
         cleaned = (before + ' ' + after).replace(/\s+/g, ' ').trim();
       }
     }
+  }
+
+  // Remove tags if requested (after all other processing)
+  if (removeTags) {
+    // Remove tags (#word) but preserve other content
+    cleaned = cleaned
+      .replace(/(^|\s)#[^\s]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   return cleaned;
