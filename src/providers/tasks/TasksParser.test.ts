@@ -347,6 +347,32 @@ describe('TasksParser', () => {
       // Restore original window
       global.window = originalWindow;
     });
+
+    it('should use removeTagsFromTaskTitle setting when provided', () => {
+      const settingsWithTagRemoval = {
+        removeTagsFromTaskTitle: true
+      } as any; // Mock minimal settings
+
+      const settingsWithoutTagRemoval = {
+        removeTagsFromTaskTitle: false
+      } as any; // Mock minimal settings
+
+      const parserWithTagRemoval = new TasksParser(settingsWithTagRemoval);
+      const parserWithoutTagRemoval = new TasksParser(settingsWithoutTagRemoval);
+
+      const line = '- [ ] Review PR #urgent #project 📅 2024-01-15';
+
+      const resultWithTagRemoval = parserWithTagRemoval.parseLine(line, 'test.md', 1);
+      const resultWithoutTagRemoval = parserWithoutTagRemoval.parseLine(line, 'test.md', 1);
+
+      expect(resultWithTagRemoval.type).toBe('dated');
+      expect(resultWithoutTagRemoval.type).toBe('dated');
+
+      if (resultWithTagRemoval.type === 'dated' && resultWithoutTagRemoval.type === 'dated') {
+        expect(resultWithTagRemoval.task.title).toBe('Review PR'); // Tags removed
+        expect(resultWithoutTagRemoval.task.title).toBe('Review PR #urgent #project'); // Tags preserved
+      }
+    });
   });
 
   describe('parseFileContent', () => {
@@ -534,6 +560,62 @@ describe('cleanTaskTitleRobust', () => {
       expect(cleanTaskTitleRobust('Start 🛫 2024-01-10 middle 📅 2024-01-15 end')).toBe(
         'Start middle end'
       );
+    });
+  });
+
+  describe('tag removal functionality', () => {
+    it('should preserve tags when removeTags is false (default)', () => {
+      expect(cleanTaskTitleRobust('Review PR #urgent #project', TASK_EMOJIS, true, false)).toBe(
+        'Review PR #urgent #project'
+      );
+      expect(cleanTaskTitleRobust('Meeting with team #work 📅 2024-01-15')).toBe(
+        'Meeting with team #work'
+      );
+    });
+
+    it('should remove tags when removeTags is true', () => {
+      expect(cleanTaskTitleRobust('Review PR #urgent #project', TASK_EMOJIS, true, true)).toBe(
+        'Review PR'
+      );
+      expect(cleanTaskTitleRobust('Meeting with team #work', TASK_EMOJIS, true, true)).toBe(
+        'Meeting with team'
+      );
+    });
+
+    it('should remove both task metadata and tags when removeTags is true', () => {
+      expect(
+        cleanTaskTitleRobust('Complete task #urgent 📅 2024-01-15 ✅ #project', TASK_EMOJIS, true, true)
+      ).toBe('Complete task');
+      expect(
+        cleanTaskTitleRobust('Meeting #work 🛫 2024-01-10 📅 2024-01-15 #important', TASK_EMOJIS, true, true)
+      ).toBe('Meeting');
+    });
+
+    it('should handle tags at different positions', () => {
+      expect(cleanTaskTitleRobust('#urgent Review PR', TASK_EMOJIS, true, true)).toBe('Review PR');
+      expect(cleanTaskTitleRobust('Review #urgent PR', TASK_EMOJIS, true, true)).toBe('Review PR');
+      expect(cleanTaskTitleRobust('Review PR #urgent', TASK_EMOJIS, true, true)).toBe('Review PR');
+    });
+
+    it('should handle multiple tags', () => {
+      expect(
+        cleanTaskTitleRobust('#project #urgent Review #important PR #work', TASK_EMOJIS, true, true)
+      ).toBe('Review PR');
+    });
+
+    it('should preserve other content like @mentions and regular text', () => {
+      expect(cleanTaskTitleRobust('Review PR @john #urgent', TASK_EMOJIS, true, true)).toBe(
+        'Review PR @john'
+      );
+      expect(cleanTaskTitleRobust('Meeting with @team #work 📅 2024-01-15', TASK_EMOJIS, true, true)).toBe(
+        'Meeting with @team'
+      );
+    });
+
+    it('should handle edge cases with tags', () => {
+      expect(cleanTaskTitleRobust('#', TASK_EMOJIS, true, true)).toBe('#'); // Single # should be preserved
+      expect(cleanTaskTitleRobust('# Header', TASK_EMOJIS, true, true)).toBe('# Header'); // Markdown header should be preserved
+      expect(cleanTaskTitleRobust('Task with #', TASK_EMOJIS, true, true)).toBe('Task with #'); // Trailing # should be preserved
     });
   });
 });

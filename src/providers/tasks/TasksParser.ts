@@ -15,6 +15,7 @@ import { DateTime } from 'luxon';
 import { parseChecklistItems } from './utils/markdown';
 import { splitBySymbol, extractDate, cleanTaskTitleRobust } from './utils/splitter';
 import { getTaskDateEmojis, TASK_EMOJIS, getTasksPluginSettings, isDone } from './TasksSettings';
+import { FullCalendarSettings } from '../../types/settings';
 
 export interface ParsedDatedTask {
   title: string;
@@ -50,6 +51,13 @@ export class TasksParser {
     // For now, specifically targeting `[StartTime::` for exclusion
     /\s\[startTime::/ // Exclude any line containing this pattern
   ];
+
+  // Store settings to access tag removal preference
+  private settings: FullCalendarSettings | null = null;
+
+  constructor(settings?: FullCalendarSettings) {
+    this.settings = settings || null;
+  }
 
   /**
    * Checks if a given line contains any patterns that indicate it should be excluded
@@ -149,7 +157,9 @@ export class TasksParser {
 
     // Clean the title using the robust cleaning utility
     // This removes all task metadata emojis and their associated data
-    const cleanedTitle = cleanTaskTitleRobust(content, TASK_EMOJIS);
+    // Optionally remove tags based on user setting
+    const removeTagsSetting = this.settings?.removeTagsFromTaskTitle ?? false;
+    const cleanedTitle = cleanTaskTitleRobust(content, TASK_EMOJIS, true, removeTagsSetting);
 
     if (!cleanedTitle) {
       return { type: 'none' }; // Empty title

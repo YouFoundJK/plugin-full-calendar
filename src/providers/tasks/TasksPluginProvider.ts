@@ -58,7 +58,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     this.app = app;
     this.plugin = plugin;
     this.source = source;
-    this.parser = new TasksParser();
+    this.parser = new TasksParser(plugin.settings);
 
     // Set up file watchers for cache invalidation
     this.setupFileWatchers();
