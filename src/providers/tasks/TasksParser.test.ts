@@ -226,6 +226,127 @@ describe('TasksParser', () => {
         expect(result.task.isDone).toBe(true);
       }
     });
+
+    it('should respect Tasks plugin global filter when set', () => {
+      // Mock Tasks plugin with global filter
+      const originalWindow = global.window;
+      global.window = {
+        app: {
+          plugins: {
+            plugins: {
+              'obsidian-tasks-plugin': {
+                settings: {
+                  globalFilter: '#task'
+                }
+              }
+            }
+          }
+        }
+      } as any;
+
+      const line1 = '- [ ] This is a task #task 📅 2024-01-15';
+      const line2 = '- [ ] This is not a task 📅 2024-01-15';
+
+      const result1 = parser.parseLine(line1, 'test.md', 1);
+      const result2 = parser.parseLine(line2, 'test.md', 2);
+
+      expect(result1.type).toBe('dated'); // Should be parsed as it contains #task
+      expect(result2.type).toBe('none'); // Should be ignored as it doesn't contain #task
+
+      // Restore original window
+      global.window = originalWindow;
+    });
+
+    it('should treat all checklist items as tasks when no global filter is set', () => {
+      // Mock Tasks plugin with no global filter
+      const originalWindow = global.window;
+      global.window = {
+        app: {
+          plugins: {
+            plugins: {
+              'obsidian-tasks-plugin': {
+                settings: {
+                  globalFilter: ''
+                }
+              }
+            }
+          }
+        }
+      } as any;
+
+      const line1 = '- [ ] Task with tag #work 📅 2024-01-15';
+      const line2 = '- [ ] Task without tag 📅 2024-01-15';
+
+      const result1 = parser.parseLine(line1, 'test.md', 1);
+      const result2 = parser.parseLine(line2, 'test.md', 2);
+
+      expect(result1.type).toBe('dated'); // Should be parsed
+      expect(result2.type).toBe('dated'); // Should also be parsed
+
+      // Restore original window
+      global.window = originalWindow;
+    });
+
+    it('should use custom status symbols from Tasks plugin', () => {
+      // Mock Tasks plugin with custom status settings
+      const originalWindow = global.window;
+      global.window = {
+        app: {
+          plugins: {
+            plugins: {
+              'obsidian-tasks-plugin': {
+                settings: {
+                  statusSettings: {
+                    coreStatuses: [
+                      {
+                        symbol: '!',
+                        name: 'Important',
+                        nextStatusSymbol: 'x',
+                        availableAsInitialStatus: true,
+                        type: 'DONE'
+                      },
+                      {
+                        symbol: '/',
+                        name: 'In Progress',
+                        nextStatusSymbol: 'x',
+                        availableAsInitialStatus: true,
+                        type: 'IN_PROGRESS'
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      } as any;
+
+      const completedLine = '- [!] Custom completed task 📅 2024-01-15';
+      const inProgressLine = '- [/] In progress task 📅 2024-01-15';
+      const todoLine = '- [ ] Regular todo task 📅 2024-01-15';
+
+      const completedResult = parser.parseLine(completedLine, 'test.md', 1);
+      const inProgressResult = parser.parseLine(inProgressLine, 'test.md', 2);
+      const todoResult = parser.parseLine(todoLine, 'test.md', 3);
+
+      expect(completedResult.type).toBe('dated');
+      if (completedResult.type === 'dated') {
+        expect(completedResult.task.isDone).toBe(true); // Custom '!' should be recognized as done
+      }
+
+      expect(inProgressResult.type).toBe('dated');
+      if (inProgressResult.type === 'dated') {
+        expect(inProgressResult.task.isDone).toBe(false); // Custom '/' should not be recognized as done
+      }
+
+      expect(todoResult.type).toBe('dated');
+      if (todoResult.type === 'dated') {
+        expect(todoResult.task.isDone).toBe(false); // Regular ' ' should not be done
+      }
+
+      // Restore original window
+      global.window = originalWindow;
+    });
   });
 
   describe('parseFileContent', () => {

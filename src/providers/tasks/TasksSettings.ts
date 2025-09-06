@@ -12,7 +12,15 @@
 
 export interface TasksPluginSettings {
   globalFilter: string;
-  // Add other settings as needed
+  statusSettings?: {
+    coreStatuses?: Array<{
+      symbol: string;
+      name: string;
+      nextStatusSymbol: string;
+      availableAsInitialStatus: boolean;
+      type: 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED' | 'NON_TASK';
+    }>;
+  };
 }
 
 // Standard task emojis used by the Obsidian Tasks plugin
@@ -47,7 +55,8 @@ export function getTasksPluginSettings(): TasksPluginSettings {
     const tasksPlugin = window.app.plugins.plugins['obsidian-tasks-plugin'];
     if (tasksPlugin?.settings) {
       return {
-        globalFilter: tasksPlugin.settings.globalFilter || '📅',
+        globalFilter: tasksPlugin.settings.globalFilter || '',
+        statusSettings: tasksPlugin.settings.statusSettings,
         ...tasksPlugin.settings
       };
     }
@@ -55,7 +64,7 @@ export function getTasksPluginSettings(): TasksPluginSettings {
 
   // Return default settings if Tasks plugin is not found or settings unavailable
   return {
-    globalFilter: '📅' // Default due date emoji
+    globalFilter: '' // Default empty global filter means all checklist items are considered
   };
 }
 
@@ -64,7 +73,7 @@ export function getTasksPluginSettings(): TasksPluginSettings {
  * @returns The emoji used for due dates (defaults to 📅)
  */
 export function getDueDateEmoji(): string {
-  return getTasksPluginSettings().globalFilter;
+  return TASK_EMOJIS.DUE; // Always return the standard due date emoji
 }
 
 /**
@@ -93,4 +102,31 @@ export function getTaskDateEmojis(): Array<[string, 'start' | 'scheduled' | 'due
     [getScheduledDateEmoji(), 'scheduled'],
     [getDueDateEmoji(), 'due']
   ];
+}
+
+/**
+ * Determines if a task status symbol represents a completed task.
+ * Uses the Tasks plugin's status settings if available, falls back to standard logic.
+ * @param statusSymbol The character found inside the task brackets (e.g., 'x', '-', '/', ' ')
+ * @returns true if the status represents a completed task, false otherwise
+ */
+export function isDone(statusSymbol: string): boolean {
+  const settings = getTasksPluginSettings();
+  
+  // If Tasks plugin has custom status settings, use them
+  if (settings.statusSettings?.coreStatuses) {
+    const statusConfig = settings.statusSettings.coreStatuses.find(
+      status => status.symbol === statusSymbol
+    );
+    
+    if (statusConfig) {
+      return statusConfig.type === 'DONE' || statusConfig.type === 'CANCELLED';
+    }
+  }
+  
+  // Fall back to standard logic for common status symbols
+  // Standard "done" statuses: 'x' (completed), '-' (cancelled)
+  // Standard "not done" statuses: ' ' (todo), '/' (in progress), '>' (deferred), etc.
+  const doneStatuses = new Set(['x', 'X', '-']);
+  return doneStatuses.has(statusSymbol);
 }
