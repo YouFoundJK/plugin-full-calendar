@@ -17,6 +17,37 @@ import * as React from 'react';
 import { CalendarInfo } from '../../../types';
 import FullCalendarPlugin from '../../../main';
 
+// Define props for the new stable component
+interface CalendarSettingRowProps {
+  children: React.ReactNode;
+  setting: Partial<CalendarInfo>;
+  onColorChange: (s: string) => void;
+  deleteCalendar: () => void;
+}
+
+// The new stable row component
+const CalendarSettingRow = ({
+  children,
+  setting,
+  onColorChange,
+  deleteCalendar
+}: CalendarSettingRowProps) => {
+  return (
+    <div className="setting-item">
+      <button type="button" onClick={deleteCalendar} className="fc-setting-delete-btn">
+        ✕
+      </button>
+      {children}
+      <input
+        type="color"
+        value={setting.color}
+        className="fc-setting-color-input"
+        onChange={e => onColorChange(e.target.value)}
+      />
+    </div>
+  );
+};
+
 interface BasicProps<T extends Partial<CalendarInfo>> {
   source: T;
 }
@@ -131,21 +162,12 @@ export const ProviderAwareCalendarSettingRow = ({
   const registry = plugin.providerRegistry;
   const provider = setting.id ? registry.getInstance(setting.id) : null;
 
-  // Chrome: Common parts for all calendar sources
-  const ChromeWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="setting-item">
-      <button type="button" onClick={deleteCalendar} className="fc-setting-delete-btn">
-        ✕
-      </button>
-      {children}
-      <input
-        type="color"
-        value={setting.color}
-        className="fc-setting-color-input"
-        onChange={e => onColorChange(e.target.value)}
-      />
-    </div>
-  );
+  // The common props for our new stable row component
+  const rowProps = {
+    setting,
+    onColorChange,
+    deleteCalendar
+  };
 
   // All providers should implement the required method - get the provider-specific content
   if (provider) {
@@ -158,28 +180,28 @@ export const ProviderAwareCalendarSettingRow = ({
       // Fallback rendering - display basic info about the calendar source
       const displayName = (setting as any).name || setting.type || 'Unknown';
       return (
-        <ChromeWrapper>
+        <CalendarSettingRow {...rowProps}>
           <div className="setting-item-control">
             <span>{displayName} calendar</span>
           </div>
-        </ChromeWrapper>
+        </CalendarSettingRow>
       );
     }
 
     const ProviderContent = provider.getSettingsRowComponent();
     return (
-      <ChromeWrapper>
+      <CalendarSettingRow {...rowProps}>
         <ProviderContent source={setting} />
-      </ChromeWrapper>
+      </CalendarSettingRow>
     );
   }
 
   // Fallback for sources without an ID or provider not found (should not happen in normal operation)
   return (
-    <ChromeWrapper>
+    <CalendarSettingRow {...rowProps}>
       <div className="setting-item-control">
         <span>Provider not found</span>
       </div>
-    </ChromeWrapper>
+    </CalendarSettingRow>
   );
 };
