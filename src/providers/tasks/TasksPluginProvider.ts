@@ -22,6 +22,7 @@ import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent } from './TasksConfigComponent';
 import { TasksParser, ParsedUndatedTask, ParsedDatedTask } from './TasksParser';
 import { getDueDateEmoji, getStartDateEmoji } from './TasksSettings';
+import { cleanTaskTitleRobust } from './utils/splitter';
 import React from 'react';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
@@ -416,6 +417,24 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   /**
+   * Extracts any non-task-related text from a task line.
+   * This is used to preserve user comments, links, or other metadata during an update.
+   */
+  private _extractExtraData(originalLine: string, taskData: OFCEvent): string {
+    if (taskData.type !== 'single') return '';
+
+    // First, use the robust cleaner to strip out all known date/completion emojis.
+    // We pass `removeTags: false` because we want to preserve tags as part of the "extra" data.
+    const withoutMetadata = cleanTaskTitleRobust(originalLine, undefined, true, false);
+
+    // Now, remove the checkbox and the task title itself.
+    const withoutCheckbox = withoutMetadata.replace(/^\s*-\s*\[.\]\s*/, '');
+    const finalExtras = withoutCheckbox.replace(taskData.title, '').trim();
+    
+    return finalExtras;
+  }
+
+  /**
    * Determines the target file for creating a new task.
    * Uses the designated file "FMR Tasks integration.md" at vault root.
    */
@@ -487,58 +506,42 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
 
     try {
-      // Find the current task line with resiliency to line number changes
-      const { file, lineNumber } = await this._findTaskByHandle(handle);
+      // Find the current task line with resiliency to line number changes.
+      // This gives us the original line text to extract extra data from.
+      const { file, lineNumber, taskLine: originalLine } = await this._findTaskByHandle(handle);
 
-      // Convert the new event data to a task line
-      const newTaskLine = this._ofcEventToTaskLine(newEventData);
+      // 1. Generate the new base task line from the updated event data.
+      const baseLine = this._ofcEventToTaskLine(newEventData);
+      
+      // 2. Extract any extra data from the original line.
+      const extraData = this._extractExtraData(originalLine, oldEventData);
 
-      // Use direct file I/O to update the task with line-shift resiliency
+      // 3. Construct the final updated line.
+      const updatedLine = (baseLine + ' ' + extraData).trim();
+
+      // 4. Use direct file I/O to update the task with line-shift resiliency.
       const updatedLocation = await this.app.rewrite(file, (contents: string) => {
         const lines = contents.split('\n');
+        const lineIndex = lineNumber - 1; // Convert to 0-based index
 
-        // Verify the task is still at the expected line, if not, find it
-        let actualLineIndex = lineNumber - 1; // Convert to 0-based index
-
-        // Double-check: if the line at lineNumber doesn't match, scan for the task
-        if (actualLineIndex >= 0 && actualLineIndex < lines.length) {
-          const currentLine = lines[actualLineIndex];
-          const parseResult = this.parser.parseLine(currentLine, file.path, lineNumber);
-
-          // If it's not a task at this line, we need to find the actual line
-          if (parseResult.type !== 'dated') {
-            // Scan the file to find the task
-            let found = false;
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i];
-              const result = this.parser.parseLine(line, file.path, i + 1);
-              if (result.type === 'dated') {
-                // This is a potential match - for now use first dated task found
-                // In a more sophisticated implementation, we'd match by content/UID
-                actualLineIndex = i;
-                found = true;
-                break;
-              }
-            }
-
-            if (!found) {
-              throw new Error('Task not found in file. It may have been deleted.');
-            }
-          }
-        } else {
-          throw new Error('Invalid line number for task location.');
+        // Basic sanity check.
+        if (lineIndex < 0 || lineIndex >= lines.length) {
+          throw new Error(`Line number ${lineNumber} is out of bounds for file ${file.path}.`);
         }
-
-        // Update the line
-        lines[actualLineIndex] = newTaskLine;
+        
+        // Replace just the single line.
+        lines[lineIndex] = updatedLine;
 
         const finalLocation: EventLocation = {
           file: { path: file.path },
-          lineNumber: actualLineIndex + 1 // Convert back to 1-based
+          lineNumber: lineNumber // Keep 1-based line number for the location object.
         };
 
         return [lines.join('\n'), finalLocation] as [string, EventLocation];
       });
+      
+      // Invalidate the cache since a task has been modified.
+      this._invalidateCache();
 
       return updatedLocation;
     } catch (error) {
