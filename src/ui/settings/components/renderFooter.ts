@@ -16,7 +16,7 @@ export function renderFooter(containerEl: HTMLElement): void {
   linksContainer.createEl('a', {
     text: '💡 Suggest new feature',
     attr: {
-      href: 'https://github.com/YouFoundJK/plugin-full-calendar/discussions/new?category=polls'
+      href: 'https://github.com/YouFoundJK/plugin-full-calendar/discussions/'
     },
     cls: 'settings-footer-link'
   });
