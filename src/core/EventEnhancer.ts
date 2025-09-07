@@ -112,7 +112,8 @@ export class EventEnhancer {
 
     // 2. Second, construct the full title if categorization is enabled.
     if (!this.settings.enableAdvancedCategorization) {
-      return eventForStorage;
+      // Skip to cleanup and return
+      return this.cleanupLegacyProperties(eventForStorage);
     }
 
     // Create a new object for title construction to avoid mutating the one we just fixed.
@@ -127,6 +128,23 @@ export class EventEnhancer {
     delete finalEvent.category;
     delete finalEvent.subCategory;
 
-    return finalEvent;
+    return this.cleanupLegacyProperties(finalEvent);
+  }
+
+  /**
+   * Removes legacy task properties from events during the write path.
+   * This completes Step 2 of the migration by ensuring only the new `task` property
+   * is written to storage, not the old `completed` and `isTask` properties.
+   */
+  private cleanupLegacyProperties(event: OFCEvent): OFCEvent {
+    const cleanedEvent = { ...event };
+
+    // Remove legacy task properties during Step 2
+    // @ts-expect-error - Intentionally deleting legacy properties that may exist
+    delete cleanedEvent.completed;
+    // @ts-expect-error - Intentionally deleting legacy properties that may exist
+    delete cleanedEvent.isTask;
+
+    return cleanedEvent;
   }
 }

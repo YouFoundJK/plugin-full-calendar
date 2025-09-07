@@ -21,6 +21,11 @@ import {
   parseTitle,
   parseSubcategoryTitle
 } from '../../../features/category/categoryParser';
+import { 
+  TASK_STATUS_OPTIONS, 
+  TaskStatus,
+  getTaskStatusLabel 
+} from '../../../features/tasks/taskConstants';
 
 interface DayChoiceProps {
   code: string;
@@ -152,23 +157,38 @@ export const EditEvent = ({
   );
   const [category, setCategory] = useState(initialEvent?.category || '');
   // const [isRecurring, setIsRecurring] = useState(initialEvent?.type === 'recurring' || false);
+  // Helper to determine initial task status from the event
+  const getInitialTaskStatus = (event: Partial<OFCEvent> | null): TaskStatus => {
+    if (!event) return null;
+    
+    // Use the new task property if available
+    if (event.task !== undefined) {
+      return event.task as TaskStatus;
+    }
+    
+    // Fall back to legacy properties for backward compatibility
+    if (event.type === 'single' && event.completed !== undefined && event.completed !== null) {
+      return event.completed ? 'x' : ' ';
+    }
+    
+    if ((event.type === 'recurring' || event.type === 'rrule') && event.isTask) {
+      return ' '; // Recurring tasks default to todo
+    }
+    
+    return null; // Not a task
+  };
+
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>(
     getInitialRecurrenceType(initialEvent)
   );
   const isRecurring = recurrenceType !== 'none';
   const [allDay, setAllDay] = useState(initialEvent?.allDay || false);
   const [calendarIndex, setCalendarIndex] = useState(defaultCalendarIndex);
-  const [isTask, setIsTask] = useState(
-    (initialEvent?.type === 'single' &&
-      initialEvent.completed !== undefined &&
-      initialEvent.completed !== null) ||
-      (initialEvent?.type === 'recurring' && initialEvent.isTask) ||
-      (initialEvent?.type === 'rrule' && initialEvent.isTask) ||
-      false
-  );
-  const [complete, setComplete] = useState(
-    initialEvent?.type === 'single' && initialEvent.completed
-  );
+  const [taskStatus, setTaskStatus] = useState<TaskStatus>(getInitialTaskStatus(initialEvent || null));
+  
+  // Derived values for backward compatibility with existing logic
+  const isTask = taskStatus !== null;
+  const complete = taskStatus === 'x' ? DateTime.now().toISO() : false;
   const [daysOfWeek, setDaysOfWeek] = useState<string[]>(
     initialEvent?.type === 'recurring' ? initialEvent.daysOfWeek || [] : []
   );
@@ -221,11 +241,6 @@ export const EditEvent = ({
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    let completedValue: string | false | null = null;
-    if (isTask) {
-      completedValue = complete || false;
-    }
-
     const timeInfo = allDay
       ? { allDay: true as const }
       : { allDay: false as const, startTime: startTime || '', endTime: endTime || null };
@@ -237,14 +252,14 @@ export const EditEvent = ({
         type: 'single',
         date: date || '',
         endDate: endDate || null,
-        completed: completedValue
+        task: taskStatus  // Use new task property
       };
     } else {
       const recurringData: Partial<OFCEvent> & { type: 'recurring' } = {
         type: 'recurring',
         startRecur: date || undefined,
         endRecur: endRecur,
-        isTask: isTask,
+        task: taskStatus,  // Use new task property instead of isTask
         skipDates: initialEvent?.type === 'recurring' ? initialEvent.skipDates : [],
         repeatInterval: repeatInterval > 1 ? repeatInterval : undefined
       };
@@ -446,29 +461,21 @@ export const EditEvent = ({
               />{' '}
               All day
             </label>
-            <label>
-              <input type="checkbox" checked={isTask} onChange={e => setIsTask(e.target.checked)} />{' '}
-              Is a Task
-            </label>
-            {isTask && (
-              <label
-                title={
-                  isRecurring
-                    ? 'Completion for recurring tasks can be toggled on individual instances in the calendar view.'
-                    : ''
-                }
+            <div className="setting-item-control">
+              <label htmlFor="task-status-select">Task Status</label>
+              <select
+                id="task-status-select"
+                value={taskStatus || ''}
+                onChange={e => setTaskStatus(e.target.value === '' ? null : e.target.value as TaskStatus)}
+                title={isRecurring && taskStatus ? 'Task status for recurring events applies to all instances' : ''}
               >
-                <input
-                  type="checkbox"
-                  checked={isRecurring ? false : !!complete}
-                  onChange={e =>
-                    !isRecurring && setComplete(e.target.checked ? DateTime.now().toISO() : false)
-                  }
-                  disabled={isRecurring}
-                />{' '}
-                Completed
-              </label>
-            )}
+                {TASK_STATUS_OPTIONS.map(option => (
+                  <option key={option.value || 'none'} value={option.value || ''}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             {/* ADD THIS WRAPPER AROUND THE REMINDER CHECKBOX LABEL */}
             {enableReminders && (
               <label

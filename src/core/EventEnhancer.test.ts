@@ -153,4 +153,59 @@ describe('EventEnhancer task normalization', () => {
       expect(enhanced.startTime).not.toBe('10:00');
     });
   });
+
+  describe('prepareForStorage legacy cleanup', () => {
+    it('should remove legacy task properties during Step 2', () => {
+      const enhancedEvent: any = {
+        type: 'single',
+        title: 'Test task',
+        date: '2024-01-15',
+        endDate: null,
+        allDay: true,
+        task: 'x',
+        completed: '2024-01-15',
+        isTask: true
+      };
+
+      const prepared = enhancer.prepareForStorage(enhancedEvent);
+
+      expect(prepared.task).toBe('x');
+      expect((prepared as any).completed).toBeUndefined();
+      expect((prepared as any).isTask).toBeUndefined();
+    });
+
+    it('should preserve task property when cleaning up', () => {
+      const enhancedEvent: any = {
+        type: 'recurring',
+        title: 'Recurring task',
+        endDate: null,
+        skipDates: [],
+        daysOfWeek: ['M', 'W'],
+        allDay: true,
+        task: '/',
+        isTask: true
+      };
+
+      const prepared = enhancer.prepareForStorage(enhancedEvent);
+
+      expect(prepared.task).toBe('/');
+      expect((prepared as any).isTask).toBeUndefined();
+    });
+
+    it('should handle events without task properties', () => {
+      const regularEvent: OFCEvent = {
+        type: 'single',
+        title: 'Regular event',
+        date: '2024-01-15',
+        endDate: null,
+        allDay: true,
+        task: null
+      };
+
+      const prepared = enhancer.prepareForStorage(regularEvent);
+
+      expect(prepared.task).toBe(null);
+      expect(prepared.title).toBe('Regular event');
+    });
+  });
 });
