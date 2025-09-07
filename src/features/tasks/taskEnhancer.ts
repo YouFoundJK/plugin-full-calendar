@@ -18,8 +18,11 @@ import { OFCEvent } from '../../types';
  * This function implements the backward compatibility bridge by checking for task
  * indicators in the following order of precedence:
  * 1. New `task` property (if present, use as-is)
- * 2. Legacy `completed` property on single events
- * 3. Legacy `isTask` property on recurring/rrule events
+ * 2. Legacy `completed` property on single events (raw data from providers)
+ * 3. Legacy `isTask` property on recurring/rrule events (raw data from providers)
+ * 
+ * Note: In Step 3, legacy properties have been removed from the schema but may
+ * still exist in raw data from providers during transition.
  * 
  * @param rawEvent The raw event object from any provider
  * @returns The canonical task status character or null if not a task
@@ -30,15 +33,18 @@ export function normalizeTaskStatus(rawEvent: Partial<OFCEvent>): string | null 
     return rawEvent.task;
   }
 
+  // Handle legacy properties that might still exist in raw provider data
+  const anyEvent = rawEvent as any;
+  
   // Handle legacy single events with completed property
-  if (rawEvent.type === 'single' && rawEvent.completed !== undefined && rawEvent.completed !== null) {
+  if (rawEvent.type === 'single' && anyEvent.completed !== undefined && anyEvent.completed !== null) {
     // If completed is a date string (truthy), it's a completed task
     // If completed is false, it's an incomplete task
-    return rawEvent.completed ? 'x' : ' ';
+    return anyEvent.completed ? 'x' : ' ';
   }
 
   // Handle legacy recurring/rrule events with isTask property
-  if ((rawEvent.type === 'recurring' || rawEvent.type === 'rrule') && rawEvent.isTask) {
+  if ((rawEvent.type === 'recurring' || rawEvent.type === 'rrule') && anyEvent.isTask) {
     // Recurring tasks don't have completion state in the legacy system,
     // so they default to incomplete
     return ' ';

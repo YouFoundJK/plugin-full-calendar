@@ -161,20 +161,12 @@ export const EditEvent = ({
   const getInitialTaskStatus = (event: Partial<OFCEvent> | null): TaskStatus => {
     if (!event) return null;
     
-    // Use the new task property if available
+    // Use the new task property 
     if (event.task !== undefined) {
       return event.task as TaskStatus;
     }
     
-    // Fall back to legacy properties for backward compatibility
-    if (event.type === 'single' && event.completed !== undefined && event.completed !== null) {
-      return event.completed ? 'x' : ' ';
-    }
-    
-    if ((event.type === 'recurring' || event.type === 'rrule') && event.isTask) {
-      return ' '; // Recurring tasks default to todo
-    }
-    
+    // No legacy fallback needed in Step 3 - properties have been removed from schema
     return null; // Not a task
   };
 

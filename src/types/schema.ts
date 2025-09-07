@@ -93,8 +93,8 @@ export const EventSchema = z
     z.object({
       type: z.literal('single'),
       date: ParsedDate,
-      endDate: ParsedDate.nullable().default(null),
-      completed: ParsedDate.or(z.literal(false)).or(z.literal(null)).optional()
+      endDate: ParsedDate.nullable().default(null)
+      // Removed: completed property (replaced by task in CommonSchema)
     }),
     z.object({
       type: z.literal('recurring'),
@@ -113,7 +113,7 @@ export const EventSchema = z
       // --- ADDITIONS END ---
       startRecur: ParsedDate.optional(),
       endRecur: ParsedDate.optional(),
-      isTask: z.boolean().optional(),
+      // Removed: isTask property (replaced by task in CommonSchema)
       skipDates: z.array(ParsedDate).default([])
     }),
     z.object({
@@ -121,8 +121,8 @@ export const EventSchema = z
       startDate: ParsedDate,
       endDate: ParsedDate.nullable().default(null),
       rrule: z.string(),
-      skipDates: z.array(ParsedDate).default([]),
-      isTask: z.boolean().optional()
+      skipDates: z.array(ParsedDate).default([])
+      // Removed: isTask property (replaced by task in CommonSchema)
     })
   ])
   .superRefine((data, ctx) => {

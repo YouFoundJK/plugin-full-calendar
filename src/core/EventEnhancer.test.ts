@@ -22,55 +22,49 @@ describe('EventEnhancer task normalization', () => {
 
   describe('task property enhancement', () => {
     it('should add task property for legacy completed single events', () => {
-      const rawEvent: OFCEvent = {
+      const rawEvent: any = {
         type: 'single',
         title: 'Test task',
         date: '2024-01-15',
         endDate: null,
         allDay: true,
-        completed: '2024-01-15'
+        completed: '2024-01-15'  // Legacy property in raw data
       };
 
       const enhanced = enhancer.enhance(rawEvent);
 
       expect(enhanced.task).toBe('x');
-      // @ts-expect-error - Testing legacy property preservation
-      expect(enhanced.completed).toBe('2024-01-15'); // Legacy property preserved
     });
 
     it('should add task property for legacy incomplete single events', () => {
-      const rawEvent: OFCEvent = {
+      const rawEvent: any = {
         type: 'single',
         title: 'Test task',
         date: '2024-01-15',
         endDate: null,
         allDay: true,
-        completed: false
+        completed: false  // Legacy property in raw data
       };
 
       const enhanced = enhancer.enhance(rawEvent);
 
       expect(enhanced.task).toBe(' ');
-      // @ts-expect-error - Testing legacy property preservation
-      expect(enhanced.completed).toBe(false); // Legacy property preserved
     });
 
     it('should add task property for legacy recurring tasks', () => {
-      const rawEvent: OFCEvent = {
+      const rawEvent: any = {
         type: 'recurring',
         title: 'Recurring task',
         endDate: null,
         skipDates: [],
         daysOfWeek: ['M', 'W', 'F'],
         allDay: true,
-        isTask: true
+        isTask: true  // Legacy property in raw data
       };
 
       const enhanced = enhancer.enhance(rawEvent);
 
       expect(enhanced.task).toBe(' ');
-      // @ts-expect-error - Testing legacy property preservation
-      expect(enhanced.isTask).toBe(true); // Legacy property preserved
     });
 
     it('should preserve existing task property', () => {
@@ -80,15 +74,12 @@ describe('EventEnhancer task normalization', () => {
         date: '2024-01-15',
         endDate: null,
         allDay: true,
-        task: '/',
-        completed: false // Legacy property should be ignored
+        task: '/'
       };
 
       const enhanced = enhancer.enhance(rawEvent);
 
       expect(enhanced.task).toBe('/');
-      // @ts-expect-error - Testing legacy property preservation
-      expect(enhanced.completed).toBe(false); // Legacy property still preserved
     });
 
     it('should set task to null for non-task events', () => {
@@ -113,13 +104,13 @@ describe('EventEnhancer task normalization', () => {
         enableAdvancedCategorization: true
       });
 
-      const rawEvent: OFCEvent = {
+      const rawEvent: any = {
         type: 'single',
         title: 'Work - Complete project task',
         date: '2024-01-15',
         endDate: null,
         allDay: true,
-        completed: false
+        completed: false  // Legacy property in raw data
       };
 
       const enhanced = enhancerWithCategories.enhance(rawEvent);
@@ -127,12 +118,10 @@ describe('EventEnhancer task normalization', () => {
       expect(enhanced.task).toBe(' ');
       expect(enhanced.category).toBe('Work');
       expect(enhanced.title).toBe('Complete project task');
-      // @ts-expect-error - Testing legacy property preservation
-      expect(enhanced.completed).toBe(false); // Legacy preserved
     });
 
     it('should handle timezone conversion for tasks', () => {
-      const rawEvent: OFCEvent = {
+      const rawEvent: any = {
         type: 'single',
         title: 'Timed task',
         date: '2024-01-15',
@@ -141,7 +130,7 @@ describe('EventEnhancer task normalization', () => {
         startTime: '10:00',
         endTime: '11:00',
         timezone: 'UTC',
-        completed: 'x'
+        completed: 'x'  // Legacy property in raw data
       };
 
       const enhanced = enhancer.enhance(rawEvent);
