@@ -15,6 +15,7 @@
 import { Notice } from 'obsidian';
 import * as React from 'react';
 import { CalendarInfo } from '../../../types';
+import { ColorPicker } from '../../components/forms/ColorPicker';
 import FullCalendarPlugin from '../../../main';
 
 interface BasicProps<T extends Partial<CalendarInfo>> {
@@ -138,15 +139,10 @@ export const ProviderAwareCalendarSettingRow = ({
         ✕
       </button>
       {children}
-      <input
-        type="color"
-        value={setting.color}
+      <ColorPicker
+        value={setting.color || '#3b82f6'}
+        onChange={onColorChange}
         className="fc-setting-color-input"
-        onInput={e => {
-          // onInput fires less frequently and doesn't interfere with color picker UI
-          const target = e.target as HTMLInputElement;
-          onColorChange(target.value);
-        }}
       />
     </div>
   );

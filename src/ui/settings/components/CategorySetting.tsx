@@ -12,6 +12,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { AutocompleteInput } from '../../components/forms/AutocompleteInput';
+import { ColorPicker } from '../../components/forms/ColorPicker';
 import { getNextColor } from '../../colors';
 
 export interface CategorySetting {
@@ -92,10 +93,9 @@ export const CategorySettingsManager = ({
             />
           </div>
           <div className="setting-item-control">
-            <input
-              type="color"
+            <ColorPicker
               value={setting.color}
-              onChange={e => updateCategoryColor(index, e.target.value)}
+              onChange={color => updateCategoryColor(index, color)}
               style={{ minWidth: '3rem' }}
             />
           </div>
