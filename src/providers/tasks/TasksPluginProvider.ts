@@ -21,7 +21,7 @@ import { EventHandle, FCReactComponent } from '../typesProvider';
 import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent } from './TasksConfigComponent';
 import { TasksParser, ParsedUndatedTask, ParsedDatedTask } from './TasksParser';
-import { getDueDateEmoji, getStartDateEmoji } from './TasksSettings';
+import { getDueDateEmoji, getStartDateEmoji, TASK_EMOJIS } from './TasksSettings';
 import React from 'react';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
@@ -371,6 +371,91 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   /**
+   * Detects if the change between two events is only completion status.
+   * This allows us to use surgical modification instead of full reconstruction.
+   */
+  private _isCompletionOnlyChange(oldEvent: OFCEvent, newEvent: OFCEvent): boolean {
+    if (oldEvent.type !== 'single' || newEvent.type !== 'single') {
+      return false;
+    }
+
+    // Check if only completion status changed
+    const basicFieldsMatch = (
+      oldEvent.title === newEvent.title &&
+      oldEvent.date === newEvent.date &&
+      oldEvent.endDate === newEvent.endDate &&
+      oldEvent.allDay === newEvent.allDay
+    );
+
+    if (!basicFieldsMatch) {
+      return false;
+    }
+
+    // Check time fields if not all day
+    if (!oldEvent.allDay && !newEvent.allDay) {
+      const timeFieldsMatch = (
+        oldEvent.startTime === newEvent.startTime &&
+        oldEvent.endTime === newEvent.endTime
+      );
+      if (!timeFieldsMatch) {
+        return false;
+      }
+    }
+
+    // Only completion should be different
+    return oldEvent.completed !== newEvent.completed;
+  }
+
+  /**
+   * Surgically modifies a task line to change only the completion status.
+   * Preserves all metadata while updating checkbox and completion emoji.
+   */
+  private _surgicallyModifyTaskCompletion(
+    originalLine: string,
+    isCompleted: boolean
+  ): string {
+    // Step 1: Change the checkbox status
+    let modifiedLine = originalLine.replace(/^\s*-\s*\[.\]\s*/, isCompleted ? '- [x] ' : '- [ ] ');
+
+    if (isCompleted) {
+      // Adding completion: add completion emoji with today's date
+      const completionDate = DateTime.now().toFormat('yyyy-MM-dd');
+      modifiedLine += ` ${TASK_EMOJIS.DONE} ${completionDate}`;
+    } else {
+      // Removing completion: remove completion emoji and its date
+      // Use the same logic as cleanTaskTitleRobust but only for completion emojis
+      const completionEmojis = [TASK_EMOJIS.DONE, TASK_EMOJIS.CANCELLED];
+      
+      for (const emoji of completionEmojis) {
+        while (true) {
+          const emojiIndex = modifiedLine.indexOf(emoji);
+          if (emojiIndex === -1) {
+            break;
+          }
+
+          const before = modifiedLine.substring(0, emojiIndex).trim();
+          const after = modifiedLine.substring(emojiIndex + emoji.length).trim();
+
+          // Look for a date after the completion emoji
+          const dateMatch = after.match(/^\s*(\d{4}-\d{1,2}-\d{1,2}|\d{4}\/\d{1,2}\/\d{1,2}|\d{1,2}-\d{1,2}-\d{4}|\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/);
+          
+          if (dateMatch) {
+            // Remove both emoji and date
+            const dateString = dateMatch[1];
+            const afterDateRemoved = after.replace(dateString, '').trim();
+            modifiedLine = (before + ' ' + afterDateRemoved).replace(/\s+/g, ' ').trim();
+          } else {
+            // Just remove the emoji
+            modifiedLine = (before + ' ' + after).replace(/\s+/g, ' ').trim();
+          }
+        }
+      }
+    }
+
+    return modifiedLine;
+  }
+
+  /**
    * Safely locates a task by its handle (filePath::lineNumber) by re-parsing the file.
    * This ensures we find the task even if line numbers have changed due to other edits.
    */
@@ -488,10 +573,21 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
     try {
       // Find the current task line with resiliency to line number changes
-      const { file, lineNumber } = await this._findTaskByHandle(handle);
+      const { file, lineNumber, taskLine } = await this._findTaskByHandle(handle);
 
-      // Convert the new event data to a task line
-      const newTaskLine = this._ofcEventToTaskLine(newEventData);
+      // Check if this is only a completion status change
+      const isCompletionOnlyChange = this._isCompletionOnlyChange(oldEventData, newEventData);
+      
+      let newTaskLine: string;
+      
+      if (isCompletionOnlyChange) {
+        // Use surgical modification to preserve all metadata
+        const isCompleted = newEventData.completed !== false;
+        newTaskLine = this._surgicallyModifyTaskCompletion(taskLine, isCompleted);
+      } else {
+        // Use full reconstruction for other changes
+        newTaskLine = this._ofcEventToTaskLine(newEventData);
+      }
 
       // Use direct file I/O to update the task with line-shift resiliency
       const updatedLocation = await this.app.rewrite(file, (contents: string) => {
