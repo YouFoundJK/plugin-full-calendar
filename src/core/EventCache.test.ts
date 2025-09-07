@@ -684,7 +684,10 @@ describe('editable calendars', () => {
         eventsInFile: [oldEvent],
         file: oldEvent[1]!.file,
         counts: { files: 1, events: 1 },
-        callback: null
+        // Note: During Step 1 of task enhancement, events that were enhanced during populate
+        // will trigger callbacks when the same "raw" event is synchronized again because
+        // the enhancement adds the task property. This is expected behavior.
+        callback: { toRemoveLength: 1, eventsToAddLength: 1 }
       }
     ])('$test', async ({ eventsInFile, file, counts: { files, events }, callback }) => {
       assertCacheContentCounts(cache, {
@@ -726,7 +729,9 @@ describe('editable calendars', () => {
         expect(callbackInvocation.toRemove.length).toBe(toRemoveLength);
         expect(callbackInvocation.toAdd.length).toBe(eventsToAddLength);
         if (eventsToAddLength > 0) {
-          expect(callbackInvocation.toAdd[0].event).toEqual(eventsInFile[0][0]);
+          // The event in the callback should be the enhanced version
+          const expectedEnhancedEvent = { ...eventsInFile[0][0], task: null };
+          expect(callbackInvocation.toAdd[0].event).toEqual(expectedEnhancedEvent);
         }
       } else {
         expect(callbackMock).not.toHaveBeenCalled();

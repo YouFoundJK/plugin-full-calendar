@@ -1,0 +1,156 @@
+/**
+ * @file EventEnhancer.test.ts
+ * @brief Tests for EventEnhancer task normalization functionality.
+ */
+
+import { EventEnhancer } from './EventEnhancer';
+import { OFCEvent } from '../types';
+import { FullCalendarSettings } from '../types/settings';
+
+// Mock settings
+const mockSettings: FullCalendarSettings = {
+  enableAdvancedCategorization: false,
+  displayTimezone: 'America/New_York'
+} as FullCalendarSettings;
+
+describe('EventEnhancer task normalization', () => {
+  let enhancer: EventEnhancer;
+
+  beforeEach(() => {
+    enhancer = new EventEnhancer(mockSettings);
+  });
+
+  describe('task property enhancement', () => {
+    it('should add task property for legacy completed single events', () => {
+      const rawEvent: OFCEvent = {
+        type: 'single',
+        title: 'Test task',
+        date: '2024-01-15',
+        endDate: null,
+        allDay: true,
+        completed: '2024-01-15'
+      };
+
+      const enhanced = enhancer.enhance(rawEvent);
+
+      expect(enhanced.task).toBe('x');
+      // @ts-expect-error - Testing legacy property preservation
+      expect(enhanced.completed).toBe('2024-01-15'); // Legacy property preserved
+    });
+
+    it('should add task property for legacy incomplete single events', () => {
+      const rawEvent: OFCEvent = {
+        type: 'single',
+        title: 'Test task',
+        date: '2024-01-15',
+        endDate: null,
+        allDay: true,
+        completed: false
+      };
+
+      const enhanced = enhancer.enhance(rawEvent);
+
+      expect(enhanced.task).toBe(' ');
+      // @ts-expect-error - Testing legacy property preservation
+      expect(enhanced.completed).toBe(false); // Legacy property preserved
+    });
+
+    it('should add task property for legacy recurring tasks', () => {
+      const rawEvent: OFCEvent = {
+        type: 'recurring',
+        title: 'Recurring task',
+        endDate: null,
+        skipDates: [],
+        daysOfWeek: ['M', 'W', 'F'],
+        allDay: true,
+        isTask: true
+      };
+
+      const enhanced = enhancer.enhance(rawEvent);
+
+      expect(enhanced.task).toBe(' ');
+      // @ts-expect-error - Testing legacy property preservation
+      expect(enhanced.isTask).toBe(true); // Legacy property preserved
+    });
+
+    it('should preserve existing task property', () => {
+      const rawEvent: OFCEvent = {
+        type: 'single',
+        title: 'Test task',
+        date: '2024-01-15',
+        endDate: null,
+        allDay: true,
+        task: '/',
+        completed: false // Legacy property should be ignored
+      };
+
+      const enhanced = enhancer.enhance(rawEvent);
+
+      expect(enhanced.task).toBe('/');
+      // @ts-expect-error - Testing legacy property preservation
+      expect(enhanced.completed).toBe(false); // Legacy property still preserved
+    });
+
+    it('should set task to null for non-task events', () => {
+      const rawEvent: OFCEvent = {
+        type: 'single',
+        title: 'Regular event',
+        date: '2024-01-15',
+        endDate: null,
+        allDay: true
+      };
+
+      const enhanced = enhancer.enhance(rawEvent);
+
+      expect(enhanced.task).toBe(null);
+    });
+  });
+
+  describe('integration with existing functionality', () => {
+    it('should enhance tasks with category parsing when enabled', () => {
+      const enhancerWithCategories = new EventEnhancer({
+        ...mockSettings,
+        enableAdvancedCategorization: true
+      });
+
+      const rawEvent: OFCEvent = {
+        type: 'single',
+        title: 'Work - Complete project task',
+        date: '2024-01-15',
+        endDate: null,
+        allDay: true,
+        completed: false
+      };
+
+      const enhanced = enhancerWithCategories.enhance(rawEvent);
+
+      expect(enhanced.task).toBe(' ');
+      expect(enhanced.category).toBe('Work');
+      expect(enhanced.title).toBe('Complete project task');
+      // @ts-expect-error - Testing legacy property preservation
+      expect(enhanced.completed).toBe(false); // Legacy preserved
+    });
+
+    it('should handle timezone conversion for tasks', () => {
+      const rawEvent: OFCEvent = {
+        type: 'single',
+        title: 'Timed task',
+        date: '2024-01-15',
+        endDate: null,
+        allDay: false,
+        startTime: '10:00',
+        endTime: '11:00',
+        timezone: 'UTC',
+        completed: 'x'
+      };
+
+      const enhanced = enhancer.enhance(rawEvent);
+
+      expect(enhanced.task).toBe('x');
+      expect(enhanced.timezone).toBe('UTC'); // Preserved for write-back
+      // Times should be converted to display timezone
+      // @ts-expect-error - Testing time property existence
+      expect(enhanced.startTime).not.toBe('10:00');
+    });
+  });
+});
