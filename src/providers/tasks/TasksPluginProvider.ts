@@ -21,7 +21,7 @@ import { EventHandle, FCReactComponent } from '../typesProvider';
 import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent } from './TasksConfigComponent';
 import { TasksParser, ParsedUndatedTask, ParsedDatedTask } from './TasksParser';
-import { getDueDateEmoji, getStartDateEmoji } from './TasksSettings';
+import { getDueDateEmoji, getStartDateEmoji, getTaskDateEmojis } from './TasksSettings';
 import { cleanTaskTitleRobust } from './utils/splitter';
 import React from 'react';
 
@@ -419,19 +419,66 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   /**
    * Extracts any non-task-related text from a task line.
    * This is used to preserve user comments, links, or other metadata during an update.
+   * 
+   * Enhanced to preserve ALL metadata that isn't specifically tracked in the OFCEvent,
+   * including unknown emojis, additional dates, and custom metadata.
    */
   private _extractExtraData(originalLine: string, taskData: OFCEvent): string {
     if (taskData.type !== 'single') return '';
 
-    // First, use the robust cleaner to strip out all known date/completion emojis.
-    // We pass `removeTags: false` because we want to preserve tags as part of the "extra" data.
-    const withoutMetadata = cleanTaskTitleRobust(originalLine, undefined, true, false);
-
-    // Now, remove the checkbox and the task title itself.
-    const withoutCheckbox = withoutMetadata.replace(/^\s*-\s*\[.\]\s*/, '');
-    const finalExtras = withoutCheckbox.replace(taskData.title, '').trim();
+    // Remove checkbox syntax to get the content
+    const withoutCheckbox = originalLine.replace(/^\s*-\s*\[.\]\s*/, '');
     
-    return finalExtras;
+    // Remove the task title from the beginning
+    const withoutTitle = withoutCheckbox.startsWith(taskData.title)
+      ? withoutCheckbox.substring(taskData.title.length).trim()
+      : withoutCheckbox;
+
+    if (!withoutTitle) return '';
+
+    // Get what the new task line would contain (the dates that are tracked in OFCEvent)
+    const newTaskLine = this._ofcEventToTaskLine(taskData);
+    const newTaskWithoutCheckbox = newTaskLine.replace(/^\s*-\s*\[.\]\s*/, '');
+    const newTaskWithoutTitle = newTaskWithoutCheckbox.startsWith(taskData.title)
+      ? newTaskWithoutCheckbox.substring(taskData.title.length).trim()
+      : newTaskWithoutCheckbox;
+
+    // Extract metadata that is NOT in the new task line
+    // This preserves additional emojis, dates, and metadata not tracked by OFCEvent
+    return this._extractAdditionalMetadata(withoutTitle, newTaskWithoutTitle);
+  }
+
+  /**
+   * Extracts metadata from the original line that would not be included in a newly generated task line.
+   * This preserves things like: additional emojis, extra dates, user comments, links, etc.
+   */
+  private _extractAdditionalMetadata(originalContent: string, generatedContent: string): string {
+    if (!originalContent) return '';
+    
+    // If the generated content would be identical to original, no extra metadata
+    if (originalContent.trim() === generatedContent.trim()) return '';
+    
+    // Split into tokens for analysis
+    const originalTokens = originalContent.split(/\s+/).filter(t => t.length > 0);
+    const generatedTokens = generatedContent.split(/\s+/).filter(t => t.length > 0);
+    
+    // Create a set of generated tokens for efficient lookup
+    const generatedSet = new Set(generatedTokens);
+    
+    // Find tokens that are in original but not in generated - these are extra metadata
+    const extraTokens: string[] = [];
+    let i = 0;
+    
+    while (i < originalTokens.length) {
+      const token = originalTokens[i];
+      
+      if (!generatedSet.has(token)) {
+        extraTokens.push(token);
+      }
+      i++;
+    }
+    
+    return extraTokens.join(' ');
   }
 
   /**
@@ -510,16 +557,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       // This gives us the original line text to extract extra data from.
       const { file, lineNumber, taskLine: originalLine } = await this._findTaskByHandle(handle);
 
-      // 1. Generate the new base task line from the updated event data.
-      const baseLine = this._ofcEventToTaskLine(newEventData);
-      
-      // 2. Extract any extra data from the original line.
-      const extraData = this._extractExtraData(originalLine, oldEventData);
+      // Use a different approach: preserve the original structure but update only what's needed
+      const updatedLine = this._updateTaskLinePreservingStructure(originalLine, oldEventData, newEventData);
 
-      // 3. Construct the final updated line.
-      const updatedLine = (baseLine + ' ' + extraData).trim();
-
-      // 4. Use direct file I/O to update the task with line-shift resiliency.
+      // Use direct file I/O to update the task with line-shift resiliency.
       const updatedLocation = await this.app.rewrite(file, (contents: string) => {
         const lines = contents.split('\n');
         const lineIndex = lineNumber - 1; // Convert to 0-based index
@@ -548,6 +589,152 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to update task: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Updates a task line while preserving the original structure and metadata order.
+   * Only updates the parts that actually changed (title and tracked dates).
+   */
+  private _updateTaskLinePreservingStructure(
+    originalLine: string, 
+    oldEventData: OFCEvent, 
+    newEventData: OFCEvent
+  ): string {
+    if (oldEventData.type !== 'single' || newEventData.type !== 'single') {
+      throw new Error('Can only update single events');
+    }
+
+    // If nothing meaningful changed, return original
+    if (oldEventData.title === newEventData.title && 
+        oldEventData.date === newEventData.date && 
+        oldEventData.endDate === newEventData.endDate) {
+      return originalLine;
+    }
+
+    let result = originalLine;
+
+    // Update title if it changed
+    if (oldEventData.title !== newEventData.title) {
+      // Find and replace the title, being careful to only replace at the start after checkbox
+      const checkboxMatch = result.match(/^(\s*-\s*\[.\]\s*)/);
+      if (checkboxMatch) {
+        const prefix = checkboxMatch[1];
+        const afterCheckbox = result.substring(prefix.length);
+        
+        if (afterCheckbox.startsWith(oldEventData.title)) {
+          result = prefix + newEventData.title + afterCheckbox.substring(oldEventData.title.length);
+        }
+      }
+    }
+
+    // Update dates if they changed
+    result = this._updateDatesInLine(result, oldEventData, newEventData);
+
+    return result;
+  }
+
+  /**
+   * Updates date metadata in a task line while preserving other metadata.
+   * This method intelligently finds and replaces the correct emoji+date combinations
+   * based on the actual content in the original line.
+   */
+  private _updateDatesInLine(line: string, oldEventData: OFCEvent, newEventData: OFCEvent): string {
+    if (oldEventData.type !== 'single' || newEventData.type !== 'single') {
+      return line;
+    }
+
+    let result = line;
+
+    // Find all emoji+date combinations in the original line
+    const dateEmojis = getTaskDateEmojis();
+    const allEmojis = [...dateEmojis.map(([emoji, _type]: [string, string]) => emoji), getDueDateEmoji()];
+    
+    const foundCombinations: { emoji: string; date: string; fullMatch: string }[] = [];
+    
+    for (const emoji of allEmojis) {
+      const regex = new RegExp(`${this._escapeRegex(emoji)}\\s+(\\d{4}-\\d{1,2}-\\d{1,2})`, 'g');
+      let match;
+      while ((match = regex.exec(line)) !== null) {
+        foundCombinations.push({
+          emoji: emoji,
+          date: match[1],
+          fullMatch: match[0]
+        });
+      }
+    }
+
+    // Update based on what we found and what changed
+    const oldStartDate = oldEventData.date;
+    const newStartDate = newEventData.date;
+    const oldEndDate = oldEventData.endDate;
+    const newEndDate = newEventData.endDate;
+
+    // Strategy: Find the combination that matches the old date and replace it with new format
+    if (oldStartDate && newStartDate && oldStartDate !== newStartDate) {
+      const oldDateFormatted = DateTime.fromISO(oldStartDate).toFormat('yyyy-MM-dd');
+      const newDateFormatted = DateTime.fromISO(newStartDate).toFormat('yyyy-MM-dd');
+      
+      // Find the combination with the old primary date
+      const matchingCombination = foundCombinations.find(combo => combo.date === oldDateFormatted);
+      
+      if (matchingCombination) {
+        // Determine what emoji to use for the new date
+        let newEmoji;
+        if (newEndDate) {
+          // Multi-day event: use start emoji
+          newEmoji = getStartDateEmoji();
+        } else {
+          // Single-day event: use due emoji
+          newEmoji = getDueDateEmoji();
+        }
+        
+        const newCombination = `${newEmoji} ${newDateFormatted}`;
+        result = result.replace(matchingCombination.fullMatch, newCombination);
+      }
+    }
+
+    // Handle end date changes
+    if (oldEndDate !== newEndDate) {
+      const dueEmoji = getDueDateEmoji();
+      
+      if (oldEndDate && newEndDate) {
+        // Updating existing end date
+        const oldEndFormatted = DateTime.fromISO(oldEndDate).toFormat('yyyy-MM-dd');
+        const newEndFormatted = DateTime.fromISO(newEndDate).toFormat('yyyy-MM-dd');
+        const oldDueCombination = foundCombinations.find(combo => 
+          combo.emoji === dueEmoji && combo.date === oldEndFormatted
+        );
+        
+        if (oldDueCombination) {
+          const newDueCombination = `${dueEmoji} ${newEndFormatted}`;
+          result = result.replace(oldDueCombination.fullMatch, newDueCombination);
+        }
+      } else if (!oldEndDate && newEndDate) {
+        // Adding new end date (converting single-day to multi-day)
+        const newEndFormatted = DateTime.fromISO(newEndDate).toFormat('yyyy-MM-dd');
+        const newDueCombination = `${dueEmoji} ${newEndFormatted}`;
+        result = result + ` ${newDueCombination}`;
+      } else if (oldEndDate && !newEndDate) {
+        // Removing end date (converting multi-day to single-day)
+        const oldEndFormatted = DateTime.fromISO(oldEndDate).toFormat('yyyy-MM-dd');
+        const oldDueCombination = foundCombinations.find(combo => 
+          combo.emoji === dueEmoji && combo.date === oldEndFormatted
+        );
+        
+        if (oldDueCombination) {
+          result = result.replace(oldDueCombination.fullMatch, '').replace(/\s+/g, ' ').trim();
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Escapes special regex characters in a string.
+   */
+  private _escapeRegex(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   async deleteEvent(handle: EventHandle): Promise<void> {
