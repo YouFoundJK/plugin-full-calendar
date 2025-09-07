@@ -142,7 +142,11 @@ export const ProviderAwareCalendarSettingRow = ({
         type="color"
         value={setting.color}
         className="fc-setting-color-input"
-        onChange={e => onColorChange(e.target.value)}
+        onInput={e => {
+          // onInput fires less frequently and doesn't interfere with color picker UI
+          const target = e.target as HTMLInputElement;
+          onColorChange(target.value);
+        }}
       />
     </div>
   );

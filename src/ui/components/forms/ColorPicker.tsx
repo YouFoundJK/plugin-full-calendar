@@ -1,5 +1,6 @@
 // src/ui/components/forms/ColorPicker.tsx
 
+import * as React from 'react';
 import { BasicProps } from './common';
 import { CalendarInfo } from '../../../types';
 
@@ -19,7 +20,16 @@ export function ColorPicker<T extends Partial<CalendarInfo>>({
           type="color"
           value={source.color}
           className="fc-setting-color-input"
-          onChange={changeListener(x => ({ ...source, color: x }))}
+          onInput={e => {
+            // Convert FormEvent to ChangeEvent for compatibility with changeListener
+            const target = e.target as HTMLInputElement;
+            const syntheticEvent = {
+              ...e,
+              target,
+              currentTarget: target
+            } as React.ChangeEvent<HTMLInputElement>;
+            changeListener(x => ({ ...source, color: x }))(syntheticEvent);
+          }}
         />
       </div>
     </div>
