@@ -17,7 +17,7 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: 'x'
       };
-      
+
       expect(isTask(taskEvent)).toBe(true);
     });
 
@@ -30,7 +30,7 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: ' '
       };
-      
+
       expect(isTask(taskEvent)).toBe(true);
     });
 
@@ -43,7 +43,7 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: null
       };
-      
+
       expect(isTask(regularEvent)).toBe(false);
     });
 
@@ -55,7 +55,7 @@ describe('Updated task utilities (Step 3)', () => {
         endDate: null,
         allDay: true
       } as OFCEvent;
-      
+
       expect(isTask(eventWithoutTask)).toBe(false);
     });
   });
@@ -70,9 +70,9 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: 'x'
       };
-      
+
       const result = unmakeTask(taskEvent);
-      
+
       expect(result.task).toBe(null);
       expect(result.title).toBe('Test task'); // Other properties preserved
     });
@@ -87,9 +87,9 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: '/'
       };
-      
+
       const result = unmakeTask(recurringTask);
-      
+
       expect(result.task).toBe(null);
       expect(result.type).toBe('recurring');
     });
@@ -105,9 +105,9 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: ' '
       };
-      
+
       const result = updateTaskStatus(event, 'x');
-      
+
       expect(result.task).toBe('x');
       expect(result.title).toBe('Test task'); // Other properties preserved
     });
@@ -121,9 +121,9 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: 'x'
       };
-      
+
       const result = updateTaskStatus(event, null);
-      
+
       expect(result.task).toBe(null);
     });
 
@@ -136,7 +136,7 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: ' '
       };
-      
+
       expect(updateTaskStatus(event, '/').task).toBe('/');
       expect(updateTaskStatus(event, '-').task).toBe('-');
       expect(updateTaskStatus(event, '>').task).toBe('>');
@@ -154,9 +154,9 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: ' '
       };
-      
+
       const result = toggleTask(event, true);
-      
+
       expect(result.task).toBe('x');
     });
 
@@ -169,9 +169,9 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: 'x'
       };
-      
+
       const result = toggleTask(event, false);
-      
+
       expect(result.task).toBe(' ');
     });
 
@@ -184,9 +184,9 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: null
       };
-      
+
       const result = toggleTask(event, true);
-      
+
       expect(result.task).toBe('x');
     });
 
@@ -199,9 +199,9 @@ describe('Updated task utilities (Step 3)', () => {
         allDay: true,
         task: null
       };
-      
+
       const result = toggleTask(event, false);
-      
+
       expect(result.task).toBe(' ');
     });
   });

@@ -57,7 +57,7 @@ export const toggleTask = (event: OFCEvent, isDone: boolean): OFCEvent => {
     // If it's not a task, make it a task first
     return { ...event, task: isDone ? 'x' : ' ' };
   }
-  
+
   // Toggle between done and todo
   return { ...event, task: isDone ? 'x' : ' ' };
 };

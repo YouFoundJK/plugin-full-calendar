@@ -402,20 +402,20 @@ export async function renderCalendar(
         e.preventDefault();
         openContextMenuForEvent && openContextMenuForEvent(event, e);
       });
-      
+
       // Render task status indicator (Step 3: Non-interactive status display)
       const taskStatus = event.extendedProps.task;
       if (taskStatus !== null && taskStatus !== undefined) {
         const statusIndicator = document.createElement('span');
         statusIndicator.className = 'ofc-task-status';
         statusIndicator.textContent = `[${taskStatus}]`;
-        
+
         // Add styling based on task status
         if (taskStatus === 'x' || taskStatus === '-') {
           // Done or cancelled tasks get strikethrough
           el.addClass('ofc-task-completed');
         }
-        
+
         // Style the indicator based on text color
         if (textColor === 'black') {
           statusIndicator.addClass('ofc-status-black');

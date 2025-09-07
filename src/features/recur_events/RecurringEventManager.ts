@@ -442,8 +442,7 @@ export class RecurringEventManager {
             // Set specific properties for a single event
             type: 'single',
             date: instanceDate,
-            endDate: null,
-            completed: null // Will be set by toggleTask
+            endDate: null
           };
         } else {
           // This is an ALL-DAY recurring event.
@@ -460,8 +459,7 @@ export class RecurringEventManager {
             // Set specific properties for a single event
             type: 'single',
             date: instanceDate,
-            endDate: null,
-            completed: null // Will be set by toggleTask
+            endDate: null
           };
         }
 

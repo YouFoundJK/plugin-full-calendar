@@ -28,7 +28,7 @@ describe('EventEnhancer task normalization', () => {
         date: '2024-01-15',
         endDate: null,
         allDay: true,
-        completed: '2024-01-15'  // Legacy property in raw data
+        completed: '2024-01-15' // Legacy property in raw data
       };
 
       const enhanced = enhancer.enhance(rawEvent);
@@ -43,7 +43,7 @@ describe('EventEnhancer task normalization', () => {
         date: '2024-01-15',
         endDate: null,
         allDay: true,
-        completed: false  // Legacy property in raw data
+        completed: false // Legacy property in raw data
       };
 
       const enhanced = enhancer.enhance(rawEvent);
@@ -59,7 +59,7 @@ describe('EventEnhancer task normalization', () => {
         skipDates: [],
         daysOfWeek: ['M', 'W', 'F'],
         allDay: true,
-        isTask: true  // Legacy property in raw data
+        isTask: true // Legacy property in raw data
       };
 
       const enhanced = enhancer.enhance(rawEvent);
@@ -110,7 +110,7 @@ describe('EventEnhancer task normalization', () => {
         date: '2024-01-15',
         endDate: null,
         allDay: true,
-        completed: false  // Legacy property in raw data
+        completed: false // Legacy property in raw data
       };
 
       const enhanced = enhancerWithCategories.enhance(rawEvent);
@@ -130,7 +130,7 @@ describe('EventEnhancer task normalization', () => {
         startTime: '10:00',
         endTime: '11:00',
         timezone: 'UTC',
-        completed: 'x'  // Legacy property in raw data
+        completed: 'x' // Legacy property in raw data
       };
 
       const enhanced = enhancer.enhance(rawEvent);

@@ -243,7 +243,7 @@ describe('TasksPluginProvider', () => {
       const [event, location] = events[0];
       expect(event.title).toBe('Completed task');
       if (event.type === 'single') {
-        expect(event.completed).toBeTruthy();
+        expect(event.task).toBe('x');
       }
     });
 

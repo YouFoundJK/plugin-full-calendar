@@ -134,7 +134,7 @@ export function fromGoogleEvent(gEvent: GoogleEventLike): OFCEvent | null {
         startDate: eventData.date as string,
         rrule: rrule.toString(),
         skipDates: exdates,
-        isTask: false // Google Calendar events are not tasks in the OFC sense.
+        task: null // Google Calendar events are not tasks in the OFC sense.
       };
       return { ...eventData, ...rruleEvent } as OFCEvent;
     }

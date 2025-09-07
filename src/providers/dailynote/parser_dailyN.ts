@@ -97,10 +97,10 @@ const makeListItem = (
   settings: FullCalendarSettings
 ): string => {
   if (data.type !== 'single') throw new Error('Can only pass in single event.');
-  const { completed, title } = data;
+  const { task, title } = data;
   const checkbox = (() => {
-    if (completed !== null && completed !== undefined) {
-      return `[${completed ? 'x' : ' '}]`;
+    if (task !== null && task !== undefined) {
+      return `[${task}]`;
     }
     return null;
   })();
@@ -113,7 +113,7 @@ const makeListItem = (
     attrs.endDate = null;
   }
 
-  delete attrs['completed'];
+  delete attrs['task'];
   delete attrs['title'];
   delete attrs['type'];
   delete attrs['date'];
