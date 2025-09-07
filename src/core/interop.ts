@@ -322,7 +322,7 @@ export function toEventInput(
     // 8  Misc. extended props
     baseEvent.extendedProps = {
       ...baseEvent.extendedProps,
-      isTask: !!frontmatter.isTask
+      task: frontmatter.task
     };
 
     // Tell FullCalendar it’s all-day when relevant
@@ -366,7 +366,7 @@ export function toEventInput(
 
     baseEvent.rrule = [dtstartString, rruleString].join('\n'); // We don't need exdates here as FullCalendar handles them separately.
     baseEvent.exdate = exdate;
-    baseEvent.extendedProps = { ...baseEvent.extendedProps, isTask: !!frontmatter.isTask };
+    baseEvent.extendedProps = { ...baseEvent.extendedProps, task: frontmatter.task };
 
     if (!frontmatter.allDay) {
       const startTime = parseTime(frontmatter.startTime);
@@ -416,8 +416,7 @@ export function toEventInput(
       baseEvent.end = end;
       baseEvent.extendedProps = {
         ...baseEvent.extendedProps,
-        isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
-        taskCompleted: frontmatter.completed
+        task: frontmatter.task
       };
     } else {
       let adjustedEndDate: string | undefined;
@@ -433,8 +432,7 @@ export function toEventInput(
       baseEvent.end = adjustedEndDate;
       baseEvent.extendedProps = {
         ...baseEvent.extendedProps,
-        isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
-        taskCompleted: frontmatter.completed
+        task: frontmatter.task
       };
     }
   }
@@ -504,15 +502,13 @@ export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
           startRecur: event.extendedProps.startRecur && getDate(event.extendedProps.startRecur),
           endRecur: event.extendedProps.endRecur && getDate(event.extendedProps.endRecur),
           skipDates: [], // Default to empty as exception info is unavailable
-          isTask: event.extendedProps.isTask
+          task: event.extendedProps.task
         }
       : {
           type: 'single',
           date: startDate,
           ...(startDate !== endDate ? { endDate } : { endDate: null }),
-          completed: event.extendedProps.isTask
-            ? (event.extendedProps.taskCompleted ?? false)
-            : event.extendedProps.taskCompleted
+          task: event.extendedProps.task
         })
   };
 }

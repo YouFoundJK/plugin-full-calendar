@@ -114,7 +114,8 @@ describe('EventEnhancer.enhance', () => {
       ...mockEvent,
       title: 'Meeting',
       category: 'Work',
-      subCategory: 'Important'
+      subCategory: 'Important',
+      task: null
     });
   });
 
@@ -126,7 +127,10 @@ describe('EventEnhancer.enhance', () => {
 
     const enhancer = new EventEnhancer(settings);
     const result = enhancer.enhance(mockEvent);
-    expect(result).toEqual(mockEvent);
+    expect(result).toEqual({
+      ...mockEvent,
+      task: null
+    });
   });
 });
 

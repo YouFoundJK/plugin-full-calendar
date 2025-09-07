@@ -94,7 +94,7 @@ describe('RecurringEventManager', () => {
       allDay: false,
       startTime: '09:00',
       endTime: '10:00',
-      isTask: true,
+      task: ' ',
       skipDates: ['2023-11-20'],
       endDate: null
     };
@@ -107,7 +107,7 @@ describe('RecurringEventManager', () => {
       allDay: false,
       startTime: '09:00',
       endTime: '10:00',
-      completed: '2023-11-20T10:00:00.000Z',
+      task: 'x',
       recurringEventId: 'Weekly Meeting'
     };
 
@@ -119,7 +119,7 @@ describe('RecurringEventManager', () => {
       allDay: false,
       startTime: '10:00', // Modified from 09:00
       endTime: '11:00', // Modified from 10:00
-      completed: '2023-11-20T11:00:00.000Z',
+      task: 'x',
       recurringEventId: 'Weekly Meeting'
     };
 
@@ -159,7 +159,7 @@ describe('RecurringEventManager', () => {
       expect(mockCache.updateEventWithId).toHaveBeenCalledWith(
         'child-event-id',
         expect.objectContaining({
-          completed: false
+          task: ' '
         })
       );
     });
@@ -168,7 +168,7 @@ describe('RecurringEventManager', () => {
       const modifiedEndDateOverride: OFCEvent = {
         ...originalOverrideEvent,
         endDate: '2023-11-21', // Multi-day event
-        completed: '2023-11-20T10:00:00.000Z'
+        task: 'x'
       };
 
       (mockCache.store.getEventDetails as jest.Mock).mockReturnValue({
@@ -189,7 +189,7 @@ describe('RecurringEventManager', () => {
       expect(mockCache.updateEventWithId).toHaveBeenCalledWith(
         'child-event-id',
         expect.objectContaining({
-          completed: false
+          task: ' '
         })
       );
     });
@@ -201,7 +201,7 @@ describe('RecurringEventManager', () => {
         date: '2023-11-20',
         endDate: null,
         allDay: true, // Changed from false
-        completed: '2023-11-20T10:00:00.000Z',
+        task: 'x',
         recurringEventId: 'Weekly Meeting'
       };
 
@@ -223,7 +223,7 @@ describe('RecurringEventManager', () => {
       expect(mockCache.updateEventWithId).toHaveBeenCalledWith(
         'child-event-id',
         expect.objectContaining({
-          completed: false
+          task: ' '
         })
       );
     });

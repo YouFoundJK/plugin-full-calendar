@@ -260,7 +260,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       endDate,
       timezone: undefined,
       uid: `${task.location.path}::${task.location.lineNumber}`,
-      completed: task.isDone ? completionTimestampSource.toISO() : false
+      task: task.isDone ? 'x' : ' '
     };
   }
 

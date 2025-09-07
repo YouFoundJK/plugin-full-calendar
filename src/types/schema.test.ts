@@ -150,7 +150,6 @@ describe('schema parsing tests', () => {
       ).toMatchInlineSnapshot(`
         {
           "allDay": true,
-          "completed": null,
           "date": "2021-01-01",
           "endDate": null,
           "title": "Test",
@@ -170,7 +169,6 @@ describe('schema parsing tests', () => {
       ).toMatchInlineSnapshot(`
         {
           "allDay": true,
-          "completed": false,
           "date": "2021-01-01",
           "endDate": null,
           "title": "Test",
@@ -190,7 +188,6 @@ describe('schema parsing tests', () => {
       ).toMatchInlineSnapshot(`
         {
           "allDay": true,
-          "completed": "2021-01-01T10:30:00.000Z",
           "date": "2021-01-01",
           "endDate": null,
           "title": "Test",

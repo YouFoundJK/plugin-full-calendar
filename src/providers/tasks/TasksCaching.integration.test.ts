@@ -89,7 +89,7 @@ Another regular line`;
       );
       expect(completedDatedEvent?.[0]).toBeDefined();
       if (completedDatedEvent?.[0].type === 'single') {
-        expect(completedDatedEvent[0].completed).toBeTruthy();
+        expect(completedDatedEvent[0].task).toBe('x');
       }
 
       const completedUndatedTask = undatedTasks.find(

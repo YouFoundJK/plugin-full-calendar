@@ -15,6 +15,7 @@ import { OFCEvent } from '../types';
 import { FullCalendarSettings } from '../types/settings';
 import { constructTitle, parseTitle } from '../features/category/categoryParser';
 import { convertEvent } from '../features/Timezone';
+import { normalizeTaskStatus } from '../features/tasks/taskEnhancer';
 
 export class EventEnhancer {
   private settings: FullCalendarSettings;
@@ -52,18 +53,26 @@ export class EventEnhancer {
       };
     }
 
-    // 2. Second, perform timezone conversion for display.
+    // 2. Add the normalized task status while preserving legacy properties
+    // This creates the backward compatibility bridge for Step 1
+    const taskStatus = normalizeTaskStatus(categorizedEvent);
+    const taskEnhancedEvent = {
+      ...categorizedEvent,
+      task: taskStatus
+    };
+
+    // 3. Perform timezone conversion for display.
     const displayZone =
       this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     const sourceZone = rawEvent.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     if (sourceZone === displayZone) {
-      return categorizedEvent; // No conversion needed.
+      return taskEnhancedEvent; // No conversion needed.
     }
 
-    const convertedEvent = convertEvent(categorizedEvent, sourceZone, displayZone);
+    const convertedEvent = convertEvent(taskEnhancedEvent, sourceZone, displayZone);
 
-    // 3. Preserve the original timezone on the event object for the write-back path.
+    // 4. Preserve the original timezone on the event object for the write-back path.
     // `convertEvent` doesn't modify this, so it's preserved from the original `rawEvent`.
     return convertedEvent;
   }
@@ -103,7 +112,8 @@ export class EventEnhancer {
 
     // 2. Second, construct the full title if categorization is enabled.
     if (!this.settings.enableAdvancedCategorization) {
-      return eventForStorage;
+      // Skip to cleanup and return
+      return this.cleanupLegacyProperties(eventForStorage);
     }
 
     // Create a new object for title construction to avoid mutating the one we just fixed.
@@ -118,6 +128,23 @@ export class EventEnhancer {
     delete finalEvent.category;
     delete finalEvent.subCategory;
 
-    return finalEvent;
+    return this.cleanupLegacyProperties(finalEvent);
+  }
+
+  /**
+   * Removes legacy task properties from events during the write path.
+   * This completes Step 2 of the migration by ensuring only the new `task` property
+   * is written to storage, not the old `completed` and `isTask` properties.
+   */
+  private cleanupLegacyProperties(event: OFCEvent): OFCEvent {
+    const cleanedEvent = { ...event };
+
+    // Remove legacy task properties during Step 2
+    // @ts-expect-error - Intentionally deleting legacy properties that may exist
+    delete cleanedEvent.completed;
+    // @ts-expect-error - Intentionally deleting legacy properties that may exist
+    delete cleanedEvent.isTask;
+
+    return cleanedEvent;
   }
 }

@@ -749,15 +749,55 @@ export class CalendarView extends ItemView {
 
         if (this.plugin.cache.isEventEditable(e.id)) {
           const tasks = await import('../utils/tasks');
+          const { TASK_STATUS_OPTIONS } = await import('../features/tasks/taskConstants');
+
           if (!tasks.isTask(event)) {
+            // Event is not a task - offer to make it one
             menu.addItem(item =>
-              item.setTitle('Turn into task').onClick(async () => {
-                await this.plugin.cache.processEvent(e.id, e => tasks.toggleTask(e, false));
+              item.setTitle('Make task').onClick(async () => {
+                await this.plugin.cache.processEvent(e.id, e => tasks.updateTaskStatus(e, ' '));
               })
             );
           } else {
+            // Event is a task - offer common status changes
+            const currentStatus = event.task;
+
+            // Quick actions for common statuses
+            if (currentStatus !== 'x') {
+              menu.addItem(item =>
+                item.setTitle('✅ Mark done').onClick(async () => {
+                  await this.plugin.cache.processEvent(e.id, e => tasks.updateTaskStatus(e, 'x'));
+                })
+              );
+            }
+
+            if (currentStatus !== ' ') {
+              menu.addItem(item =>
+                item.setTitle('📋 Mark todo').onClick(async () => {
+                  await this.plugin.cache.processEvent(e.id, e => tasks.updateTaskStatus(e, ' '));
+                })
+              );
+            }
+
+            if (currentStatus !== '/') {
+              menu.addItem(item =>
+                item.setTitle('🔄 Mark in progress').onClick(async () => {
+                  await this.plugin.cache.processEvent(e.id, e => tasks.updateTaskStatus(e, '/'));
+                })
+              );
+            }
+
+            if (currentStatus !== '-') {
+              menu.addItem(item =>
+                item.setTitle('❌ Mark cancelled').onClick(async () => {
+                  await this.plugin.cache.processEvent(e.id, e => tasks.updateTaskStatus(e, '-'));
+                })
+              );
+            }
+
+            // Remove task status option
             menu.addItem(item =>
-              item.setTitle('Remove checkbox').onClick(async () => {
+              item.setTitle('🗑️ Remove task status').onClick(async () => {
                 await this.plugin.cache.processEvent(e.id, tasks.unmakeTask);
               })
             );
