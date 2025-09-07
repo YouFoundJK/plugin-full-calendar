@@ -23,6 +23,12 @@ import { TasksConfigComponent } from './TasksConfigComponent';
 import { TasksParser, ParsedUndatedTask, ParsedDatedTask } from './TasksParser';
 import { getDueDateEmoji, getStartDateEmoji, TASK_EMOJIS } from './TasksSettings';
 import React from 'react';
+import { 
+  TaskSurgicalEditorRegistry,
+  CompletionSurgicalEditor,
+  TitleSurgicalEditor,
+  DateSurgicalEditor
+} from './surgical';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
@@ -38,6 +44,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private plugin: FullCalendarPlugin;
   private source: TasksProviderConfig;
   private parser: TasksParser;
+  private surgicalEditorRegistry: TaskSurgicalEditorRegistry;
 
   // Unified cache for the single-pass scan
   private _undatedTasks: ParsedUndatedTask[] | null = null;
@@ -60,6 +67,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     this.source = source;
     this.parser = new TasksParser(plugin.settings);
 
+    // Initialize the surgical editor registry
+    this.surgicalEditorRegistry = new TaskSurgicalEditorRegistry();
+    this.setupSurgicalEditors();
+
     // Set up file watchers for cache invalidation
     this.setupFileWatchers();
   }
@@ -71,6 +82,17 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     // Note: In a real implementation, we'd want to set up proper file watchers
     // For now, we'll rely on the existing file watching infrastructure
     // and expose methods that can be called when files change
+  }
+
+  /**
+   * Sets up the surgical editors in order of priority.
+   * More specific editors should be registered first.
+   */
+  private setupSurgicalEditors(): void {
+    // Register editors in order of specificity
+    this.surgicalEditorRegistry.register(new CompletionSurgicalEditor());
+    this.surgicalEditorRegistry.register(new TitleSurgicalEditor());
+    this.surgicalEditorRegistry.register(new DateSurgicalEditor());
   }
 
   /**
@@ -371,91 +393,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   /**
-   * Detects if the change between two events is only completion status.
-   * This allows us to use surgical modification instead of full reconstruction.
-   */
-  private _isCompletionOnlyChange(oldEvent: OFCEvent, newEvent: OFCEvent): boolean {
-    if (oldEvent.type !== 'single' || newEvent.type !== 'single') {
-      return false;
-    }
-
-    // Check if only completion status changed
-    const basicFieldsMatch = (
-      oldEvent.title === newEvent.title &&
-      oldEvent.date === newEvent.date &&
-      oldEvent.endDate === newEvent.endDate &&
-      oldEvent.allDay === newEvent.allDay
-    );
-
-    if (!basicFieldsMatch) {
-      return false;
-    }
-
-    // Check time fields if not all day
-    if (!oldEvent.allDay && !newEvent.allDay) {
-      const timeFieldsMatch = (
-        oldEvent.startTime === newEvent.startTime &&
-        oldEvent.endTime === newEvent.endTime
-      );
-      if (!timeFieldsMatch) {
-        return false;
-      }
-    }
-
-    // Only completion should be different
-    return oldEvent.completed !== newEvent.completed;
-  }
-
-  /**
-   * Surgically modifies a task line to change only the completion status.
-   * Preserves all metadata while updating checkbox and completion emoji.
-   */
-  private _surgicallyModifyTaskCompletion(
-    originalLine: string,
-    isCompleted: boolean
-  ): string {
-    // Step 1: Change the checkbox status
-    let modifiedLine = originalLine.replace(/^\s*-\s*\[.\]\s*/, isCompleted ? '- [x] ' : '- [ ] ');
-
-    if (isCompleted) {
-      // Adding completion: add completion emoji with today's date
-      const completionDate = DateTime.now().toFormat('yyyy-MM-dd');
-      modifiedLine += ` ${TASK_EMOJIS.DONE} ${completionDate}`;
-    } else {
-      // Removing completion: remove completion emoji and its date
-      // Use the same logic as cleanTaskTitleRobust but only for completion emojis
-      const completionEmojis = [TASK_EMOJIS.DONE, TASK_EMOJIS.CANCELLED];
-      
-      for (const emoji of completionEmojis) {
-        while (true) {
-          const emojiIndex = modifiedLine.indexOf(emoji);
-          if (emojiIndex === -1) {
-            break;
-          }
-
-          const before = modifiedLine.substring(0, emojiIndex).trim();
-          const after = modifiedLine.substring(emojiIndex + emoji.length).trim();
-
-          // Look for a date after the completion emoji
-          const dateMatch = after.match(/^\s*(\d{4}-\d{1,2}-\d{1,2}|\d{4}\/\d{1,2}\/\d{1,2}|\d{1,2}-\d{1,2}-\d{4}|\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/);
-          
-          if (dateMatch) {
-            // Remove both emoji and date
-            const dateString = dateMatch[1];
-            const afterDateRemoved = after.replace(dateString, '').trim();
-            modifiedLine = (before + ' ' + afterDateRemoved).replace(/\s+/g, ' ').trim();
-          } else {
-            // Just remove the emoji
-            modifiedLine = (before + ' ' + after).replace(/\s+/g, ' ').trim();
-          }
-        }
-      }
-    }
-
-    return modifiedLine;
-  }
-
-  /**
    * Safely locates a task by its handle (filePath::lineNumber) by re-parsing the file.
    * This ensures we find the task even if line numbers have changed due to other edits.
    */
@@ -575,17 +512,20 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       // Find the current task line with resiliency to line number changes
       const { file, lineNumber, taskLine } = await this._findTaskByHandle(handle);
 
-      // Check if this is only a completion status change
-      const isCompletionOnlyChange = this._isCompletionOnlyChange(oldEventData, newEventData);
+      // Attempt surgical editing first
+      const surgicalResult = this.surgicalEditorRegistry.applySurgicalEdit(
+        taskLine,
+        oldEventData,
+        newEventData
+      );
       
       let newTaskLine: string;
       
-      if (isCompletionOnlyChange) {
-        // Use surgical modification to preserve all metadata
-        const isCompleted = newEventData.completed !== false;
-        newTaskLine = this._surgicallyModifyTaskCompletion(taskLine, isCompleted);
+      if (surgicalResult) {
+        // Use surgical modification to preserve metadata
+        newTaskLine = surgicalResult;
       } else {
-        // Use full reconstruction for other changes
+        // Fall back to full reconstruction for complex changes
         newTaskLine = this._ofcEventToTaskLine(newEventData);
       }
 
