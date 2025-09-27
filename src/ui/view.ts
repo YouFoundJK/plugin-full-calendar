@@ -596,15 +596,46 @@ export class CalendarView extends ItemView {
       },
       eventClick: async info => {
         try {
+          // Ctrl/Cmd + Click still opens the note directly.
           if (info.jsEvent.getModifierState('Control') || info.jsEvent.getModifierState('Meta')) {
             const { openFileForEvent } = await import('../utils/eventActions');
             await openFileForEvent(this.plugin.cache, this.app, info.event.id);
-          } else {
-            if (!this.plugin.cache.isEventEditable(info.event.id)) {
-              new Notice('This event belongs to a read-only calendar.');
-              return;
-            }
+            return;
+          }
 
+          if (!this.plugin.cache.isEventEditable(info.event.id)) {
+            new Notice('This event belongs to a read-only calendar.');
+            return;
+          }
+
+          // THE NEW DISPATCHING LOGIC
+          const eventDetails = this.plugin.cache.store.getEventDetails(info.event.id);
+          if (!eventDetails) return;
+
+          const { calendarId } = eventDetails;
+          const capabilities = this.plugin.providerRegistry.getCapabilities(calendarId);
+
+          // Check the new capability flag.
+          if (capabilities?.hasCustomEditUI) {
+            const provider = this.plugin.providerRegistry.getInstance(calendarId);
+            if (
+              provider &&
+              'editInProviderUI' in provider &&
+              typeof provider.editInProviderUI === 'function'
+            ) {
+              // Delegate to the provider's own UI.
+              await provider.editInProviderUI(info.event.id);
+            } else {
+              // This case indicates a developer error (capability is true but method is missing).
+              console.error(
+                `Provider for ${calendarId} claims hasCustomEditUI but method is not implemented.`
+              );
+              // Fallback to default modal as a safety measure.
+              const { launchEditModal } = await import('./event_modal');
+              launchEditModal(this.plugin, info.event.id);
+            }
+          } else {
+            // Fallback to the default Full Calendar modal for all other providers.
             const { launchEditModal } = await import('./event_modal');
             launchEditModal(this.plugin, info.event.id);
           }

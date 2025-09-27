@@ -325,9 +325,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
   }
 
+  // --- REPLACE createEvent and updateEvent with new versions ---
   async createEvent(event: OFCEvent): Promise<EditableEventResponse> {
-    new Notice('Creating new tasks from the calendar is not yet supported in this mode.');
-    throw new Error('Cannot create new tasks directly yet.');
+    new Notice('Use the Tasks plugin interface to create new tasks.');
+    throw new Error(
+      'Full Calendar cannot create tasks directly. Please use the Tasks plugin modal or commands.'
+    );
   }
 
   async updateEvent(
@@ -335,37 +338,26 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     oldEvent: OFCEvent,
     newEvent: OFCEvent
   ): Promise<EventLocation | null> {
-    if (newEvent.type !== 'single') {
-      throw new Error('Tasks provider can only update single events.');
-    }
-    const [filePath, lineNumberStr] = handle.persistentId.split('::');
-    const lineNumber = parseInt(lineNumberStr, 10);
-
-    // Find the original task from our live cache to get its full markdown line.
-    const task = this.allTasks.find(t => t.filePath === filePath && t.lineNumber === lineNumber);
-    if (!task) {
-      throw new Error(`Cannot find original task to update at ${handle.persistentId}`);
-    }
-
-    // The new date comes from the OFCEvent object after a drag-and-drop.
-    const newDate = new Date(newEvent.date);
-    const newLine = this.updateTaskLine(task.originalMarkdown, newDate);
-
-    // Surgically replace the line in the file.
-    await this.replaceTaskInFile(filePath, lineNumber, [newLine]);
-
-    // Return the location of the updated task.
-    return { file: { path: filePath }, lineNumber: lineNumber };
+    // This method is now deprecated in favor of the editInProviderUI flow.
+    // It should not be called for tasks.
+    new Notice('Please edit tasks using the Tasks modal (Ctrl/Cmd + Click on the event).');
+    throw new Error('updateEvent is deprecated for the Tasks provider.');
   }
 
   async deleteEvent(handle: EventHandle): Promise<void> {
     const [filePath, lineNumberStr] = handle.persistentId.split('::');
+    if (!filePath || !lineNumberStr) {
+      throw new Error('Invalid task handle format. Expected "filePath::lineNumber".');
+    }
     // To delete a task, we replace its line with an empty string.
     await this.replaceTaskInFile(filePath, parseInt(lineNumberStr, 10), []);
   }
 
-  async scheduleTask(taskId: string, date: Date): Promise<void> {
+  public async scheduleTask(taskId: string, date: Date): Promise<void> {
     const [filePath, lineNumberStr] = taskId.split('::');
+    if (!filePath || !lineNumberStr) {
+      throw new Error('Invalid task handle format for scheduling.');
+    }
     const lineNumber = parseInt(lineNumberStr, 10);
 
     const task = this.allTasks.find(t => t.filePath === filePath && t.lineNumber === lineNumber);
@@ -377,12 +369,49 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     await this.replaceTaskInFile(filePath, lineNumber, [newLine]);
   }
 
+  public async editInProviderUI(eventId: string): Promise<void> {
+    const tasksApi = (this.plugin.app as any).plugins.plugins['obsidian-tasks-plugin']?.apiV1;
+    if (!tasksApi) {
+      new Notice('Obsidian Tasks plugin API not available.');
+      return;
+    }
+
+    // Step 1: Use the eventId (Session ID) to look up the full OFCEvent from the main cache.
+    const eventFromCache = this.plugin.cache?.getEventById(eventId);
+    if (!eventFromCache || !eventFromCache.uid) {
+      throw new Error(
+        `Could not find event or its persistent UID in the main cache for session ID ${eventId}.`
+      );
+    }
+    const persistentId = eventFromCache.uid; // This is the "filePath::lineNumber" ID.
+
+    // Step 2: Use the persistentId to find the corresponding task in the provider's internal cache.
+    const task = this.allTasks.find(t => t.id === persistentId);
+    if (!task) {
+      // This error is more specific and helpful for debugging.
+      throw new Error(`Task with persistent ID ${persistentId} not found in the provider's cache.`);
+    }
+
+    // Step 3: Proceed with the rest of the logic, which is now guaranteed to have the correct data.
+    const originalMarkdown = task.originalMarkdown;
+    const editedTaskLine = await tasksApi.editTaskLineModal(originalMarkdown);
+
+    if (editedTaskLine && editedTaskLine !== originalMarkdown) {
+      await this.replaceTaskInFile(task.filePath, task.lineNumber, [editedTaskLine]);
+    }
+  }
+
   // ====================================================================
   // PROVIDER METADATA & CONFIG
   // ====================================================================
 
   getCapabilities(): CalendarProviderCapabilities {
-    return { canCreate: true, canEdit: true, canDelete: true };
+    return {
+      canCreate: true,
+      canEdit: true,
+      canDelete: true,
+      hasCustomEditUI: true // Declare the new capability
+    };
   }
 
   getConfigurationComponent(): FCReactComponent<any> {

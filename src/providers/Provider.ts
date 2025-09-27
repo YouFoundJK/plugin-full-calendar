@@ -5,6 +5,7 @@ export interface CalendarProviderCapabilities {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  hasCustomEditUI?: boolean; // This is the new capability
 }
 
 export interface CalendarProvider<TConfig> {
