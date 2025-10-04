@@ -11,10 +11,10 @@
  */
 
 import { TFile } from 'obsidian';
-import { TasksPluginProvider } from './TasksPluginProvider';
-import { TasksProviderConfig } from './typesTask';
-import FullCalendarPlugin from '../../main';
-import { ObsidianInterface } from '../../ObsidianAdapter';
+import { TasksPluginProvider } from '../TasksPluginProvider';
+import { TasksProviderConfig } from '../typesTask';
+import FullCalendarPlugin from '../../../main';
+import { ObsidianInterface } from '../../../ObsidianAdapter';
 
 // Mock the parser to return predictable results
 const mockParser = {

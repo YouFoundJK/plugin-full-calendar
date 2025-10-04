@@ -10,8 +10,8 @@
  * @license See LICENSE.md
  */
 
-import FullCalendarPlugin from '../../main';
-import { ProviderRegistry } from '../ProviderRegistry';
+import FullCalendarPlugin from '../../../main';
+import { ProviderRegistry } from '../../ProviderRegistry';
 
 // Mock the TasksBacklogManager to avoid CSS import issues
 const mockTasksBacklogManager = {

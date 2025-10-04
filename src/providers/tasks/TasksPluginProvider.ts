@@ -93,7 +93,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           (cacheData.state === 'Warm' || cacheData.state?.name === 'Warm') &&
           cacheData.tasks
         ) {
-          console.log(`Full Calendar: Received initial data with ${cacheData.tasks.length} tasks.`);
           this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
           this.isTasksCacheWarm = true;
           this.tasksPromise = null;
@@ -125,9 +124,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (this.isSubscribed) {
       return;
     }
-    console.log('Full Calendar: Initializing Tasks event subscriber for live updates.');
 
     const handleLiveCacheUpdate = (cacheData: any) => {
+      console.log(
+        "Full Calendar received 'obsidian-tasks-plugin:cache-update'. Raw broadcast data:",
+        cacheData
+      );
       if (
         !this.isTasksCacheWarm ||
         !cacheData ||
@@ -136,7 +138,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       ) {
         return;
       }
-      console.log(`Full Calendar: Received live update with ${cacheData.tasks.length} tasks.`);
       this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
       this.plugin.cache?.resync?.();
       this.plugin.providerRegistry.refreshBacklogViews();
@@ -154,10 +155,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    */
   private parseTasksForCalendar(tasks: any[]): CalendarTask[] {
     if (!tasks) return [];
-    // DEBUG: Log the first raw task just before parsing, and the first parsed task after.
-    if (tasks.length > 0) {
-      console.log('[DEBUG] Tasks Provider: Input to parseTasksForCalendar (first task):', tasks[0]);
-    }
 
     const calendarTasks = tasks.map(task => ({
       id: `${task.path}::${task.lineNumber}`,
@@ -172,13 +169,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       isDone: task.isDone
     }));
 
-    if (calendarTasks.length > 0) {
-      console.log(
-        '[DEBUG] Tasks Provider: Output of parseTasksForCalendar (first task):',
-        calendarTasks[0]
-      );
-    }
-
     return calendarTasks;
   }
 
@@ -189,13 +179,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   async getEvents(): Promise<EditableEventResponse[]> {
     await this._ensureTasksCacheIsWarm();
     const events: EditableEventResponse[] = [];
-    // DEBUG: Log the first internal CalendarTask before it's converted to an OFCEvent.
-    if (this.allTasks.length > 0) {
-      console.log(
-        '[DEBUG] Tasks Provider: Input to getEvents (first internal task):',
-        this.allTasks[0]
-      );
-    }
 
     for (const task of this.allTasks) {
       // A task is only displayed on the calendar if it has some kind of date.
@@ -222,11 +205,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         };
         events.push([ofcEvent, location]);
       }
-    }
-
-    // DEBUG: Log the first resulting OFCEvent.
-    if (events.length > 0) {
-      console.log('[DEBUG] Tasks Provider: Output of getEvents (first OFCEvent):', events[0][0]);
     }
 
     return events;

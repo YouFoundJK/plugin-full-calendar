@@ -9,8 +9,8 @@
  * @license See LICENSE.md
  */
 
-import { TasksPluginProvider } from './TasksPluginProvider';
-import { TasksProviderConfig } from './typesTask';
+import { TasksPluginProvider } from '../TasksPluginProvider';
+import { TasksProviderConfig } from '../typesTask';
 
 describe('TasksPluginProvider Integration (Caching)', () => {
   let provider: TasksPluginProvider;

@@ -9,7 +9,7 @@
  * @license See LICENSE.md
  */
 
-import { TasksPluginProvider } from './TasksPluginProvider';
+import { TasksPluginProvider } from '../TasksPluginProvider';
 
 // Mock dependencies
 jest.mock('../../main', () => ({}));

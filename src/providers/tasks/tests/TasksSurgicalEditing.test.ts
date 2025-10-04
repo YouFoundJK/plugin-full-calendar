@@ -9,10 +9,10 @@
  * @license See LICENSE.md
  */
 
-import { TasksPluginProvider } from './TasksPluginProvider';
-import { TasksProviderConfig } from './typesTask';
-import { OFCEvent } from '../../types';
-import { EventHandle } from '../typesProvider';
+import { TasksPluginProvider } from '../TasksPluginProvider';
+import { TasksProviderConfig } from '../typesTask';
+import { OFCEvent } from '../../../types';
+import { EventHandle } from '../../typesProvider';
 
 describe('TasksPluginProvider - Surgical Editing', () => {
   let provider: TasksPluginProvider;

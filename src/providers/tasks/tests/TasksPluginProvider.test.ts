@@ -6,8 +6,8 @@
  */
 
 import { DateTime } from 'luxon';
-import { TasksPluginProvider } from './TasksPluginProvider';
-import { TasksProviderConfig } from './typesTask';
+import { TasksPluginProvider } from '../TasksPluginProvider';
+import { TasksProviderConfig } from '../typesTask';
 import { TFile } from 'obsidian';
 
 // Mock the dependencies
