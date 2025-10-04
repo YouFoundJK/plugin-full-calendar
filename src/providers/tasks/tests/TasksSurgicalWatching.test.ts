@@ -21,8 +21,7 @@ const mockParser = {
   parseFileContent: jest.fn(),
   parseLine: jest.fn()
 };
-
-jest.mock('./TasksParser', () => ({
+jest.mock('../TasksParser', () => ({
   TasksParser: jest.fn().mockImplementation(() => mockParser)
 }));
 

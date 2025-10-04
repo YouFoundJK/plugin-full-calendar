@@ -21,7 +21,7 @@ const mockTasksBacklogManager = {
 };
 
 // Mock the TasksBacklogManager constructor
-jest.mock('./TasksBacklogManager', () => ({
+jest.mock('../TasksBacklogManager', () => ({
   TasksBacklogManager: jest.fn().mockImplementation(() => mockTasksBacklogManager)
 }));
 

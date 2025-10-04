@@ -59,6 +59,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private isSubscribed = false;
   private isTasksCacheWarm = false;
   private tasksPromise: Promise<void> | null = null;
+  private isProcessingUpdate = false; // Singleton guard for live update
 
   readonly type = 'tasks';
   readonly displayName = 'Obsidian Tasks';
@@ -117,30 +118,132 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   /**
+   * Helper to convert a CalendarTask to an OFCEvent and EventLocation.
+   */
+  private _taskToOFCEvent(task: CalendarTask): [OFCEvent, EventLocation | null] | null {
+    const primaryDate = task.startDate || task.scheduledDate || task.dueDate;
+    // Only dated tasks produce calendar events.
+    if (!primaryDate) {
+      return null;
+    }
+
+    const ofcEvent: OFCEvent = {
+      type: 'single',
+      title: task.title,
+      allDay: true,
+      date: window.moment(primaryDate).format('YYYY-MM-DD'),
+      endDate:
+        task.dueDate && task.dueDate > primaryDate
+          ? window.moment(task.dueDate).format('YYYY-MM-DD')
+          : null,
+      completed: task.isDone ? window.moment().toISOString() : false,
+      uid: task.id // The UID is our persistent handle.
+    };
+
+    const location: EventLocation = {
+      file: { path: task.filePath },
+      lineNumber: task.lineNumber
+    };
+
+    return [ofcEvent, location];
+  }
+
+  /**
    * Initializes the provider by subscribing to live updates from the Tasks plugin.
-   * Only processes updates after initial cache warming.
+   * Now performs granular diff and sync with EventCache.
    */
   public initialize(): void {
     if (this.isSubscribed) {
       return;
     }
+    console.log('Full Calendar: Initializing Tasks event subscriber for live updates.');
 
-    const handleLiveCacheUpdate = (cacheData: any) => {
-      console.log(
-        "Full Calendar received 'obsidian-tasks-plugin:cache-update'. Raw broadcast data:",
-        cacheData
-      );
+    // The handler is now async to await cache operations.
+    const handleLiveCacheUpdate = async (cacheData: any) => {
       if (
+        this.isProcessingUpdate ||
         !this.isTasksCacheWarm ||
+        !this.plugin.cache ||
         !cacheData ||
         !(cacheData.state === 'Warm' || cacheData.state?.name === 'Warm') ||
         !cacheData.tasks
       ) {
         return;
       }
-      this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
-      this.plugin.cache?.resync?.();
-      this.plugin.providerRegistry.refreshBacklogViews();
+
+      this.isProcessingUpdate = true;
+      try {
+        const oldTasksMap = new Map(this.allTasks.map(task => [task.id, task]));
+        const newTasks = this.parseTasksForCalendar(cacheData.tasks);
+        const newTasksMap = new Map(newTasks.map(task => [task.id, task]));
+
+        const providerPayload = {
+          additions: [] as { event: OFCEvent; location: EventLocation | null }[],
+          updates: [] as {
+            persistentId: string;
+            event: OFCEvent;
+            location: EventLocation | null;
+          }[],
+          deletions: [] as string[]
+        };
+
+        // Find deletions
+        for (const [id, oldTask] of oldTasksMap.entries()) {
+          if (!newTasksMap.has(id)) {
+            if (oldTask.startDate || oldTask.scheduledDate || oldTask.dueDate) {
+              providerPayload.deletions.push(id);
+            }
+          }
+        }
+
+        // Find additions and modifications
+        for (const [id, newTask] of newTasksMap.entries()) {
+          const oldTask = oldTasksMap.get(id);
+          const transformed = this._taskToOFCEvent(newTask);
+          const wasDated = !!(oldTask?.startDate || oldTask?.scheduledDate || oldTask?.dueDate);
+          const isDated = transformed !== null;
+
+          if (!oldTask && isDated) {
+            // Addition
+            const [ofcEvent, location] = transformed;
+            providerPayload.additions.push({ event: ofcEvent, location });
+          } else if (oldTask && oldTask.originalMarkdown !== newTask.originalMarkdown) {
+            // Modification
+            if (wasDated && isDated) {
+              // Update
+              const [ofcEvent, location] = transformed;
+              providerPayload.updates.push({ persistentId: id, event: ofcEvent, location });
+            } else if (!wasDated && isDated) {
+              // Addition to calendar
+              const [ofcEvent, location] = transformed;
+              providerPayload.additions.push({ event: ofcEvent, location });
+            } else if (wasDated && !isDated) {
+              // Deletion from calendar
+              providerPayload.deletions.push(id);
+            }
+          }
+        }
+
+        // Update the provider's internal state for the next diff.
+        this.allTasks = newTasks;
+
+        // Send the entire batch of changes to the ProviderRegistry for translation and execution.
+        if (
+          providerPayload.additions.length > 0 ||
+          providerPayload.updates.length > 0 ||
+          providerPayload.deletions.length > 0
+        ) {
+          await this.plugin.providerRegistry.processProviderUpdates(
+            this.source.id,
+            providerPayload
+          );
+        }
+
+        // Refresh the backlog view.
+        this.plugin.providerRegistry.refreshBacklogViews();
+      } finally {
+        this.isProcessingUpdate = false;
+      }
     };
 
     (this.plugin.app.workspace as any).on(
@@ -156,18 +259,23 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private parseTasksForCalendar(tasks: any[]): CalendarTask[] {
     if (!tasks) return [];
 
-    const calendarTasks = tasks.map(task => ({
-      id: `${task.path}::${task.lineNumber}`,
-      title: task.description,
-      // The Tasks plugin provides moment.js objects; convert them to native JS Dates.
-      startDate: task.startDate ? task.startDate.toDate() : null,
-      dueDate: task.dueDate ? task.dueDate.toDate() : null,
-      scheduledDate: task.scheduledDate ? task.scheduledDate.toDate() : null,
-      originalMarkdown: task.originalMarkdown,
-      filePath: task.path,
-      lineNumber: task.lineNumber,
-      isDone: task.isDone
-    }));
+    // FIX: Use the stable, nested line number from taskLocation and convert to 1-based index.
+    const calendarTasks = tasks.map((task, index) => {
+      const oneBasedLineNumber = task.taskLocation.lineNumber + 1;
+      return {
+        // The ID must be based on the 0-indexed number to match the live-update diffing logic.
+        id: `${task.path}::${task.taskLocation.lineNumber}`,
+        title: task.description,
+        startDate: task.startDate ? task.startDate.toDate() : null,
+        dueDate: task.dueDate ? task.dueDate.toDate() : null,
+        scheduledDate: task.scheduledDate ? task.scheduledDate.toDate() : null,
+        originalMarkdown: task.originalMarkdown,
+        filePath: task.path,
+        // The internal lineNumber must be 1-based for surgical editing.
+        lineNumber: oneBasedLineNumber,
+        isDone: task.isDone
+      };
+    });
 
     return calendarTasks;
   }
@@ -328,7 +436,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       throw new Error('Invalid task handle format. Expected "filePath::lineNumber".');
     }
     // To delete a task, we replace its line with an empty string.
-    await this.replaceTaskInFile(filePath, parseInt(lineNumberStr, 10), []);
+    // The line number in the handle is 0-indexed, but replaceTaskInFile expects a 1-based index.
+    await this.replaceTaskInFile(filePath, parseInt(lineNumberStr, 10) + 1, []);
   }
 
   public async scheduleTask(taskId: string, date: Date): Promise<void> {
@@ -338,13 +447,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
     const lineNumber = parseInt(lineNumberStr, 10);
 
-    const task = this.allTasks.find(t => t.filePath === filePath && t.lineNumber === lineNumber);
+    // The task's lineNumber is 1-based, but the ID is 0-based.
+    const task = this.allTasks.find(
+      t => t.filePath === filePath && t.lineNumber === lineNumber + 1
+    );
     if (!task) {
       throw new Error(`Cannot find original task to schedule at ${taskId}`);
     }
 
     const newLine = this.updateTaskLine(task.originalMarkdown, date);
-    await this.replaceTaskInFile(filePath, lineNumber, [newLine]);
+    await this.replaceTaskInFile(filePath, task.lineNumber, [newLine]);
   }
 
   public async editInProviderUI(eventId: string): Promise<void> {
@@ -375,6 +487,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     const editedTaskLine = await tasksApi.editTaskLineModal(originalMarkdown);
 
     if (editedTaskLine && editedTaskLine !== originalMarkdown) {
+      // The lineNumber on the task object is 1-based, which is what replaceTaskInFile expects.
       await this.replaceTaskInFile(task.filePath, task.lineNumber, [editedTaskLine]);
     }
   }
@@ -385,10 +498,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   getCapabilities(): CalendarProviderCapabilities {
     return {
-      canCreate: true,
+      canCreate: false, // Prevents UI creation and standard addEvent pathway.
       canEdit: true,
       canDelete: true,
-      hasCustomEditUI: true // Declare the new capability
+      hasCustomEditUI: true
     };
   }
 

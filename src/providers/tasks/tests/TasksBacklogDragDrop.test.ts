@@ -19,7 +19,7 @@ jest.mock('@fullcalendar/interaction', () => ({
 }));
 
 // Mock the CSS import
-jest.mock('./backlog-styles.css', () => ({}));
+jest.mock('../backlog-styles.css', () => ({}));
 
 const MockedDraggable = Draggable as jest.MockedClass<typeof Draggable>;
 

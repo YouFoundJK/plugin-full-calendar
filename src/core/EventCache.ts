@@ -1005,6 +1005,72 @@ export default class EventCache {
     this.timeEngine.scheduleCacheRebuild(); // ADDED
   }
 
+  /**
+   * Processes a pre-computed set of updates from a provider.
+   * This is the primary method for providers to sync their state with the cache
+   * in a granular, flicker-free way.
+   * @param calendarId The ID of the calendar source these updates belong to.
+   * @param updates A payload containing arrays of additions, updates, and deletions.
+   */
+  public async processProviderUpdates(
+    calendarId: string,
+    updates: {
+      additions: { event: OFCEvent; location: EventLocation | null }[];
+      updates: { sessionId: string; event: OFCEvent; location: EventLocation | null }[];
+      deletions: string[];
+    }
+  ): Promise<void> {
+    // START DEBUGGING BLOCK
+    console.log('EventCache.processProviderUpdates received payload:', { calendarId, updates });
+    // END DEBUGGING BLOCK
+
+    const { additions, updates: updateArr, deletions } = updates;
+
+    // If there are no changes, exit early.
+    if (additions.length === 0 && updateArr.length === 0 && deletions.length === 0) {
+      return;
+    }
+
+    this.isBulkUpdating = true;
+    try {
+      // 1. Handle Deletions
+      for (const sessionId of deletions) {
+        const event = this.store.getEventById(sessionId);
+        if (event) {
+          this.plugin.providerRegistry.removeMapping(event, calendarId);
+          this.store.delete(sessionId);
+          this.updateQueue.toRemove.add(sessionId);
+        }
+      }
+
+      // 2. Handle Additions
+      for (const { event, location } of additions) {
+        const newSessionId = this.generateId();
+        this.store.add({ calendarId, location, id: newSessionId, event });
+        this.plugin.providerRegistry.addMapping(event, calendarId, newSessionId);
+        this.updateQueue.toAdd.set(newSessionId, { event, id: newSessionId, calendarId });
+      }
+
+      // 3. Handle Updates
+      for (const { sessionId, event, location } of updateArr) {
+        const oldEvent = this.store.getEventById(sessionId);
+        if (oldEvent) {
+          this.plugin.providerRegistry.removeMapping(oldEvent, calendarId);
+        }
+        this.store.delete(sessionId);
+        this.store.add({ calendarId, location, id: sessionId, event });
+        this.plugin.providerRegistry.addMapping(event, calendarId, sessionId);
+        // For FullCalendar's view, an update is a remove + add.
+        this.updateQueue.toRemove.add(sessionId);
+        this.updateQueue.toAdd.set(sessionId, { event, id: sessionId, calendarId });
+      }
+    } finally {
+      this.isBulkUpdating = false;
+      this.flushUpdateQueue([], []); // This processes the .toAdd and .toRemove queues.
+      this.timeEngine.scheduleCacheRebuild();
+    }
+  }
+
   // ====================================================================
   //                         TESTING UTILITIES
   // ====================================================================

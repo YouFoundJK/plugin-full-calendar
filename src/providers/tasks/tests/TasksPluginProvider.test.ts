@@ -11,7 +11,7 @@ import { TasksProviderConfig } from '../typesTask';
 import { TFile } from 'obsidian';
 
 // Mock the dependencies
-jest.mock('../../ObsidianAdapter');
+jest.mock('../../../ObsidianAdapter');
 // NOTE: NOT mocking TasksParser so we can test the real enhanced parsing functionality
 
 describe('TasksPluginProvider', () => {

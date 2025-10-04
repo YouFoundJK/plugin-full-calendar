@@ -12,7 +12,7 @@
 import { TasksPluginProvider } from '../TasksPluginProvider';
 
 // Mock dependencies
-jest.mock('../../main', () => ({}));
+jest.mock('../../../main', () => ({}));
 
 describe('Task Scheduling Integration', () => {
   let provider: TasksPluginProvider;
