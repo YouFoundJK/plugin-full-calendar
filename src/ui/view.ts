@@ -879,6 +879,13 @@ export class CalendarView extends ItemView {
             throw new Error('Event cache not available');
           }
 
+          // Guardrail: Validate before scheduling
+          const validation = await this.plugin.cache.validateTaskSchedule(taskId, date);
+          if (!validation.isValid) {
+            new Notice(validation.reason || 'This task cannot be scheduled on this date.');
+            return;
+          }
+
           await this.plugin.cache.scheduleTask(taskId, date);
           new Notice('Task scheduled successfully');
 
@@ -891,7 +898,6 @@ export class CalendarView extends ItemView {
           }
 
           // Re-fetch events for the main calendar to show the new event
-          // A full `onOpen()` is a robust way to ensure all filters are reapplied
           this.onOpen();
         } catch (error) {
           console.error('Failed to schedule task:', error);

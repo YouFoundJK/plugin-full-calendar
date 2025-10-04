@@ -825,6 +825,40 @@ export default class EventCache {
     await tasksProvider.scheduleTask(taskId, date);
   }
 
+  /**
+   * Asks the appropriate provider if a task can be scheduled on a given date.
+   * This is used to enforce provider-specific rules (e.g., not scheduling after a due date).
+   * @param taskId The persistent ID of the task.
+   * @param date The target date for scheduling.
+   * @returns A validation result from the provider.
+   */
+  public async validateTaskSchedule(
+    taskId: string,
+    date: Date
+  ): Promise<{ isValid: boolean; reason?: string }> {
+    // Find the Tasks provider instance. This assumes a single tasks provider for now.
+    const tasksProvider = this.plugin.providerRegistry
+      .getActiveProviders()
+      .find(provider => provider.type === 'tasks');
+
+    if (tasksProvider && typeof tasksProvider.canBeScheduledAt === 'function') {
+      // Create a minimal event stub containing the UID, which is all the provider needs
+      // to look up the full task details in its own cache.
+      const eventStub: OFCEvent = {
+        uid: taskId,
+        title: '',
+        type: 'single',
+        allDay: true,
+        date: '',
+        endDate: null
+      };
+      return tasksProvider.canBeScheduledAt(eventStub, date);
+    }
+
+    // If no provider is found or the method isn't implemented, default to allowing the action.
+    return { isValid: true };
+  }
+
   // ====================================================================
   //                         VIEW SYNCHRONIZATION
   // ====================================================================

@@ -23,6 +23,8 @@ import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent } from './TasksConfigComponent';
 import React from 'react';
 import { ParsedUndatedTask } from './typesTask';
+import { DateTime } from 'luxon';
+
 // CHANGE: Define Scheduled emoji instead of Due
 const getScheduledDateEmoji = (): string => '⏳';
 const getStartDateEmoji = (): string => '🛫';
@@ -289,21 +291,19 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     await this._ensureTasksCacheIsWarm();
     const events: EditableEventResponse[] = [];
 
+    // REPLACE the for-loop with corrected date priority and single-day logic
     for (const task of this.allTasks) {
       // A task is only displayed on the calendar if it has some kind of date.
-      const primaryDate = task.startDate || task.scheduledDate || task.dueDate;
+      const primaryDate = task.scheduledDate; // || task.dueDate || task.startDate
       if (primaryDate) {
         const ofcEvent: OFCEvent = {
           type: 'single',
           title: task.title,
           allDay: true,
-          // The primary date for an event is its start/scheduled date, falling back to due date.
+          // The primary date for an event is its scheduled date, falling back to due/start date.
           date: window.moment(primaryDate).format('YYYY-MM-DD'),
-          // An event becomes multi-day only if it has a distinct due date after its primary date.
-          endDate:
-            task.dueDate && task.dueDate > primaryDate
-              ? window.moment(task.dueDate).format('YYYY-MM-DD')
-              : null,
+          // Ensure tasks are always single-day events on the calendar.
+          endDate: null,
           completed: task.isDone ? window.moment().toISOString() : false,
           uid: task.id // The UID is our persistent handle.
         };
@@ -319,12 +319,13 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     return events;
   }
 
+  // REPLACE getUndatedTasks with corrected logic
   public async getUndatedTasks(): Promise<ParsedUndatedTask[]> {
     await this._ensureTasksCacheIsWarm();
     return (
       this.allTasks
         // An undated task for the backlog has no dates and is not done.
-        .filter(t => !t.startDate && !t.dueDate && !t.scheduledDate && !t.isDone)
+        .filter(t => !t.scheduledDate && !t.isDone) // !t.startDate && !t.dueDate &&
         // Map to the format expected by the backlog view.
         .map(t => ({
           title: t.title,
@@ -344,18 +345,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     // Filter the live cache for tasks in the specified file. This is very fast.
     const tasksInFile = this.allTasks.filter(task => task.filePath === file.path);
 
+    // REPLACE the for-loop with corrected date priority and single-day logic
     for (const task of tasksInFile) {
-      const primaryDate = task.startDate || task.scheduledDate || task.dueDate;
+      const primaryDate = task.scheduledDate || task.dueDate || task.startDate;
       if (primaryDate) {
         const ofcEvent: OFCEvent = {
           type: 'single',
           title: task.title,
           allDay: true,
           date: window.moment(primaryDate).format('YYYY-MM-DD'),
-          endDate:
-            task.dueDate && task.dueDate > primaryDate
-              ? window.moment(task.dueDate).format('YYYY-MM-DD')
-              : null,
+          endDate: null,
           completed: task.isDone ? window.moment().toISOString() : false,
           uid: task.id
         };
@@ -430,10 +429,24 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     oldEvent: OFCEvent,
     newEvent: OFCEvent
   ): Promise<EventLocation | null> {
-    // This method is now deprecated in favor of the editInProviderUI flow.
-    // It should not be called for tasks.
-    new Notice('Please edit tasks using the Tasks modal (Ctrl/Cmd + Click on the event).');
-    throw new Error('updateEvent is deprecated for the Tasks provider.');
+    if (newEvent.type !== 'single' || !newEvent.date) {
+      throw new Error('Tasks provider can only update single, dated events.');
+    }
+
+    const newDate = DateTime.fromISO(newEvent.date).toJSDate();
+    const validation = await this.canBeScheduledAt(newEvent, newDate);
+    if (!validation.isValid) {
+      new Notice(validation.reason || 'This task cannot be scheduled on this date.');
+      throw new Error(validation.reason || 'This task cannot be scheduled on this date.');
+    }
+
+    const taskId = handle.persistentId;
+    await this._surgicallyUpdateTask(taskId, newDate);
+    const [filePath, lineNumberStr] = taskId.split('::');
+    return {
+      file: { path: filePath },
+      lineNumber: parseInt(lineNumberStr, 10)
+    };
   }
 
   async deleteEvent(handle: EventHandle): Promise<void> {
@@ -446,31 +459,35 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     await this.replaceTaskInFile(filePath, parseInt(lineNumberStr, 10) + 1, []);
   }
 
+  /**
+   * Centralized helper for surgically updating a task line in a file.
+   * This is called by both updateEvent (for drags) and scheduleTask (for backlog drops).
+   * @param taskId The persistent ID of the task (filePath::lineNumber).
+   * @param newDate The new date to apply to the task.
+   */
+  private async _surgicallyUpdateTask(taskId: string, newDate: Date): Promise<void> {
+    const task = this.allTasks.find(t => t.id === taskId);
+    if (!task) {
+      throw new Error(`Cannot find original task with ID ${taskId} to update.`);
+    }
+    const newLine = this.updateTaskLine(task.originalMarkdown, newDate);
+    await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
+  }
+
   public async scheduleTask(taskId: string, date: Date): Promise<void> {
     const task = this.allTasks.find(t => t.id === taskId);
     if (!task) {
       throw new Error(`Cannot find original task to schedule at ${taskId}`);
     }
-
-    // 1. Generate the new line with the Scheduled (⏳) date.
     const newLine = this.updateTaskLine(task.originalMarkdown, date);
-
-    // 2. Write it to the file immediately.
-    // Note: task.lineNumber is 1-based, which is correct for replaceTaskInFile.
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
-
-    // 3. Open the Tasks API edit modal with the newly scheduled line.
     const tasksApi = (this.plugin.app as any).plugins.plugins['obsidian-tasks-plugin']?.apiV1;
     if (tasksApi) {
-      // Open the modal with the line we just created.
       const editedTaskLine = await tasksApi.editTaskLineModal(newLine);
-
-      // 4. If the user made changes in the modal, write the *final* result back to the file.
       if (editedTaskLine !== undefined && editedTaskLine !== newLine) {
         await this.replaceTaskInFile(task.filePath, task.lineNumber, [editedTaskLine]);
       }
     } else {
-      // Fallback if API isn't available (shouldn't happen if Tasks is providing the data)
       new Notice('Task scheduled, but could not open Tasks edit modal.');
     }
   }
@@ -506,6 +523,56 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       // The lineNumber on the task object is 1-based, which is what replaceTaskInFile expects.
       await this.replaceTaskInFile(task.filePath, task.lineNumber, [editedTaskLine]);
     }
+  }
+
+  /**
+   * Determines if an event can be scheduled at the given date.
+   * This implements guardrail logic to prevent scheduling conflicts.
+   */
+  public async canBeScheduledAt(
+    event: OFCEvent,
+    date: Date
+  ): Promise<{ isValid: boolean; reason?: string }> {
+    if (!event.uid) {
+      // If there's no UID, we can't look up the task. Default to allowing it.
+      return { isValid: true };
+    }
+
+    // The event UID is the persistent handle (e.g., "path/to/file.md::0").
+    const task = this.allTasks.find(t => t.id === event.uid);
+    if (!task) {
+      // Task not found in the provider's cache. Allow the drop but log a warning.
+      console.warn(`[Tasks Provider] Could not find task with ID ${event.uid} for validation.`);
+      return { isValid: true };
+    }
+
+    // Use Luxon to perform a clean, time-zone-agnostic comparison of dates.
+    const dropDate = DateTime.fromJSDate(date).startOf('day');
+
+    // Rule 1: Cannot schedule before the start date.
+    if (task.startDate) {
+      const startDate = DateTime.fromJSDate(task.startDate).startOf('day');
+      if (dropDate < startDate) {
+        return {
+          isValid: false,
+          reason: `Cannot schedule before the start date (${startDate.toFormat('yyyy-MM-dd')}).`
+        };
+      }
+    }
+
+    // Rule 2: Cannot schedule after the due date.
+    if (task.dueDate) {
+      const dueDate = DateTime.fromJSDate(task.dueDate).startOf('day');
+      if (dropDate > dueDate) {
+        return {
+          isValid: false,
+          reason: `Cannot schedule after the due date (${dueDate.toFormat('yyyy-MM-dd')}).`
+        };
+      }
+    }
+
+    // If all checks pass, the drop is valid.
+    return { isValid: true };
   }
 
   // ====================================================================

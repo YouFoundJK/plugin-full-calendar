@@ -36,6 +36,16 @@ export interface CalendarProvider<TConfig> {
     newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]>;
 
+  /**
+   * Optional: Called before a drag-and-drop scheduling action is committed.
+   * The provider can implement this to enforce rules, like preventing a task
+   * from being scheduled after its due date.
+   * @param event The event being scheduled. For undated tasks, this may be a stub.
+   * @param date The date the event is being dropped on.
+   * @returns An object indicating if the action is valid and an optional reason for the user.
+   */
+  canBeScheduledAt?(event: OFCEvent, date: Date): Promise<{ isValid: boolean; reason?: string }>;
+
   getConfigurationComponent(): FCReactComponent<{
     config: Partial<TConfig>;
     onConfigChange: (newConfig: Partial<TConfig>) => void;
