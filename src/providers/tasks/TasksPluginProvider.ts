@@ -23,7 +23,8 @@ import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent } from './TasksConfigComponent';
 import React from 'react';
 import { ParsedUndatedTask } from './typesTask';
-const getDueDateEmoji = (): string => '📅';
+// CHANGE: Define Scheduled emoji instead of Due
+const getScheduledDateEmoji = (): string => '⏳';
 const getStartDateEmoji = (): string => '🛫';
 
 // This is our own internal, simplified interface for a task from the Tasks plugin's cache.
@@ -119,10 +120,13 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   /**
    * Helper to convert a CalendarTask to an OFCEvent and EventLocation.
+   * This now prioritizes Scheduled Date and ensures tasks are single-day events.
    */
   private _taskToOFCEvent(task: CalendarTask): [OFCEvent, EventLocation | null] | null {
-    const primaryDate = task.startDate || task.scheduledDate || task.dueDate;
-    // Only dated tasks produce calendar events.
+    // NEW PRIORITY LOGIC: Scheduled > Due > Start
+    const primaryDate = task.scheduledDate || task.dueDate || task.startDate;
+
+    // A task must have at least one of these dates to appear on the calendar.
     if (!primaryDate) {
       return null;
     }
@@ -131,11 +135,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       type: 'single',
       title: task.title,
       allDay: true,
+      // The event is always on the single, primary date.
       date: window.moment(primaryDate).format('YYYY-MM-DD'),
-      endDate:
-        task.dueDate && task.dueDate > primaryDate
-          ? window.moment(task.dueDate).format('YYYY-MM-DD')
-          : null,
+      // FIX: Ensure tasks are never multi-day by setting endDate to null.
+      endDate: null,
       completed: task.isDone ? window.moment().toISOString() : false,
       uid: task.id // The UID is our persistent handle.
     };
@@ -328,7 +331,9 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           isDone: t.isDone,
           location: {
             path: t.filePath,
-            lineNumber: t.lineNumber
+            // FIX: The task ID used by the backlog MUST match the canonical 0-indexed ID.
+            // Our internal lineNumber is 1-based, so subtract 1 to get the 0-based index for the ID.
+            lineNumber: t.lineNumber - 1
           }
         }))
     );
@@ -386,25 +391,28 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   /**
    * Updates the date component of a task's original markdown line.
+   * Changed to use Scheduled Date (⏳) instead of Due Date (📅).
    */
   private updateTaskLine(originalMarkdown: string, newDate: Date): string {
-    const dueDateSymbol = getDueDateEmoji();
+    // CHANGE: Use scheduled emoji
+    const scheduledSymbol = getScheduledDateEmoji();
     const newDateString = window.moment(newDate).format('YYYY-MM-DD');
-    const newDueDateComponent = `${dueDateSymbol} ${newDateString}`;
-    const dueDateRegex = /📅\s*\d{4}-\d{2}-\d{2}/;
+    const newScheduledComponent = `${scheduledSymbol} ${newDateString}`;
+    // CHANGE: Regex looks for scheduled icon
+    const scheduledDateRegex = /⏳\s*\d{4}-\d{2}-\d{2}/;
 
-    // If a due date already exists, replace it.
-    if (originalMarkdown.match(dueDateRegex)) {
-      return originalMarkdown.replace(dueDateRegex, newDueDateComponent);
+    // If a scheduled date already exists, replace it.
+    if (originalMarkdown.match(scheduledDateRegex)) {
+      return originalMarkdown.replace(scheduledDateRegex, newScheduledComponent);
     } else {
       // Otherwise, append it, being careful to preserve any block links (^uuid).
       const blockLinkRegex = /(\s*\^[a-zA-Z0-9-]+)$/;
       const blockLinkMatch = originalMarkdown.match(blockLinkRegex);
       if (blockLinkMatch) {
         const contentWithoutBlockLink = originalMarkdown.replace(blockLinkRegex, '');
-        return `${contentWithoutBlockLink.trim()} ${newDueDateComponent}${blockLinkMatch[1]}`;
+        return `${contentWithoutBlockLink.trim()} ${newScheduledComponent}${blockLinkMatch[1]}`;
       } else {
-        return `${originalMarkdown.trim()} ${newDueDateComponent}`;
+        return `${originalMarkdown.trim()} ${newScheduledComponent}`;
       }
     }
   }
@@ -439,22 +447,32 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   public async scheduleTask(taskId: string, date: Date): Promise<void> {
-    const [filePath, lineNumberStr] = taskId.split('::');
-    if (!filePath || !lineNumberStr) {
-      throw new Error('Invalid task handle format for scheduling.');
-    }
-    const lineNumber = parseInt(lineNumberStr, 10);
-
-    // The task's lineNumber is 1-based, but the ID is 0-based.
-    const task = this.allTasks.find(
-      t => t.filePath === filePath && t.lineNumber === lineNumber + 1
-    );
+    const task = this.allTasks.find(t => t.id === taskId);
     if (!task) {
       throw new Error(`Cannot find original task to schedule at ${taskId}`);
     }
 
+    // 1. Generate the new line with the Scheduled (⏳) date.
     const newLine = this.updateTaskLine(task.originalMarkdown, date);
-    await this.replaceTaskInFile(filePath, task.lineNumber, [newLine]);
+
+    // 2. Write it to the file immediately.
+    // Note: task.lineNumber is 1-based, which is correct for replaceTaskInFile.
+    await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
+
+    // 3. Open the Tasks API edit modal with the newly scheduled line.
+    const tasksApi = (this.plugin.app as any).plugins.plugins['obsidian-tasks-plugin']?.apiV1;
+    if (tasksApi) {
+      // Open the modal with the line we just created.
+      const editedTaskLine = await tasksApi.editTaskLineModal(newLine);
+
+      // 4. If the user made changes in the modal, write the *final* result back to the file.
+      if (editedTaskLine !== undefined && editedTaskLine !== newLine) {
+        await this.replaceTaskInFile(task.filePath, task.lineNumber, [editedTaskLine]);
+      }
+    } else {
+      // Fallback if API isn't available (shouldn't happen if Tasks is providing the data)
+      new Notice('Task scheduled, but could not open Tasks edit modal.');
+    }
   }
 
   public async editInProviderUI(eventId: string): Promise<void> {
