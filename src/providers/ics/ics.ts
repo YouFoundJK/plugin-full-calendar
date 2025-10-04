@@ -30,7 +30,20 @@ function icalTimeToLuxon(t: ical.Time): DateTime {
   // We use setZone to ensure the DateTime object has the correct zone,
   // without changing the underlying moment in time.
   const zone = t.timezone === 'Z' ? 'utc' : t.timezone;
-  return DateTime.fromJSDate(jsDate).setZone(zone);
+
+  // Attempt to set the zone from the ICS file.
+  const zonedDt = DateTime.fromJSDate(jsDate).setZone(zone);
+
+  // Check if setting the zone resulted in an invalid DateTime.
+  // If so, fall back to UTC, which is the old behavior.
+  if (!zonedDt.isValid) {
+    console.warn(
+      `Full Calendar ICS Parser: Invalid timezone identifier "${zone}". Falling back to UTC.`
+    );
+    return DateTime.fromJSDate(jsDate, { zone: 'utc' });
+  }
+
+  return zonedDt;
 }
 
 /**
@@ -142,11 +155,21 @@ export function getEventsFromICS(text: string): OFCEvent[] {
   // malformed date-time values (e.g., "2025-08-13T::").
   const correctedText = text.replace(/DTSTART:(\d{8})$/gm, 'DTSTART;VALUE=DATE:$1');
 
+  // HINT: Add the first console.log here.
+  console.log('Full Calendar ICS Parser: Text after regex correction', correctedText);
+
   const jCalData = ical.parse(correctedText); // Use the corrected text
+
+  // HINT: Add the second console.log here.
+  console.log('Full Calendar ICS Parser: Parsed jCal data', jCalData);
+
   const component = new ical.Component(jCalData);
 
-  const events: ical.Event[] = component
-    .getAllSubcomponents('vevent')
+  // HINT: Add the third console.log here.
+  const vevents = component.getAllSubcomponents('vevent');
+  console.log(`Full Calendar ICS Parser: Found ${vevents.length} VEVENT components.`);
+
+  const events: ical.Event[] = vevents
     .map(vevent => new ical.Event(vevent))
     .filter(evt => {
       try {
@@ -155,6 +178,19 @@ export function getEventsFromICS(text: string): OFCEvent[] {
         evt.endDate.toJSDate();
         return true;
       } catch (err) {
+        // HINT: Add the console.log inside the catch block.
+        let startDateJs;
+        try {
+          startDateJs = evt.startDate?.toJSDate();
+        } catch (e) {
+          startDateJs = `Error: ${e}`;
+        }
+        console.log('Full Calendar ICS Parser: Skipping event with invalid time.', {
+          summary: evt.summary,
+          startDate: evt.startDate,
+          startDateJs,
+          error: err
+        });
         // skipping events with invalid time
         return false;
       }
@@ -187,6 +223,9 @@ export function getEventsFromICS(text: string): OFCEvent[] {
   }
 
   const allEvents = Object.values(baseEvents).concat(recurrenceExceptions.map(e => e[1]));
+
+  // HINT: Add the final console.log here.
+  console.log('Full Calendar ICS Parser: Final processed OFC events', allEvents);
 
   return allEvents.map(validateEvent).flatMap(e => (e ? [e] : []));
 }
