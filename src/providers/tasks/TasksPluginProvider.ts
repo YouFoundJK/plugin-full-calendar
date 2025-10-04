@@ -156,8 +156,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (this.isSubscribed) {
       return;
     }
-    console.log('Full Calendar: Initializing Tasks event subscriber for live updates.');
-
     // The handler is now async to await cache operations.
     const handleLiveCacheUpdate = async (cacheData: any) => {
       if (

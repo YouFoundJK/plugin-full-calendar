@@ -1020,10 +1020,6 @@ export default class EventCache {
       deletions: string[];
     }
   ): Promise<void> {
-    // START DEBUGGING BLOCK
-    console.log('EventCache.processProviderUpdates received payload:', { calendarId, updates });
-    // END DEBUGGING BLOCK
-
     const { additions, updates: updateArr, deletions } = updates;
 
     // If there are no changes, exit early.

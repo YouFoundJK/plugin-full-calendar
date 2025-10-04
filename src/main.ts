@@ -151,9 +151,6 @@ export default class FullCalendarPlugin extends Plugin {
     );
     // Ensure TasksPluginProvider subscribes to live updates after layout is ready
     this.app.workspace.onLayoutReady(() => {
-      console.log(
-        'Full Calendar: Obsidian layout is ready. Initializing Tasks provider subscriber.'
-      );
       const tasksProvider = this.providerRegistry
         .getActiveProviders()
         .find(p => p.type === 'tasks');
