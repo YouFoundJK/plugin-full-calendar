@@ -831,9 +831,18 @@ export class CalendarView extends ItemView {
       },
       toggleTask: async (eventApi, isDone) => {
         const eventId = eventApi.id;
-        const event = this.plugin.cache.getEventById(eventId);
-        if (!event) return false;
+        const eventDetails = this.plugin.cache.store.getEventDetails(eventId);
+        if (!eventDetails) return false;
 
+        const { event, calendarId } = eventDetails;
+        const provider = this.plugin.providerRegistry.getInstance(calendarId);
+
+        if (provider && provider.toggleComplete) {
+          // Provider has its own logic for toggling tasks.
+          return await provider.toggleComplete(eventId, isDone);
+        }
+
+        // Fallback to default logic for providers without a custom implementation.
         const isRecurringSystem =
           event.type === 'recurring' || event.type === 'rrule' || event.recurringEventId;
 

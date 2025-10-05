@@ -37,6 +37,17 @@ export interface CalendarProvider<TConfig> {
   ): Promise<[OFCEvent, EventLocation | null]>;
 
   /**
+   * Optional: A provider-specific method for toggling the completion status of a task.
+   * If implemented, this will be called instead of the default behavior when a task checkbox
+   * in the UI is toggled. The provider is responsible for persisting the change and triggering
+   * any necessary cache updates.
+   * @param eventId The session ID of the event to toggle.
+   * @param isDone The desired completion state.
+   * @returns A promise that resolves to `true` on success and `false` on failure.
+   */
+  toggleComplete?(eventId: string, isDone: boolean): Promise<boolean>;
+
+  /**
    * Optional: Called before a drag-and-drop scheduling action is committed.
    * The provider can implement this to enforce rules, like preventing a task
    * from being scheduled after its due date.

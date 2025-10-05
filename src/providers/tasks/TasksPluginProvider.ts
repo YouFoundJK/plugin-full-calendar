@@ -52,6 +52,101 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   static getConfigurationComponent(): FCReactComponent<any> {
     return TasksConfigComponent;
   }
+  /**
+   * Adds or removes the done date (✅) from a task's markdown line.
+   * @param originalMarkdown The original line of the task.
+   * @param isDone The desired completion state.
+   * @returns The modified task line.
+   */
+  private setDoneState(originalMarkdown: string, isDone: boolean): string {
+    const doneDateRegex = /\s*✅\s*\d{4}-\d{2}-\d{2}/;
+    const hasDoneDate = doneDateRegex.test(originalMarkdown);
+
+    if (isDone && !hasDoneDate) {
+      // Add done date
+      const doneDate = window.moment().format('YYYY-MM-DD');
+      const doneComponent = ` ✅ ${doneDate}`;
+
+      // Append it, being careful to preserve any block links (^uuid).
+      const blockLinkRegex = /(\s*\^[a-zA-Z0-9-]+)$/;
+      const blockLinkMatch = originalMarkdown.match(blockLinkRegex);
+      if (blockLinkMatch) {
+        const contentWithoutBlockLink = originalMarkdown.replace(blockLinkRegex, '');
+        return `${contentWithoutBlockLink.trim()}${doneComponent}${blockLinkMatch[1]}`;
+      } else {
+        return `${originalMarkdown.trim()}${doneComponent}`;
+      }
+    } else if (!isDone && hasDoneDate) {
+      // Remove done date
+      return originalMarkdown.replace(doneDateRegex, '').trim();
+    }
+    // Return original if state is already correct
+    return originalMarkdown;
+  }
+
+  public async toggleComplete(eventId: string, isDone: boolean): Promise<boolean> {
+    try {
+      const event = this.plugin.cache?.getEventById(eventId);
+      if (!event || !event.uid || event.type !== 'single') {
+        throw new Error(
+          `Event with session ID ${eventId} not found, has no UID, or is not a single event.`
+        );
+      }
+
+      const task = this.allTasks.find(t => t.id === event.uid);
+      if (!task) {
+        throw new Error(`Task with persistent ID ${event.uid} not found in provider cache.`);
+      }
+
+      const newLine = this.setDoneState(task.originalMarkdown, isDone);
+
+      // If the line didn't change, we don't need to do anything.
+      if (newLine === task.originalMarkdown) {
+        return true;
+      }
+
+      // 1. Perform the I/O to update the file.
+      // The line number on the task object is 1-based, which is what replaceTaskInFile expects.
+      await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
+
+      // 2. Optimistically update the cache.
+      // The file watcher will eventually confirm this, but we want immediate UI feedback.
+      const completedStatus = isDone ? window.moment().toISOString() : false;
+
+      // Construct a new event object that is explicitly a 'single' type event.
+      const optimisticEvent: OFCEvent = {
+        ...event, // Spread the original single event
+        completed: completedStatus // Now this property is valid.
+      };
+
+      // Update our internal task model to match the optimistic state.
+      task.originalMarkdown = newLine;
+      task.isDone = isDone;
+
+      // Push the update to the EventCache.
+      // We use the persistentId (event.uid) for the update payload.
+      await this.plugin.providerRegistry.processProviderUpdates(this.source.id, {
+        additions: [],
+        updates: [
+          {
+            persistentId: event.uid,
+            event: optimisticEvent,
+            location: { file: { path: task.filePath }, lineNumber: task.lineNumber }
+          }
+        ],
+        deletions: []
+      });
+
+      return true;
+    } catch (e) {
+      if (e instanceof Error) {
+        console.error('Error toggling task completion:', e);
+        new Notice(e.message);
+      }
+      // If an error occurs, we return false. The CalendarView will revert the checkbox.
+      return false;
+    }
+  }
 
   private app: ObsidianInterface;
   private plugin: FullCalendarPlugin;
@@ -276,7 +371,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         filePath: task.path,
         // The internal lineNumber must be 1-based for surgical editing.
         lineNumber: oneBasedLineNumber,
-        isDone: task.isDone
+        isDone: task.isDone || !!task.doneDatez
       };
     });
 
