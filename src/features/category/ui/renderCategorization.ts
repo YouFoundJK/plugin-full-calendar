@@ -8,11 +8,8 @@ import { createElement } from 'react';
 import { Setting, Modal } from 'obsidian';
 import * as ReactDOM from 'react-dom/client';
 import FullCalendarPlugin from '../../../main';
-import { CategorySettingsManager } from '../components/CategorySetting';
-import {
-  bulkUpdateCategories,
-  bulkRemoveCategories
-} from '../../../features/category/bulkCategorization';
+import { CategorySettingsManager } from './CategorySetting';
+import { bulkUpdateCategories, bulkRemoveCategories } from '../bulkCategorization';
 
 export function renderCategorizationSettings(
   containerEl: HTMLElement,
@@ -40,7 +37,7 @@ export function renderCategorizationSettings(
         if (value) {
           // Logic for turning ON
           // LAZY LOAD MODAL
-          const { BulkCategorizeModal } = await import('../../modals/BulkCategorizeModal');
+          const { BulkCategorizeModal } = await import('./BulkCategorizeModal');
           new BulkCategorizeModal(plugin.app, async (choice, defaultCategory) => {
             plugin.settings.enableAdvancedCategorization = true;
             await plugin.saveData(plugin.settings);

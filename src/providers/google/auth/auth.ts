@@ -11,10 +11,10 @@
  */
 
 import { Platform, requestUrl, Notice } from 'obsidian';
-import FullCalendarPlugin from '../../main';
+import FullCalendarPlugin from '../../../main';
 import * as http from 'http';
 import * as url from 'url';
-import { GoogleAuthManager } from '../../features/google_auth/GoogleAuthManager';
+import { GoogleAuthManager } from './GoogleAuthManager';
 
 // =================================================================================================
 // CONSTANTS

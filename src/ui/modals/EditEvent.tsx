@@ -14,13 +14,13 @@
 import { DateTime } from 'luxon';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { CalendarInfo, OFCEvent } from '../../../types';
-import { AutocompleteInput } from '../../components/forms/AutocompleteInput';
+import { CalendarInfo, OFCEvent } from '../../types';
+import { AutocompleteInput } from '../components/forms/AutocompleteInput';
 import {
   constructTitle,
   parseTitle,
   parseSubcategoryTitle
-} from '../../../features/category/categoryParser';
+} from '../../features/category/categoryParser';
 
 interface DayChoiceProps {
   code: string;

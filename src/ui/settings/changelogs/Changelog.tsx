@@ -11,11 +11,11 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { changelogData } from '../changelogData';
+import { changelogData } from './changelogData';
 import { Setting } from 'obsidian';
-import '../changelog.css';
+import './changelog.css';
 
-import { renderFooter } from './renderFooter';
+import { renderFooter } from '../sections/calendars/renderFooter';
 
 interface ChangelogProps {
   onBack: () => void;

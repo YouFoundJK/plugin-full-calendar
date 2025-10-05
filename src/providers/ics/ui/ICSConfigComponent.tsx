@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { UrlInput } from '../../ui/components/forms/UrlInput';
-import { ICSProviderConfig } from './typesICS';
+import { UrlInput } from '../../../ui/components/forms/UrlInput';
+import { ICSProviderConfig } from '../typesICS';
 
 interface ICSConfigComponentProps {
   config: Partial<ICSProviderConfig>;

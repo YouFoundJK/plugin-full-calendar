@@ -8,7 +8,7 @@
 
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
-import { GoogleAuthManager } from '../../../features/google_auth/GoogleAuthManager';
+import { GoogleAuthManager } from '../auth/GoogleAuthManager';
 
 export function renderGoogleSettings(
   containerEl: HTMLElement,

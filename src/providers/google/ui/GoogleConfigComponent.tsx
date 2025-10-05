@@ -7,11 +7,11 @@
 import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { Setting } from 'obsidian';
-import { GoogleAccount } from '../../types/settings';
-import { startGoogleLogin } from './auth';
-import FullCalendarPlugin from '../../main';
-import { GoogleApiError } from './request';
-import { GoogleAuthManager } from '../../features/google_auth/GoogleAuthManager'; // Import the manager
+import { GoogleAccount } from '../../../types/settings';
+import { startGoogleLogin } from '../auth/auth';
+import FullCalendarPlugin from '../../../main';
+import { GoogleApiError } from '../auth/request';
+import { GoogleAuthManager } from '../auth/GoogleAuthManager'; // Import the manager
 
 // ADD this new type definition. It accurately describes what the component passes back.
 type SelectedGoogleCalendar = {
@@ -95,7 +95,7 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
           calendarId: 'primary',
           googleAccountId: account.id,
           color: ''
-        } as Extract<import('../../types').CalendarInfo, { type: 'google' }>);
+        } as Extract<import('../../../types/calendar_settings').CalendarInfo, { type: 'google' }>);
         if (!token) {
           throw new GoogleApiError(
             `Failed to refresh token for ${account.email}. Please try connecting the account again.`
@@ -104,7 +104,7 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
         account.accessToken = token;
       }
 
-      const { fetchGoogleCalendarList } = await import('./api');
+      const { fetchGoogleCalendarList } = await import('../auth/api');
       // REMOVE THE HACK and pass the account object directly.
       const allCalendars = await fetchGoogleCalendarList(plugin, account);
       const existingGoogleIds = new Set(

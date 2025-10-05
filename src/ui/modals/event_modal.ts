@@ -19,15 +19,15 @@
  */
 
 import * as React from 'react';
-import ReactModal from './ReactModal';
+import ReactModal from '../ReactModal';
 
 import { Notice } from 'obsidian';
-import { OFCEvent } from '../types';
-import FullCalendarPlugin from '../main';
-import { ConfirmModal } from './modals/ConfirmModal';
-import { EditEvent } from './modals/components/EditEvent';
-import { openFileForEvent } from '../utils/eventActions';
-import { CalendarInfo } from '../types';
+import { OFCEvent } from '../../types';
+import FullCalendarPlugin from '../../main';
+import { ConfirmModal } from './ConfirmModal';
+import { EditEvent } from './EditEvent';
+import { openFileForEvent } from '../../utils/eventActions';
+import { CalendarInfo } from '../../types';
 
 export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
   const calendars = plugin.providerRegistry

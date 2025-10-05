@@ -1,10 +1,10 @@
 import { DateTime } from 'luxon';
 import { Notice } from 'obsidian';
-import { OFCEvent } from '../types';
-import { FullCalendarSettings } from '../types/settings';
-import { openFileForEvent } from '../utils/eventActions';
-import FullCalendarPlugin from '../main';
-import { TimeState, EnrichedOFCEvent } from '../core/TimeEngine';
+import { OFCEvent } from '../../chrono_analyser/data/types';
+import { FullCalendarSettings } from '../../types/settings';
+import { openFileForEvent } from '../../utils/eventActions';
+import FullCalendarPlugin from '../../main';
+import { TimeState, EnrichedOFCEvent } from '../../core/TimeEngine';
 
 export class NotificationManager {
   private plugin: FullCalendarPlugin;

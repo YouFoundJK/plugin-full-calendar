@@ -5,10 +5,10 @@
  */
 
 import { requestUrl, Notice, Platform } from 'obsidian';
-import FullCalendarPlugin from '../../main';
-import { CalendarInfo } from '../../types';
-import { GoogleAccount } from '../../types/settings';
-import { generateCalendarId } from '../../types/calendar_settings';
+import FullCalendarPlugin from '../../../main';
+import { CalendarInfo } from '../../../types';
+import { GoogleAccount } from '../../../types/settings';
+import { generateCalendarId } from '../../../types/calendar_settings';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const PROXY_REFRESH_URL = 'https://gcal-proxy-server.vercel.app/api/google/refresh';

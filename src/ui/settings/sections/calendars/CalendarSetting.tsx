@@ -14,8 +14,8 @@
 
 import { Notice } from 'obsidian';
 import * as React from 'react';
-import { CalendarInfo } from '../../../types';
-import FullCalendarPlugin from '../../../main';
+import { CalendarInfo } from '../../../../types/calendar_settings';
+import FullCalendarPlugin from '../../../../main';
 
 // Define props for the new stable component
 interface CalendarSettingRowProps {

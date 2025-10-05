@@ -24,7 +24,7 @@ import type {
 
 import { Menu } from 'obsidian';
 import type { PluginDef } from '@fullcalendar/core';
-import { createDateNavigation } from './DateNavigation';
+import { createDateNavigation } from '../../../../features/navigation/DateNavigation';
 
 let didPatchRRule = false;
 

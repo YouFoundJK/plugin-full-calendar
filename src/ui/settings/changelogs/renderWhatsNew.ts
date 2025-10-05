@@ -5,8 +5,8 @@
  */
 
 import { Setting } from 'obsidian';
-import { changelogData } from '../changelogData';
-import '../changelog.css';
+import { changelogData } from './changelogData';
+import './changelog.css';
 
 export function renderWhatsNew(containerEl: HTMLElement, onShowChangelog: () => void): void {
   const whatsNewContainer = containerEl.createDiv('full-calendar-whats-new-container');

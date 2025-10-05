@@ -22,7 +22,7 @@ import { ItemView, Menu, Notice, WorkspaceLeaf } from 'obsidian';
 
 import type { Calendar, EventInput } from '@fullcalendar/core';
 
-import './overrides.css';
+import './settings/sections/calendars/styles/overrides.css';
 import FullCalendarPlugin from '../main';
 import { renderOnboarding } from './onboard';
 import { PLUGIN_SLUG, CalendarInfo } from '../types';
@@ -32,7 +32,7 @@ import { TasksBacklogView, TASKS_BACKLOG_VIEW_TYPE } from '../providers/tasks/Ta
 // Lazy-import heavy modules at point of use to reduce initial load time
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
 import { ViewEnhancer } from '../core/ViewEnhancer';
-import { createDateNavigation, DateNavigation } from './DateNavigation';
+import { createDateNavigation, DateNavigation } from '../features/navigation/DateNavigation';
 
 // Narrowed resource shape used for timeline views.
 interface ResourceItem {
@@ -509,7 +509,7 @@ export class CalendarView extends ItemView {
     }
 
     // LAZY LOAD THE CALENDAR RENDERER HERE
-    const { renderCalendar } = await import('./calendar');
+    const { renderCalendar } = await import('./settings/sections/calendars/calendar');
     let currentViewType = '';
     const handleViewChange = () => {
       const newViewType = this.fullCalendarView?.view?.type || '';
@@ -631,12 +631,12 @@ export class CalendarView extends ItemView {
                 `Provider for ${calendarId} claims hasCustomEditUI but method is not implemented.`
               );
               // Fallback to default modal as a safety measure.
-              const { launchEditModal } = await import('./event_modal');
+              const { launchEditModal } = await import('./modals/event_modal');
               launchEditModal(this.plugin, info.event.id);
             }
           } else {
             // Fallback to the default Full Calendar modal for all other providers.
-            const { launchEditModal } = await import('./event_modal');
+            const { launchEditModal } = await import('./modals/event_modal');
             launchEditModal(this.plugin, info.event.id);
           }
         } catch (e) {
@@ -658,7 +658,7 @@ export class CalendarView extends ItemView {
         const partialEvent = dateEndpointsToFrontmatter(start, end, allDay);
         try {
           if (this.plugin.settings.clickToCreateEventFromMonthView || viewType !== 'dayGridMonth') {
-            const { launchCreateModal } = await import('./event_modal');
+            const { launchCreateModal } = await import('./modals/event_modal');
             launchCreateModal(this.plugin, partialEvent);
           } else {
             this.fullCalendarView?.changeView('timeGridDay');
@@ -779,7 +779,7 @@ export class CalendarView extends ItemView {
         }
 
         if (this.plugin.cache.isEventEditable(e.id)) {
-          const tasks = await import('../utils/tasks');
+          const tasks = await import('../types/tasks');
           if (!tasks.isTask(event)) {
             menu.addItem(item =>
               item.setTitle('Turn into task').onClick(async () => {
@@ -847,7 +847,7 @@ export class CalendarView extends ItemView {
           event.type === 'recurring' || event.type === 'rrule' || event.recurringEventId;
 
         if (!isRecurringSystem) {
-          const { toggleTask } = await import('../utils/tasks');
+          const { toggleTask } = await import('../types/tasks');
           await this.plugin.cache.updateEventWithId(eventId, toggleTask(event, isDone));
           return true;
         }
