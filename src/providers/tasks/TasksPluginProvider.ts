@@ -64,7 +64,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
     if (isDone && !hasDoneDate) {
       // Add done date
-      const doneDate = window.moment().format('YYYY-MM-DD');
+      const doneDate = DateTime.now().toFormat('yyyy-MM-dd'); // MODIFIED
       const doneComponent = ` ✅ ${doneDate}`;
 
       // Append it, being careful to preserve any block links (^uuid).
@@ -111,7 +111,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
       // 2. Optimistically update the cache.
       // The file watcher will eventually confirm this, but we want immediate UI feedback.
-      const completedStatus = isDone ? window.moment().toISOString() : false;
+      const completedStatus = isDone ? DateTime.now().toISO() : false; // MODIFIED
 
       // Construct a new event object that is explicitly a 'single' type event.
       const optimisticEvent: OFCEvent = {
@@ -232,11 +232,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       type: 'single',
       title: task.title,
       allDay: true,
-      // The event is always on the single, primary date.
-      date: window.moment(primaryDate).format('YYYY-MM-DD'),
+      date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'), // MODIFIED
       // FIX: Ensure tasks are never multi-day by setting endDate to null.
       endDate: null,
-      completed: task.isDone ? window.moment().toISOString() : false,
+      completed: task.isDone ? DateTime.now().toISO() : false, // MODIFIED
       uid: task.id // The UID is our persistent handle.
     };
 
@@ -385,22 +384,17 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   async getEvents(): Promise<EditableEventResponse[]> {
     await this._ensureTasksCacheIsWarm();
     const events: EditableEventResponse[] = [];
-
-    // REPLACE the for-loop with corrected date priority and single-day logic
     for (const task of this.allTasks) {
-      // A task is only displayed on the calendar if it has some kind of date.
-      const primaryDate = task.scheduledDate; // || task.dueDate || task.startDate
+      const primaryDate = task.scheduledDate;
       if (primaryDate) {
         const ofcEvent: OFCEvent = {
           type: 'single',
           title: task.title,
           allDay: true,
-          // The primary date for an event is its scheduled date, falling back to due/start date.
-          date: window.moment(primaryDate).format('YYYY-MM-DD'),
-          // Ensure tasks are always single-day events on the calendar.
+          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'), // MODIFIED
           endDate: null,
-          completed: task.isDone ? window.moment().toISOString() : false,
-          uid: task.id // The UID is our persistent handle.
+          completed: task.isDone ? DateTime.now().toISO() : false, // MODIFIED
+          uid: task.id
         };
 
         const location: EventLocation = {
@@ -410,7 +404,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         events.push([ofcEvent, location]);
       }
     }
-
     return events;
   }
 
@@ -448,9 +441,9 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           type: 'single',
           title: task.title,
           allDay: true,
-          date: window.moment(primaryDate).format('YYYY-MM-DD'),
+          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'), // MODIFIED
           endDate: null,
-          completed: task.isDone ? window.moment().toISOString() : false,
+          completed: task.isDone ? DateTime.now().toISO() : false, // MODIFIED
           uid: task.id
         };
 
@@ -490,7 +483,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private updateTaskLine(originalMarkdown: string, newDate: Date): string {
     // CHANGE: Use scheduled emoji
     const scheduledSymbol = getScheduledDateEmoji();
-    const newDateString = window.moment(newDate).format('YYYY-MM-DD');
+    const newDateString = DateTime.fromJSDate(newDate).toFormat('yyyy-MM-dd'); // MODIFIED
     const newScheduledComponent = `${scheduledSymbol} ${newDateString}`;
     // CHANGE: Regex looks for scheduled icon
     const scheduledDateRegex = /⏳\s*\d{4}-\d{2}-\d{2}/;
