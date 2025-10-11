@@ -110,7 +110,6 @@ const CalDAVSettingRow: React.FC<{ source: Partial<import('../../types').Calenda
   source
 }) => {
   const url = (source as any)?.url || '';
-  const name = (source as any)?.name || '';
   const username = (source as any)?.username || '';
 
   return React.createElement(
@@ -123,16 +122,6 @@ const CalDAVSettingRow: React.FC<{ source: Partial<import('../../types').Calenda
         disabled: true,
         type: 'text',
         value: url,
-        className: 'fc-setting-input'
-      })
-    ),
-    React.createElement(
-      'div',
-      { className: 'setting-item-control' },
-      React.createElement('input', {
-        disabled: true,
-        type: 'text',
-        value: name,
         className: 'fc-setting-input'
       })
     ),

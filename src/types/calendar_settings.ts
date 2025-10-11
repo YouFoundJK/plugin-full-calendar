@@ -27,9 +27,9 @@ const GoogleAuthSchema = z
 
 // New flattened schemas for each calendar type
 const calendarOptionsSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('local'), id: z.string(), directory: z.string() }),
-  z.object({ type: z.literal('dailynote'), id: z.string(), heading: z.string() }),
-  z.object({ type: z.literal('ical'), id: z.string(), url: z.string().url() }),
+  z.object({ type: z.literal('local'), id: z.string(), name: z.string(), directory: z.string() }),
+  z.object({ type: z.literal('dailynote'), id: z.string(), name: z.string(), heading: z.string() }),
+  z.object({ type: z.literal('ical'), id: z.string(), name: z.string(), url: z.string().url() }),
   z.object({
     type: z.literal('caldav'),
     id: z.string(),
@@ -53,6 +53,7 @@ const colorValidator = z.object({ color: z.string() });
 export type TestSource = {
   type: 'FOR_TEST_ONLY';
   id: string;
+  name?: string; // <-- ADD THIS LINE
   events?: OFCEvent[];
   // Keep test helper flexible but avoid `any`.
   config?: Record<string, unknown>;
@@ -115,13 +116,16 @@ export function makeDefaultPartialCalendarSource(
   if (type === 'icloud') {
     return {
       type: 'caldav',
+      name: 'iCloud Calendar',
       color: newColor,
       url: 'https://caldav.icloud.com'
     };
   }
 
+  const typeName = type.charAt(0).toUpperCase() + type.slice(1);
   return {
     type: type,
+    name: `New ${typeName} Calendar`,
     color: newColor
   };
 }
