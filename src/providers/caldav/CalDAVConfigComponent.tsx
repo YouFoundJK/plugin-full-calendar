@@ -4,18 +4,18 @@ import { UrlInput } from '../../ui/components/forms/UrlInput';
 import { UsernameInput } from '../../ui/components/forms/UsernameInput';
 import { PasswordInput } from '../../ui/components/forms/PasswordInput';
 import { CalDAVProviderConfig } from './typesCalDAV';
-import { importCalendars } from './import';
+import { importCalendars } from './import_caldav';
 
 interface CalDAVConfigComponentProps {
   config: Partial<CalDAVProviderConfig>;
   onSave: (configs: CalDAVProviderConfig[]) => void;
-  onClose: () => void; // Make it non-optional here since it's used
+  onClose: () => void;
 }
 
 export const CalDAVConfigComponent: React.FC<CalDAVConfigComponentProps> = ({
   config,
   onSave,
-  onClose // Destructure prop
+  onClose
 }) => {
   const [url, setUrl] = useState(config.url || '');
   const [username, setUsername] = useState(config.username || '');
@@ -45,8 +45,11 @@ export const CalDAVConfigComponent: React.FC<CalDAVConfigComponentProps> = ({
     <form onSubmit={handleSubmit}>
       <div className="setting-item">
         <div className="setting-item-info">
-          <div className="setting-item-name">URL</div>
-          <div className="setting-item-description">URL of the CalDAV server</div>
+          <div className="setting-item-name">Collection URL</div>
+          <div className="setting-item-description">
+            Paste your calendar collection URL (e.g.{' '}
+            <code>https://calendar.zoho.in/caldav/&lt;id&gt;/events/</code>)
+          </div>
         </div>
         <div className="setting-item-control">
           <UrlInput value={url} onChange={setUrl} />
