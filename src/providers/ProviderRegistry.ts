@@ -66,6 +66,7 @@ export class ProviderRegistry {
     this.register('dailynote', () => import('./dailynote/DailyNoteProvider'));
     this.register('ical', () => import('./ics/ICSProvider'));
     this.register('caldav', () => import('./caldav/CalDAVProvider'));
+    this.register('caldav-ts', () => import('./caldav/CalDAVProviderTS'));
     this.register('google', () => import('./google/GoogleProvider'));
     this.register('tasks', () => import('./tasks/TasksPluginProvider'));
   }
