@@ -63,6 +63,7 @@ export function addCalendarButton(
           dailynote: 'Daily Note',
           icloud: 'iCloud',
           caldav: 'CalDAV',
+          'caldav-ts': 'CalDAV (ts-dav)',
           ical: 'Remote (.ics format)',
           google: 'Google Calendar',
           tasks: 'Obsidian Tasks'
