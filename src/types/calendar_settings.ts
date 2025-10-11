@@ -15,6 +15,7 @@
 import { ZodError, z } from 'zod';
 import { OFCEvent } from './schema';
 import { getNextColor } from '../ui/components/colors';
+import { t } from '../i18n/i18n';
 
 // New schema for Google Auth object, now local to each Google source
 const GoogleAuthSchema = z
@@ -116,7 +117,7 @@ export function makeDefaultPartialCalendarSource(
   if (type === 'icloud') {
     return {
       type: 'caldav',
-      name: 'iCloud Calendar',
+      name: t('settings.calendars.defaults.iCloud'),
       color: newColor,
       url: 'https://caldav.icloud.com'
     };
@@ -125,7 +126,7 @@ export function makeDefaultPartialCalendarSource(
   const typeName = type.charAt(0).toUpperCase() + type.slice(1);
   return {
     type: type,
-    name: `New ${typeName} Calendar`,
+    name: t('settings.calendars.defaults.new', { type: typeName }),
     color: newColor
   };
 }

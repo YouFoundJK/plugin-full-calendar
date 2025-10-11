@@ -34,12 +34,11 @@ export type LanguageCode = keyof typeof resources;
  * @returns The current language code (e.g., 'en', 'de', 'zh-cn')
  */
 function getObsidianLanguage(app: App): string {
-  // Obsidian stores the language in localStorage under 'language' key
-  // We access it through the app's internal API
-  const language = (app as any).vault.getConfig?.('language') || 'en';
-  return language;
+  // Obsidian stores the user's language choice in localStorage
+  const obsidianLang = localStorage.getItem('language');
+  // Default to 'en' if not found
+  return obsidianLang?.toLowerCase() || 'en';
 }
-
 /**
  * Initialize the i18n system
  * @param app Obsidian App instance
@@ -47,6 +46,14 @@ function getObsidianLanguage(app: App): string {
  */
 export async function initializeI18n(app: App): Promise<void> {
   const detectedLanguage = getObsidianLanguage(app);
+  console.log(
+    '[i18n Debug] initializeI18n: Starting initialization for language:',
+    detectedLanguage
+  );
+  console.log(
+    '[i18n Debug] initializeI18n: Starting initialization for language:',
+    detectedLanguage
+  );
 
   await i18next.init({
     lng: detectedLanguage,
@@ -59,6 +66,16 @@ export async function initializeI18n(app: App): Promise<void> {
     returnNull: false,
     returnEmptyString: false
   });
+
+  console.log(
+    '[i18n Debug] initializeI18n: Initialization complete. i18next.language is now:',
+    i18next.language
+  );
+
+  console.log(
+    '[i18n Debug] initializeI18n: Initialization complete. i18next.language is now:',
+    i18next.language
+  );
 }
 
 /**
