@@ -4,7 +4,8 @@ import FullCalendarPlugin from '../../main';
 
 // Mock the tsdav module
 jest.mock('tsdav', () => ({
-  createDAVClient: jest.fn()
+  fetchCalendarObjects: jest.fn(),
+  getBasicAuthHeaders: jest.fn()
 }));
 
 describe('CalDAVProviderTS', () => {
@@ -105,8 +106,13 @@ describe('CalDAVProviderTS', () => {
 
   describe('getEvents', () => {
     it('should use ts-dav to fetch calendar objects', async () => {
-      const { createDAVClient } = require('tsdav');
-      const mockFetchCalendarObjects = jest.fn().mockResolvedValue([
+      const { fetchCalendarObjects, getBasicAuthHeaders } = require('tsdav');
+      
+      const mockAuthHeaders = { authorization: 'Basic dGVzdDp0ZXN0' };
+      (getBasicAuthHeaders as jest.Mock).mockReturnValue(mockAuthHeaders);
+
+      const mockFetchCalendarObjects = fetchCalendarObjects as jest.Mock;
+      mockFetchCalendarObjects.mockResolvedValue([
         {
           data: `BEGIN:VCALENDAR
 VERSION:2.0
@@ -121,22 +127,11 @@ END:VCALENDAR`
         }
       ]);
 
-      const mockClient = {
-        fetchCalendarObjects: mockFetchCalendarObjects
-      };
-
-      (createDAVClient as jest.Mock).mockResolvedValue(mockClient);
-
       const events = await provider.getEvents();
 
-      expect(createDAVClient).toHaveBeenCalledWith({
-        serverUrl: config.url,
-        credentials: {
-          username: config.username,
-          password: config.password
-        },
-        authMethod: 'Basic',
-        defaultAccountType: 'caldav'
+      expect(getBasicAuthHeaders).toHaveBeenCalledWith({
+        username: config.username,
+        password: config.password
       });
 
       expect(mockFetchCalendarObjects).toHaveBeenCalledWith({
@@ -146,7 +141,8 @@ END:VCALENDAR`
         timeRange: expect.objectContaining({
           start: expect.any(String),
           end: expect.any(String)
-        })
+        }),
+        headers: mockAuthHeaders
       });
 
       expect(events).toBeDefined();
@@ -154,8 +150,9 @@ END:VCALENDAR`
     });
 
     it('should handle errors gracefully', async () => {
-      const { createDAVClient } = require('tsdav');
-      (createDAVClient as jest.Mock).mockRejectedValue(new Error('Network error'));
+      const { fetchCalendarObjects, getBasicAuthHeaders } = require('tsdav');
+      (getBasicAuthHeaders as jest.Mock).mockReturnValue({});
+      (fetchCalendarObjects as jest.Mock).mockRejectedValue(new Error('Network error'));
 
       await expect(provider.getEvents()).rejects.toThrow(
         'Failed to fetch events from CalDAV server: Network error'

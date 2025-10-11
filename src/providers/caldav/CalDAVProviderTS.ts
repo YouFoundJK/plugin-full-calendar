@@ -6,7 +6,7 @@ import { CalDAVProviderTSConfig } from './typesCalDAVTS';
 import FullCalendarPlugin from '../../main';
 import { CalDAVConfigComponentTS } from './CalDAVConfigComponentTS';
 import * as React from 'react';
-import { createDAVClient } from 'tsdav';
+import { fetchCalendarObjects, getBasicAuthHeaders } from 'tsdav';
 
 // --- Read-only settings row ---
 const CalDAVTSSettingRow: React.FC<{ source: Partial<import('../../types').CalendarInfo> }> = ({
@@ -75,26 +75,31 @@ export class CalDAVProviderTS implements CalendarProvider<CalDAVProviderTSConfig
     end.setMonth(end.getMonth() + 6);
 
     try {
-      // Create a DAV client with the saved configuration
-      const client = await createDAVClient({
+      // Build account manually to skip .well-known service discovery which causes CORS issues
+      const account = {
+        accountType: 'caldav' as const,
         serverUrl: this.source.url,
         credentials: {
           username: this.source.username,
           password: this.source.password
         },
-        authMethod: 'Basic',
-        defaultAccountType: 'caldav'
-      });
+        rootUrl: this.source.url,
+        homeUrl: this.source.homeUrl
+      };
+
+      // Get auth headers for requests
+      const headers = getBasicAuthHeaders(account.credentials);
 
       // Fetch calendar objects using ts-dav
-      const calendarObjects = await client.fetchCalendarObjects({
+      const calendarObjects = await fetchCalendarObjects({
         calendar: {
           url: this.source.homeUrl
         },
         timeRange: {
           start: start.toISOString(),
           end: end.toISOString()
-        }
+        },
+        headers
       });
 
       // Extract ICS data from each calendar object
