@@ -276,6 +276,293 @@
       "saturday": "Saturday"
     }
   },
+  "modals": {
+    "editEvent": {
+      "title": {
+        "new": "New Event",
+        "edit": "Edit Event"
+      },
+      "buttons": {
+        "openNote": "Open Note",
+        "delete": "Delete",
+        "save": "Save Event"
+      },
+      "fields": {
+        "title": {
+          "label": "Title",
+          "placeholder": "Event Title"
+        },
+        "category": {
+          "label": "Category",
+          "placeholder": "Category (optional)"
+        },
+        "display": {
+          "label": "Display",
+          "options": {
+            "auto": "Normal event",
+            "background": "Background event",
+            "inverseBackground": "Inverse background",
+            "none": "Hidden"
+          }
+        },
+        "inCalendar": {
+          "label": "In Calendar"
+        },
+        "date": {
+          "label": "Date"
+        },
+        "time": {
+          "label": "Time"
+        },
+        "options": {
+          "label": "Options",
+          "allDay": "All day",
+          "isTask": "Is a Task",
+          "completed": "Completed",
+          "endReminder": "Remind 10m before end",
+          "endReminderTooltip": "An end reminder requires a specific end time."
+        },
+        "repeats": {
+          "label": "Repeats",
+          "options": {
+            "none": "None",
+            "weekly": "Weekly",
+            "monthly": "Monthly",
+            "yearly": "Yearly"
+          },
+          "repeatEvery": "Repeat every",
+          "week": "week",
+          "weeks": "weeks",
+          "month": "month",
+          "months": "months",
+          "year": "year",
+          "years": "years",
+          "repeatOn": "Repeat on",
+          "onDay": "On day {{day}}",
+          "onThe": "On the",
+          "ordinal": {
+            "first": "first",
+            "second": "second",
+            "third": "third",
+            "fourth": "fourth",
+            "last": "last"
+          },
+          "yearlyText": "Repeats every year on {{date}}.",
+          "endRepeat": "End Repeat"
+        }
+      },
+      "tooltips": {
+        "recurringTaskCompletion": "Completion for recurring tasks can be toggled on individual instances in the calendar view.",
+        "dailyNoteRecurring": "Recurring events are not supported in Daily Notes. Please use a 'Full Note' calendar instead.",
+        "inheritedEvent": "This event inherits from a recurring series. To edit it, first open the series note."
+      }
+    },
+    "deleteRecurring": {
+      "title": "Delete Recurring Event",
+      "description": "This is a recurring event. What would you like to do with all of its future \"override\" instances (i.e., events that you have dragged or modified)?",
+      "deleteInstance": {
+        "name": "Delete only this instance",
+        "description": "Delete only the instance on {{date}}. This will skip this date in the recurrence.",
+        "button": "Delete This Instance"
+      },
+      "promoteChildren": {
+        "name": "Promote child events",
+        "description": "Turn all overriden events (if any) into standalone, single events. They will no longer be linked to this recurring series.",
+        "button": "Promote Children"
+      },
+      "deleteAll": {
+        "name": "Delete child events",
+        "description": "Delete all future override events associated with this recurring series. This cannot be undone.",
+        "button": "Delete Everything"
+      },
+      "cancel": "Cancel"
+    },
+    "workspace": {
+      "title": {
+        "create": "Create Workspace",
+        "edit": "Edit Workspace"
+      },
+      "sections": {
+        "general": "General",
+        "viewConfiguration": "View Configuration",
+        "calendarFilters": "Calendar Filters",
+        "categoryFilters": "Category Filters",
+        "appearanceOverrides": "Appearance Overrides",
+        "viewClipping": "View Clipping & Time Range"
+      },
+      "fields": {
+        "name": {
+          "label": "Name",
+          "description": "A unique name for this workspace",
+          "placeholder": "e.g., Work Focus, Family Planning"
+        },
+        "desktopView": {
+          "label": "Desktop view",
+          "description": "Default view for desktop devices"
+        },
+        "mobileView": {
+          "label": "Mobile view",
+          "description": "Default view for mobile devices"
+        },
+        "defaultDate": {
+          "label": "Default date (optional)",
+          "description": "Date to jump to when activating workspace (e.g., \"today\", \"2024-01-01\")",
+          "placeholder": "today, next-week, 2024-01-01"
+        },
+        "visibleCalendars": {
+          "label": "Visible calendars",
+          "description": "Select which calendars to show (leave empty to show all)",
+          "noCalendars": "No calendars configured. Configure calendars in the main settings first."
+        },
+        "categoryFilterMode": {
+          "label": "Category filter mode",
+          "description": "Choose how to filter categories",
+          "options": {
+            "showOnly": "Show only selected categories",
+            "hide": "Hide selected categories"
+          }
+        },
+        "categories": {
+          "label": "Categories",
+          "description": "Select categories to include/exclude (leave empty to show all)",
+          "noCategories": "No categories configured. Configure categories in the Categorization settings.",
+          "requiresAdvanced": "Category filtering requires Advanced Categorization to be enabled in the main settings."
+        },
+        "overrideBusinessHours": {
+          "label": "Override business hours",
+          "description": "Enable custom business hours for this workspace"
+        },
+        "enableBusinessHours": {
+          "label": "Enable business hours",
+          "description": "Show business hours highlighting in this workspace"
+        },
+        "businessDays": {
+          "label": "Business days",
+          "description": "Select which days of the week are business days"
+        },
+        "businessHoursStart": {
+          "label": "Business hours start time",
+          "description": "When your working day begins (format: HH:mm)"
+        },
+        "businessHoursEnd": {
+          "label": "Business hours end time",
+          "description": "When your working day ends (format: HH:mm)"
+        },
+        "timelineCategories": {
+          "label": "Timeline categories",
+          "description": "Default state for timeline category groups",
+          "options": {
+            "useDefault": "Use default setting",
+            "expanded": "Expanded by default",
+            "collapsed": "Collapsed by default"
+          }
+        },
+        "slotMinTime": {
+          "label": "Earliest time to display",
+          "description": "Override the earliest time visible in time grid views (format: HH:mm)",
+          "placeholder": "Use global default"
+        },
+        "slotMaxTime": {
+          "label": "Latest time to display",
+          "description": "Override the latest time visible in time grid views (format: HH:mm)",
+          "placeholder": "Use global default"
+        },
+        "weekendDisplay": {
+          "label": "Weekend display",
+          "description": "Override whether to show weekends in the calendar",
+          "options": {
+            "useDefault": "Use global default",
+            "show": "Show weekends",
+            "hide": "Hide weekends"
+          }
+        },
+        "hiddenDays": {
+          "label": "Hidden days",
+          "description": "Override which days to hide from the calendar",
+          "options": {
+            "useDefault": "Use global default",
+            "showAll": "Show all days",
+            "hideWeekends": "Hide weekends (Sun, Sat)",
+            "hideSunday": "Hide Sunday",
+            "hideSaturday": "Hide Saturday",
+            "hideMonday": "Hide Monday",
+            "hideFriday": "Hide Friday"
+          }
+        },
+        "dayMaxEvents": {
+          "label": "Max events per day (month view)",
+          "description": "Override the maximum number of events to show per day in month view",
+          "options": {
+            "useGlobal": "Use global default",
+            "useDefault": "Use default limit",
+            "noLimit": "No limit",
+            "one": "1 event",
+            "two": "2 events",
+            "three": "3 events",
+            "four": "4 events",
+            "five": "5 events",
+            "ten": "10 events"
+          }
+        }
+      },
+      "calendarTypes": {
+        "local": "Local:",
+        "dailyNotes": "Daily Notes:",
+        "ics": "ICS:",
+        "caldav": "CalDAV:",
+        "google": "Google:",
+        "generic": "{{type}} Calendar"
+      },
+      "buttons": {
+        "save": "Save",
+        "create": "Create",
+        "cancel": "Cancel"
+      }
+    },
+    "bulkCategorize": {
+      "title": "Choose a Bulk-Update Method",
+      "description": "How would you like to automatically categorize existing events in your local calendars? Note that this is a one time operation that will modify your event notes to match the required formatting.",
+      "smartFolder": {
+        "name": "Use Parent Folder (Smart)",
+        "description": "Use parent folder names as the category for UN-categorized events. Events that already look like 'Category - Title' will be skipped.",
+        "button": "Run Smart Update"
+      },
+      "forcedFolder": {
+        "name": "Use Parent Folder (Forced)",
+        "description": "PREPENDS the parent folder name to ALL event titles, even if they already have a category. Warning: This creates nested categories.",
+        "button": "Run Forced Update"
+      },
+      "forcedDefault": {
+        "name": "Forced Default Update",
+        "description": "Prepends a category you provide to ALL event titles. If a category already exists, the new one will be added in front (e.g., New - Old - Title).",
+        "placeholder": "Enter default category",
+        "button": "Set Default",
+        "errorEmpty": "Please enter a category name."
+      }
+    }
+  },
+  "google": {
+    "title": "Google Accounts",
+    "noAccounts": "No Google accounts connected. Add a calendar source to connect an account.",
+    "accountDescription": "Connected account. ID: {{id}}",
+    "buttons": {
+      "disconnect": "Disconnect",
+      "selectCalendars": "Select Calendars",
+      "connectAccount": "Connect Google Account",
+      "backToAccounts": "Back to Accounts",
+      "addCalendars": "Add {{count}} Calendar",
+      "addCalendarsPlural": "Add {{count}} Calendars"
+    },
+    "selectAccount": {
+      "title": "Connect a Google Account"
+    },
+    "selectCalendars": {
+      "title": "Select Calendars from {{email}}",
+      "noCalendars": "No new calendars found, or all calendars from this account have been added.",
+      "description": "Choose which calendars you would like to add to Obsidian."
+    },
+    "loading": "Loading..."
+  },
   "ui": {
     "buttons": {
       "addCalendar": "Add Calendar"
