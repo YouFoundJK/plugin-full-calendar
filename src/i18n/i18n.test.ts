@@ -100,5 +100,29 @@ describe('i18n Module', () => {
       await i18n.changeLanguage('de');
       expect(i18n.language).toBe('de');
     });
+
+    it('should load German translations correctly', async () => {
+      const mockApp = createMockApp('de');
+      await initializeI18n(mockApp);
+
+      // Change to German explicitly
+      await i18n.changeLanguage('de');
+
+      // Test a German translation
+      expect(t('commands.newEvent')).toBe('Neues Ereignis');
+      expect(t('commands.openCalendar')).toBe('Kalender öffnen');
+      expect(t('ribbon.openCalendar')).toBe('Full Calendar öffnen');
+    });
+
+    it('should fallback to English for missing German translations', async () => {
+      const mockApp = createMockApp('de');
+      await initializeI18n(mockApp);
+
+      await i18n.changeLanguage('de');
+
+      // Test a key that doesn't exist - should return the key itself as fallback
+      const result = t('nonexistent.key');
+      expect(result).toBe('nonexistent.key');
+    });
   });
 });

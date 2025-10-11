@@ -18,9 +18,30 @@
     "chronoAnalyserInsightsFailed": "Failed to generate insights. Check the developer console for errors.",
     "chronoAnalyserInsightsSaved": "Insights configuration saved!",
     "googleAuthFailed": "Google authentication failed. Please try again.",
-    "bulkUpdateError": "Error during bulk update. Check console for details."
+    "bulkUpdateError": "Error during bulk update. Check console for details.",
+    "providerNotRegistered": "{{providerType}} provider is not registered."
   },
   "ribbon": {
     "openCalendar": "Open Full Calendar"
+  },
+  "settings": {
+    "calendars": {
+      "title": "Calendars",
+      "addCalendar": "Add calendar",
+      "addCalendarTooltip": "Add Calendar",
+      "types": {
+        "local": "Full note",
+        "dailynote": "Daily Note",
+        "icloud": "iCloud",
+        "caldav": "CalDAV",
+        "ical": "Remote (.ics format)",
+        "google": "Google Calendar",
+        "tasks": "Obsidian Tasks"
+      }
+    },
+    "quickStart": {
+      "title": "Quick Start: Add Your First Calendar",
+      "description": "To begin, add a calendar source using the \"+\" button in the \"Manage calendars\" section."
+    }
   }
 }

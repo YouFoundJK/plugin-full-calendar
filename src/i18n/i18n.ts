@@ -15,12 +15,14 @@ import { App } from 'obsidian';
 
 // Import translation resources
 import en from './locales/en.json';
+import de from './locales/de.json';
 
 /**
  * Type-safe translation resources
  */
 const resources = {
-  en: { translation: en }
+  en: { translation: en },
+  de: { translation: de }
 };
 
 /**

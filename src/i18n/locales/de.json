@@ -1,0 +1,47 @@
+{
+  "commands": {
+    "newEvent": "Neues Ereignis",
+    "resetCache": "Ereignis-Cache zurücksetzen",
+    "revalidateRemote": "Remote-Kalender erneut validieren",
+    "openCalendar": "Kalender öffnen",
+    "openChronoAnalyser": "Chrono Analyser öffnen (nur Desktop)",
+    "openSidebar": "In Seitenleiste öffnen"
+  },
+  "notices": {
+    "settingsUpdated": "Full Calendar hat Ihre Kalendereinstellungen auf ein neues Format aktualisiert.",
+    "cacheReset": "Full Calendar wurde zurückgesetzt.",
+    "chronoAnalyserMobileDisabled": "Die Chrono Analyser-Funktion ist nur in der Desktop-Version von Obsidian verfügbar.",
+    "chronoAnalyserInitializing": "Chrono Analyser: Ereignis-Cache wird initialisiert...",
+    "chronoAnalyserLoadFailed": "Chrono Analyser konnte nicht geladen werden. Bitte überprüfen Sie die Konsole.",
+    "chronoAnalyserConfigureFirst": "Bitte konfigurieren Sie zuerst Ihre Insight-Gruppen über das ⚙️-Symbol.",
+    "chronoAnalyserGeneratingInsights": "Insights werden generiert (dies kann einen Moment dauern)...",
+    "chronoAnalyserInsightsFailed": "Insights konnten nicht generiert werden. Überprüfen Sie die Entwicklerkonsole.",
+    "chronoAnalyserInsightsSaved": "Insights-Konfiguration gespeichert!",
+    "googleAuthFailed": "Google-Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "bulkUpdateError": "Fehler beim Massenupdate. Details in der Konsole.",
+    "providerNotRegistered": "{{providerType}}-Provider ist nicht registriert."
+  },
+  "ribbon": {
+    "openCalendar": "Full Calendar öffnen"
+  },
+  "settings": {
+    "calendars": {
+      "title": "Kalender",
+      "addCalendar": "Kalender hinzufügen",
+      "addCalendarTooltip": "Kalender hinzufügen",
+      "types": {
+        "local": "Vollständige Notiz",
+        "dailynote": "Tägliche Notiz",
+        "icloud": "iCloud",
+        "caldav": "CalDAV",
+        "ical": "Remote (.ics-Format)",
+        "google": "Google Kalender",
+        "tasks": "Obsidian Aufgaben"
+      }
+    },
+    "quickStart": {
+      "title": "Schnellstart: Fügen Sie Ihren ersten Kalender hinzu",
+      "description": "Um zu beginnen, fügen Sie eine Kalenderquelle über die \"+\"-Schaltfläche im Abschnitt \"Kalender verwalten\" hinzu."
+    }
+  }
+}
