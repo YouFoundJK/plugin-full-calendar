@@ -3,7 +3,6 @@ import { Authentication } from '../../types';
 
 // Mock the tsdav module
 jest.mock('tsdav', () => ({
-  createAccount: jest.fn(),
   fetchCalendars: jest.fn(),
   getBasicAuthHeaders: jest.fn()
 }));
@@ -15,20 +14,10 @@ describe('import_caldav-ts', () => {
 
   describe('importCalendars', () => {
     it('should discover calendars and return configurations', async () => {
-      const { createAccount, fetchCalendars, getBasicAuthHeaders } = require('tsdav');
+      const { fetchCalendars, getBasicAuthHeaders } = require('tsdav');
       
       const mockAuthHeaders = { authorization: 'Basic dGVzdDp0ZXN0' };
       (getBasicAuthHeaders as jest.Mock).mockReturnValue(mockAuthHeaders);
-
-      const mockAccount = {
-        accountType: 'caldav' as const,
-        serverUrl: 'https://calendar.zoho.in/caldav/',
-        rootUrl: 'https://calendar.zoho.in/caldav/',
-        principalUrl: 'https://calendar.zoho.in/caldav/principals/user/',
-        homeUrl: 'https://calendar.zoho.in/caldav/calendars/'
-      };
-      
-      (createAccount as jest.Mock).mockResolvedValue(mockAccount);
       
       (fetchCalendars as jest.Mock).mockResolvedValue([
         {
@@ -57,21 +46,22 @@ describe('import_caldav-ts', () => {
       const configs = await importCalendars(auth, url, existingIds);
 
       expect(getBasicAuthHeaders).toHaveBeenCalled();
-      expect(createAccount).toHaveBeenCalledWith({
+      
+      expect(fetchCalendars).toHaveBeenCalledWith({
         account: expect.objectContaining({
           accountType: 'caldav',
           serverUrl: 'https://calendar.zoho.in/caldav/',
+          rootUrl: 'https://calendar.zoho.in/caldav/',
+          principalUrl: 'https://calendar.zoho.in/caldav/',
+          homeUrl: 'https://calendar.zoho.in/caldav/',
           credentials: {
             username: 'testuser',
             password: 'testpass'
           }
         }),
-        headers: mockAuthHeaders,
-        loadCollections: false,
-        loadObjects: false
+        headers: mockAuthHeaders
       });
 
-      expect(fetchCalendars).toHaveBeenCalled();
       expect(configs).toHaveLength(2);
 
       expect(configs[0]).toMatchObject({
@@ -98,17 +88,9 @@ describe('import_caldav-ts', () => {
     });
 
     it('should handle displayName as Record<string, unknown>', async () => {
-      const { createAccount, fetchCalendars, getBasicAuthHeaders } = require('tsdav');
+      const { fetchCalendars, getBasicAuthHeaders } = require('tsdav');
       
       (getBasicAuthHeaders as jest.Mock).mockReturnValue({});
-      
-      const mockAccount = {
-        accountType: 'caldav' as const,
-        serverUrl: 'https://calendar.zoho.in/caldav/',
-        rootUrl: 'https://calendar.zoho.in/caldav/'
-      };
-      
-      (createAccount as jest.Mock).mockResolvedValue(mockAccount);
       
       (fetchCalendars as jest.Mock).mockResolvedValue([
         {
@@ -133,17 +115,9 @@ describe('import_caldav-ts', () => {
     });
 
     it('should handle URL with trailing slash', async () => {
-      const { createAccount, fetchCalendars, getBasicAuthHeaders } = require('tsdav');
+      const { fetchCalendars, getBasicAuthHeaders } = require('tsdav');
       
       (getBasicAuthHeaders as jest.Mock).mockReturnValue({});
-      
-      const mockAccount = {
-        accountType: 'caldav' as const,
-        serverUrl: 'https://calendar.zoho.in/caldav/',
-        rootUrl: 'https://calendar.zoho.in/caldav/'
-      };
-      
-      (createAccount as jest.Mock).mockResolvedValue(mockAccount);
       
       (fetchCalendars as jest.Mock).mockResolvedValue([
         {
@@ -167,16 +141,9 @@ describe('import_caldav-ts', () => {
     });
 
     it('should throw error when no calendars found', async () => {
-      const { createAccount, fetchCalendars, getBasicAuthHeaders } = require('tsdav');
+      const { fetchCalendars, getBasicAuthHeaders } = require('tsdav');
       
       (getBasicAuthHeaders as jest.Mock).mockReturnValue({});
-      
-      const mockAccount = {
-        accountType: 'caldav' as const,
-        serverUrl: 'https://calendar.zoho.in/caldav/'
-      };
-      
-      (createAccount as jest.Mock).mockResolvedValue(mockAccount);
       (fetchCalendars as jest.Mock).mockResolvedValue([]);
 
       const auth: Authentication = {
@@ -194,16 +161,9 @@ describe('import_caldav-ts', () => {
     });
 
     it('should generate unique IDs for multiple calendars', async () => {
-      const { createAccount, fetchCalendars, getBasicAuthHeaders } = require('tsdav');
+      const { fetchCalendars, getBasicAuthHeaders } = require('tsdav');
       
       (getBasicAuthHeaders as jest.Mock).mockReturnValue({});
-      
-      const mockAccount = {
-        accountType: 'caldav' as const,
-        serverUrl: 'https://calendar.zoho.in/caldav/'
-      };
-      
-      (createAccount as jest.Mock).mockResolvedValue(mockAccount);
       
       (fetchCalendars as jest.Mock).mockResolvedValue([
         {
