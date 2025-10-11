@@ -9,8 +9,22 @@ import {
   getNavigationView
 } from './DateNavigation';
 import type { NavigationContext } from './DateNavigation';
+import { initializeI18n } from '../../i18n/i18n';
+
+// Mock Obsidian App for i18n
+const createMockApp = () => {
+  return {
+    vault: {
+      getConfig: jest.fn().mockReturnValue('en')
+    }
+  } as any;
+};
 
 describe('DateNavigation', () => {
+  beforeAll(async () => {
+    // Initialize i18n before running tests
+    await initializeI18n(createMockApp());
+  });
   describe('getAvailableNavigationOptions', () => {
     it('should return correct options for day view', () => {
       const context: NavigationContext = {

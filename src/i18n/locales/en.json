@@ -19,7 +19,12 @@
     "chronoAnalyserInsightsSaved": "Insights configuration saved!",
     "googleAuthFailed": "Google authentication failed. Please try again.",
     "bulkUpdateError": "Error during bulk update. Check console for details.",
-    "providerNotRegistered": "{{providerType}} provider is not registered."
+    "providerNotRegistered": "{{providerType}} provider is not registered.",
+    "timezoneChanged": "System timezone changed to {{timezone}}. Full Calendar view updated to match.",
+    "revalidatingRemotes": "Revalidating remote calendars...",
+    "revalidationFailed": "One or more remote calendars failed to load. Check the console for details.",
+    "revalidationSuccess": "Remote calendars revalidated.",
+    "cannotOpenRemote": "Cannot open note for a remote event."
   },
   "ribbon": {
     "openCalendar": "Open Full Calendar"
@@ -37,11 +42,41 @@
         "ical": "Remote (.ics format)",
         "google": "Google Calendar",
         "tasks": "Obsidian Tasks"
+      },
+      "fullNote": {
+        "directory": {
+          "label": "Directory",
+          "description": "Directory to store event notes"
+        }
       }
     },
     "quickStart": {
       "title": "Quick Start: Add Your First Calendar",
       "description": "To begin, add a calendar source using the \"+\" button in the \"Manage calendars\" section."
     }
+  },
+  "ui": {
+    "buttons": {
+      "addCalendar": "Add Calendar"
+    },
+    "navigation": {
+      "thisMonth": "This Month",
+      "thisWeek": "This Week",
+      "customDate": "Custom Date...",
+      "viewMonth": "View Month",
+      "viewWeek": "View Week",
+      "viewDay": "View Day"
+    }
+  },
+  "notifications": {
+    "eventStarting": {
+      "title": "Event Starting Soon",
+      "body": "{{title}} starts at {{time}}"
+    },
+    "eventEnding": {
+      "title": "Event Ending Soon",
+      "body": "{{title}} ends at {{time}}"
+    },
+    "allDaySuffix": "(All-day)"
   }
 }
