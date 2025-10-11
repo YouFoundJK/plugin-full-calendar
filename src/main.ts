@@ -21,6 +21,7 @@ import EventCache from './core/EventCache';
 import { toEventInput } from './core/interop';
 import { manageTimezone } from './features/Timezone';
 import { Notice, Plugin, TFile, App } from 'obsidian';
+import { initializeI18n } from './i18n/i18n';
 
 // Heavy calendar classes are loaded lazily in the initializer map below
 import type { CalendarView } from './ui/view';
@@ -89,6 +90,9 @@ export default class FullCalendarPlugin extends Plugin {
    * listeners for Vault file changes (create, rename, delete).
    */
   async onload() {
+    // Initialize i18n system first, before any UI is rendered
+    await initializeI18n(this.app);
+
     this.isMobile = (this.app as App & { isMobile: boolean }).isMobile;
     this.providerRegistry = new ProviderRegistry(this);
 

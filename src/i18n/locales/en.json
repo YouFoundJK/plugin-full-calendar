@@ -1,0 +1,20 @@
+{
+  "commands": {
+    "newEvent": "New Event",
+    "resetCache": "Reset Event Cache",
+    "revalidateRemote": "Revalidate remote calendars",
+    "openCalendar": "Open Calendar",
+    "openChronoAnalyser": "Open Chrono Analyser (Desktop Only)",
+    "openSidebar": "Open in sidebar"
+  },
+  "notices": {
+    "settingsUpdated": "Full Calendar has updated your calendar settings to a new format.",
+    "cacheReset": "Full Calendar has been reset.",
+    "chronoAnalyserMobileDisabled": "The Chrono Analyser feature is only available on the desktop version of Obsidian.",
+    "chronoAnalyserInitializing": "Chrono Analyser: Initializing event cache...",
+    "googleAuthFailed": "Google authentication failed. Please try again."
+  },
+  "ribbon": {
+    "openCalendar": "Open Full Calendar"
+  }
+}
