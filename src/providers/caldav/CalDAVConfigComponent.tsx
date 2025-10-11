@@ -5,6 +5,7 @@ import { UsernameInput } from '../../ui/components/forms/UsernameInput';
 import { PasswordInput } from '../../ui/components/forms/PasswordInput';
 import { CalDAVProviderConfig } from './typesCalDAV';
 import { importCalendars } from './import_caldav';
+import { t } from '../../i18n/i18n';
 
 interface CalDAVConfigComponentProps {
   config: Partial<CalDAVProviderConfig>;
@@ -21,14 +22,14 @@ export const CalDAVConfigComponent: React.FC<CalDAVConfigComponentProps> = ({
   const [username, setUsername] = useState(config.username || '');
   const [password, setPassword] = useState(config.password || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitText, setSubmitText] = useState('Import Calendars');
+  const [submitText, setSubmitText] = useState(t('settings.calendars.caldav.importButton'));
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!url || !username || !password) return;
 
     setIsSubmitting(true);
-    setSubmitText('Importing...');
+    setSubmitText(t('settings.calendars.caldav.importing'));
 
     try {
       const sources = await importCalendars({ type: 'basic', username, password }, url, []);
@@ -36,7 +37,7 @@ export const CalDAVConfigComponent: React.FC<CalDAVConfigComponentProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to import CalDAV calendars', error);
-      setSubmitText('Import Calendars');
+      setSubmitText(t('settings.calendars.caldav.importButton'));
       setIsSubmitting(false);
     }
   };
@@ -45,10 +46,9 @@ export const CalDAVConfigComponent: React.FC<CalDAVConfigComponentProps> = ({
     <form onSubmit={handleSubmit}>
       <div className="setting-item">
         <div className="setting-item-info">
-          <div className="setting-item-name">Collection URL</div>
+          <div className="setting-item-name">{t('settings.calendars.caldav.url.label')}</div>
           <div className="setting-item-description">
-            Paste your calendar collection URL (e.g.{' '}
-            <code>https://calendar.zoho.in/caldav/&lt;id&gt;/events/</code>)
+            {t('settings.calendars.caldav.url.description')}
           </div>
         </div>
         <div className="setting-item-control">
@@ -58,8 +58,8 @@ export const CalDAVConfigComponent: React.FC<CalDAVConfigComponentProps> = ({
 
       <div className="setting-item">
         <div className="setting-item-info">
-          <div className="setting-item-name">Username</div>
-          <div className="setting-item-description">Username for the account</div>
+          <div className="setting-item-name">{t('settings.calendars.caldav.username.label')}</div>
+          <div className="setting-item-description">{t('settings.calendars.caldav.username.description')}</div>
         </div>
         <div className="setting-item-control">
           <UsernameInput value={username} onChange={setUsername} />
@@ -68,8 +68,8 @@ export const CalDAVConfigComponent: React.FC<CalDAVConfigComponentProps> = ({
 
       <div className="setting-item">
         <div className="setting-item-info">
-          <div className="setting-item-name">Password</div>
-          <div className="setting-item-description">Password for the account</div>
+          <div className="setting-item-name">{t('settings.calendars.caldav.password.label')}</div>
+          <div className="setting-item-description">{t('settings.calendars.caldav.password.description')}</div>
         </div>
         <div className="setting-item-control">
           <PasswordInput value={password} onChange={setPassword} />
