@@ -290,7 +290,7 @@ export const EditEvent = ({
       category: category || undefined,
       display: display !== 'auto' ? display : undefined,
       subCategory: parsedSubCategory,
-      endReminder: endReminder || undefined, // ADD THIS LINE
+      endReminder: endReminder || undefined,
       ...timeInfo,
       ...eventData
     } as OFCEvent;

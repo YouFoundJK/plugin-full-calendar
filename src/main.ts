@@ -13,7 +13,7 @@
  */
 
 import { NotificationManager } from './features/notifications/NotificationManager';
-import { StatusBarManager } from './features/statusbar/StatusBarManager'; // added
+import { StatusBarManager } from './features/statusbar/StatusBarManager';
 import { LazySettingsTab } from './ui/settings/LazySettingsTab';
 import { ensureCalendarIds, migrateAndSanitizeSettings } from './ui/settings/utilsSettings';
 import { PLUGIN_SLUG } from './types';
@@ -35,7 +35,7 @@ export default class FullCalendarPlugin extends Plugin {
   private _settings: FullCalendarSettings = DEFAULT_SETTINGS;
 
   notificationManager!: NotificationManager;
-  statusBarManager!: StatusBarManager; // added
+  statusBarManager!: StatusBarManager;
 
   get settings(): FullCalendarSettings {
     return this._settings;
@@ -108,13 +108,13 @@ export default class FullCalendarPlugin extends Plugin {
     this.providerRegistry.listenForSourceChanges();
 
     this.cache.reset();
-    this.cache.listenForSettingsChanges(this.app.workspace); // ADD THIS LINE
+    this.cache.listenForSettingsChanges(this.app.workspace);
 
-    // ADD: Start NotificationManager after providerRegistry is initialized
+    // Start NotificationManager after providerRegistry is initialized
     this.notificationManager = new NotificationManager(this);
     this.notificationManager.update(this.settings);
-    this.statusBarManager = new StatusBarManager(this); // added
-    this.statusBarManager.update(this.settings); // added
+    this.statusBarManager = new StatusBarManager(this);
+    this.statusBarManager.update(this.settings);
     const workspaceEvents = this.app.workspace as unknown as {
       // Keep `any` here because Obsidian's internal event system passes heterogeneous arguments.
       // Localising the unsafeness avoids polluting the rest of the codebase.
@@ -133,7 +133,7 @@ export default class FullCalendarPlugin extends Plugin {
     this.registerEvent(
       workspaceEvents.on(
         'full-calendar:settings-updated',
-        this.statusBarManager.update.bind(this.statusBarManager) // added
+        this.statusBarManager.update.bind(this.statusBarManager)
       )
     );
     this.registerEvent(
@@ -302,7 +302,7 @@ export default class FullCalendarPlugin extends Plugin {
       this.notificationManager.unload();
     }
     if (this.statusBarManager) {
-      this.statusBarManager.unload(); // added
+      this.statusBarManager.unload();
     }
     if (this.providerRegistry) {
       this.providerRegistry.stopListening();

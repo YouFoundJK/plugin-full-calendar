@@ -141,7 +141,7 @@ export class CalendarView extends ItemView {
   private timelineResources: ResourceItem[] | null = null;
   private dateNavigation: DateNavigation | null = null;
   // private currentZoomIndex: number = DEFAULT_ZOOM_INDEX; // REMOVE THIS LINE
-  private zoomIndexByView: { [viewType: string]: number } = {}; // ADD THIS LINE
+  private zoomIndexByView: { [viewType: string]: number } = {};
   private throttledZoom: (event: WheelEvent) => void;
 
   constructor(leaf: WorkspaceLeaf, plugin: FullCalendarPlugin, inSidebar = false) {
@@ -949,7 +949,7 @@ export class CalendarView extends ItemView {
         return;
       }
 
-      // ADD: handle resync event
+      // handle resync event
       if (info.type === 'resync') {
         this.onOpen();
         return;
