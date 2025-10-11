@@ -15,7 +15,7 @@
 import { ZodError, z } from 'zod';
 import { OFCEvent } from './schema';
 import { getNextColor } from '../ui/components/colors';
-import { t } from '../i18n/i18n';
+import { t } from '../features/i18n/i18n';
 
 // New schema for Google Auth object, now local to each Google source
 const GoogleAuthSchema = z

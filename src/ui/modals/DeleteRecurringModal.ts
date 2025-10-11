@@ -1,7 +1,7 @@
 // src/ui/modals/DeleteRecurringModal.ts
 
 import { App, ButtonComponent, Modal, Setting } from 'obsidian';
-import { t } from '../../i18n/i18n';
+import { t } from '../../features/i18n/i18n';
 
 export class DeleteRecurringModal extends Modal {
   constructor(

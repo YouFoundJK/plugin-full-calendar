@@ -2,7 +2,7 @@ import * as React from 'react';
 import { DirectorySelect } from '../../ui/components/forms/DirectorySelect';
 import { FullNoteProviderConfig } from './typesLocal';
 import { ProviderConfigContext } from '../typesProvider';
-import { t } from '../../i18n/i18n';
+import { t } from '../../features/i18n/i18n';
 
 interface FullNoteConfigComponentProps {
   config: Partial<FullNoteProviderConfig>;

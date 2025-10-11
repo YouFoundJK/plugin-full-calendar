@@ -5,7 +5,7 @@ import { UsernameInput } from '../../ui/components/forms/UsernameInput';
 import { PasswordInput } from '../../ui/components/forms/PasswordInput';
 import { CalDAVProviderConfig } from './typesCalDAV';
 import { importCalendars } from './import_caldav';
-import { t } from '../../i18n/i18n';
+import { t } from '../../features/i18n/i18n';
 
 interface CalDAVConfigComponentProps {
   config: Partial<CalDAVProviderConfig>;

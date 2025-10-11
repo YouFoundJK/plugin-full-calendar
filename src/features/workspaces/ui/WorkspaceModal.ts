@@ -12,7 +12,7 @@ import {
   BusinessHoursSettings
 } from '../../../types/settings';
 import { CalendarInfo } from '../../../types/calendar_settings';
-import { t } from '../../../i18n/i18n';
+import { t } from '../../i18n/i18n';
 
 export class WorkspaceModal extends Modal {
   plugin: FullCalendarPlugin;

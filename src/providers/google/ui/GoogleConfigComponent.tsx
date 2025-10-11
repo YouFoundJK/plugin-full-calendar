@@ -12,7 +12,7 @@ import { startGoogleLogin } from '../auth/auth';
 import FullCalendarPlugin from '../../../main';
 import { GoogleApiError } from '../auth/request';
 import { GoogleAuthManager } from '../auth/GoogleAuthManager'; // Import the manager
-import { t } from '../../../i18n/i18n';
+import { t } from '../../../features/i18n/i18n';
 
 // ADD this new type definition. It accurately describes what the component passes back.
 type SelectedGoogleCalendar = {

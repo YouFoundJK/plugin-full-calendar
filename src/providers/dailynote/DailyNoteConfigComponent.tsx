@@ -2,7 +2,7 @@ import * as React from 'react';
 import { HeadingInput } from '../../ui/components/forms/HeadingInput';
 import { DailyNoteProviderConfig } from './typesDaily';
 import { ProviderConfigContext } from '../typesProvider';
-import { t } from '../../i18n/i18n';
+import { t } from '../../features/i18n/i18n';
 
 interface DailyNoteConfigComponentProps {
   config: Partial<DailyNoteProviderConfig>;

@@ -8,7 +8,7 @@
 import * as React from 'react';
 import { TasksProviderConfig } from './typesTask';
 import { ProviderConfigContext } from '../typesProvider';
-import { t } from '../../i18n/i18n';
+import { t } from '../../features/i18n/i18n';
 
 interface TasksConfigComponentProps {
   config: Partial<TasksProviderConfig>;

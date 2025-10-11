@@ -5,7 +5,7 @@ import { FullCalendarSettings } from '../../types/settings';
 import { openFileForEvent } from '../../utils/eventActions';
 import FullCalendarPlugin from '../../main';
 import { TimeState, EnrichedOFCEvent } from '../../core/TimeEngine';
-import { t } from '../../i18n/i18n';
+import { t } from '../i18n/i18n';
 
 export class NotificationManager {
   private plugin: FullCalendarPlugin;

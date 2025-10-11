@@ -25,7 +25,7 @@
  */
 
 import { App, Modal, Notice, Setting, TextComponent } from 'obsidian';
-import { t } from '../../../i18n/i18n';
+import { t } from '../../i18n/i18n';
 
 // This modal presents the 3 bulk-update choices to the user.
 export class BulkCategorizeModal extends Modal {

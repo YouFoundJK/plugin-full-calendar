@@ -10,7 +10,7 @@ import * as ReactDOM from 'react-dom/client';
 import FullCalendarPlugin from '../../../main';
 import { CategorySettingsManager } from './CategorySetting';
 import { bulkUpdateCategories, bulkRemoveCategories } from '../bulkCategorization';
-import { t } from '../../../i18n/i18n';
+import { t } from '../../i18n/i18n';
 
 export function renderCategorizationSettings(
   containerEl: HTMLElement,

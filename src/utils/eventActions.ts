@@ -16,7 +16,7 @@
 
 import EventCache from '../core/EventCache';
 import { MarkdownView, TFile, Vault, Workspace, Notice } from 'obsidian';
-import { t } from '../i18n/i18n';
+import { t } from '../features/i18n/i18n';
 
 /**
  * Open a file in a NEW PANE (new tab view) to a given event.

@@ -21,7 +21,7 @@ import {
   parseTitle,
   parseSubcategoryTitle
 } from '../../features/category/categoryParser';
-import { t } from '../../i18n/i18n';
+import { t } from '../../features/i18n/i18n';
 
 interface DayChoiceProps {
   code: string;

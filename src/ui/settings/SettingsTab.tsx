@@ -37,7 +37,7 @@ import { ProviderRegistry } from '../../providers/ProviderRegistry';
 import { makeDefaultPartialCalendarSource } from '../../types/calendar_settings';
 
 import { generateCalendarId } from '../../types/calendar_settings';
-import { t } from '../../i18n/i18n';
+import { t } from '../../features/i18n/i18n';
 
 // Import the new React components
 import './changelogs/changelog.css';

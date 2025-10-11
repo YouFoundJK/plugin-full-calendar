@@ -17,7 +17,7 @@
 import { Calendar } from '@fullcalendar/core';
 import { Menu } from 'obsidian';
 import { DatePicker, createHiddenDatePicker } from '../../ui/components/forms/DatePicker';
-import { t } from '../../i18n/i18n';
+import { t } from '../i18n/i18n';
 
 export type NavigationOption = 'thisMonth' | 'thisWeek' | 'customDate';
 

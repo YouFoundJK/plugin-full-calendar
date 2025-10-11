@@ -24,7 +24,7 @@ import {
 } from '../../providers/dailynote/parser_dailyN';
 import { constructTitle, parseTitle } from './categoryParser';
 import { validateEvent } from '../../types/schema';
-import { t } from '../../i18n/i18n';
+import { t } from '../i18n/i18n';
 
 type CategoryProvider = (file: TFile) => string | undefined;
 

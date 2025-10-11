@@ -7,6 +7,31 @@
 
 import { initializeI18n, i18n, t } from './i18n';
 
+// Mock localStorage for Jest environment
+beforeAll(() => {
+  const localStorageMock = (function () {
+    let store: Record<string, string> = {};
+    return {
+      getItem(key: string) {
+        return store[key] || null;
+      },
+      setItem(key: string, value: string) {
+        store[key] = value.toString();
+      },
+      clear() {
+        store = {};
+      },
+      removeItem(key: string) {
+        delete store[key];
+      }
+    };
+  })();
+  Object.defineProperty(global, 'localStorage', {
+    value: localStorageMock,
+    writable: true
+  });
+});
+
 // Mock Obsidian App
 const createMockApp = (language: string = 'en') => {
   return {

@@ -14,7 +14,7 @@ import { DataService } from './data/DataService';
 import { PieData, TimeRecord } from './data/types';
 import { InsightsEngine } from './data/InsightsEngine';
 import { InsightConfigModal, InsightsConfig } from './ui/ui'; // Import necessary types
-import { t } from '../i18n/i18n';
+import { t } from '../features/i18n/i18n';
 
 interface IChartStrategy {
   analysisName: string;

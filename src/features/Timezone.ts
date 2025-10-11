@@ -19,7 +19,7 @@ import { DateTime } from 'luxon';
 import { Notice } from 'obsidian';
 import { OFCEvent } from '../types';
 import FullCalendarPlugin from '../main';
-import { t } from '../i18n/i18n';
+import { t } from './i18n/i18n';
 
 /**
  * Helper function to parse a time string (HH:mm or h:mm a) into a Luxon DateTime object.

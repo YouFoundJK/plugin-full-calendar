@@ -8,7 +8,7 @@ import { Setting, ButtonComponent } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { WorkspaceSettings, createDefaultWorkspace } from '../../../types/settings';
 import { WorkspaceModal } from './WorkspaceModal';
-import { t } from '../../../i18n/i18n';
+import { t } from '../../i18n/i18n';
 
 export function renderWorkspaceSettings(
   containerEl: HTMLElement,

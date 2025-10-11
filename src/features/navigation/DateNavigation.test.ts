@@ -8,8 +8,33 @@ import {
   getNavigationLabel,
   getNavigationView
 } from './DateNavigation';
+
+// Mock localStorage for Jest environment
+beforeAll(() => {
+  const localStorageMock = (function () {
+    let store: Record<string, string> = {};
+    return {
+      getItem(key: string) {
+        return store[key] || null;
+      },
+      setItem(key: string, value: string) {
+        store[key] = value.toString();
+      },
+      clear() {
+        store = {};
+      },
+      removeItem(key: string) {
+        delete store[key];
+      }
+    };
+  })();
+  Object.defineProperty(global, 'localStorage', {
+    value: localStorageMock,
+    writable: true
+  });
+});
 import type { NavigationContext } from './DateNavigation';
-import { initializeI18n } from '../../i18n/i18n';
+import { initializeI18n } from '../i18n/i18n';
 
 // Mock Obsidian App for i18n
 const createMockApp = () => {

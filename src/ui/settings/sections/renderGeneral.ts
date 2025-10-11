@@ -6,7 +6,7 @@
 
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
-import { t } from '../../../i18n/i18n';
+import { t } from '../../../features/i18n/i18n';
 
 const INITIAL_VIEW_OPTIONS = {
   DESKTOP: {

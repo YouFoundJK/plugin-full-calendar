@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { UrlInput } from '../../../ui/components/forms/UrlInput';
 import { ICSProviderConfig } from '../typesICS';
-import { t } from '../../../i18n/i18n';
+import { t } from '../../../features/i18n/i18n';
 
 interface ICSConfigComponentProps {
   config: Partial<ICSProviderConfig>;

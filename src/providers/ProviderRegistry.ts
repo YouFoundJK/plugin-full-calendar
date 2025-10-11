@@ -5,7 +5,7 @@ import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
 import { ObsidianIO, ObsidianInterface } from '../ObsidianAdapter';
 import { TasksBacklogManager } from './tasks/TasksBacklogManager';
-import { t } from '../i18n/i18n';
+import { t } from '../features/i18n/i18n';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
