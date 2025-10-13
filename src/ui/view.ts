@@ -908,6 +908,11 @@ export class CalendarView extends ItemView {
 
           // Re-fetch events for the main calendar to show the new event
           this.onOpen();
+
+          // COMMENTED OUT: Do not open edit dialog after drop from backlog
+          // if (window.tasksUI && typeof window.tasksUI.showEdit === 'function') {
+          //   window.tasksUI.showEdit(taskId);
+          // }
         } catch (error) {
           console.error('Failed to schedule task:', error);
           const message = error instanceof Error ? error.message : 'Unknown error occurred';
