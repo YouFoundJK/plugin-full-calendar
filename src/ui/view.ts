@@ -956,7 +956,18 @@ export class CalendarView extends ItemView {
 
       // handle resync event
       if (info.type === 'resync') {
-        this.onOpen();
+        // DON'T call onOpen() - that resets everything!
+        // Instead, just refresh the event sources from the current cache state
+        this.viewEnhancer.updateSettings(this.plugin.settings);
+        const allCachedSources = this.plugin.cache.getAllEvents();
+        const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
+
+        requestAnimationFrame(() => {
+          if (this.fullCalendarView) {
+            this.fullCalendarView.removeAllEventSources();
+            sources.forEach(source => this.fullCalendarView!.addEventSource(source));
+          }
+        });
         return;
       }
 
