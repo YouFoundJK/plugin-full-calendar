@@ -69,6 +69,7 @@ export class ProviderRegistry {
     this.register('caldav', () => import('./caldav/CalDAVProvider'));
     this.register('google', () => import('./google/GoogleProvider'));
     this.register('tasks', () => import('./tasks/TasksPluginProvider'));
+    this.register('bases', () => import('./bases/BasesProvider'));
   }
 
   public register(type: string, loader: ProviderLoader): void {
