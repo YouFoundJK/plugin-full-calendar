@@ -328,40 +328,56 @@ export function toEventInput(
     // Tell FullCalendar it’s all-day when relevant
     baseEvent.allDay = !!frontmatter.allDay;
   } else if (frontmatter.type === 'rrule') {
+    // Cast to any for debug logging to access properties that may not exist on all union variants
+    const fm = frontmatter as any;
+
+    // Determine source and display timezones
+    const sourceZone = frontmatter.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const displayZone =
+      settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // Parse the event time in its source timezone, then convert to display timezone
     const dtstart = (() => {
-      const zone = frontmatter.timezone || settings.displayTimezone || 'local';
       if (frontmatter.allDay) {
-        // For all-day events, we treat them as being at the start of the day in the specified zone.
-        return DateTime.fromISO(frontmatter.startDate, { zone });
+        // For all-day events, we treat them as being at the start of the day in the display zone.
+        return DateTime.fromISO(fm.startDate, { zone: displayZone });
       } else {
-        const dtstartStr = combineDateTimeStrings(frontmatter.startDate, frontmatter.startTime);
+        const dtstartStr = combineDateTimeStrings(fm.startDate, fm.startTime);
 
         if (!dtstartStr) {
           return null;
         }
-        // When creating the DateTime, explicitly use the event's timezone.
-        return DateTime.fromISO(dtstartStr, { zone });
+
+        // First, parse in the event's source timezone
+        const dtInSource = DateTime.fromISO(dtstartStr, { zone: sourceZone });
+
+        // Then convert to the display timezone for visualization
+        const dtInDisplay = dtInSource.setZone(displayZone);
+
+        return dtInDisplay;
       }
     })();
     if (dtstart === null) {
       return null;
     }
-    // NOTE: how exdates are handled does not support events which recur more than once per day.
-    const exdate = frontmatter.skipDates
+
+    // Construct exdates with proper timezone handling for DST
+    // Each exdate must be calculated in the event's SOURCE timezone to account for DST changes,
+    // then converted to UTC for FullCalendar
+    const exdate = fm.skipDates
       .map((d: string) => {
-        // Can't do date arithmetic because timezone might change for different exdates due to DST.
-        // RRule only has one dtstart that doesn't know about DST/timezone changes.
-        // Therefore, just concatenate the date for this exdate and the start time for the event together.
-        const date = DateTime.fromISO(d).toISODate();
-        const time = dtstart.toJSDate().toISOString().split('T')[1];
+        // Create the exdate DateTime in the event's source timezone at the event's start time
+        // This ensures DST is correctly applied for each specific date
+        const exDateTime = DateTime.fromISO(`${d}T${fm.startTime}`, { zone: sourceZone });
 
-        return `${date}T${time}`;
+        // Return the UTC ISO string for FullCalendar
+        return exDateTime.toUTC().toISO();
       })
-      .flatMap((d: string) => (d ? [d] : []));
+      .flatMap((d: string | null) => (d ? [d] : []));
 
-    // Manually construct the rrule string with TZID to preserve timezone context for FullCalendar.
-    const zone = frontmatter.timezone || settings.displayTimezone || 'local';
-    const dtstartString = `DTSTART;TZID=${zone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
+    // Construct the rrule string with DISPLAY timezone for visualization
+    // The DTSTART uses the converted time in the display timezone
+    const dtstartString = `DTSTART;TZID=${displayZone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
     const rruleString = frontmatter.rrule;
 
     baseEvent.rrule = [dtstartString, rruleString].join('\n'); // We don't need exdates here as FullCalendar handles them separately.
