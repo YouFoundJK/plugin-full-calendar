@@ -328,7 +328,6 @@ export function toEventInput(
     // Tell FullCalendar it’s all-day when relevant
     baseEvent.allDay = !!frontmatter.allDay;
   } else if (frontmatter.type === 'rrule') {
-    // Cast to any for debug logging to access properties that may not exist on all union variants
     const fm = frontmatter as any;
 
     // Determine source and display timezones
@@ -361,17 +360,37 @@ export function toEventInput(
       return null;
     }
 
-    // Construct exdates with proper timezone handling for DST
-    // Each exdate must be calculated in the event's SOURCE timezone to account for DST changes,
-    // then converted to UTC for FullCalendar
+    // Construct exdates using the DISPLAY timezone to match the DTSTART timezone.
+    // CRITICAL: The monkeypatched rrule plugin (in calendar.ts) generates instances where
+    // the LOCAL time is stored in UTC components. For example, an 8am event is returned as
+    // a Date with getUTCHours()=8, NOT the actual UTC time.
+    //
+    // Therefore, exdates must ALSO use local time stuffed into UTC components, NOT actual UTC.
+    // We take the display timezone's local time and create a Date using Date.UTC() with those
+    // local time components.
     const exdate = fm.skipDates
       .map((d: string) => {
-        // Create the exdate DateTime in the event's source timezone at the event's start time
-        // This ensures DST is correctly applied for each specific date
-        const exDateTime = DateTime.fromISO(`${d}T${fm.startTime}`, { zone: sourceZone });
+        // First, get the event time in the source timezone for the skip date
+        const exInSource = DateTime.fromISO(`${d}T${fm.startTime}`, { zone: sourceZone });
 
-        // Return the UTC ISO string for FullCalendar
-        return exDateTime.toUTC().toISO();
+        // Convert to display timezone (same as DTSTART) to get the correct local time
+        const exInDisplay = exInSource.setZone(displayZone);
+
+        // Create a "fake UTC" date where the local time components are stored in UTC.
+        // This matches how the monkeypatched rrule expander returns instances.
+        const fakeUtcDate = new Date(
+          Date.UTC(
+            exInDisplay.year,
+            exInDisplay.month - 1, // JavaScript months are 0-indexed
+            exInDisplay.day,
+            exInDisplay.hour,
+            exInDisplay.minute,
+            0,
+            0
+          )
+        );
+
+        return fakeUtcDate.toISOString();
       })
       .flatMap((d: string | null) => (d ? [d] : []));
 
