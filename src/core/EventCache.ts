@@ -198,6 +198,7 @@ export default class EventCache {
    * Populate the cache with events from all sources.
    */
   async populate(): Promise<void> {
+    const startTime = performance.now();
     const localEvents = await this.plugin.providerRegistry.fetchAllByPriority(
       (calendarId, eventsForSync) => {
         const tuples = eventsForSync.map(

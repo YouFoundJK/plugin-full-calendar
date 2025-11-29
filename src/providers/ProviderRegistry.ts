@@ -356,7 +356,7 @@ export class ProviderRegistry {
     // Load remote providers asynchronously in background
     if (remoteProviders.length > 0) {
       (async () => {
-        for (const [settingsId, instance] of remoteProviders) {
+        const promises = remoteProviders.map(async ([settingsId, instance]) => {
           try {
             const rawEvents = await instance.getEvents();
             const events = rawEvents.map(([rawEvent, location]) => ({
@@ -372,7 +372,10 @@ export class ProviderRegistry {
             const source = this.getSource(settingsId);
             console.warn(`Full Calendar: Failed to load remote calendar source`, source, e);
           }
-        }
+        });
+
+        await Promise.all(promises);
+
         // All remote providers have completed
         if (onAllComplete) {
           onAllComplete();
