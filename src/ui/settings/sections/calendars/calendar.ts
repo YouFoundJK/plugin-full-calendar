@@ -6,11 +6,11 @@
  * This file provides the `renderCalendar` function, which is a factory for
  * creating a `Calendar` instance from the `@fullcalendar/core` library. It
  * encapsulates all the configuration and boilerplate needed to set up the
-- * calendar, including plugins, views, toolbar settings, and interaction
+ * calendar, including plugins, views, toolbar settings, and interaction
  * callbacks.
  *
  * @exports renderCalendar
- * 
+ *
  * @license See LICENSE.md
  */
 
@@ -91,19 +91,15 @@ export async function renderCalendar(
   // Apply RRULE monkeypatch once after plugin loads
   // This patch fixes timezone/DST handling for recurring events.
   //
-  // PROBLEM: When using DTSTART;TZID=Zone:YYYYMMDDTHHMMSS format, rrule.js returns dates
-  // where getUTCHours() gives the LOCAL time in the specified timezone.
-  // FullCalendar then incorrectly applies the browser's timezone offset again.
+  // PROBLEM: For events with TZID, rrule.js stores the local time in UTC components.
+  // Across DST boundaries, the actual UTC time changes, causing display time shifts.
   //
-  // Example: DTSTART;TZID=Europe/Prague:20251002T080000 (8am in Prague)
-  //   - rrule.js returns Date with getUTCHours()=8 (meaning 8am Prague local)
-  //   - Browser in Europe/Budapest shows getHours()=10 (UTC+2 applied to "UTC 8")
-  //   - But event should display at 8am, not 10am!
+  // SOLUTION: For events with TZID, we:
+  //   1. Extract the local time from dtstart's UTC components
+  //   2. Get occurrences from the original expand (preserves correct dates)
+  //   3. Apply the local time consistently to all occurrences
   //
-  // SOLUTION: For events with TZID, use our custom expansion that:
-  //   1. Gets occurrences from rrule.js
-  //   2. Extracts the "local time" that rrule.js stored in UTC components
-  //   3. Creates proper UTC dates that will display correctly in any timezone
+  // For floating-time events (no TZID), we use a similar approach with getHours().
   if (!didPatchRRule) {
     const rrulePlugin = ((rrule as unknown as { default?: RRulePluginLike }).default ||
       (rrule as unknown as RRulePluginLike)) as RRulePluginLike;
