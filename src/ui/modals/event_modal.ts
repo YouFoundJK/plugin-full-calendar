@@ -24,6 +24,7 @@ import ReactModal from '../ReactModal';
 import { Notice } from 'obsidian';
 import { OFCEvent } from '../../types';
 import { EditEvent } from './EditEvent';
+import { EventDetails } from './EventDetails';
 import FullCalendarPlugin from '../../main';
 import { ConfirmModal } from './ConfirmModal';
 import { openFileForEvent } from '../../utils/eventActions';
@@ -181,6 +182,39 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
         }
       },
       onAttemptEditInherited // Pass the new handler as a prop
+    });
+  }).open();
+}
+
+export function launchEventDetailsModal(plugin: FullCalendarPlugin, eventId: string) {
+  const event = plugin.cache.getEventById(eventId);
+  if (!event) {
+    new Notice('Event not found.');
+    return;
+  }
+  const eventDetails = plugin.cache.store.getEventDetails(eventId);
+  if (!eventDetails) {
+    new Notice('Event details not found.');
+    return;
+  }
+
+  const calendarId = eventDetails.calendarId;
+  const calendar = plugin.providerRegistry.getSource(calendarId);
+  const calendarName = calendar && calendar.name ? calendar.name : 'Unknown Calendar';
+  const location = eventDetails.location;
+
+  new ReactModal(plugin.app, async closeModal => {
+    return React.createElement(EventDetails, {
+      event,
+      calendarName,
+      location,
+      onClose: () => closeModal(),
+      onOpenNote: location
+        ? async () => {
+            await openFileForEvent(plugin.cache, plugin.app, eventId);
+            closeModal();
+          }
+        : undefined
     });
   }).open();
 }

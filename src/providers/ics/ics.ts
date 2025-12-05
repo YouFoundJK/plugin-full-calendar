@@ -80,6 +80,11 @@ function icsToOFC(input: ical.Event): OFCEvent {
   // Simplified: just use the title directly
   const eventData = { title: summary };
 
+  const description = input.component.getFirstProperty('description')?.getFirstValue();
+  const location = input.component.getFirstProperty('location')?.getFirstValue();
+  // Use extractEventUrl helper or input.component.getFirstProperty('url')
+  const url = extractEventUrl(input);
+
   const startDate = icalTimeToLuxon(input.startDate);
   const endDate = input.endDate ? icalTimeToLuxon(input.endDate) : startDate;
   const uid = input.uid;
@@ -115,7 +120,9 @@ function icsToOFC(input: ical.Event): OFCEvent {
             allDay: false,
             startTime: getLuxonTime(startDate)!,
             endTime: getLuxonTime(endDate)!
-          })
+          }),
+      description,
+      url: url || (location && location.startsWith('http') ? location : undefined)
     };
   } else {
     const date = getLuxonDate(startDate);
@@ -143,7 +150,9 @@ function icsToOFC(input: ical.Event): OFCEvent {
             allDay: false,
             startTime: getLuxonTime(startDate)!,
             endTime: getLuxonTime(endDate)!
-          })
+          }),
+      description,
+      url: url || (location && location.startsWith('http') ? location : undefined)
     };
   }
 }
