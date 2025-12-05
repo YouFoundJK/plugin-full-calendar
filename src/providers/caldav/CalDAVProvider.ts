@@ -1,5 +1,7 @@
 import { OFCEvent, EventLocation } from '../../types';
 import { getEventsFromICS } from '../ics/ics';
+import { eventToIcs, createOverrideVEvent } from '../ics/formatter';
+import ical from 'ical.js';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { CalDAVProviderConfig } from './typesCalDAV';
@@ -214,7 +216,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
   }
 
   getCapabilities(): CalendarProviderCapabilities {
-    return { canCreate: false, canEdit: false, canDelete: false };
+    return { canCreate: true, canEdit: true, canDelete: true };
   }
 
   getEventHandle(event: OFCEvent): EventHandle | null {
@@ -256,18 +258,140 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
     }
   }
 
-  // CUD operations are not supported for this read-only provider.
-  async createEvent(_: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
-    throw new Error('Creating events on a CalDAV calendar is not yet supported.');
+  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
+    // 1. Ensure event has a UID
+    if (!event.uid) {
+      event.uid = window.crypto.randomUUID();
+    }
+    const uid = event.uid;
+
+    // 2. Convert to ICS
+    const icsContent = eventToIcs(event);
+
+    // 3. PUT to server
+    // URL typically: collectionUrl + uid + ".ics"
+    // Helper ensure trailing slash on homeUrl
+    const url = canonCollection(this.source.homeUrl) + `${uid}.ics`;
+
+    await this.doRequest(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'text/calendar; charset=utf-8',
+        'If-None-Match': '*' // Prevent overwriting if it somehow exists
+      },
+      body: icsContent
+    });
+
+    return [event, null];
   }
-  async updateEvent(): Promise<EventLocation | null> {
-    throw new Error('Updating events on a CalDAV calendar is not yet supported.');
+
+  async updateEvent(
+    handle: EventHandle,
+    oldEvent: OFCEvent,
+    newEvent: OFCEvent
+  ): Promise<EventLocation | null> {
+    const uid = handle.persistentId;
+    if (!newEvent.uid) {
+      newEvent.uid = uid;
+    }
+
+    // Convert to ICS
+    const icsContent = eventToIcs(newEvent);
+
+    const url = canonCollection(this.source.homeUrl) + `${uid}.ics`;
+
+    // PUT to update
+    await this.doRequest(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'text/calendar; charset=utf-8'
+        // We could use If-Match with ETag if we had it, to prevent lost updates.
+        // For now, simpler last-write-wins or just overwrite.
+      },
+      body: icsContent
+    });
+
+    return null;
   }
-  async deleteEvent(): Promise<void> {
-    throw new Error('Deleting events on a CalDAV calendar is not yet supported.');
+
+  async deleteEvent(handle: EventHandle): Promise<void> {
+    const uid = handle.persistentId;
+    const url = canonCollection(this.source.homeUrl) + `${uid}.ics`;
+
+    await this.doRequest(url, {
+      method: 'DELETE'
+    });
   }
-  async createInstanceOverride(): Promise<[OFCEvent, EventLocation | null]> {
-    throw new Error('Cannot create a recurring event override on a read-only calendar.');
+
+  async createInstanceOverride(
+    masterEvent: OFCEvent,
+    instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<[OFCEvent, EventLocation | null]> {
+    // 1. Fetch the existing ICS for the master event
+    if (!masterEvent.uid) {
+      throw new Error('Cannot create override: Master event has no UID.');
+    }
+    const uid = masterEvent.uid;
+    const url = canonCollection(this.source.homeUrl) + `${uid}.ics`;
+
+    // Fetch existing
+    // We need to fetch the raw text of the ICS file.
+    const headers: Record<string, string> = {};
+    if (this.source.username && this.source.password) {
+      headers['Authorization'] =
+        'Basic ' +
+        Buffer.from(`${this.source.username}:${this.source.password}`).toString('base64');
+    }
+
+    // Use obsidianFetch directly for GET
+    const res = await obsidianFetch(url, { method: 'GET', headers });
+    if (res.status >= 300) {
+      throw new Error(`Failed to fetch original event for override: ${res.status}`);
+    }
+    const originalIcs = await res.text();
+
+    // 2. Parse existing ICS
+    const jcal = ical.parse(originalIcs);
+    const vcalendar = new ical.Component(jcal);
+
+    // 3. Create the Override VEVENT
+    const overrideVEvent = createOverrideVEvent(newEventData, instanceDate);
+
+    // 4. Merge: Add the new VEVENT to the VCALENDAR
+    vcalendar.addSubcomponent(overrideVEvent);
+
+    // 5. Update: PUT the new ICS back
+    const newIcsContent = vcalendar.toString();
+
+    await this.doRequest(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'text/calendar; charset=utf-8'
+        // Ideally use ETag (If-Match) to avoid race conditions, but for now strict overwrite is safer
+        // given we just fetched it.
+      },
+      body: newIcsContent
+    });
+
+    return [newEventData, null];
+  }
+
+  // Helper to attach auth and fetch
+  private async doRequest(url: string, options: RequestInit) {
+    const headers = (options.headers as Record<string, string>) || {};
+    if (this.source.username && this.source.password) {
+      headers['Authorization'] =
+        'Basic ' +
+        Buffer.from(`${this.source.username}:${this.source.password}`).toString('base64');
+    }
+    options.headers = headers;
+
+    const res = await obsidianFetch(url, options);
+    if (res.status >= 300) {
+      throw new Error(`CalDAV request failed: ${res.status} ${res.statusText}`);
+    }
+    return res;
   }
 
   // Boilerplate methods for the provider interface.
