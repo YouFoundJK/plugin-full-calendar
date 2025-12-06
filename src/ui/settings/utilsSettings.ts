@@ -57,7 +57,9 @@ export function migrateAndSanitizeSettings(settings: unknown): {
       endTime: '17:00'
     },
     enableBackgroundEvents: raw.enableBackgroundEvents ?? true,
-    enableReminders: raw.enableReminders ?? false,
+    enableReminders: raw.enableReminders ?? true,
+    enableDefaultReminder: raw.enableDefaultReminder ?? true,
+    defaultReminderMinutes: raw.defaultReminderMinutes ?? 10,
     workspaces: raw.workspaces || [],
     activeWorkspace: raw.activeWorkspace ?? null,
     showEventInStatusBar: (raw as Partial<FullCalendarSettings>).showEventInStatusBar ?? false,

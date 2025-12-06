@@ -243,6 +243,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       renderWhatsNew,
       renderCalendarManagement,
       renderGoogleSettings,
+      renderRemindersSettings,
       renderFooter
     ] = await Promise.all([
       import('./sections/renderGeneral').then(m => m.renderGeneralSettings),
@@ -254,11 +255,15 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       import('./changelogs/renderWhatsNew').then(m => m.renderWhatsNew),
       import('./sections/renderCalendars').then(m => m.renderCalendarManagement),
       import('../../providers/google/ui/renderGoogle').then(m => m.renderGoogleSettings),
+      import('../../features/notifications/ui/renderReminders').then(
+        m => m.renderRemindersSettings
+      ),
       import('./sections/calendars/renderFooter').then(m => m.renderFooter)
     ]);
 
     renderGeneralSettings(this.containerEl, this.plugin, () => this.display());
     renderAppearanceSettings(this.containerEl, this.plugin, () => this.display());
+    renderRemindersSettings(this.containerEl, this.plugin, () => this.display());
     renderWorkspaceSettings(this.containerEl, this.plugin, () => this.display());
     renderCategorizationSettings(this.containerEl, this.plugin, () => this.display());
     renderWhatsNew(this.containerEl, () => {

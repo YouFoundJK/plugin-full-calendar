@@ -181,6 +181,10 @@ export const EditEvent = ({
     initialEvent?.type === 'recurring' ? initialEvent.repeatInterval || 1 : 1
   );
   // START ADDITION
+  const [notifyValue, setNotifyValue] = useState(
+    initialEvent?.notify?.value !== undefined ? initialEvent.notify.value : ''
+  );
+  // END ADDITION
   type MonthlyMode = 'dayOfMonth' | 'onThe';
   const getInitialMonthlyMode = (): MonthlyMode =>
     initialEvent?.type === 'recurring' && initialEvent.repeatOn ? 'onThe' : 'dayOfMonth';
@@ -292,7 +296,8 @@ export const EditEvent = ({
       category: category || undefined,
       display: display !== 'auto' ? display : undefined,
       subCategory: parsedSubCategory,
-      endReminder: endReminder || undefined,
+
+      notify: notifyValue !== '' ? { value: Number(notifyValue) } : undefined,
       ...timeInfo,
       ...eventData
     } as OFCEvent;
@@ -475,22 +480,46 @@ export const EditEvent = ({
                 {t('modals.editEvent.fields.options.completed')}
               </label>
             )}
-            {/* ADD THIS WRAPPER AROUND THE REMINDER CHECKBOX LABEL */}
+            {/* Notification Control Replaces EndReminder */}
             {enableReminders && (
-              <label
-                className={allDay || !endTime ? 'is-disabled' : ''}
-                title={
-                  allDay || !endTime ? t('modals.editEvent.fields.options.endReminderTooltip') : ''
-                }
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '4px' }}
               >
+                <span>{t('modals.editEvent.fields.notification.label')}</span>
                 <input
-                  type="checkbox"
-                  checked={endReminder}
-                  onChange={e => setEndReminder(e.target.checked)}
-                  disabled={allDay || !endTime}
-                />{' '}
-                {t('modals.editEvent.fields.options.endReminder')}
-              </label>
+                  type="number"
+                  min="0"
+                  max="1440"
+                  placeholder={t('modals.editEvent.fields.notification.mins')}
+                  value={notifyValue}
+                  onChange={e => setNotifyValue(e.target.value)}
+                  style={{ width: '60px' }}
+                />
+                <select
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val) setNotifyValue(val);
+                  }}
+                  value="" // Always reset to allow re-selection
+                >
+                  <option value="" disabled>
+                    {t('modals.editEvent.fields.notification.select')}
+                  </option>
+                  <option value="30">
+                    {t('modals.editEvent.fields.notification.presets.30m')}
+                  </option>
+                  <option value="60">{t('modals.editEvent.fields.notification.presets.1h')}</option>
+                  <option value="360">
+                    {t('modals.editEvent.fields.notification.presets.6h')}
+                  </option>
+                  <option value="720">
+                    {t('modals.editEvent.fields.notification.presets.12h')}
+                  </option>
+                  <option value="1440">
+                    {t('modals.editEvent.fields.notification.presets.24h')}
+                  </option>
+                </select>
+              </div>
             )}
           </div>
         </div>

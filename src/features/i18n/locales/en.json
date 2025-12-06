@@ -56,10 +56,17 @@
       "clickToCreateEvent": {
         "label": "Click on a day in month view to create event",
         "description": "Switch off to open day view on click instead."
+      }
+    },
+    "reminders": {
+      "title": "Reminders",
+      "enableDefault": {
+        "label": "Enable default reminder",
+        "description": "Automatically add a reminder to new events."
       },
-      "enableReminders": {
-        "label": "Enable event reminders",
-        "description": "Show a desktop notification 10 minutes before an event starts."
+      "defaultTime": {
+        "label": "Default reminder time",
+        "description": "Minutes before event to remind (default: 10)"
       }
     },
     "appearance": {
@@ -319,9 +326,19 @@
           "label": "Options",
           "allDay": "All day",
           "isTask": "Is a Task",
-          "completed": "Completed",
-          "endReminder": "Remind 10m before end",
-          "endReminderTooltip": "An end reminder requires a specific end time."
+          "completed": "Completed"
+        },
+        "notification": {
+          "label": "Notify:",
+          "mins": "Mins",
+          "select": "Select...",
+          "presets": {
+            "30m": "30 min",
+            "1h": "1 hour",
+            "6h": "6 hours",
+            "12h": "12 hours",
+            "24h": "24 hours"
+          }
         },
         "repeats": {
           "label": "Repeats",

@@ -71,6 +71,8 @@ export interface FullCalendarSettings {
   businessHours: BusinessHoursSettings;
   enableBackgroundEvents: boolean;
   enableReminders: boolean;
+  enableDefaultReminder: boolean;
+  defaultReminderMinutes: number;
   workspaces: WorkspaceSettings[];
   activeWorkspace: string | null; // Workspace ID, null means default view
   showEventInStatusBar: boolean;
@@ -109,7 +111,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     endTime: '17:00'
   },
   enableBackgroundEvents: true,
-  enableReminders: false,
+  enableReminders: true,
   workspaces: [],
   activeWorkspace: null,
   showEventInStatusBar: false,
@@ -119,7 +121,9 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   slotMaxTime: '24:00', // Show all hours by default
   weekends: true, // Show weekends by default
   hiddenDays: [], // Show all days by default
-  dayMaxEvents: false // Use FullCalendar default behavior
+  dayMaxEvents: false, // Use FullCalendar default behavior
+  enableDefaultReminder: true,
+  defaultReminderMinutes: 10
 };
 
 // Utility functions for workspace management

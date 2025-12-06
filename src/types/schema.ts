@@ -86,7 +86,12 @@ export const CommonSchema = z.object({
     .enum(['auto', 'block', 'list-item', 'background', 'inverse-background', 'none'])
     .optional(), // Support for background events
   description: z.string().optional(),
-  url: z.string().optional()
+  url: z.string().optional(),
+  notify: z
+    .object({
+      value: z.number().min(0).max(1440)
+    })
+    .optional()
 });
 
 export const EventSchema = z
