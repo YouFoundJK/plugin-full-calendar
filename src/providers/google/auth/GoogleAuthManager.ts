@@ -77,31 +77,46 @@ export class GoogleAuthManager {
         method: 'POST',
         url: tokenUrl,
         headers: requestHeaders,
-        body: requestBody
+        body: requestBody,
+        throw: false
       });
 
-      const data = response.json;
-      // Mutate the object that was passed in
-      authObj.accessToken = data.access_token;
-      authObj.expiryDate = Date.now() + data.expires_in * 1000;
+      if (response.status >= 200 && response.status < 300) {
+        const data = response.json;
+        // Mutate the object that was passed in
+        authObj.accessToken = data.access_token;
+        authObj.expiryDate = Date.now() + data.expires_in * 1000;
 
-      // Save settings to persist the new token
-      await this.plugin.saveSettings();
-      return data.access_token;
-    } catch (e) {
-      console.error('Failed to refresh Google access token:', e);
-
-      // For multi-account, we nullify the specific account's tokens to force re-auth.
-      if (!isLegacy && 'id' in authObj) {
-        const account = this.plugin.settings.googleAccounts.find(a => a.id === authObj.id);
-        if (account) {
-          account.accessToken = null;
-          account.refreshToken = null;
-          account.expiryDate = null;
-        }
+        // Save settings to persist the new token
+        await this.plugin.saveSettings();
+        return data.access_token;
       }
-      await this.plugin.saveSettings();
-      new Notice('Google authentication expired. Please reconnect your account.');
+
+      // If we get here, it's an error status from Google
+      console.error(
+        `Failed to refresh Google access token. Status: ${response.status} Body: ${response.text}`
+      );
+
+      // Only wipe credentials if it's a permanent auth error (400 Bad Request, 401 Unauthorized)
+      // This protects against 500s or other temporary issues where we shouldn't lose the user's login.
+      if (response.status === 400 || response.status === 401) {
+        if (!isLegacy && 'id' in authObj) {
+          const account = this.plugin.settings.googleAccounts.find(a => a.id === authObj.id);
+          if (account) {
+            account.accessToken = null;
+            account.refreshToken = null;
+            account.expiryDate = null;
+          }
+        }
+        await this.plugin.saveSettings();
+        new Notice('Google authentication expired. Please reconnect your account.');
+      }
+      return null;
+    } catch (e) {
+      // This catch block will now mostly catch network errors (offline),
+      // since we set throw: false for HTTP status errors.
+      console.error('Network error during Google token refresh:', e);
+      // Do NOT wipe credentials here. Just return null so the fetch fails gracefully for now.
       return null;
     }
   }
