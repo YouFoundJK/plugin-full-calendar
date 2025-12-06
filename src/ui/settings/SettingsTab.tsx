@@ -81,7 +81,7 @@ export function addCalendarButton(
           const basesPlugin =
             app.internalPlugins?.getPluginById('bases') || app.plugins?.getPlugin('bases');
           if (!basesPlugin) {
-            new Notice('Please enable the Obsidian Bases plugin first.');
+            new Notice(t('settings.calendars.notices.enableBases'));
             return;
           }
         }

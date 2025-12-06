@@ -16,6 +16,7 @@ import { Notice } from 'obsidian';
 import * as React from 'react';
 import { CalendarInfo } from '../../../../types/calendar_settings';
 import FullCalendarPlugin from '../../../../main';
+import { t } from '../../../../features/i18n/i18n';
 
 // Define props for the new stable component
 interface CalendarSettingRowProps {
@@ -145,7 +146,7 @@ export class CalendarSettings
               className="mod-cta"
               onClick={() => {
                 if (this.state.sources.filter(s => s.type === 'dailynote').length > 1) {
-                  new Notice('Only one daily note is allowed.');
+                  new Notice(t('settings.warnings.oneDailyNote'));
                   return;
                 }
                 this.props.submit(this.state.sources.map(elt => elt as CalendarInfo));

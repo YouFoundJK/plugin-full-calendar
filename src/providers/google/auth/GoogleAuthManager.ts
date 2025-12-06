@@ -9,6 +9,7 @@ import FullCalendarPlugin from '../../../main';
 import { CalendarInfo } from '../../../types';
 import { GoogleAccount } from '../../../types/settings';
 import { generateCalendarId } from '../../../types/calendar_settings';
+import { t } from '../../../features/i18n/i18n';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const PROXY_REFRESH_URL = 'https://gcal-proxy-server.vercel.app/api/google/refresh';
@@ -109,7 +110,7 @@ export class GoogleAuthManager {
           }
         }
         await this.plugin.saveSettings();
-        new Notice('Google authentication expired. Please reconnect your account.');
+        new Notice(t('google.auth.expired'));
       }
       return null;
     } catch (e) {
@@ -133,7 +134,7 @@ export class GoogleAuthManager {
         'Google source is missing a googleAccountId. It may need to be re-added.',
         source
       );
-      new Notice('Could not authenticate calendar. Please try re-adding it in settings.');
+      new Notice(t('google.auth.authFailed'));
       return null;
     }
 

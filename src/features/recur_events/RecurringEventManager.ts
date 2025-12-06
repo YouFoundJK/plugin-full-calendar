@@ -19,6 +19,7 @@ import EventCache from '../../core/EventCache';
 import { StoredEvent } from '../../core/EventStore';
 import { toggleTask } from '../../types/tasks';
 import FullCalendarPlugin from '../../main';
+import { t } from '../../features/i18n/i18n';
 
 /**
  * Manages all complex business logic related to recurring events.
@@ -128,7 +129,7 @@ export class RecurringEventManager {
       return;
     }
 
-    new Notice(`Promoting ${children.length} child event(s).`);
+    new Notice(t('notices.recurEvents.promotingChildren', { count: children.length }));
     for (const child of children) {
       await this.cache.processEvent(
         child.id,
@@ -143,12 +144,12 @@ export class RecurringEventManager {
     // Now delete the original master event
     await this.cache.deleteEvent(masterEventId, { force: true, silent: true });
     this.cache.flushUpdateQueue([], []);
-    new Notice('Recurring event deleted and children promoted.');
+    new Notice(t('notices.recurEvents.deletedAndPromoted'));
   }
 
   public async deleteAllRecurring(masterEventId: string): Promise<void> {
     const children = this.findRecurringChildren(masterEventId);
-    new Notice(`Deleting recurring event and its ${children.length} child override(s)...`);
+    new Notice(t('notices.recurEvents.deletingWithChildren', { count: children.length }));
 
     for (const child of children) {
       await this.cache.deleteEvent(child.id, { force: true, silent: true });
@@ -157,7 +158,7 @@ export class RecurringEventManager {
     // Finally, delete the master event itself
     await this.cache.deleteEvent(masterEventId, { force: true, silent: true });
     this.cache.flushUpdateQueue([], []);
-    new Notice('Successfully deleted recurring event and all children.');
+    new Notice(t('notices.recurEvents.deletedAll'));
   }
 
   /**
@@ -495,7 +496,7 @@ export class RecurringEventManager {
             this.hasModifiedTiming(clickedEventDetails.event, masterEvent, instanceDate)
           ) {
             // Timing has been modified, preserve the override but change completion status
-            new Notice('Preserving modified event timing and uncompleting task.');
+            new Notice(t('notices.recurEvents.preservingTiming'));
             await this.cache.updateEventWithId(
               eventId,
               toggleTask(clickedEventDetails.event, false)
@@ -506,7 +507,7 @@ export class RecurringEventManager {
       }
 
       // Original logic: delete the override to revert to main recurring sequence
-      new Notice('Reverting control to Main Recurring event sequence.');
+      new Notice(t('notices.recurEvents.revertingControl'));
       await this.cache.deleteEvent(eventId);
     }
   }
@@ -541,7 +542,7 @@ export class RecurringEventManager {
       return;
     }
 
-    new Notice(`Updating ${childrenToUpdate.length} child event(s) to match new parent title.`);
+    new Notice(t('notices.recurEvents.updatingChildren', { count: childrenToUpdate.length }));
 
     for (const childStoredEvent of childrenToUpdate) {
       const childDetails = this.cache.store.getEventDetails(childStoredEvent.id);
@@ -690,7 +691,7 @@ export class RecurringEventManager {
       });
     } catch (e) {
       console.error('Error during recurring parent rename operation:', e);
-      new Notice('Error updating recurring event. Some children may not have been updated.');
+      new Notice(t('notices.recurEvents.updateError'));
       // The finally block will still run to clean up.
     } finally {
       this.cache.isBulkUpdating = false;

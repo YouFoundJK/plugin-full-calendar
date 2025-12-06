@@ -30,11 +30,11 @@ export const ReminderModal = ({
   const formatTime = (iso: string) => DateTime.fromFormat(iso, 'HH:mm').toFormat('h:mm a');
 
   const snoozeOptions = [
-    { label: '5 minutes', value: 5 },
-    { label: '10 minutes', value: 10 },
-    { label: '15 minutes', value: 15 },
-    { label: '30 minutes', value: 30 },
-    { label: '1 hour', value: 60 }
+    { label: t('modals.reminder.presets.5m'), value: 5 },
+    { label: t('modals.reminder.presets.10m'), value: 10 },
+    { label: t('modals.reminder.presets.15m'), value: 15 },
+    { label: t('modals.reminder.presets.30m'), value: 30 },
+    { label: t('modals.reminder.presets.1h'), value: 60 }
   ];
 
   const handleSnooze = (e: React.FormEvent) => {
@@ -61,9 +61,9 @@ export const ReminderModal = ({
 
         {type === 'default' && (
           <div className="callout callout-warning" style={{ marginTop: '1rem' }}>
-            <div className="callout-title">⚠️ Snoozing Moves Event</div>
+            <div className="callout-title">{t('modals.reminder.snoozeWarningTitle')}</div>
             <div className="callout-content">
-              <p>This is a default reminder. Snoozing will move the event start time forward.</p>
+              <p>{t('modals.reminder.snoozeWarningBody')}</p>
             </div>
           </div>
         )}
@@ -72,7 +72,7 @@ export const ReminderModal = ({
       <form onSubmit={handleSnooze} className="reminder-controls" style={{ marginTop: '1.5rem' }}>
         <div className="setting-item">
           <div className="setting-item-info">
-            <div className="setting-item-name">Snooze for</div>
+            <div className="setting-item-name">{t('modals.reminder.snoozeFor')}</div>
           </div>
           <div className="setting-item-control">
             <select
@@ -90,13 +90,13 @@ export const ReminderModal = ({
 
         <div className="modal-footer">
           <button type="button" onClick={onDismiss}>
-            Dismiss
+            {t('modals.reminder.dismiss')}
           </button>
           <button type="button" onClick={onOpen} className="mod-cta">
-            Open Note
+            {t('modals.reminder.openNote')}
           </button>
           <button type="submit" className="mod-primary">
-            Snooze
+            {t('modals.reminder.snooze')}
           </button>
         </div>
       </form>

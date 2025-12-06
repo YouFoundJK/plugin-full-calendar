@@ -46,6 +46,7 @@ import { OFCEvent, EventLocation } from '../types';
 import { CalendarProvider } from '../providers/Provider';
 import { EventEnhancer } from './EventEnhancer';
 import { TimeEngine, TimeState } from './TimeEngine';
+import { t } from '../features/i18n/i18n';
 
 export type CacheEntry = { event: OFCEvent; id: string; calendarId: string };
 
@@ -338,18 +339,18 @@ export default class EventCache {
     // Step 1: Get Provider, Config, and pre-flight checks
     const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
     if (!calendarInfo) {
-      new Notice(`Cannot add event: calendar with ID ${calendarId} not found.`);
+      new Notice(t('notices.eventCache.calendarNotFound', { calendarId }));
       return false;
     }
     // CORRECTED: Check capabilities through the registry, not by getting a provider instance.
     const capabilities = this.plugin.providerRegistry.getCapabilities(calendarId);
     if (!capabilities) {
-      new Notice(`Cannot add event: provider for type ${calendarInfo.type} not found.`);
+      new Notice(t('notices.eventCache.providerNotFound', { type: calendarInfo.type }));
       return false;
     }
 
     if (!capabilities.canCreate) {
-      new Notice(`Cannot add event to a read-only calendar.`);
+      new Notice(t('notices.eventCache.readOnly'));
       return false;
     }
 
@@ -435,7 +436,7 @@ export default class EventCache {
           this.flushUpdateQueue([optimisticId], []);
         }
 
-        new Notice('Failed to create event. Change has been reverted.');
+        new Notice(t('notices.eventCache.createFailed'));
         return false;
       }
     } finally {
@@ -548,7 +549,7 @@ export default class EventCache {
           this.flushUpdateQueue([], [cacheEntry]);
         }
 
-        new Notice('Failed to delete event. Change has been reverted.');
+        new Notice(t('notices.eventCache.deleteFailed'));
 
         // Propagate the error to the original caller.
         throw e;
@@ -721,7 +722,7 @@ export default class EventCache {
           this.flushUpdateQueue([eventId], [originalCacheEntry]);
         }
 
-        new Notice('Failed to update event. Change has been reverted.');
+        new Notice(t('notices.eventCache.updateFailed'));
         return false;
       }
     } finally {

@@ -7,6 +7,7 @@
 import { Notice } from 'obsidian';
 import { FullCalendarSettings, GoogleAccount } from '../../types/settings'; // Add GoogleAccount import
 import { CalendarInfo, generateCalendarId } from '../../types/calendar_settings';
+import { t } from '../../features/i18n/i18n';
 
 /**
  * Performs all necessary migrations and sanitizations on a loaded settings object.
@@ -187,7 +188,7 @@ export function sanitizeInitialView(settings: FullCalendarSettings): FullCalenda
     !settings.enableAdvancedCategorization &&
     settings.initialView.desktop.startsWith('resourceTimeline')
   ) {
-    new Notice('Timeline view is disabled. Resetting default desktop view to "Week".', 5000);
+    new Notice(t('settings.utils.timelineDisabled'), 5000);
     return {
       ...settings,
       initialView: {

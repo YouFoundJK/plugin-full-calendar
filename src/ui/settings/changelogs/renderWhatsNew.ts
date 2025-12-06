@@ -7,15 +7,19 @@
 import { Setting } from 'obsidian';
 import { changelogData } from './changelogData';
 import './changelog.css';
+import { t } from '../../../features/i18n/i18n';
 
 export function renderWhatsNew(containerEl: HTMLElement, onShowChangelog: () => void): void {
   const whatsNewContainer = containerEl.createDiv('full-calendar-whats-new-container');
   const latestVersion = changelogData[0];
 
   const headerEl = whatsNewContainer.createDiv('full-calendar-whats-new-header');
-  new Setting(headerEl).setName("What's new").setHeading();
+  new Setting(headerEl).setName(t('settings.changelog.whatsNew')).setHeading();
   new Setting(headerEl).addExtraButton(button => {
-    button.setIcon('ellipsis').setTooltip('View full changelog').onClick(onShowChangelog);
+    button
+      .setIcon('ellipsis')
+      .setTooltip(t('settings.changelog.viewFull'))
+      .onClick(onShowChangelog);
   });
 
   whatsNewContainer.createEl('p', {

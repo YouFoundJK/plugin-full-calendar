@@ -28,6 +28,7 @@ import { renderOnboarding } from './onboard';
 import { PLUGIN_SLUG, CalendarInfo } from '../types';
 import { UpdateViewCallback, CachedEvent } from '../core/EventCache';
 import { TasksBacklogView, TASKS_BACKLOG_VIEW_TYPE } from '../providers/tasks/TasksBacklogView';
+import { t } from '../features/i18n/i18n';
 
 // Lazy-import heavy modules at point of use to reduce initial load time
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
@@ -240,7 +241,7 @@ export class CalendarView extends ItemView {
     // WITH:
     const activeWorkspace = this.viewEnhancer?.getActiveWorkspace();
     if (!activeWorkspace) {
-      return 'Workspace ▾';
+      return `${t('ui.view.workspace.switcherLabel')} ▾`;
     }
 
     // Truncate long workspace names for UI
@@ -261,7 +262,7 @@ export class CalendarView extends ItemView {
     // Default view option
     menu.addItem(item => {
       item
-        .setTitle('Default View')
+        .setTitle(t('ui.view.buttons.defaultView'))
         .setIcon(this.plugin.settings.activeWorkspace === null ? 'check' : '')
         .onClick(async () => {
           await this.switchToWorkspace(null);
@@ -466,7 +467,7 @@ export class CalendarView extends ItemView {
     const startTime = performance.now();
     await this.plugin.loadSettings();
     if (!this.plugin.cache) {
-      new Notice('Full Calendar event cache not loaded.');
+      new Notice(t('ui.view.errors.cacheNotLoaded'));
       return;
     }
     if (!this.plugin.cache.initialized) {
@@ -500,7 +501,7 @@ export class CalendarView extends ItemView {
 
     if (!this.viewEnhancer) {
       // This should not happen if onOpen is called correctly.
-      new Notice('Full Calendar view enhancer not initialized.');
+      new Notice(t('ui.view.errors.viewEnhancerNotInitialized'));
       return;
     }
     const allSources = this.plugin.cache.getAllEvents();
@@ -582,10 +583,10 @@ export class CalendarView extends ItemView {
           }
         },
         analysis: {
-          text: 'Analysis',
+          text: t('ui.view.buttons.analysis'),
           click: async () => {
             if (this.plugin.isMobile) {
-              new Notice('The Chrono Analyser is only available on desktop.');
+              new Notice(t('ui.view.errors.chronoAnalyserDesktopOnly'));
               return;
             }
             try {
@@ -593,7 +594,7 @@ export class CalendarView extends ItemView {
               activateAnalysisView(this.plugin.app);
             } catch (err) {
               console.error('Full Calendar: Failed to activate Chrono Analyser view', err);
-              new Notice('Failed to open Chrono Analyser. Please check the console.');
+              new Notice(t('ui.view.errors.chronoAnalyserFailed'));
             }
           }
         }
@@ -691,10 +692,7 @@ export class CalendarView extends ItemView {
             const newDate = newEvent.start ? DateTime.fromJSDate(newEvent.start).toISODate() : null;
 
             if (oldDate && newDate && oldDate !== newDate) {
-              new Notice(
-                'Cannot move a recurring instance to a different day. Modify the time only or edit the main recurring event.',
-                6000
-              );
+              new Notice(t('ui.view.errors.moveRecurringDayError'), 6000);
               return false; // Reverts the event to its original position.
             }
           }
@@ -711,10 +709,7 @@ export class CalendarView extends ItemView {
             const newDate = newEvent.start ? DateTime.fromJSDate(newEvent.start).toISODate() : null;
 
             if (oldDate && newDate && oldDate !== newDate) {
-              new Notice(
-                'Cannot move a recurring instance to a different day. You can only change the time.',
-                6000
-              );
+              new Notice(t('ui.view.errors.moveRecurringInstanceError'), 6000);
               return false; // Revert the change.
             }
             // ====================================================================
@@ -752,7 +747,7 @@ export class CalendarView extends ItemView {
           if (e instanceof Error) {
             new Notice(e.message);
           } else {
-            new Notice('Failed to modify event.');
+            new Notice(t('ui.view.errors.modifyEventFailed'));
           }
           return false;
         }
@@ -787,20 +782,20 @@ export class CalendarView extends ItemView {
           const tasks = await import('../types/tasks');
           if (!tasks.isTask(event)) {
             menu.addItem(item =>
-              item.setTitle('Turn into task').onClick(async () => {
+              item.setTitle(t('ui.view.contextMenu.turnIntoTask')).onClick(async () => {
                 await this.plugin.cache.processEvent(e.id, e => tasks.toggleTask(e, false));
               })
             );
           } else {
             menu.addItem(item =>
-              item.setTitle('Remove checkbox').onClick(async () => {
+              item.setTitle(t('ui.view.contextMenu.removeCheckbox')).onClick(async () => {
                 await this.plugin.cache.processEvent(e.id, tasks.unmakeTask);
               })
             );
           }
           menu.addSeparator();
           menu.addItem(item =>
-            item.setTitle('Go to note').onClick(() => {
+            item.setTitle(t('ui.view.contextMenu.goToNote')).onClick(() => {
               if (!this.plugin.cache) {
                 return;
               }
@@ -810,7 +805,7 @@ export class CalendarView extends ItemView {
             })
           );
           menu.addItem(item =>
-            item.setTitle('Delete').onClick(async () => {
+            item.setTitle(t('ui.view.contextMenu.delete')).onClick(async () => {
               if (!this.plugin.cache) {
                 return;
               }
@@ -823,12 +818,12 @@ export class CalendarView extends ItemView {
               } else {
                 await this.plugin.cache.deleteEvent(e.id);
               }
-              new Notice(`Deleted event "${e.title}".`);
+              new Notice(t('ui.view.success.deletedEvent', { title: e.title }));
             })
           );
         } else {
           menu.addItem(item => {
-            item.setTitle('No actions available on remote events').setDisabled(true);
+            item.setTitle(t('ui.view.contextMenu.noActions')).setDisabled(true);
           });
         }
 
@@ -901,7 +896,7 @@ export class CalendarView extends ItemView {
           }
 
           await this.plugin.cache.scheduleTask(taskId, date);
-          new Notice('Task scheduled successfully');
+          new Notice(t('ui.view.success.taskScheduled'));
 
           // Refresh the backlog view to remove the newly scheduled task
           const backlogLeaves = this.app.workspace.getLeavesOfType(TASKS_BACKLOG_VIEW_TYPE);
@@ -921,7 +916,7 @@ export class CalendarView extends ItemView {
         } catch (error) {
           console.error('Failed to schedule task:', error);
           const message = error instanceof Error ? error.message : 'Unknown error occurred';
-          new Notice(`Failed to schedule task: ${message}`);
+          new Notice(t('ui.view.errors.taskScheduleFailed', { message }));
         }
       }
     });

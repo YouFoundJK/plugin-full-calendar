@@ -144,10 +144,10 @@ export class NotificationManager {
 
     if (type === 'custom') {
       const mins = event.notify?.value || 0;
-      body += `\n(In ${mins} minutes)`;
+      body += '\n' + t('notifications.inMinutes', { mins: mins.toString() });
     } else {
       const mins = this.plugin.settings.defaultReminderMinutes;
-      body += `\n(In ${mins} minutes)`;
+      body += '\n' + t('notifications.inMinutes', { mins: mins.toString() });
     }
 
     try {
@@ -158,8 +158,8 @@ export class NotificationManager {
         launchReminderModal(this.plugin, event, eventId, type);
       };
     } catch (e) {
-      console.error('Full Calendar: Failed to create desktop notification.', e);
-      new Notice('Full Calendar: Could not show desktop notification. Check console for errors.');
+      console.error(t('notifications.failed'), e);
+      new Notice(t('notifications.errorBody'));
     }
   }
 }
