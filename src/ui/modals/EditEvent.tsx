@@ -482,9 +482,7 @@ export const EditEvent = ({
             )}
             {/* Notification Control Replaces EndReminder */}
             {enableReminders && (
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '4px' }}
-              >
+              <div className="u-flex-align-center u-gap-8px u-pl-4px">
                 <span>{t('modals.editEvent.fields.notification.label')}</span>
                 <input
                   type="number"
@@ -493,7 +491,7 @@ export const EditEvent = ({
                   placeholder={t('modals.editEvent.fields.notification.mins')}
                   value={notifyValue}
                   onChange={e => setNotifyValue(e.target.value)}
-                  style={{ width: '60px' }}
+                  className="u-w-60px"
                 />
                 <select
                   onChange={e => {
@@ -548,14 +546,14 @@ export const EditEvent = ({
         {isRecurring && (
           <div className="setting-item">
             <div className="setting-item-info"></div>
-            <div className="setting-item-control" style={{ alignItems: 'center', gap: '8px' }}>
+            <div className="setting-item-control u-flex-align-center u-gap-8px">
               <span>{t('modals.editEvent.fields.repeats.repeatEvery')}</span>
               <input
                 type="number"
                 min="1"
                 value={repeatInterval}
                 onChange={e => setRepeatInterval(parseInt(e.target.value, 10) || 1)}
-                style={{ width: '60px' }}
+                className="u-w-60px"
               />
               <span>
                 {recurrenceType === 'weekly' &&
@@ -594,7 +592,7 @@ export const EditEvent = ({
             {recurrenceType === 'monthly' && date && (
               <div className="setting-item">
                 <div className="setting-item-info"></div>
-                <div className="setting-item-control" style={{ display: 'block' }}>
+                <div className="setting-item-control u-display-block">
                   {/* Radio button for "On day X" */}
                   <div>
                     <input
@@ -613,14 +611,7 @@ export const EditEvent = ({
                     </label>
                   </div>
                   {/* Radio button for "On the Nth weekday" */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginTop: '8px'
-                    }}
-                  >
+                  <div className="u-flex-align-center u-gap-8px u-mt-8px">
                     <input
                       type="radio"
                       id="monthly-on-the"

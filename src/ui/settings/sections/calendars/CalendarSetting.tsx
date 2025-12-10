@@ -40,7 +40,7 @@ const CalendarSettingRow = ({
       <button type="button" onClick={deleteCalendar} className="fc-setting-delete-btn">
         ✕
       </button>
-      <div className="setting-item-control" style={{ flex: '1' }}>
+      <div className="setting-item-control u-flex-1">
         <input
           type="text"
           value={setting.name || ''}
@@ -115,7 +115,7 @@ export class CalendarSettings
 
   render() {
     return (
-      <div style={{ width: '100%' }}>
+      <div className="u-w-full">
         {this.state.sources.map((s, idx) => (
           <ProviderAwareCalendarSettingRow
             key={idx}

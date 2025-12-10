@@ -60,7 +60,7 @@ export const ReminderModal = ({
         )}
 
         {type === 'default' && (
-          <div className="callout callout-warning" style={{ marginTop: '1rem' }}>
+          <div className="callout callout-warning u-mt-1rem">
             <div className="callout-title">{t('modals.reminder.snoozeWarningTitle')}</div>
             <div className="callout-content">
               <p>{t('modals.reminder.snoozeWarningBody')}</p>
@@ -69,7 +69,7 @@ export const ReminderModal = ({
         )}
       </div>
 
-      <form onSubmit={handleSnooze} className="reminder-controls" style={{ marginTop: '1.5rem' }}>
+      <form onSubmit={handleSnooze} className="reminder-controls u-mt-1-5rem">
         <div className="setting-item">
           <div className="setting-item-info">
             <div className="setting-item-name">{t('modals.reminder.snoozeFor')}</div>

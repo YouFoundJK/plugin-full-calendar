@@ -78,7 +78,7 @@ export const Changelog = ({ onBack }: ChangelogProps) => {
       <div className="full-calendar-changelog-header">
         <button onClick={onBack}>{'<'}</button>
         {/* Using a Setting for consistent styling with the rest of the tab */}
-        <div style={{ flexGrow: 1 }} ref={settingRef}></div>
+        <div className="u-flex-grow-1" ref={settingRef}></div>
       </div>
       {changelogData.map((version, index) => (
         <VersionSection key={version.version} version={version} isInitiallyOpen={index === 0} />
