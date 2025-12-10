@@ -155,10 +155,12 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
         try {
           const newCalendarSettingsId = calendars[calendarIndex].id;
           const oldCalendarSettingsId = eventDetails.calendarId;
+
           if (newCalendarSettingsId !== oldCalendarSettingsId) {
-            new Notice(t('modals.event.errors.moveCalendarNotSupported'));
+            await plugin.cache.moveEventToCalendar(eventId, newCalendarSettingsId, data);
+          } else {
+            await plugin.cache.updateEventWithId(eventId, data);
           }
-          await plugin.cache.updateEventWithId(eventId, data);
         } catch (e) {
           if (e instanceof Error) {
             new Notice(t('modals.event.errors.updateError', { message: e.message }));
