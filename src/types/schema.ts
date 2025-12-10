@@ -78,6 +78,7 @@ export const CommonSchema = z.object({
   id: z.string().optional(),
   uid: z.string().optional(),
   timezone: z.string().optional(),
+  etag: z.string().optional(),
   category: z.string().optional(), // This will store the parsed category.
   subCategory: z.string().optional(),
   recurringEventId: z.string().optional(), // The ID of the parent recurring event.

@@ -80,7 +80,7 @@ async function fetchCalendarObjects(
   // STEP 2: Parse the XML response using DOMParser
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, 'text/xml');
-  const icsList: string[] = [];
+  const icsList: { ics: string; etag?: string }[] = [];
 
   // Robustly find calendar-data elements regardless of namespace prefix
   // We use getElementsByTagNameNS('*', 'response') to find all response elements regardless of namespace
@@ -116,7 +116,17 @@ async function fetchCalendarObjects(
       }
 
       if (calendarData && calendarData.textContent) {
-        icsList.push(calendarData.textContent);
+        // Try to find etag
+        let etag = prop.getElementsByTagNameNS('DAV:', 'getetag')[0]?.textContent;
+        if (!etag) {
+          const candidates = prop.getElementsByTagNameNS('*', 'getetag');
+          if (candidates.length > 0) etag = candidates[0].textContent;
+        }
+
+        icsList.push({
+          ics: calendarData.textContent,
+          etag: etag || undefined
+        });
       }
     }
   }
@@ -158,7 +168,9 @@ async function fetchCalendarObjects(
     });
 
     const fetchedIcs = await Promise.all(getPromises);
-    return fetchedIcs;
+    // Individual fetches don't easily give us ETags unless we capture headers from each response
+    // For now, mapping to object structure. PROPFIND is better for ETags.
+    return fetchedIcs.map(ics => ({ ics, etag: undefined }));
   }
 
   return icsList;
@@ -250,7 +262,14 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
         this.source.username,
         this.source.password
       );
-      return icsList.flatMap(getEventsFromICS).map(ev => [ev, null]);
+      return icsList
+        .flatMap(({ ics, etag }) =>
+          getEventsFromICS(ics).map(ev => {
+            if (etag) ev.etag = etag.replace(/"/g, ''); // standard ETag usually has quotes
+            return ev;
+          })
+        )
+        .map(ev => [ev, null]);
     } catch (err) {
       console.error('[CalDAVProvider] Failed to fetch events.', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -304,7 +323,8 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
     await this.doRequest(url, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'text/calendar; charset=utf-8'
+        'Content-Type': 'text/calendar; charset=utf-8',
+        ...(oldEvent.etag ? { 'If-Match': `"${oldEvent.etag}"` } : {})
         // We could use If-Match with ETag if we had it, to prevent lost updates.
         // For now, simpler last-write-wins or just overwrite.
       },
