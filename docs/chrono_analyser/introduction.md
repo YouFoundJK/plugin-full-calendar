@@ -9,7 +9,7 @@ Whether you're tracking complex work projects, building consistent habits, or ai
 ---
 
 **See the standalong implementation:** 
-➡️ [Iriginal Implementation](https://youfoundjk.github.io/Time-Analyser-plugin-full-calendar/)
+➡️ [Iriginal Implementation](https://youfoundjk.github.io/Time-Analyser-Full-Calendar/)
 
 **Explore real-world scenarios:**  
 ➡️ [See User Use Cases](usecases.md)

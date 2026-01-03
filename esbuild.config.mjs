@@ -58,7 +58,7 @@ async function build() {
         setup(build) {
           build.onEnd(() => {
 
-            const cssOutputDir = "/Users/kp/KAPEJ Dev vault/.obsidian/plugins/full-calendar-remastered";
+            const cssOutputDir = "obsidian-dev-vault/.obsidian/plugins/full-calendar-remastered";
             const oldPath = path.join(cssOutputDir, "main.css");
             const newPath = path.join(cssOutputDir, "styles.css");
 
@@ -72,7 +72,7 @@ async function build() {
         }
       }
     ],
-    outfile: "/Users/kp/KAPEJ Dev vault/.obsidian/plugins/full-calendar-remastered/main.js",
+    outfile: "obsidian-dev-vault/.obsidian/plugins/full-calendar-remastered/main.js",
   });
 
   if (!prod) {
