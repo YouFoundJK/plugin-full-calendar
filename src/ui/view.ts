@@ -240,13 +240,16 @@ export class CalendarView extends ItemView {
     // WITH:
     const activeWorkspace = this.viewEnhancer?.getActiveWorkspace();
     if (!activeWorkspace) {
-      return 'Workspace ▾';
+      // Use shorter text on mobile
+      return this.plugin.isMobile ? 'WS ▾' : 'Workspace ▾';
     }
 
     // Truncate long workspace names for UI
+    // Use shorter truncation on mobile
+    const maxLength = this.plugin.isMobile ? 8 : 12;
     const name =
-      activeWorkspace.name.length > 12
-        ? activeWorkspace.name.substring(0, 12) + '...'
+      activeWorkspace.name.length > maxLength
+        ? activeWorkspace.name.substring(0, maxLength) + '...'
         : activeWorkspace.name;
 
     return `${name} ▾`;
@@ -255,7 +258,7 @@ export class CalendarView extends ItemView {
   /**
    * Show the workspace switcher dropdown menu.
    */
-  showWorkspaceSwitcher(ev: MouseEvent) {
+  showWorkspaceSwitcher(ev?: MouseEvent) {
     const menu = new Menu();
 
     // Default view option
@@ -284,7 +287,19 @@ export class CalendarView extends ItemView {
       });
     }
 
-    menu.showAtMouseEvent(ev);
+    // Show menu - Obsidian's Menu class handles both mouse and touch events
+    // On mobile, Obsidian's CSS will style the menu appropriately
+    if (ev) {
+      menu.showAtMouseEvent(ev);
+    } else {
+      // Fallback: show at center of screen if no event provided
+      // This shouldn't happen in practice, but provides a safe fallback
+      const rect = this.containerEl.getBoundingClientRect();
+      menu.showAtPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      });
+    }
   }
 
   /**
