@@ -12,6 +12,53 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = process.argv[2] === "production";
 
+// Load vault config (if exists)
+function getVaultConfig() {
+  const configPath = path.join(process.cwd(), '.vault-config.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    } catch (e) {
+      console.warn('⚠️  Could not read .vault-config.json:', e.message);
+    }
+  }
+  return null;
+}
+
+// Copy files to user's vault
+function copyToVault(devVaultPath) {
+  const config = getVaultConfig();
+  if (!config || !config.vaultPath) {
+    return; // No vault config, skip copying
+  }
+
+  const pluginName = config.pluginName || 'full-calendar-remastered';
+  const targetDir = path.join(config.vaultPath, '.obsidian', 'plugins', pluginName);
+  
+  // Ensure target directory exists
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+    console.log(`📁 Created plugin directory: ${targetDir}`);
+  }
+
+  // Files to copy
+  const filesToCopy = [
+    { src: path.join(devVaultPath, 'main.js'), dest: path.join(targetDir, 'main.js') },
+    { src: path.join(devVaultPath, 'styles.css'), dest: path.join(targetDir, 'styles.css') },
+    { src: path.join(process.cwd(), 'manifest.json'), dest: path.join(targetDir, 'manifest.json') }
+  ];
+
+  const now = new Date();
+  filesToCopy.forEach(({ src, dest }) => {
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, dest);
+      // Update file modification time so Hot Reload detects the change
+      fs.utimesSync(dest, now, now);
+      console.log(`✅ Copied ${path.basename(src)} → ${config.vaultPath}`);
+    }
+  });
+}
+
 async function build() {
   const context = await esbuild.context({
     banner: {
@@ -51,14 +98,13 @@ async function build() {
     minify: prod,
     sourcemap: prod ? false : "inline",
     treeShaking: true,
-    entryNames: "[name]", // Use the entry name as the output name
+    entryNames: "[name]",
     plugins: [
       {
         name: 'rename-css-plugin',
         setup(build) {
           build.onEnd(() => {
-
-            const cssOutputDir = "obsidian-dev-vault/.obsidian/plugins/Full-Calender";
+            const cssOutputDir = "obsidian-dev-vault/.obsidian/plugins/full-calendar-remastered";
             const oldPath = path.join(cssOutputDir, "main.css");
             const newPath = path.join(cssOutputDir, "styles.css");
 
@@ -68,11 +114,14 @@ async function build() {
             } else {
               console.warn("⚠️ CSS file not found to rename");
             }
+
+            // Copy to user's vault after build
+            copyToVault(cssOutputDir);
           });
         }
       }
     ],
-    outfile: "obsidian-dev-vault/.obsidian/plugins/Full-Calender/main.js",
+    outfile: "obsidian-dev-vault/.obsidian/plugins/full-calendar-remastered/main.js",
   });
 
   if (!prod) {
