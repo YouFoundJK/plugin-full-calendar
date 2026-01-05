@@ -240,8 +240,7 @@ export class CalendarView extends ItemView {
     // WITH:
     const activeWorkspace = this.viewEnhancer?.getActiveWorkspace();
     if (!activeWorkspace) {
-      // Use shorter text on mobile
-      return this.plugin.isMobile ? 'WS ▾' : 'Workspace ▾';
+      return 'Workspace ▾';
     }
 
     // Truncate long workspace names for UI
