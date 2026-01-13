@@ -220,6 +220,11 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     }
   }
 
+  public showChangelog(): void {
+    this.showFullChangelog = true;
+    this.display();
+  }
+
   private async _renderFullChangelog(): Promise<void> {
     const root = ReactDOM.createRoot(this.containerEl);
     const { Changelog } = await import('./changelogs/Changelog');

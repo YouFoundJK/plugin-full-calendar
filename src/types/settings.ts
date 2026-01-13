@@ -83,6 +83,7 @@ export interface FullCalendarSettings {
   weekends?: boolean; // Whether to display weekends
   hiddenDays?: number[]; // Array of day numbers to hide (0=Sunday, 1=Monday, etc.)
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
+  currentVersion: string | null;
 }
 
 export const DEFAULT_SETTINGS: FullCalendarSettings = {
@@ -123,7 +124,8 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   hiddenDays: [], // Show all days by default
   dayMaxEvents: false, // Use FullCalendar default behavior
   enableDefaultReminder: true,
-  defaultReminderMinutes: 10
+  defaultReminderMinutes: 10,
+  currentVersion: null
 };
 
 // Utility functions for workspace management

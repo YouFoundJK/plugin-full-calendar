@@ -101,6 +101,7 @@ export default class FullCalendarPlugin extends Plugin {
     this.providerRegistry.registerBuiltInProviders();
 
     await this.loadSettings(); // This now handles setting and syncing
+
     await this.providerRegistry.initializeInstances();
 
     // Ensure Tasks Backlog view is available immediately if a Tasks calendar exists
@@ -325,6 +326,10 @@ export default class FullCalendarPlugin extends Plugin {
       new Notice(t('notices.settingsUpdated'));
       await this.saveData(this.settings);
     }
+
+    // Check if we need to show the changelog
+    const { checkAndShowWhatsNew } = await import('./ui/settings/changelogs/renderWhatsNew');
+    await checkAndShowWhatsNew(this);
   }
 
   /**

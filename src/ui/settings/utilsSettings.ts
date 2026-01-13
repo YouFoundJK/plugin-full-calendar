@@ -70,7 +70,8 @@ export function migrateAndSanitizeSettings(settings: unknown): {
     slotMaxTime: raw.slotMaxTime ?? '24:00',
     weekends: raw.weekends ?? true,
     hiddenDays: raw.hiddenDays ?? [],
-    dayMaxEvents: raw.dayMaxEvents ?? false
+    dayMaxEvents: raw.dayMaxEvents ?? false,
+    currentVersion: raw.currentVersion ?? null
   } as FullCalendarSettings & { calendarSources: (CalendarInfo | GoogleSourceWithAuth)[] } & {
     googleAuth?: LegacyGoogleAuth;
   };
