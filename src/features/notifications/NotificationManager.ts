@@ -68,14 +68,6 @@ export class NotificationManager {
     const { enableDefaultReminder, defaultReminderMinutes } = this.plugin.settings;
     const recencyCutoff = { minutes: 5 }; // Don't notify if the trigger point was more than 5 mins ago (e.g. at startup)
 
-    // DEBUG: Log details for specific event (uncomment to debug)
-    console.log(`[NotificationManager] Checking event: ${event.title}`, {
-      start: start.toFormat('HH:mm'),
-      enableDefault: enableDefaultReminder,
-      defaultMins: defaultReminderMinutes,
-      customNotify: event.notify
-    });
-
     // 1. Check Custom Reminder (High Priority)
     let customDefined = false;
     if (event.notify && typeof event.notify.value === 'number') {
@@ -85,11 +77,11 @@ export class NotificationManager {
       const isTooLate = customTriggered.plus(recencyCutoff) < now;
 
       if (isDue && !isTooLate) {
-        console.log(`[NotificationManager] Triggering Custom for ${event.title}`);
+        // console.log(`[NotificationManager] Triggering Custom for ${event.title}`);
         this.tryTrigger(occurrence, 'custom', customTriggered);
       } else {
-        if (isDue && isTooLate)
-          console.log(`[NotificationManager] Custom missed (too late) for ${event.title}`);
+        // if (isDue && isTooLate)
+        // console.log(`[NotificationManager] Custom missed (too late) for ${event.title}`);
       }
     }
 
@@ -100,15 +92,15 @@ export class NotificationManager {
       // Avoid triggering for events way in the past if we just started up
       const isTooLate = defaultTriggerTime.plus(recencyCutoff) < now;
 
-      console.log(`[NotificationManager] Default Check for ${event.title}:`, {
-        triggerTime: defaultTriggerTime.toFormat('HH:mm:ss'),
-        now: now.toFormat('HH:mm:ss'),
-        isDue,
-        isTooLate
-      });
+      // console.log(`[NotificationManager] Default Check for ${event.title}:`, {
+      //   triggerTime: defaultTriggerTime.toFormat('HH:mm:ss'),
+      //   now: now.toFormat('HH:mm:ss'),
+      //   isDue,
+      //   isTooLate
+      // });
 
       if (isDue && !isTooLate) {
-        console.log(`[NotificationManager] Triggering Default for ${event.title}`);
+        // console.log(`[NotificationManager] Triggering Default for ${event.title}`);
         this.tryTrigger(occurrence, 'default', defaultTriggerTime);
       }
     }

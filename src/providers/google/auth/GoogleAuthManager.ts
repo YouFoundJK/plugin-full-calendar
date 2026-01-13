@@ -43,7 +43,9 @@ export class GoogleAuthManager {
   ): Promise<string | null> {
     const { settings } = this.plugin;
     if (!authObj.refreshToken) {
-      console.error('No refresh token available.');
+      const email = 'email' in authObj ? authObj.email : 'unknown';
+      const id = 'id' in authObj ? authObj.id : 'unknown';
+      console.error(`No refresh token available. Account: ${email} (ID: ${id})`);
       return null;
     }
 
