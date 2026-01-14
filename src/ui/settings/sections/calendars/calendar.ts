@@ -228,7 +228,7 @@ export async function renderCalendar(
 
   const footerToolbar = isNarrow
     ? {
-        left: 'today,navigate,prev,next',
+        left: 'workspace,today,navigate,prev,next',
         right: rightToolbarGroup // Analysis is already filtered out for narrow views.
       }
     : false;
@@ -276,6 +276,7 @@ export async function renderCalendar(
 
       const views = isNarrow
         ? {
+            dayGridMonth: 'Month',
             timeGrid3Days: '3 Days',
             timeGridDay: 'Day',
             listWeek: 'List'
@@ -341,7 +342,10 @@ export async function renderCalendar(
     : null;
 
   const cal = new CalendarCtor(containerEl, {
-    schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source',
+    // Only include schedulerLicenseKey when resource-timeline plugin is loaded
+    ...(showResourceViews && resourceTimelinePlugin
+      ? { schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source' }
+      : {}),
     customButtons: customButtonConfig,
     // timeZone: settings?.timeZone,
     plugins: [
