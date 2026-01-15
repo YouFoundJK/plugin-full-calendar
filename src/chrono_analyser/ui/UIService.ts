@@ -72,6 +72,22 @@ export interface FilterPayload {
   activityPatternTypeSelect?: ActivityPatternType;
 }
 
+type PersistedUIState = {
+  metric?: string;
+  analysisTypeSelect?: string;
+  hierarchyFilter?: string;
+  projectFilter?: string;
+  levelSelect_pie?: string;
+  levelSelect?: string;
+  patternInput?: string;
+  timeSeriesGranularity?: string;
+  timeSeriesType?: string;
+  timeSeriesStackingLevel?: string;
+  activityPatternType?: string;
+  startDate?: string;
+  endDate?: string;
+};
+
 /**
  * Manages the main UI controls and delegates popups and complex rendering.
  */
@@ -400,44 +416,65 @@ export class UIService {
       state.startDate = '';
       state.endDate = '';
     }
-    localStorage.setItem(
+    this.app.saveLocalStorage(
       this.uiStateKey,
       JSON.stringify(Object.fromEntries(Object.entries(state).filter(([_, v]) => v != null)))
     );
   };
 
-  private loadFilterState = () => {
-    const savedState = localStorage.getItem(this.uiStateKey);
-    if (savedState) {
-      try {
-        const state = JSON.parse(savedState);
-        const setVal = (id: string, val: string | undefined) => {
-          const el = this.rootEl.querySelector<HTMLInputElement | HTMLSelectElement>(`#${id}`);
-          if (el && val !== undefined) el.value = val;
-        };
-        setVal('metricSelect', state.metric);
-        setVal('analysisTypeSelect', state.analysisTypeSelect);
-        setVal('hierarchyFilterInput', state.hierarchyFilter);
-        setVal('projectFilterInput', state.projectFilter);
-        if (state.startDate && state.endDate && this.flatpickrInstance) {
-          setTimeout(
-            () => this.flatpickrInstance?.setDate([state.startDate, state.endDate], false),
-            0
-          );
-        }
-        setVal('levelSelect_pie', state.levelSelect_pie);
-        setVal('levelSelect', state.levelSelect);
-        setVal('patternInput', state.patternInput);
-        setVal('timeSeriesGranularitySelect', state.timeSeriesGranularity);
-        setVal('timeSeriesTypeSelect', state.timeSeriesType);
-        setVal('timeSeriesStackingLevelSelect', state.timeSeriesStackingLevel);
-        setVal('activityPatternTypeSelect', state.activityPatternType);
-        this.handleAnalysisTypeChange(false);
-      } catch (error) {
-        console.error('[ChronoAnalyzer] Error loading UI state:', error);
-        localStorage.removeItem(this.uiStateKey);
+  private parsePersistedState(rawState: string): Partial<PersistedUIState> | null {
+    try {
+      const parseJson = JSON.parse as (text: string) => unknown;
+      const parsed = parseJson(rawState);
+      if (!parsed || typeof parsed !== 'object') {
+        return null;
       }
+      return parsed as Partial<PersistedUIState>;
+    } catch (error) {
+      console.error('[ChronoAnalyzer] Error loading UI state:', error);
+      return null;
     }
+  }
+
+  private loadFilterState = () => {
+    const savedState = (this.app.loadLocalStorage as (key: string) => unknown)(this.uiStateKey);
+    if (typeof savedState !== 'string') return;
+
+    const state = this.parsePersistedState(savedState);
+    if (!state) {
+      this.app.saveLocalStorage(this.uiStateKey, '');
+      return;
+    }
+
+    const asString = (value: unknown): string | undefined =>
+      typeof value === 'string' ? value : undefined;
+    const setVal = (id: string, val: unknown) => {
+      const el = this.rootEl.querySelector<HTMLInputElement | HTMLSelectElement>(`#${id}`);
+      if (el) {
+        const value = asString(val);
+        if (value !== undefined) {
+          el.value = value;
+        }
+      }
+    };
+    setVal('metricSelect', state.metric);
+    setVal('analysisTypeSelect', state.analysisTypeSelect);
+    setVal('hierarchyFilterInput', state.hierarchyFilter);
+    setVal('projectFilterInput', state.projectFilter);
+    const startDate = asString(state.startDate);
+    const endDate = asString(state.endDate);
+    if (startDate && endDate && this.flatpickrInstance) {
+      const dateRange: [string, string] = [startDate, endDate];
+      setTimeout(() => this.flatpickrInstance?.setDate(dateRange, false), 0);
+    }
+    setVal('levelSelect_pie', state.levelSelect_pie);
+    setVal('levelSelect', state.levelSelect);
+    setVal('patternInput', state.patternInput);
+    setVal('timeSeriesGranularitySelect', state.timeSeriesGranularity);
+    setVal('timeSeriesTypeSelect', state.timeSeriesType);
+    setVal('timeSeriesStackingLevelSelect', state.timeSeriesStackingLevel);
+    setVal('activityPatternTypeSelect', state.activityPatternType);
+    this.handleAnalysisTypeChange(false);
   };
 
   private handleAnalysisTypeChange = (triggerAnalysis = true) => {

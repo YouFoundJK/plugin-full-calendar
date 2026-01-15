@@ -39,7 +39,9 @@ export class AnalysisController {
       rootEl,
       plugin,
       () => this.updateAnalysis(),
-      () => this.handleGenerateInsights(),
+      () => {
+        void this.handleGenerateInsights();
+      },
       () => this.openInsightsConfigModal()
     );
 
@@ -81,7 +83,7 @@ export class AnalysisController {
       this.dataManager.getKnownProjects(),
       (newConfig: InsightsConfig) => {
         this.plugin.settings.chrono_analyser_config = newConfig;
-        this.plugin.saveSettings();
+        void this.plugin.saveSettings();
         this.uiService.insightsConfig = newConfig;
         new Notice(t('notices.chronoAnalyserInsightsSaved'));
       }

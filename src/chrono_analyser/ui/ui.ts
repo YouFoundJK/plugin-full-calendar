@@ -87,16 +87,19 @@ class AutocompleteComponent {
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
-    const suggestions = Array.from(this.suggestionsEl.children) as HTMLElement[];
+    const suggestions = Array.from(this.suggestionsEl.children).filter(
+      (child): child is HTMLElement => child instanceof HTMLElement
+    );
     if (suggestions.length === 0 && e.key !== 'Enter' && e.key !== 'Escape') return;
 
     switch (e.key) {
       case 'Enter': {
         e.preventDefault();
-        const valueToSubmit =
-          this.activeSuggestionIndex > -1 && suggestions[this.activeSuggestionIndex]
-            ? suggestions[this.activeSuggestionIndex].textContent!
-            : this.inputEl.value;
+        const selectedText =
+          this.activeSuggestionIndex > -1
+            ? suggestions[this.activeSuggestionIndex]?.textContent
+            : null;
+        const valueToSubmit = selectedText ?? this.inputEl.value;
 
         this.isSelectionInProgress = true;
         this.onSelectCallback(valueToSubmit);
@@ -231,7 +234,7 @@ export class InsightConfigModal extends Modal {
     };
 
     // --- MIGRATION LOGIC: safely migrate legacy config ---
-    const migratedConfig = existingConfig || defaultConfig;
+    let migratedConfig = existingConfig || defaultConfig;
     if (migratedConfig && migratedConfig.insightGroups) {
       // Cast to legacy config for safe migration
       const legacyConfig = migratedConfig as unknown as LegacyInsightsConfig;
@@ -265,7 +268,7 @@ export class InsightConfigModal extends Modal {
     }
 
     // Now we can safely assign the migrated config
-    this.config = migratedConfig as InsightsConfig;
+    this.config = migratedConfig;
     // --- END MIGRATION LOGIC ---
   }
 

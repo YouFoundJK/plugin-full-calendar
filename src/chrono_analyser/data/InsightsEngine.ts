@@ -366,7 +366,8 @@ export class InsightsEngine {
     } else if (topGroupNames.length === 2) {
       topGroupsText = topGroupNames.join(' and ');
     } else {
-      topGroupsText = `${topGroupNames.slice(0, -1).join(', ')}, and ${topGroupNames.slice(-1)}`;
+      const lastGroupName = topGroupNames.slice(-1)[0] ?? '';
+      topGroupsText = `${topGroupNames.slice(0, -1).join(', ')}, and ${lastGroupName}`;
     }
 
     const topGroupsTotalHours = topGroups.reduce((sum, g) => sum + g.hours, 0);

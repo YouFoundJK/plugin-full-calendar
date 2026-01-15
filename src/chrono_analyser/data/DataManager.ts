@@ -387,7 +387,7 @@ export class DataManager {
     const recordsByCategory = new Map<string, TimeRecord[]>();
 
     for (const record of records) {
-      const key = String(record[breakdownBy] || `(No ${breakdownBy})`);
+      const key = this.formatBreakdownValue(record[breakdownBy], breakdownBy);
       const value = metric === 'count' ? 1 : record._effectiveDurationInPeriod || 0;
 
       if (metric === 'duration' && value <= 0) continue;
@@ -508,7 +508,7 @@ export class DataManager {
     uniqueFiles: Set<string>
   ): void {
     if (breakdownBy) {
-      const key = String(record[breakdownBy] || `(No ${breakdownBy})`);
+      const key = this.formatBreakdownValue(record[breakdownBy], breakdownBy);
       // The regex check is now removed from here
       result.aggregation.set(key, (result.aggregation.get(key) || 0) + duration);
       if (!result.recordsByCategory.has(key)) result.recordsByCategory.set(key, []);
@@ -540,5 +540,34 @@ export class DataManager {
       if (recordTimestamp > endTime.getTime()) return false;
     }
     return true;
+  }
+
+  private formatBreakdownValue(
+    rawValue: TimeRecord[keyof TimeRecord],
+    breakdownBy: keyof TimeRecord
+  ): string {
+    if (!rawValue) return `(No ${breakdownBy})`;
+    if (
+      typeof rawValue === 'string' ||
+      typeof rawValue === 'number' ||
+      typeof rawValue === 'boolean'
+    ) {
+      return String(rawValue);
+    }
+    if (rawValue instanceof Date) return Utils.getISODate(rawValue) ?? `(No ${breakdownBy})`;
+    if (rawValue === undefined || rawValue === null) {
+      return `(No ${breakdownBy})`;
+    }
+
+    if (typeof rawValue === 'object') {
+      try {
+        return JSON.stringify(rawValue);
+      } catch (error) {
+        console.error('[ChronoAnalyzer] Failed to stringify breakdown value:', error);
+        return '(Unserializable value)';
+      }
+    }
+
+    return String(rawValue);
   }
 }
