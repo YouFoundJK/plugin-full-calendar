@@ -55,7 +55,8 @@ export function renderWhatsNew(containerEl: HTMLElement, onShowChangelog: () => 
   latestVersion.changes.forEach(change => {
     const item = new Setting(whatsNewList).setName(change.title).setDesc(change.description);
 
-    const iconEl = createEl('span', { cls: `change-icon-settings change-type-${change.type}` });
+    const iconEl = document.createElement('span');
+    iconEl.className = `change-icon-settings change-type-${change.type}`;
     if (change.type === 'new') {
       iconEl.setText('+');
     } else if (change.type === 'improvement') {

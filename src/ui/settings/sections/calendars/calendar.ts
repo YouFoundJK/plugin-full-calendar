@@ -206,7 +206,7 @@ export async function renderCalendar(
     });
   const modifyEventCallback =
     modifyEvent &&
-    (async ({
+    (({
       event,
       oldEvent,
       revert,
@@ -216,12 +216,14 @@ export async function renderCalendar(
       oldEvent: EventApi;
       revert: () => void;
       newResource?: { id: string };
-    }) => {
-      // Extract the string ID from the newResource object
-      const success = await modifyEvent(event, oldEvent, newResource?.id);
-      if (!success) {
-        revert();
-      }
+    }): void => {
+      void (async () => {
+        // Extract the string ID from the newResource object
+        const success = await modifyEvent(event, oldEvent, newResource?.id);
+        if (!success) {
+          revert();
+        }
+      })();
     });
 
   // Group the standard and timeline views together with a space.
@@ -310,7 +312,7 @@ export async function renderCalendar(
             listWeek: 'List'
           };
 
-      for (const [viewName, viewLabel] of Object.entries(views)) {
+      for (const [viewName, viewLabel] of Object.entries(views) as [string, string][]) {
         menu.addItem(item =>
           item.setTitle(viewLabel).onClick(() => {
             cal.changeView(viewName);
@@ -436,9 +438,11 @@ export async function renderCalendar(
     selectMirror: select && true,
     select:
       select &&
-      (async info => {
-        await select(info.start, info.end, info.allDay, info.view.type);
-        info.view.calendar.unselect();
+      ((info): void => {
+        void (async () => {
+          await select(info.start, info.end, info.allDay, info.view.type);
+          info.view.calendar.unselect();
+        })();
       }),
 
     // Handle date clicks (including right-clicks for navigation menu)
@@ -466,7 +470,7 @@ export async function renderCalendar(
       el.addEventListener('contextmenu', e => {
         e.preventDefault();
         if (openContextMenuForEvent) {
-          openContextMenuForEvent(event, e);
+          void openContextMenuForEvent(event, e);
         }
       });
       if (toggleTask) {
@@ -516,7 +520,7 @@ export async function renderCalendar(
         // Get the task ID from the dragged element's data transfer
         const taskId = info.draggedEl.getAttribute('data-task-id');
         if (taskId) {
-          drop(taskId, info.date);
+          void drop(taskId, info.date);
         }
       }),
 

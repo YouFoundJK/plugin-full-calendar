@@ -42,9 +42,8 @@ export type LanguageCode = keyof typeof resources;
  * @returns The current language code (e.g., 'en', 'de', 'zh-cn')
  */
 function getObsidianLanguage(app: App): string {
-  const language = localStorage.getItem('language') || 'en';
-
-  return language;
+  const language = (app.loadLocalStorage as (key: string) => unknown)('language');
+  return typeof language === 'string' ? language : 'en';
 }
 /**
  * Initialize the i18n system

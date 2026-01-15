@@ -653,13 +653,11 @@ describe('editable calendars', () => {
 
       await cache.updateEventWithId(id, newEvent);
 
-      // Updated assertion to registry mock
-      // Updated assertion to registry mock
-      // Updated assertion to registry mock
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(mockPlugin.providerRegistry.updateEventInProvider).toHaveBeenCalledTimes(1);
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(mockPlugin.providerRegistry.updateEventInProvider).toHaveBeenCalledWith(
+      const safeRegistry = mockPlugin.providerRegistry as unknown as {
+        updateEventInProvider: jest.Mock;
+      };
+      expect(safeRegistry.updateEventInProvider).toHaveBeenCalledTimes(1);
+      expect(safeRegistry.updateEventInProvider).toHaveBeenCalledWith(
         id,
         'test',
         expect.objectContaining(oldEvent[0]), // Corrected line
@@ -773,8 +771,8 @@ describe('editable calendars', () => {
         location,
         calendarId: 'test'
       }));
-      // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
-      await cache.syncFile(file as TFile, newEventsForSync);
+      if (!(file instanceof TFile)) throw new Error('Expected TFile');
+      await cache.syncFile(file, newEventsForSync);
 
       assertCacheContentCounts(cache, {
         calendars: 1,
@@ -1114,11 +1112,7 @@ describe('editable calendars', () => {
         await cache.populate();
 
         // Add a second calendar to move to
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const _calendar2: jest.Mocked<CalendarProvider<unknown>> = {
-          ...calendar,
-          type: 'FOR_TEST_ONLY_2'
-        };
+        // Note: calendar2 not directly used, but cal2Info is passed through providerRegistry
         const cal2Info: CalendarInfo = {
           type: 'FOR_TEST_ONLY',
           id: 'cal2',
@@ -1178,14 +1172,16 @@ describe('editable calendars', () => {
         await cache.moveEventToCalendar(eventId, 'cal2');
 
         // Verify delete was called on old calendar
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        expect(providerRegistry.deleteEventInProvider).toHaveBeenCalledTimes(1);
+        const safeRegistry = providerRegistry as unknown as {
+          deleteEventInProvider: jest.Mock;
+          createEventInProvider: jest.Mock;
+        };
+        expect(safeRegistry.deleteEventInProvider).toHaveBeenCalledTimes(1);
         // The id passed to deleteEventInProvider is the session ID.
 
         // Verify create was called on new calendar
         // We expect createEventInProvider to be called with 'cal2' and the event data
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        expect(providerRegistry.createEventInProvider).toHaveBeenCalledWith(
+        expect(safeRegistry.createEventInProvider).toHaveBeenCalledWith(
           'cal2',
           expect.objectContaining({
             title: eventData.title
@@ -1342,8 +1338,8 @@ describe('editable calendars', () => {
         // 1. Created as Single in New Cal (recurringEventId removed)
         // 1. Created as Single in New Cal (recurringEventId removed)
         // We expect recurringEventId to be missing. expect.objectContaining({ recurringEventId: undefined }) fails if key is missing.
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        expect(providerRegistry.createEventInProvider).toHaveBeenCalledWith(
+        const safeRegistry = providerRegistry as unknown as { createEventInProvider: jest.Mock };
+        expect(safeRegistry.createEventInProvider).toHaveBeenCalledWith(
           'cal2',
           expect.objectContaining({
             title: 'Master',

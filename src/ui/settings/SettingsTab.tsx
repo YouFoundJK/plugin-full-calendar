@@ -27,7 +27,7 @@ import {
 
 import ReactModal from '../ReactModal';
 import * as ReactDOM from 'react-dom/client';
-import { createElement, createRef } from 'react';
+import React, { createElement, createRef } from 'react';
 
 import { CalendarSettingsRef } from './sections/calendars/CalendarSetting';
 import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
@@ -134,8 +134,11 @@ export function addCalendarButton(
               headings: string[];
             };
             onClose: () => void;
-            onConfigChange: (c: unknown) => void;
-            onSave: (finalConfigs: unknown | unknown[], accountId?: string) => void;
+            onConfigChange: (c: Record<string, unknown>) => void;
+            onSave: (
+              finalConfigs: Record<string, unknown> | Record<string, unknown>[],
+              accountId?: string
+            ) => void;
           }
           const componentProps: BaseConfigProps = {
             plugin: plugin, // Pass plugin for GoogleConfigComponent
@@ -146,43 +149,48 @@ export function addCalendarButton(
               headings: headings
             },
             onClose: () => modal.close(),
-            onConfigChange: () => {},
-            onSave: async (finalConfigs: unknown | unknown[], accountId?: string) => {
-              const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
-              const existingIds = plugin.settings.calendarSources.map(s => s.id);
+            onConfigChange: (): void => {
+              /* no-op */
+            },
+            onSave: (
+              finalConfigs: Record<string, unknown> | Record<string, unknown>[],
+              accountId?: string
+            ): void => {
+              void (async () => {
+                const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
+                const existingIds = plugin.settings.calendarSources.map(s => s.id);
 
-              for (const finalConfigRaw of configs) {
-                const finalConfig = finalConfigRaw as Record<string, unknown>;
+                for (const finalConfig of configs) {
+                  const newSettingsId = generateCalendarId(
+                    providerType as CalendarInfo['type'],
+                    existingIds
+                  );
+                  existingIds.push(newSettingsId);
 
-                const newSettingsId = generateCalendarId(
-                  providerType as CalendarInfo['type'],
-                  existingIds
-                );
-                existingIds.push(newSettingsId);
+                  const partialSource = makeDefaultPartialCalendarSource(
+                    providerType as CalendarInfo['type'],
+                    existingCalendarColors
+                  );
 
-                const partialSource = makeDefaultPartialCalendarSource(
-                  providerType as CalendarInfo['type'],
-                  existingCalendarColors
-                );
+                  // Create the full, valid CalendarInfo object first.
+                  const finalSource = {
+                    ...partialSource,
+                    ...finalConfig,
+                    id: newSettingsId,
+                    ...(accountId && { googleAccountId: accountId }),
+                    // For Google, the config's 'id' is the calendarId for the API.
+                    ...(providerType === 'google' && { calendarId: finalConfig.id as string })
+                  } as CalendarInfo;
 
-                // Create the full, valid CalendarInfo object first.
-                const finalSource = {
-                  ...partialSource,
-                  ...finalConfig,
-                  id: newSettingsId,
-                  ...(accountId && { googleAccountId: accountId }),
-                  // For Google, the config's 'id' is the calendarId for the API.
-                  ...(providerType === 'google' && { calendarId: finalConfig.id as string })
-                } as CalendarInfo;
+                  // Add the provider instance to the registry BEFORE updating the UI.
+                  await plugin.providerRegistry.addInstance(finalSource);
 
-                // Add the provider instance to the registry BEFORE updating the UI.
-                await plugin.providerRegistry.addInstance(finalSource);
-
-                // Now, submit the complete source to the React component.
-                submitCallback(finalSource);
-                existingCalendarColors.push(finalSource.color);
-              }
-              modal.close();
+                  // Now, submit the complete source to the React component.
+                  submitCallback(finalSource);
+                  existingCalendarColors.push(finalSource.color);
+                }
+                modal.close();
+              })();
             }
           };
 
@@ -209,18 +217,20 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     this.registry = registry;
   }
 
-  async display(): Promise<void> {
-    this.containerEl.empty();
-    if (this.showFullChangelog) {
-      await this._renderFullChangelog(); // This now handles its own async rendering
-    } else {
-      await this._renderMainSettings();
-    }
+  display(): void {
+    void (async () => {
+      this.containerEl.empty();
+      if (this.showFullChangelog) {
+        await this._renderFullChangelog();
+      } else {
+        await this._renderMainSettings();
+      }
+    })();
   }
 
   public showChangelog(): void {
     this.showFullChangelog = true;
-    this.display();
+    void this.display();
   }
 
   private async _renderFullChangelog(): Promise<void> {
@@ -230,7 +240,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       createElement(Changelog, {
         onBack: () => {
           this.showFullChangelog = false;
-          this.display();
+          void this.display();
         }
       })
     );
@@ -264,21 +274,33 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       import('./sections/calendars/renderFooter').then(m => m.renderFooter)
     ]);
 
-    renderGeneralSettings(this.containerEl, this.plugin, () => this.display());
-    renderAppearanceSettings(this.containerEl, this.plugin, () => this.display());
-    renderRemindersSettings(this.containerEl, this.plugin, () => this.display());
-    renderWorkspaceSettings(this.containerEl, this.plugin, () => this.display());
-    renderCategorizationSettings(this.containerEl, this.plugin, () => this.display());
+    renderGeneralSettings(this.containerEl, this.plugin, () => {
+      void this.display();
+    });
+    renderAppearanceSettings(this.containerEl, this.plugin, () => {
+      void this.display();
+    });
+    renderRemindersSettings(this.containerEl, this.plugin, () => {
+      void this.display();
+    });
+    renderWorkspaceSettings(this.containerEl, this.plugin, () => {
+      void this.display();
+    });
+    renderCategorizationSettings(this.containerEl, this.plugin, () => {
+      void this.display();
+    });
     renderWhatsNew(this.containerEl, () => {
       this.showFullChangelog = true;
-      this.display();
+      void this.display();
     });
     renderCalendarManagement(
       this.containerEl,
       this.plugin,
       this.calendarSettingsRef as unknown as React.RefObject<CalendarSettingsRef>
     );
-    renderGoogleSettings(this.containerEl, this.plugin, () => this.display());
+    renderGoogleSettings(this.containerEl, this.plugin, () => {
+      void this.display();
+    });
     this._renderInitialSetupNotice();
     renderFooter(this.containerEl);
   }

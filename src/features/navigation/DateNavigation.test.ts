@@ -41,7 +41,8 @@ const createMockApp = () => {
   return {
     vault: {
       getConfig: jest.fn().mockReturnValue('en')
-    }
+    },
+    loadLocalStorage: jest.fn().mockReturnValue('en')
   } as unknown as import('obsidian').App;
 };
 

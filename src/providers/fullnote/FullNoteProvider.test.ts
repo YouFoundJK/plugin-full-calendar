@@ -312,13 +312,9 @@ describe('FullNoteCalendar Tests', () => {
     );
 
     // Mock TFile objects
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
     const fileInDirectory = { path: 'events/test-event.md' } as unknown as TFile;
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
     const fileInSubdirectory = { path: 'events/2023/test-event.md' } as unknown as TFile;
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
     const fileOutsideDirectory = { path: 'notes/other.md' } as unknown as TFile;
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
     const fileInSimilarPath = { path: 'events-archive/old.md' } as unknown as TFile;
 
     // File in the configured directory should be relevant

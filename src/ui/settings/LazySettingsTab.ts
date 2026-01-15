@@ -43,7 +43,7 @@ export class LazySettingsTab extends PluginSettingTab {
       // so the heavy tab renders into the correct element.
       // FullCalendarSettingTab extends PluginSettingTab which provides containerEl
       (tab as PluginSettingTab).containerEl = this.containerEl;
-      tab.display();
+      void tab.display();
     })();
   }
 

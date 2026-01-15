@@ -484,7 +484,6 @@ export class ProviderRegistry {
     // The cache will diff this against its old state and remove everything.
     // Provide a minimal file-like object; syncFile only requires a .path property via TFile shape.
     // Create minimal TFile-like object for cache sync
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
     await this.cache.syncFile({ path } as unknown as TFile, []);
   }
 
