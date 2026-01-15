@@ -63,7 +63,7 @@ export class InsightsEngine {
     const productivityRecords: TimeRecord[] = [];
     const wellnessRecords: TimeRecord[] = [];
     let totalProductivityHours = 0;
-    let totalWellnessHours = 0;
+    // let totalWellnessHours = 0;
 
     for (const record of taggedRecords) {
       const tags = record._semanticTags || [];
@@ -74,7 +74,7 @@ export class InsightsEngine {
       }
       if (tags.some((tag: string) => groupPersonas.get(tag) === 'wellness')) {
         wellnessRecords.push(record);
-        totalWellnessHours += duration;
+        // totalWellnessHours += duration;
       }
     }
 
@@ -562,7 +562,7 @@ export class InsightsEngine {
     // Aggregate by hierarchy (e.g., "Sleep", "Exercise", "Cooking")
     const last7DaysByHierarchy = new Map<string, { duration: number; count: number }>();
     const last30DaysByHierarchy = new Map<string, { duration: number; count: number }>();
-    let totalWellnessHoursLast7Days = 0;
+    // let totalWellnessHoursLast7Days = 0;
     let totalWellnessHoursLast30Days = 0;
 
     for (const record of records) {
@@ -571,7 +571,7 @@ export class InsightsEngine {
       recordDay.setHours(0, 0, 0, 0);
       const key = record.hierarchy;
 
-      const init = (map: Map<any, any>, k: string) => {
+      const init = (map: Map<string, { duration: number; count: number }>, k: string) => {
         if (!map.has(k)) map.set(k, { duration: 0, count: 0 });
         return map.get(k)!;
       };
@@ -580,7 +580,7 @@ export class InsightsEngine {
         const entry = init(last7DaysByHierarchy, key);
         entry.duration += record.duration;
         entry.count += 1;
-        totalWellnessHoursLast7Days += record.duration;
+        // totalWellnessHoursLast7Days += record.duration;
       }
       if (recordDay >= last30DaysStart) {
         const entry = init(last30DaysByHierarchy, key);

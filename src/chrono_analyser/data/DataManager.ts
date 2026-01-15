@@ -177,7 +177,7 @@ export class DataManager {
         const exclusionKeywords: string[] = [];
 
         // 1. Find and strip out all exclusion tokens first
-        const exclusionTokenRegex = /\s-(?:"[^"]+"|\'[^\']+\'|\S+)/g;
+        const exclusionTokenRegex = /\s-(?:"[^"]+"|'[^']+'|\S+)/g;
         const exclusionMatches = patternText.match(exclusionTokenRegex);
 
         if (exclusionMatches) {
@@ -201,7 +201,7 @@ export class DataManager {
 
         // 2. Parse the remaining text for inclusion tokens (words or phrases)
         if (patternText) {
-          const inclusionTokenRegex = /"[^"]+"|\'[^\']+\'|\S+/g;
+          const inclusionTokenRegex = /"[^"]+"|'[^']+'|\S+/g;
           const inclusionMatches = patternText.match(inclusionTokenRegex);
           if (inclusionMatches) {
             for (let token of inclusionMatches) {

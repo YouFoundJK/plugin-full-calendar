@@ -45,7 +45,7 @@ export function getHourFromTimeStr(
       const hour = d.getUTCHours();
       return hour >= 0 && hour <= 23 ? hour : null;
     }
-  } catch (e) {
+  } catch {
     /* ignore */
   }
   return null;
@@ -78,7 +78,7 @@ export function calculateDuration(
     try {
       const d = new Date(sTimeStr);
       if (!isNaN(d.getTime())) return { hours: d.getUTCHours(), minutes: d.getUTCMinutes() };
-    } catch (e) {
+    } catch {
       /* ignore */
     }
     return null;
@@ -94,7 +94,7 @@ export function calculateDuration(
     const durationForOneDay = (endMinutes - startMinutes) / 60;
     const numDays = Number(days) || 0;
     return durationForOneDay * Math.max(0, numDays);
-  } catch (err) {
+  } catch {
     return 0;
   }
 }
@@ -146,7 +146,7 @@ function getRecurrenceDateRange(
     Array.isArray(metaDaysOfWeek)
       ? metaDaysOfWeek
       : String(metaDaysOfWeek)
-          .replace(/[\[\]\s]/g, '')
+          .replace(/[[\]\s]/g, '')
           .split(',')
   )
     .map(d => getDayOfWeekNumber(d))

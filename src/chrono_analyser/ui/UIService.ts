@@ -4,7 +4,7 @@
  * DOM manipulation away from the controller.
  */
 
-import { App, debounce, Notice } from 'obsidian';
+import { App, debounce } from 'obsidian';
 import flatpickr from 'flatpickr';
 import { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import * as UI from './ui';
@@ -188,7 +188,7 @@ export class UIService {
         loadingContainer.appendChild(text);
       }
     } else {
-      generateBtn.textContent = 'Generate Insights';
+      generateBtn.textContent = 'Generate insights';
       generateBtn.disabled = false;
       generateBtn.classList.remove('is-loading');
     }
@@ -504,13 +504,14 @@ export class UIService {
         startDate.setDate(today.getDate() - 1);
         endDate = startDate;
         break;
-      case 'thisWeek':
+      case 'thisWeek': {
         startDate = new Date(today);
         const day = today.getDay();
         startDate.setDate(today.getDate() - (day === 0 ? 6 : day - 1)); // Assumes Monday is the start of the week
         endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + 6);
         break;
+      }
       case 'thisMonth':
         startDate = new Date(today.getFullYear(), today.getMonth(), 1);
         endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);

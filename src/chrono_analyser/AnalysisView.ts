@@ -24,7 +24,7 @@ export class AnalysisView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'Chrono Analyser';
+    return 'Chrono analyser';
   }
 
   getIcon(): string {

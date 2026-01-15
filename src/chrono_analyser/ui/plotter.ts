@@ -92,9 +92,9 @@ function setupPlotlyEvents(
   maybe.on?.(eventType, handler);
 }
 
-function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+function debounce<A extends unknown[], R>(fn: (...args: A) => R, delay: number) {
   let timeout: number | null = null;
-  return (...args: Parameters<T>): void => {
+  return (...args: A): void => {
     if (timeout) {
       window.clearTimeout(timeout);
     }
@@ -204,10 +204,10 @@ export function renderPieChartDisplay(
 
   // Set up event handling with proper typing
   setupPlotlyEvents(mainChartEl, 'plotly_click', (eventData: unknown) => {
-    const points = (eventData as { points?: Array<any> } | null)?.points;
+    const points = (eventData as { points?: Array<Record<string, unknown>> } | null)?.points;
     const point = points?.[0];
     if (!point) return;
-    const categoryName: string = point.label;
+    const categoryName: string = String(point.label);
     if (pieData.recordsByCategory.has(categoryName)) {
       showDetailPopup(categoryName, pieData.recordsByCategory.get(categoryName)!, {
         type: 'pie',
@@ -268,11 +268,12 @@ export function renderSunburstChartDisplay(
   }
 
   setupPlotlyEvents(chartEl, 'plotly_sunburstclick', (eventData: unknown) => {
-    const points = (eventData as { points?: Array<any> } | null)?.points;
+    const points = (eventData as { points?: Array<Record<string, unknown>> } | null)?.points;
     const point = points?.[0];
     if (!point || !point.id) return;
-    if (sunburstData.recordsByLabel.has(point.id)) {
-      showDetailPopup(point.label, sunburstData.recordsByLabel.get(point.id)!, {
+    const id = String(point.id);
+    if (sunburstData.recordsByLabel.has(id)) {
+      showDetailPopup(String(point.label), sunburstData.recordsByLabel.get(id)!, {
         type: 'sunburst',
         value: typeof point.value === 'number' ? point.value : Number(point.value) || null
       });
@@ -520,7 +521,7 @@ export function renderActivityPatternChart(
   plotChart(mainChartEl, data as Plotly.Data[], layout, useReact);
 
   setupPlotlyEvents(mainChartEl, 'plotly_click', (eventData: unknown) => {
-    const points = (eventData as { points?: Array<any> } | null)?.points;
+    const points = (eventData as { points?: Array<Record<string, unknown>> } | null)?.points;
     if (!points || points.length === 0) return;
     const point = points[0];
     let recordsForPopup: TimeRecord[] = [];
@@ -528,7 +529,7 @@ export function renderActivityPatternChart(
     let clickedValue: number | null = null;
 
     if (plotType === 'bar') {
-      const categoryClicked = point.x;
+      const categoryClicked = String(point.x);
       clickedValue = typeof point.y === 'number' ? point.y : parseFloat(String(point.y));
 
       if (patternType === 'dayOfWeek') {
@@ -548,8 +549,8 @@ export function renderActivityPatternChart(
         });
       }
     } else if (plotType === 'heatmap') {
-      const clickedHour = parseInt(point.x, 10);
-      const clickedDayIndex = daysOfWeekLabels.indexOf(point.y);
+      const clickedHour = parseInt(String(point.x), 10);
+      const clickedDayIndex = daysOfWeekLabels.indexOf(String(point.y));
       clickedValue = typeof point.z === 'number' ? point.z : parseFloat(String(point.z));
 
       if (isNaN(clickedHour) || clickedDayIndex === -1 || !clickedValue || clickedValue === 0)
@@ -588,7 +589,7 @@ export function renderErrorLog(
 
   if (processingErrors.length === 0) {
     errorLogSummary.textContent =
-      'No processing issues found. All data is sourced from the main Full Calendar cache.';
+      'No processing issues found. All data is sourced from the main full calendar cache.';
     errorLogContainer.addClass('is-hidden');
     errorLogContainer.removeClass('is-visible');
     return;
@@ -605,11 +606,11 @@ export function renderErrorLog(
 
     summary.textContent = `⚠️ ${err.file || 'Unknown File'}`;
 
-    const pathLabel = safeCreateEl(content, 'strong', { text: 'Path: ' });
+    safeCreateEl(content, 'strong', { text: 'Path: ' });
     content.appendChild(document.createTextNode(err.path || 'N/A'));
     safeCreateEl(content, 'br');
 
-    const reasonLabel = safeCreateEl(content, 'strong', { text: 'Reason: ' });
+    safeCreateEl(content, 'strong', { text: 'Reason: ' });
     content.appendChild(document.createTextNode(err.reason || 'No specific reason provided.'));
   });
   errorLogContainer.removeClass('is-hidden');

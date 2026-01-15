@@ -91,7 +91,7 @@ class AutocompleteComponent {
     if (suggestions.length === 0 && e.key !== 'Enter' && e.key !== 'Escape') return;
 
     switch (e.key) {
-      case 'Enter':
+      case 'Enter': {
         e.preventDefault();
         const valueToSubmit =
           this.activeSuggestionIndex > -1 && suggestions[this.activeSuggestionIndex]
@@ -105,6 +105,7 @@ class AutocompleteComponent {
         this.inputEl.blur();
         this.isSelectionInProgress = false;
         break;
+      }
       case 'Escape':
         this.suggestionsEl.removeClass('is-visible');
         this.suggestionsEl.addClass('is-hidden');
