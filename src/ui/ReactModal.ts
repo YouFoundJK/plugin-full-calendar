@@ -26,14 +26,16 @@ export default class ReactModal extends Modal {
   }
   // Somewhere in your class (to unmount later)
   private reactRoot: ReactDOM.Root | null = null;
-  async onOpen() {
+  onOpen(): void {
     const { contentEl } = this;
 
     // Create root and render component
     this.reactRoot = ReactDOM.createRoot(contentEl);
 
-    const element = await this.onOpenCallback(() => this.close());
-    this.reactRoot.render(element);
+    void (async () => {
+      const element = await this.onOpenCallback(() => this.close());
+      this.reactRoot?.render(element);
+    })();
   }
 
   onClose() {

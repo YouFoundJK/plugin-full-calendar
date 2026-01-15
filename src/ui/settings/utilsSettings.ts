@@ -126,7 +126,7 @@ export function migrateAndSanitizeSettings(settings: unknown): {
         if (refreshTokenToAccountId.has(refreshToken)) {
           source.googleAccountId = refreshTokenToAccountId.get(refreshToken);
         } else {
-          const newAccountId = `gcal_${Math.random().toString(36).substr(2, 9)}`;
+          const newAccountId = `gcal_${Math.random().toString(36).slice(2, 11)}`;
           const newAccount: GoogleAccount = {
             id: newAccountId,
             email: 'Migrated Account',

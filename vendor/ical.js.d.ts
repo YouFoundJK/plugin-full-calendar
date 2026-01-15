@@ -241,3 +241,5 @@ declare module "ical.js" {
         public isByCount(): boolean;
     }
 }
+
+/* eslint-enable @typescript-eslint/camelcase, @typescript-eslint/class-name-casing */

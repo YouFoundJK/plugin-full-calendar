@@ -1,5 +1,4 @@
-import moment from 'moment';
-import { TFile } from 'obsidian';
+import { moment as obsidianMoment, TFile } from 'obsidian';
 import * as React from 'react';
 import {
   appHasDailyNotesPluginLoaded,
@@ -27,6 +26,8 @@ import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { DailyNoteProviderConfig } from './typesDaily';
 import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
+
+const moment = obsidianMoment as unknown as typeof import('moment');
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
@@ -292,7 +293,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     return DailyNoteHeadingSetting;
   }
 
-  async createInstanceOverride(
+  createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent

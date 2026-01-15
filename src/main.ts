@@ -182,17 +182,11 @@ export default class FullCalendarPlugin extends Plugin {
 
     window.cache = this.cache;
 
-    this.registerView(
-      FULL_CALENDAR_VIEW_TYPE,
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      leaf => new (require('./ui/view').CalendarView)(leaf, this, false)
-    );
+    const { CalendarView } = await import('./ui/view');
 
-    this.registerView(
-      FULL_CALENDAR_SIDEBAR_VIEW_TYPE,
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      leaf => new (require('./ui/view').CalendarView)(leaf, this, true)
-    );
+    this.registerView(FULL_CALENDAR_VIEW_TYPE, leaf => new CalendarView(leaf, this, false));
+
+    this.registerView(FULL_CALENDAR_SIDEBAR_VIEW_TYPE, leaf => new CalendarView(leaf, this, true));
 
     if (!this.isMobile) {
       // Lazily import the view to avoid loading plotly on mobile.
@@ -340,7 +334,7 @@ export default class FullCalendarPlugin extends Plugin {
 
     // Check if we need to show the changelog
     const { checkAndShowWhatsNew } = await import('./ui/settings/changelogs/renderWhatsNew');
-    await checkAndShowWhatsNew(this);
+    checkAndShowWhatsNew(this);
   }
 
   /**

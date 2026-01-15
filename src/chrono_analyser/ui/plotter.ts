@@ -329,7 +329,13 @@ export function renderTimeSeriesChart(
     periodData.total += value;
 
     if (chartType === 'stackedArea') {
-      const category = String(record[stackingLevel] || `(No ${stackingLevel})`);
+      const rawCategory = record[stackingLevel];
+      const category =
+        rawCategory === undefined || rawCategory === null
+          ? `(No ${stackingLevel})`
+          : typeof rawCategory === 'object'
+            ? JSON.stringify(rawCategory)
+            : String(rawCategory);
       periodData.categories[category] = (periodData.categories[category] || 0) + value;
     }
   });

@@ -542,10 +542,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   // --- REPLACE createEvent and updateEvent with new versions ---
-  async createEvent(event: OFCEvent): Promise<EditableEventResponse> {
+  createEvent(event: OFCEvent): Promise<EditableEventResponse> {
     new Notice(t('notices.tasks.createViaPlugin'));
-    throw new Error(
-      'Full Calendar cannot create tasks directly. Please use the Tasks plugin modal or commands.'
+    return Promise.reject(
+      new Error(
+        'Full Calendar cannot create tasks directly. Please use the Tasks plugin modal or commands.'
+      )
     );
   }
 
@@ -672,13 +674,13 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    * Determines if an event can be scheduled at the given date.
    * This implements guardrail logic to prevent scheduling conflicts.
    */
-  public async canBeScheduledAt(
+  public canBeScheduledAt(
     event: OFCEvent,
     date: Date
   ): Promise<{ isValid: boolean; reason?: string }> {
     if (!event.uid) {
       // If there's no UID, we can't look up the task. Default to allowing it.
-      return { isValid: true };
+      return Promise.resolve({ isValid: true });
     }
 
     // The event UID is the persistent handle (e.g., "path/to/file.md::0").
@@ -686,7 +688,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (!task) {
       // Task not found in the provider's cache. Allow the drop but log a warning.
       console.warn(`[Tasks Provider] Could not find task with ID ${event.uid} for validation.`);
-      return { isValid: true };
+      return Promise.resolve({ isValid: true });
     }
 
     // Use Luxon to perform a clean, time-zone-agnostic comparison of dates.
@@ -696,10 +698,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (task.startDate) {
       const startDate = DateTime.fromJSDate(task.startDate).startOf('day');
       if (dropDate < startDate) {
-        return {
+        return Promise.resolve({
           isValid: false,
           reason: `Cannot schedule before the start date (${startDate.toFormat('yyyy-MM-dd')}).`
-        };
+        });
       }
     }
 
@@ -707,15 +709,15 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (task.dueDate) {
       const dueDate = DateTime.fromJSDate(task.dueDate).startOf('day');
       if (dropDate > dueDate) {
-        return {
+        return Promise.resolve({
           isValid: false,
           reason: `Cannot schedule after the due date (${dueDate.toFormat('yyyy-MM-dd')}).`
-        };
+        });
       }
     }
 
     // If all checks pass, the drop is valid.
-    return { isValid: true };
+    return Promise.resolve({ isValid: true });
   }
 
   // ====================================================================
@@ -746,12 +748,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     return file.extension === 'md';
   }
 
-  async createInstanceOverride(
+  createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent
   ): Promise<EditableEventResponse> {
-    throw new Error('Tasks provider does not support recurring event overrides.');
+    return Promise.reject(new Error('Tasks provider does not support recurring event overrides.'));
   }
 
   // UI Components for settings remain the same.

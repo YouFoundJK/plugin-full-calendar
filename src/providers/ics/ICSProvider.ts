@@ -105,33 +105,36 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
     }
   }
 
-  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
-    throw new Error('Cannot create an event on a read-only ICS calendar.');
+  createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
+    return Promise.reject(new Error('Cannot create an event on a read-only ICS calendar.'));
   }
 
-  async updateEvent(
+  updateEvent(
     handle: EventHandle,
     oldEventData: OFCEvent,
     newEventData: OFCEvent
   ): Promise<EventLocation | null> {
-    throw new Error('Cannot update an event on a read-only ICS calendar.');
+    return Promise.reject(new Error('Cannot update an event on a read-only ICS calendar.'));
   }
 
-  async deleteEvent(handle: EventHandle): Promise<void> {
-    throw new Error('Cannot delete an event on a read-only ICS calendar.');
+  deleteEvent(handle: EventHandle): Promise<void> {
+    return Promise.reject(new Error('Cannot delete an event on a read-only ICS calendar.'));
   }
 
-  async createInstanceOverride(
+  createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
-    throw new Error(`Cannot create a recurring event override on a read-only calendar.`);
+    return Promise.reject(
+      new Error(`Cannot create a recurring event override on a read-only calendar.`)
+    );
   }
 
-  async revalidate(): Promise<void> {
+  revalidate(): Promise<void> {
     // This method's existence signals to the adapter that this is a remote-style provider.
     // The actual fetching is always done in getEvents.
+    return Promise.resolve();
   }
 
   getConfigurationComponent(): FCReactComponent<ICSConfigProps> {

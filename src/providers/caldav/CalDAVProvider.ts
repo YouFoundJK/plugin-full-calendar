@@ -435,7 +435,9 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
   }
 
   // Boilerplate methods for the provider interface.
-  async revalidate(): Promise<void> {}
+  revalidate(): Promise<void> {
+    return Promise.resolve();
+  }
 
   getConfigurationComponent(): FCReactComponent<CalDAVConfigProps> {
     return CalDAVConfigWrapper;

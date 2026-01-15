@@ -31,20 +31,23 @@ export class AnalysisView extends ItemView {
     return 'bar-chart-horizontal';
   }
 
-  protected async onOpen() {
-    const container = this.containerEl.children[1];
-    container.empty();
-    container.addClass('chrono-analyser-view');
-    createDOMStructure(container as HTMLElement);
+  protected onOpen(): Promise<void> {
+    return (async () => {
+      const container = this.containerEl.children[1];
+      container.empty();
+      container.addClass('chrono-analyser-view');
+      createDOMStructure(container as HTMLElement);
 
-    this.controller = new AnalysisController(this.app, container as HTMLElement, this.plugin);
-    // CORRECTED: Await the async initialize method.
-    await this.controller.initialize();
+      this.controller = new AnalysisController(this.app, container as HTMLElement, this.plugin);
+      // CORRECTED: Await the async initialize method.
+      await this.controller.initialize();
+    })();
   }
 
-  protected async onClose() {
+  protected onClose(): Promise<void> {
     this.controller?.destroy();
     this.controller = null;
+    return Promise.resolve();
   }
 }
 

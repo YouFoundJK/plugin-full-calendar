@@ -12,8 +12,6 @@
 
 import { Platform, requestUrl, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
-import * as http from 'http';
-import * as url from 'url';
 import { GoogleAuthManager } from './GoogleAuthManager';
 import { t } from '../../../features/i18n/i18n';
 
@@ -40,7 +38,8 @@ const PUBLIC_CLIENT_ID = '272284435724-ltjbog78np5lnbjhgecudaqhsfba9voi.apps.goo
 // =================================================================================================
 
 let pkce: { verifier: string; state: string } | null = null;
-let server: http.Server | null = null;
+type DesktopServer = { close: () => void; listen: (...args: any[]) => void };
+let server: DesktopServer | null = null;
 
 // =================================================================================================
 // PKCE HELPER FUNCTIONS
@@ -74,42 +73,60 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 }
 
 function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
+  const http = window.require('http') as { createServer: (...args: any[]) => DesktopServer };
+  const url = window.require('url') as {
+    parse: (
+      input: string,
+      parseQueryString?: boolean
+    ) => {
+      query?: Record<string, unknown>;
+    };
+  };
   if (server) {
     window.open(authUrl);
     return;
   }
-  server = http.createServer(async (req, res) => {
-    try {
-      if (!req.url || !req.url.startsWith('/callback')) {
-        res.writeHead(204).end();
-        return;
-      }
+  server = http.createServer(
+    async (
+      req: { url?: string },
+      res: { writeHead: (status: number) => void; end: (body?: string) => void }
+    ) => {
+      try {
+        if (!req.url || !req.url.startsWith('/callback')) {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
 
-      const { code, state } = url.parse(req.url, true).query;
+        const parsed = url.parse(req.url, true);
+        const query = (parsed.query || {}) as Record<string, unknown>;
+        const code = query.code;
+        const state = query.state;
 
-      if (typeof code !== 'string' || typeof state !== 'string') {
-        throw new Error('Invalid callback parameters');
-      }
+        if (typeof code !== 'string' || typeof state !== 'string') {
+          throw new Error('Invalid callback parameters');
+        }
 
-      res.end('Authentication successful! Please return to Obsidian.');
+        res.end('Authentication successful! Please return to Obsidian.');
 
-      if (server) {
-        server.close();
-        server = null;
-      }
+        if (server) {
+          server.close();
+          server = null;
+        }
 
-      await exchangeCodeForToken(code, state, plugin);
-      // Refresh the settings tab if it's open
-      await plugin.settingsTab?.display();
-    } catch (e) {
-      console.error('Error handling Google Auth callback:', e);
-      res.end('Authentication failed. Please check the console in Obsidian and try again.');
-      if (server) {
-        server.close();
-        server = null;
+        await exchangeCodeForToken(code, state, plugin);
+        // Refresh the settings tab if it's open
+        await plugin.settingsTab?.display();
+      } catch (e) {
+        console.error('Error handling Google Auth callback:', e);
+        res.end('Authentication failed. Please check the console in Obsidian and try again.');
+        if (server) {
+          server.close();
+          server = null;
+        }
       }
     }
-  });
+  );
   server.listen(42813, () => {
     window.open(authUrl);
   });

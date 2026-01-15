@@ -33,6 +33,12 @@ function formatRelativeTime(duration: Duration, prefix: 'starts' | 'ends'): stri
   return `${prefix} in ${Math.floor(duration.as('days'))}d`;
 }
 
+const setCssProps = (element: HTMLElement, props: Record<string, string>): void => {
+  Object.entries(props).forEach(([property, value]) => {
+    element.style.setProperty(property, value);
+  });
+};
+
 export class StatusBarManager {
   private plugin: FullCalendarPlugin;
   private statusBarItemEl: HTMLElement | null = null;
@@ -107,7 +113,7 @@ export class StatusBarManager {
       this.statusBarItemEl.setText(newText);
     }
 
-    this.statusBarItemEl.style.display = newText ? 'block' : 'none';
+    setCssProps(this.statusBarItemEl, { display: newText ? 'block' : 'none' });
   }
 
   private handleClick(ev: MouseEvent): void {

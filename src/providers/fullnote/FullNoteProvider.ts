@@ -109,11 +109,7 @@ const FullNoteConfigWrapper: React.FC<FullNoteConfigProps> = props => {
  * @param baseFilename The desired filename, without extension or suffix.
  * @returns A promise that resolves to the first available, unique file path.
  */
-async function findUniquePath(
-  app: ObsidianInterface,
-  directory: string,
-  baseFilename: string
-): Promise<string> {
+function findUniquePath(app: ObsidianInterface, directory: string, baseFilename: string): string {
   let path = normalizePath(`${directory}/${baseFilename}.md`);
   if (!app.getAbstractFileByPath(path)) {
     return path;
@@ -274,7 +270,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return this.app.delete(file);
   }
 
-  async createInstanceOverride(
+  createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent

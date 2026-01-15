@@ -377,8 +377,9 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     return GoogleNameSetting;
   }
 
-  async revalidate(): Promise<void> {
+  revalidate(): Promise<void> {
     // This method's existence signals to the adapter that this is a remote-style provider.
     // The actual fetching is always done in getEvents.
+    return Promise.resolve();
   }
 }

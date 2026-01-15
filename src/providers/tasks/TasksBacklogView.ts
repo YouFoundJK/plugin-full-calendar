@@ -45,17 +45,19 @@ export class TasksBacklogView extends ItemView {
     return 'list-todo';
   }
 
-  async onOpen(): Promise<void> {
-    // Find the TasksPluginProvider instance
-    this.tasksProvider = this.findTasksProvider();
+  onOpen(): Promise<void> {
+    return (async () => {
+      // Find the TasksPluginProvider instance
+      this.tasksProvider = this.findTasksProvider();
 
-    if (!this.tasksProvider) {
-      this.renderNoTasksProvider();
-      return;
-    }
+      if (!this.tasksProvider) {
+        this.renderNoTasksProvider();
+        return;
+      }
 
-    await this.loadTasks();
-    this.render();
+      await this.loadTasks();
+      this.render();
+    })();
   }
 
   onClose(): Promise<void> {

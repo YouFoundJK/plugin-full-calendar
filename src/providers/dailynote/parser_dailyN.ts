@@ -171,13 +171,16 @@ export const getInlineEventFromLine = (
   };
 
   // Handle legacy overnight events if no explicit endDate is provided.
+  const startTimeValue = attrsForValidation.startTime;
+  const endTimeValue = attrsForValidation.endTime;
+
   if (
     !attrsForValidation.endDate &&
     !allDay &&
-    attrsForValidation.startTime &&
-    attrsForValidation.endTime
+    typeof startTimeValue === 'string' &&
+    typeof endTimeValue === 'string'
   ) {
-    if (String(attrsForValidation.endTime) < String(attrsForValidation.startTime)) {
+    if (endTimeValue < startTimeValue) {
       const startDate = attrsForValidation.date as string;
       if (startDate) {
         attrsForValidation.endDate = DateTime.fromISO(startDate).plus({ days: 1 }).toISODate();

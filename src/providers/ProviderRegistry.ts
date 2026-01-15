@@ -230,7 +230,7 @@ export class ProviderRegistry {
   }): void {
     // store is EventStore
     if (!this.cache) return;
-    this.identifierMapPromise = (async () => {
+    this.identifierMapPromise = (() => {
       this.identifierToSessionIdMap.clear();
       for (const storedEvent of store.getAllEvents()) {
         const globalIdentifier = this.getGlobalIdentifier(
@@ -241,6 +241,7 @@ export class ProviderRegistry {
           this.identifierToSessionIdMap.set(globalIdentifier, storedEvent.id);
         }
       }
+      return Promise.resolve();
     })();
   }
 

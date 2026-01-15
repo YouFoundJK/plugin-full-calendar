@@ -1,4 +1,3 @@
-import { join } from 'path';
 import { TFile, normalizePath } from 'obsidian';
 import { load } from 'js-yaml'; // Import 'load' from js-yaml
 
@@ -229,7 +228,7 @@ describe('FullNoteCalendar Tests', () => {
     };
 
     (obsidian.create as jest.Mock).mockReturnValue({
-      path: join(dirName, '2022-01-01 Work - Test Event.md')
+      path: `${dirName}/2022-01-01 Work - Test Event.md`
     });
     await calendar.createEvent(parseEvent(event));
     expect(obsidian.create).toHaveBeenCalledTimes(1);
@@ -353,7 +352,7 @@ describe('FullNoteCalendar Tests', () => {
     };
 
     (obsidian.create as jest.Mock).mockReturnValue({
-      path: join(dirName, 'Monthly Meeting.md')
+      path: `${dirName}/Monthly Meeting.md`
     });
 
     await calendar.createEvent(parseEvent(event));

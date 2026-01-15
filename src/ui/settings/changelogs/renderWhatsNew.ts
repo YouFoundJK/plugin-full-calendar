@@ -15,7 +15,7 @@ import { WhatsNewModal } from '../../modals/WhatsNewModal';
  * Checks if the plugin version has changed and displays the "What's New" modal if necessary.
  * This should be called after settings are loaded.
  */
-export async function checkAndShowWhatsNew(plugin: FullCalendarPlugin): Promise<void> {
+export function checkAndShowWhatsNew(plugin: FullCalendarPlugin): void {
   const latestVersion = changelogData[0].version;
 
   // Defer to onLayoutReady to ensure the UI is initialized before showing the modal

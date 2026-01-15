@@ -76,11 +76,11 @@ END:VCALENDAR
     mockObsidianFetch
       .mockResolvedValueOnce({
         status: 207,
-        text: async () => mockPropfindResponse
+        text: () => Promise.resolve(mockPropfindResponse)
       } as Response) // First call: PROPFIND
       .mockResolvedValueOnce({
         status: 207,
-        text: async () => mockReportResponse
+        text: () => Promise.resolve(mockReportResponse)
       } as Response); // Second call: REPORT
 
     const events = await provider.getEvents();
@@ -136,7 +136,7 @@ END:VCALENDAR
 
     mockObsidianFetch.mockResolvedValueOnce({
       status: 207,
-      text: async () => mockPropfindResponse
+      text: () => Promise.resolve(mockPropfindResponse)
     } as Response);
 
     await expect(provider.getEvents()).rejects.toThrow('Invalid collection URL or not a calendar');
