@@ -206,7 +206,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     const body = toGoogleEvent(event);
     const createdGEvent = await makeAuthenticatedRequest<GoogleEventLike>(token, url, 'POST', body);
 
-    const rawEvent = fromGoogleEvent(createdGEvent as GoogleEventLike);
+    const rawEvent = fromGoogleEvent(createdGEvent);
     if (!rawEvent) throw new Error('Could not parse event from Google API after creation.');
 
     return [rawEvent, null];
@@ -356,7 +356,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
         body
       );
 
-      const rawEvent = fromGoogleEvent(newGEvent as GoogleEventLike);
+      const rawEvent = fromGoogleEvent(newGEvent);
       if (!rawEvent) {
         throw new Error('Could not parse Google API response after creating instance override.');
       }

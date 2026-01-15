@@ -124,7 +124,7 @@ export default class EventCache {
       on: (name: string, cb: () => void) => void;
     };
     this.viewConfigListener = () => {
-      this.onSettingsChanged();
+      void this.onSettingsChanged();
     };
     emitter.on('full-calendar:view-config-changed', this.viewConfigListener);
   }
@@ -206,10 +206,12 @@ export default class EventCache {
         );
         this.syncCalendar(calendarId, tuples);
       },
-      async () => {
-        this.initialized = true;
-        this.resync();
-        await this.timeEngine.start();
+      () => {
+        void (async () => {
+          this.initialized = true;
+          this.resync();
+          await this.timeEngine.start();
+        })();
       }
     );
 

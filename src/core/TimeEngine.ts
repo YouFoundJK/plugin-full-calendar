@@ -192,9 +192,7 @@ export class TimeEngine {
               };
               if (event.daysOfWeek) {
                 ruleOptions.freq = RRule.WEEKLY;
-                ruleOptions.byweekday = event.daysOfWeek.map(
-                  c => weekdays[c as keyof typeof weekdays]
-                );
+                ruleOptions.byweekday = event.daysOfWeek.map(c => weekdays[c]);
               } else if (event.dayOfMonth) {
                 ruleOptions.freq = RRule.MONTHLY;
                 ruleOptions.bymonthday = event.dayOfMonth;

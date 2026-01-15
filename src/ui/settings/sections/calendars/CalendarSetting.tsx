@@ -145,7 +145,7 @@ export class CalendarSettings
                   new Notice(t('settings.warnings.oneDailyNote'));
                   return;
                 }
-                this.props.submit(this.state.sources.map(elt => elt as CalendarInfo));
+                this.props.submit(this.state.sources.map(elt => elt));
                 this.setState({ dirty: false });
               }}
             >

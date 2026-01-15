@@ -618,8 +618,9 @@ export function toEventInput(
  * @returns An `OFCEvent` object.
  */
 export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
-  let category: string | undefined = event.extendedProps.category;
-  let subCategory: string | undefined = event.extendedProps.subCategory;
+  let category: string | undefined = (event.extendedProps as { category?: string }).category;
+  let subCategory: string | undefined = (event.extendedProps as { subCategory?: string })
+    .subCategory;
 
   // Check for resource ID safely - resource property may be added by FullCalendar resource plugin
   const resourceId =
@@ -648,37 +649,49 @@ export function fromEventApi(event: EventApi, newResource?: string): OFCEvent {
   // FullCalendar's end date is exclusive, so we might need to subtract a day.
   const endDate = event.end ? getDate(new Date(event.end.getTime() - 1)) : startDate;
 
+  const extendedProps = (event.extendedProps || {}) as Record<string, unknown>;
+  const taskCompleted = extendedProps.taskCompleted as string | boolean | null | undefined;
   return {
-    uid: event.extendedProps.uid,
-    title: event.extendedProps.cleanTitle || event.title,
+    uid: extendedProps.uid as string | undefined,
+    title: (extendedProps.cleanTitle as string | undefined) || event.title,
     category,
     subCategory, // Add subCategory here
-    recurringEventId: event.extendedProps.recurringEventId,
+    recurringEventId: extendedProps.recurringEventId as string | undefined,
     ...(event.allDay
       ? { allDay: true }
       : {
           allDay: false,
-          startTime: getTime(event.start as Date),
-          endTime: getTime(event.end as Date)
+          startTime: getTime(event.start!),
+          endTime: getTime(event.end!)
         }),
 
     ...(isRecurring
       ? {
           type: 'recurring' as const,
           endDate: null,
-          daysOfWeek: event.extendedProps.daysOfWeek.map((i: number) => DAYS[i]),
-          startRecur: event.extendedProps.startRecur && getDate(event.extendedProps.startRecur),
-          endRecur: event.extendedProps.endRecur && getDate(event.extendedProps.endRecur),
+          daysOfWeek: (extendedProps.daysOfWeek as number[]).map((i: number) => DAYS[i]) as (
+            | 'U'
+            | 'M'
+            | 'T'
+            | 'W'
+            | 'R'
+            | 'F'
+            | 'S'
+          )[],
+          startRecur: extendedProps.startRecur
+            ? getDate(extendedProps.startRecur as Date)
+            : undefined,
+          endRecur: extendedProps.endRecur ? getDate(extendedProps.endRecur as Date) : undefined,
           skipDates: [], // Default to empty as exception info is unavailable
-          isTask: event.extendedProps.isTask
+          isTask: extendedProps.isTask as boolean | undefined
         }
       : {
           type: 'single',
           date: startDate,
           ...(startDate !== endDate ? { endDate } : { endDate: null }),
-          completed: event.extendedProps.isTask
-            ? (event.extendedProps.taskCompleted ?? false)
-            : event.extendedProps.taskCompleted
+          completed: extendedProps.isTask
+            ? ((taskCompleted as unknown as string | false | null | undefined) ?? false)
+            : (taskCompleted as unknown as string | false | null | undefined)
         })
   };
 }

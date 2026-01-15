@@ -11,7 +11,7 @@
         "version": "node version-bump.mjs && git add manifest.json versions.json",
         "lint": "prettier --config .prettierrc.json --check src/**/*.ts*",
         "lint:eslint": "eslint src -o lint_report.txt --no-color",
-        "lt-es": "eslint src -o lint_report.txt --no-color --fix",
+        "lt-es": "eslint src -o lint_report.txt --no-color",
         "fl": "prettier --config .prettierrc.json --write src/**/*.ts*",
         "compile": "tsc -noEmit --skipLibCheck",
         "prepare": "husky install",

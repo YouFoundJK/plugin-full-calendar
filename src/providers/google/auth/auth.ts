@@ -101,7 +101,7 @@ function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
         }
 
         const parsed = url.parse(req.url, true);
-        const query = (parsed.query || {}) as Record<string, unknown>;
+        const query = parsed.query || {};
         const code = query.code;
         const state = query.state;
 

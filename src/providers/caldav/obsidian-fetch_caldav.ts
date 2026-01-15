@@ -12,7 +12,7 @@ export async function obsidianFetch(
   const method = init?.method ?? 'GET';
 
   const headers: Record<string, string> = {};
-  if (init?.headers) new Headers(init.headers as HeadersInit).forEach((v, k) => (headers[k] = v));
+  if (init?.headers) new Headers(init.headers).forEach((v, k) => (headers[k] = v));
 
   const req: RequestUrlParam = {
     url,
@@ -20,9 +20,9 @@ export async function obsidianFetch(
     headers: Object.keys(headers).length ? headers : undefined,
     body:
       typeof init?.body === 'string'
-        ? (init!.body as string)
+        ? init.body
         : init?.body != null
-          ? await new Response(init!.body as BodyInit).text()
+          ? await new Response(init.body as BodyInit).text()
           : undefined,
     throw: false // never throw; let callers inspect status/body
   };

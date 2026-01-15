@@ -122,8 +122,9 @@ export async function renderCalendar(
   //
   // For floating-time events (no TZID), we use a similar approach with getHours().
   if (!didPatchRRule) {
-    const rrulePlugin = ((rrule as unknown as { default?: RRulePluginLike }).default ||
-      (rrule as unknown as RRulePluginLike)) as RRulePluginLike;
+    const rrulePlugin =
+      (rrule as unknown as { default?: RRulePluginLike }).default ||
+      (rrule as unknown as RRulePluginLike);
     const originalExpand = rrulePlugin.recurringTypes[0].expand;
 
     rrulePlugin.recurringTypes[0].expand = function (

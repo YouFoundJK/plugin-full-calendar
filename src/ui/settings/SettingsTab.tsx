@@ -180,7 +180,7 @@ export function addCalendarButton(
 
                 // Now, submit the complete source to the React component.
                 submitCallback(finalSource);
-                existingCalendarColors.push(finalSource.color as string);
+                existingCalendarColors.push(finalSource.color);
               }
               modal.close();
             }

@@ -78,5 +78,5 @@ export const i18n = i18next;
  * Usage: t('commands.newEvent')
  */
 export const t = (key: string, options?: Record<string, string | number | null>): string => {
-  return i18next.t(key, options) as string;
+  return i18next.t(key, options);
 };

@@ -3,6 +3,17 @@ import { EventLocation, OFCEvent } from '../types';
 
 import { TFile } from 'obsidian';
 
+jest.mock(
+  'obsidian',
+  () => ({
+    TFile: class {},
+    TFolder: class {},
+    TAbstractFile: class {},
+    normalizePath: (path: string) => path.replace(/\\/g, '/')
+  }),
+  { virtual: true }
+);
+
 type MockCalendar = { id: string };
 
 const withCounter = <T>(f: (x: string) => T, label?: string) => {
@@ -15,8 +26,7 @@ const withCounter = <T>(f: (x: string) => T, label?: string) => {
 };
 
 // Create a minimal mock implementing the TFile interface shape used (only path accessed).
-// eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
-const mockFile = withCounter(path => ({ path }) as unknown as TFile, 'file');
+const mockFile = withCounter(path => Object.assign(new TFile(), { path }), 'file');
 
 const mockCalendar = withCounter((id): MockCalendar => ({ id }), 'calendar');
 

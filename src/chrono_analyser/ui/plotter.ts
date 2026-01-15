@@ -120,9 +120,9 @@ function setupPlotlyEvents(
   maybe.on?.(eventType, handler);
 }
 
-function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
+function debounce<A extends any[]>(fn: (...args: A) => void, delay: number) {
   let timeout: number | null = null;
-  return (...args: Parameters<T>): void => {
+  return (...args: A): void => {
     if (timeout !== null) {
       window.clearTimeout(timeout);
     }

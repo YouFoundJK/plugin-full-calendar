@@ -386,7 +386,7 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
       type: 'single',
       uid,
       title: eventData.title,
-      date: date!,
+      date: date,
       endDate: date !== finalEndDate ? finalEndDate || null : null,
       timezone,
       ...(isAllDay
