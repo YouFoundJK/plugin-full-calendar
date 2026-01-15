@@ -4,11 +4,11 @@
  * @license See LICENSE.md
  */
 
-import { requestUrl, Notice, Platform } from 'obsidian';
+import { requestUrl, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { CalendarInfo } from '../../../types';
 import { GoogleAccount } from '../../../types/settings';
-import { generateCalendarId } from '../../../types/calendar_settings';
+// generateCalendarId import removed - was unused
 import { t } from '../../../features/i18n/i18n';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';

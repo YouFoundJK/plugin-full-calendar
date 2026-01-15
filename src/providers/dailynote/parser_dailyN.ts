@@ -19,7 +19,7 @@ import { FullCalendarSettings } from '../../types/settings';
 // TYPES AND CONSTANTS
 // =================================================================================================
 
-type Line = {
+type _Line = {
   text: string;
   lineNumber: number;
 };
@@ -31,8 +31,8 @@ type AddToHeadingProps = {
 };
 
 export const fieldRegex = /\s*\[.*?\]\s*/g;
-export const listRegex = /^(\s*)\-\s+(\[(.)\]\s+)?/;
-const checkboxRegex = /^\s*\-\s+\[(.)\]\s+/;
+export const listRegex = /^(\s*)-\s+(\[(.)\]\s+)?/;
+const checkboxRegex = /^\s*-\s+\[(.)\]\s+/;
 const inlineFieldRegex = /\[([^\]]+):: ?([^\]]+)\]/g;
 
 // INTERNAL HELPERS
@@ -85,7 +85,7 @@ export const getListsUnderHeading = (
   );
 };
 
-const generateInlineAttributes = (attrs: Record<string, any>): string => {
+const generateInlineAttributes = (attrs: Record<string, unknown>): string => {
   return Object.entries(attrs)
     .map(([k, v]) => `[${k}:: ${v}]`)
     .join('  ');

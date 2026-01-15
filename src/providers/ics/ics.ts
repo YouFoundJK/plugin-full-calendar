@@ -452,12 +452,12 @@ export function getEventsFromICS(text: string): OFCEvent[] {
         evt.startDate.toJSDate();
         evt.endDate.toJSDate();
         return true;
-      } catch (err) {
-        let startDateJs;
+      } catch (_err) {
+        let _startDateJs;
         try {
-          startDateJs = evt.startDate?.toJSDate();
+          _startDateJs = evt.startDate?.toJSDate();
         } catch (e) {
-          startDateJs = `Error: ${e}`;
+          _startDateJs = `Error: ${e}`;
         }
         // skipping events with invalid time
         return false;

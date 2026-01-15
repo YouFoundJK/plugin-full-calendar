@@ -39,6 +39,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
   // Static metadata for registry
   static readonly type = 'ical';
   static readonly displayName = 'Remote Calendar (ICS)';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static getConfigurationComponent(): FCReactComponent<any> {
     return ICSConfigComponent;
   }
@@ -115,6 +116,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
     // The actual fetching is always done in getEvents.
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getConfigurationComponent(): FCReactComponent<any> {
     return ICSConfigComponent;
   }

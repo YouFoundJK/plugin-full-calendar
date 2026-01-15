@@ -180,8 +180,8 @@ async function fetchCalendarObjects(
 const CalDAVSettingRow: React.FC<{ source: Partial<import('../../types').CalendarInfo> }> = ({
   source
 }) => {
-  const url = (source as any)?.url || '';
-  const username = (source as any)?.username || '';
+  const url = (source as unknown as { url?: string })?.url || '';
+  const username = (source as unknown as { username?: string })?.username || '';
 
   return React.createElement(
     React.Fragment,
@@ -212,6 +212,7 @@ const CalDAVSettingRow: React.FC<{ source: Partial<import('../../types').Calenda
 export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
   static readonly type = 'caldav';
   static readonly displayName = 'CalDAV';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static getConfigurationComponent(): FCReactComponent<any> {
     return CalDAVConfigComponent;
   }
@@ -416,6 +417,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
 
   // Boilerplate methods for the provider interface.
   async revalidate(): Promise<void> {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getConfigurationComponent(): FCReactComponent<any> {
     return () => null;
   }

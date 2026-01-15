@@ -17,7 +17,7 @@ import { GoogleAuthManager } from './auth/GoogleAuthManager';
 const GoogleNameSetting: React.FC<{ source: Partial<import('../../types').CalendarInfo> }> = ({
   source
 }) => {
-  const calendarId = (source as any)?.calendarId || '';
+  const calendarId = (source as unknown as { calendarId?: string })?.calendarId || '';
 
   return React.createElement(
     'div',
@@ -35,6 +35,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   // Static metadata for registry
   static readonly type = 'google';
   static readonly displayName = 'Google Calendar';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static getConfigurationComponent(): FCReactComponent<any> {
     return GoogleConfigComponent;
   }
@@ -327,7 +328,9 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getConfigurationComponent(): FCReactComponent<any> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const WrapperComponent: React.FC<any> = props => {
       // This logic is now handled inside GoogleConfigComponent, so we can simplify this.
       // We just need to pass the plugin instance.

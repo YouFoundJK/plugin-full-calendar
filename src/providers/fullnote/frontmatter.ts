@@ -63,7 +63,7 @@ export function replaceFrontmatter(page: string, newFrontmatter: string): string
 }
 
 type PrintableAtom =
-  | Record<string, any>
+  | Record<string, unknown>
   | Array<number | string>
   | number
   | string

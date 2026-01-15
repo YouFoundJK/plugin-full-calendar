@@ -42,14 +42,14 @@ export class TasksBacklogManager {
     // Add command to open the backlog view
     this.plugin.addCommand({
       id: 'open-tasks-backlog',
-      name: 'Open Tasks Backlog',
+      name: 'Open tasks backlog',
       callback: () => {
         this.openBacklogView();
       }
     });
 
     // Add ribbon icon for quick access
-    this.plugin.addRibbonIcon('list-todo', 'Tasks Backlog', () => {
+    this.plugin.addRibbonIcon('list-todo', 'Tasks backlog', () => {
       this.openBacklogView();
     });
   }

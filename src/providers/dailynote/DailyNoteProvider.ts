@@ -59,6 +59,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
   // Static metadata for registry
   static readonly type = 'dailynote';
   static readonly displayName = 'Daily Note';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static getConfigurationComponent(): FCReactComponent<any> {
     return DailyNoteConfigComponent;
   }
@@ -263,6 +264,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getConfigurationComponent(): FCReactComponent<any> {
     return DailyNoteConfigComponent;
   }

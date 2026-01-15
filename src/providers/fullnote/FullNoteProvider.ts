@@ -119,6 +119,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
   // Static metadata for registry
   static readonly type = 'local';
   static readonly displayName = 'Local Notes';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static getConfigurationComponent(): FCReactComponent<any> {
     return FullNoteConfigComponent;
   }
@@ -279,6 +280,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return this.createEvent(overrideEventData);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getConfigurationComponent(): FCReactComponent<any> {
     return FullNoteConfigComponent;
   }

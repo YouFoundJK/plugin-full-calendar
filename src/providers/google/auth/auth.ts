@@ -24,7 +24,7 @@ import { t } from '../../../features/i18n/i18n';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'; // Renamed for clarity
 const PROXY_TOKEN_URL = 'https://gcal-proxy-server.vercel.app/api/google/token';
-const PROXY_REFRESH_URL = 'https://gcal-proxy-server.vercel.app/api/google/refresh';
+const _PROXY_REFRESH_URL = 'https://gcal-proxy-server.vercel.app/api/google/refresh';
 
 const SCOPES =
   'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';

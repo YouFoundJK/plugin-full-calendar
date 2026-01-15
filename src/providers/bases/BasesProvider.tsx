@@ -1,8 +1,8 @@
-import { TFile, App, Notice, parseYaml, getAllTags, normalizePath } from 'obsidian';
+import { TFile, parseYaml, getAllTags } from 'obsidian';
 import * as React from 'react';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { OFCEvent, EventLocation, CalendarInfo, validateEvent } from '../../types';
-import { FCReactComponent, ProviderConfigContext, EventHandle } from '../typesProvider';
+import { FCReactComponent, EventHandle } from '../typesProvider';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { BasesConfigComponent } from './BasesConfigComponent';
@@ -22,13 +22,14 @@ interface BaseFilter {
 
 interface BaseFile {
   filters?: BaseFilter;
-  views?: any[];
-  properties?: any;
+  views?: unknown[];
+  properties?: unknown;
 }
 
 export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
   static type = 'bases';
   static displayName = 'Obsidian Bases';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static getConfigurationComponent(): FCReactComponent<any> {
     return BasesConfigComponent;
   }
@@ -118,7 +119,10 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
     const events: [OFCEvent, EventLocation | null][] = [];
 
     // Check if Bases plugin is enabled
-    const app = this.plugin.app as any;
+    const app = this.plugin.app as unknown as {
+      internalPlugins?: { getPluginById: (id: string) => unknown };
+      plugins?: { getPlugin: (id: string) => unknown };
+    };
     const basesPlugin =
       app.internalPlugins?.getPluginById('bases') || app.plugins?.getPlugin('bases');
     if (!basesPlugin) {
@@ -233,7 +237,9 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
     throw new Error('Not implemented');
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getConfigurationComponent(): FCReactComponent<any> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return BasesConfigComponent as any;
   }
 
