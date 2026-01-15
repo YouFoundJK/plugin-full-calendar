@@ -19,7 +19,7 @@ export function renderOnboarding(plugin: FullCalendarPlugin, el: HTMLElement) {
   const notice = nocal.createDiv();
   notice.createEl('h1').textContent = 'No calendars available';
   notice.createEl('p').textContent =
-    'Thanks for downloading Full Calendar! Create a calendar below to begin.';
+    'Thanks for downloading full calendar. Create a calendar below to begin.';
 
   const container = notice.createDiv();
   addCalendarButton(plugin, container, async (source: CalendarInfo) => {

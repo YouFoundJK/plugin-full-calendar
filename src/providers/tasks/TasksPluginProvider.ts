@@ -20,7 +20,7 @@ import { OFCEvent, EventLocation } from '../../types';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { TasksProviderConfig } from './typesTask';
-import { TasksConfigComponent } from './TasksConfigComponent';
+import { TasksConfigComponent, TasksConfigComponentProps } from './TasksConfigComponent';
 import React from 'react';
 import { ParsedUndatedTask } from './typesTask';
 import { DateTime } from 'luxon';
@@ -28,7 +28,6 @@ import { t } from '../../features/i18n/i18n';
 
 // CHANGE: Define Scheduled emoji instead of Due
 const getScheduledDateEmoji = (): string => '⏳';
-const getStartDateEmoji = (): string => '🛫';
 
 // This is our own internal, simplified interface for a task from the Tasks plugin's cache.
 // It prevents the need to import anything from the Tasks plugin itself.
@@ -44,13 +43,34 @@ interface CalendarTask {
   isDone: boolean;
 }
 
+interface TasksPluginTaskDate {
+  toDate(): Date;
+}
+
+interface TasksPluginTask {
+  path: string;
+  description: string;
+  taskLocation: { lineNumber: number };
+  startDate?: TasksPluginTaskDate;
+  dueDate?: TasksPluginTaskDate;
+  scheduledDate?: TasksPluginTaskDate;
+  originalMarkdown: string;
+  isDone?: boolean;
+  doneDatez?: unknown;
+}
+
+interface TasksCacheData {
+  state?: { name?: string } | string;
+  tasks?: TasksPluginTask[];
+}
+
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
 export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig> {
   // Static metadata for registry
   static readonly type = 'tasks';
   static readonly displayName = 'Obsidian Tasks';
-  static getConfigurationComponent(): FCReactComponent<any> {
+  static getConfigurationComponent(): FCReactComponent<TasksConfigComponentProps> {
     return TasksConfigComponent;
   }
   /**
@@ -173,13 +193,15 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   readonly isRemote = false;
   readonly loadPriority = 130;
 
-  constructor(source: TasksProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  // Keep constructor broadly typed to align with ProviderRegistry's dynamic loading signature.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(source: any, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     if (!app) {
       throw new Error('TasksPluginProvider requires an Obsidian app interface.');
     }
     this.app = app;
     this.plugin = plugin;
-    this.source = source;
+    this.source = source as TasksProviderConfig;
     // No parser instantiation needed anymore.
   }
 
@@ -195,10 +217,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
     this.tasksPromise = new Promise((resolve, reject) => {
       console.log('Full Calendar: Tasks cache is cold. Requesting data from Tasks plugin...');
-      const callback = (cacheData: any) => {
+      const callback = (cacheData: TasksCacheData) => {
         if (
           cacheData &&
-          (cacheData.state === 'Warm' || cacheData.state?.name === 'Warm') &&
+          ((typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
+            (typeof cacheData.state === 'object' && cacheData.state?.name === 'Warm')) &&
           cacheData.tasks
         ) {
           this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
@@ -207,10 +230,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           resolve();
         }
       };
-      (this.plugin.app.workspace as any).trigger(
-        'obsidian-tasks-plugin:request-cache-update',
-        callback
-      );
+      const workspace = this.plugin.app.workspace as unknown as {
+        trigger: (event: string, callback: (data: TasksCacheData) => void) => void;
+      };
+
+      workspace.trigger('obsidian-tasks-plugin:request-cache-update', callback);
       setTimeout(() => {
         if (!this.isTasksCacheWarm) {
           console.error(
@@ -265,13 +289,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       return;
     }
     // The handler is now async to await cache operations.
-    const handleLiveCacheUpdate = async (cacheData: any) => {
+    const handleLiveCacheUpdate = async (cacheData: TasksCacheData) => {
       if (
         this.isProcessingUpdate ||
         !this.isTasksCacheWarm ||
         !this.plugin.cache ||
         !cacheData ||
-        !(cacheData.state === 'Warm' || cacheData.state?.name === 'Warm') ||
+        !(
+          (typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
+          (typeof cacheData.state === 'object' && cacheData.state?.name === 'Warm')
+        ) ||
         !cacheData.tasks
       ) {
         return;
@@ -352,17 +379,18 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       }
     };
 
-    (this.plugin.app.workspace as any).on(
-      'obsidian-tasks-plugin:cache-update',
-      handleLiveCacheUpdate
-    );
+    const workspace = this.plugin.app.workspace as unknown as {
+      on: (event: string, callback: (data: TasksCacheData) => void) => void;
+    };
+
+    workspace.on('obsidian-tasks-plugin:cache-update', handleLiveCacheUpdate);
     this.isSubscribed = true;
   }
 
   /**
    * Parses the raw task data from the Tasks plugin into our internal, simplified CalendarTask format.
    */
-  private parseTasksForCalendar(tasks: any[]): CalendarTask[] {
+  private parseTasksForCalendar(tasks: TasksPluginTask[]): CalendarTask[] {
     if (!tasks) return [];
 
     // FIX: Use the stable, nested line number from taskLocation and convert to 1-based index.
@@ -578,7 +606,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
     const newLine = this.updateTaskLine(task.originalMarkdown, date);
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
-    const tasksApi = (this.plugin.app as any).plugins.plugins['obsidian-tasks-plugin']?.apiV1;
+    const tasksApi = (
+      this.plugin.app as unknown as {
+        plugins?: {
+          plugins?: Record<
+            string,
+            { apiV1?: { editTaskLineModal: (line: string) => Promise<string | undefined> } }
+          >;
+        };
+      }
+    ).plugins?.plugins?.['obsidian-tasks-plugin']?.apiV1;
     if (tasksApi) {
       const editedTaskLine = await tasksApi.editTaskLineModal(newLine);
       if (editedTaskLine !== undefined && editedTaskLine !== newLine) {
@@ -590,7 +627,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   public async editInProviderUI(eventId: string): Promise<void> {
-    const tasksApi = (this.plugin.app as any).plugins.plugins['obsidian-tasks-plugin']?.apiV1;
+    const tasksApi = (
+      this.plugin.app as unknown as {
+        plugins?: {
+          plugins?: Record<
+            string,
+            { apiV1?: { editTaskLineModal: (line: string) => Promise<string | undefined> } }
+          >;
+        };
+      }
+    ).plugins?.plugins?.['obsidian-tasks-plugin']?.apiV1;
     if (!tasksApi) {
       new Notice(t('notices.tasks.apiUnavailable'));
       return;
@@ -685,7 +731,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     };
   }
 
-  getConfigurationComponent(): FCReactComponent<any> {
+  getConfigurationComponent(): FCReactComponent<TasksConfigComponentProps> {
     return TasksConfigComponent;
   }
 
@@ -713,7 +759,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     source: Partial<import('../../types').CalendarInfo>;
   }> {
     const Row: React.FC<{ source: Partial<import('../../types').CalendarInfo> }> = ({ source }) => {
-      const name = (source as any).name ?? this.displayName;
+      const name = source.name ?? this.displayName;
       return React.createElement(
         'div',
         { className: 'setting-item-control ofc-settings-row-tasks-provider' },

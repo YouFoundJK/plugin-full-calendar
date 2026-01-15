@@ -95,18 +95,23 @@ const VIEW_ZOOM_CONFIG: {
 };
 // END NEW CONFIGURATION
 
-function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T {
-  let inThrottle: boolean;
-  let lastResult: ReturnType<T>;
+function throttle<TArgs extends unknown[], TReturn>(
+  func: (...args: TArgs) => TReturn,
+  limit: number
+): (...args: TArgs) => TReturn {
+  let inThrottle = false;
+  let lastResult: TReturn | undefined;
 
-  return function (this: ThisParameterType<T>, ...args: Parameters<T>): ReturnType<T> {
+  return function (this: ThisParameterType<typeof func>, ...args: TArgs): TReturn {
     if (!inThrottle) {
       inThrottle = true;
       setTimeout(() => (inThrottle = false), limit);
-      lastResult = func.apply(this, args);
+      const result = func.apply(this, args);
+      lastResult = result;
+      return result;
     }
-    return lastResult;
-  } as T;
+    return lastResult as TReturn;
+  };
 }
 
 export function getCalendarColors(color: string | null | undefined): {
@@ -478,7 +483,6 @@ export class CalendarView extends ItemView {
    * callback with the EventCache to listen for updates.
    */
   async onOpen() {
-    const startTime = performance.now();
     await this.plugin.loadSettings();
     if (!this.plugin.cache) {
       new Notice(t('ui.view.errors.cacheNotLoaded'));
@@ -780,7 +784,9 @@ export class CalendarView extends ItemView {
               sourcePath: location.path
             });
           }
-        } catch (e) {}
+        } catch (_error) {
+          // Swallow hover-link errors to avoid interrupting hover flow.
+        }
       },
       openContextMenuForEvent: async (e, mouseEvent) => {
         const menu = new Menu();
@@ -888,7 +894,7 @@ export class CalendarView extends ItemView {
         }
         this.dateNavigation?.showDateContextMenu(mouseEvent, date);
       },
-      viewRightClick: (mouseEvent: MouseEvent, calendar: any) => {
+      viewRightClick: (mouseEvent: MouseEvent, calendar: Calendar) => {
         // Set up date navigation after calendar is created if not already done
         if (!this.dateNavigation && this.fullCalendarView) {
           this.dateNavigation = createDateNavigation(this.fullCalendarView, calendarEl);

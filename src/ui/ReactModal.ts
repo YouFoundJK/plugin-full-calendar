@@ -17,7 +17,7 @@ import ReactDOM from 'react-dom/client';
 import { App, Modal } from 'obsidian';
 
 type RenderCallback = (close: () => void) => Promise<ReturnType<typeof React.createElement>>;
-export default class ReactModal<Props, Component> extends Modal {
+export default class ReactModal extends Modal {
   onOpenCallback: RenderCallback;
 
   constructor(app: App, onOpenCallback: RenderCallback) {

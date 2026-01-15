@@ -28,7 +28,7 @@ export type CalendarProviderClass = new (
   app?: ObsidianInterface
 ) => CalendarProvider<unknown>;
 
-type ProviderLoader = () => Promise<{ [key: string]: CalendarProviderClass }>;
+type ProviderLoader = () => Promise<Record<string, unknown>>;
 
 export class ProviderRegistry {
   /**

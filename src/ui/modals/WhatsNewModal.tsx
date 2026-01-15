@@ -1,10 +1,17 @@
-import { App, Modal, Setting } from 'obsidian';
+import { App, Modal, Setting, ButtonComponent } from 'obsidian';
 import * as ReactDOM from 'react-dom/client';
 import { createElement } from 'react';
 import { changelogData } from '../settings/changelogs/changelogData';
 import { VersionSection } from '../settings/changelogs/Changelog';
 import '../settings/changelogs/changelog.css';
 import FullCalendarPlugin from '../../main';
+
+type SettingsManager = {
+  open: () => void;
+  openTabById: (id: string) => void;
+};
+
+type AppWithSettings = App & { setting: SettingsManager };
 
 export class WhatsNewModal extends Modal {
   private plugin: FullCalendarPlugin;
@@ -19,7 +26,7 @@ export class WhatsNewModal extends Modal {
     contentEl.empty();
     contentEl.addClass('full-calendar-whats-new-modal');
 
-    contentEl.createEl('h2', { text: "What's New in Full Calendar" });
+    contentEl.createEl('h2', { text: "What's new in full calendar" });
 
     // Render the React component for the latest version
     const reactRootInfo = contentEl.createDiv('full-calendar-whats-new-react-root');
@@ -42,7 +49,7 @@ export class WhatsNewModal extends Modal {
     // Add "See all" button
     const footer = contentEl.createDiv('full-calendar-whats-new-footer');
     new Setting(footer)
-      .addButton(btn =>
+      .addButton((btn: ButtonComponent) =>
         btn.setButtonText('See all changelogs').onClick(async () => {
           this.close();
           // Open settings to changelog
@@ -50,12 +57,13 @@ export class WhatsNewModal extends Modal {
           if (settingsTab) {
             await settingsTab.showChangelog();
             // Open settings
-            (this.plugin.app as any).setting.open();
-            (this.plugin.app as any).setting.openTabById(this.plugin.manifest.id);
+            const settingsManager = (this.plugin.app as AppWithSettings).setting;
+            settingsManager.open();
+            settingsManager.openTabById(this.plugin.manifest.id);
           }
         })
       )
-      .addButton(btn =>
+      .addButton((btn: ButtonComponent) =>
         btn
           .setButtonText('Close')
           .setCta()

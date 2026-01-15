@@ -22,8 +22,7 @@ import {
   PluginSettingTab,
   Setting,
   TFile,
-  TFolder,
-  Modal
+  TFolder
 } from 'obsidian';
 
 import ReactModal from '../ReactModal';
@@ -49,10 +48,6 @@ export function addCalendarButton(
   listUsedDirectories?: () => string[]
 ) {
   let dropdown: DropdownComponent;
-  const directories = plugin.app.vault
-    .getAllLoadedFiles()
-    .filter(f => f instanceof TFolder)
-    .map(f => f.path);
 
   return new Setting(containerEl)
     .setName(t('settings.calendars.title'))
@@ -77,7 +72,10 @@ export function addCalendarButton(
         const sourceType = dropdown.getValue();
 
         if (sourceType === 'bases') {
-          const app = plugin.app as any;
+          const app = plugin.app as unknown as {
+            internalPlugins?: { getPluginById: (id: string) => unknown };
+            plugins?: { getPlugin: (id: string) => unknown };
+          };
           const basesPlugin =
             app.internalPlugins?.getPluginById('bases') || app.plugins?.getPlugin('bases');
           if (!basesPlugin) {

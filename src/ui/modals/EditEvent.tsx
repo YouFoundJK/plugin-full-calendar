@@ -138,7 +138,7 @@ export const EditEvent = ({
             : ''
       : ''
   );
-  const [endDate, setEndDate] = useState(
+  const [endDate] = useState(
     initialEvent && initialEvent.type === 'single' ? initialEvent.endDate : undefined
   );
   const [startTime, setStartTime] = useState(
@@ -200,9 +200,6 @@ export const EditEvent = ({
   const [display, setDisplay] = useState<
     'auto' | 'block' | 'list-item' | 'background' | 'inverse-background' | 'none'
   >(initialEvent?.display || 'auto');
-
-  // Add state for endReminder
-  const [endReminder, setEndReminder] = useState(initialEvent?.endReminder || false);
 
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {

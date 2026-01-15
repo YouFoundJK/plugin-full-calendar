@@ -202,7 +202,7 @@ export function renderAppearanceSettings(
         try {
           plugin.settings.hiddenDays = JSON.parse(value);
           await plugin.saveSettings();
-        } catch (e) {
+        } catch (_error) {
           // Invalid JSON, keep current value
         }
       });

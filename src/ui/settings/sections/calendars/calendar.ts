@@ -198,10 +198,6 @@ export async function renderCalendar(
       }
     });
 
-  // Only show resource timeline views if category coloring is enabled
-  const enableAdvancedCategorization = settings?.enableAdvancedCategorization;
-  // already computed showResourceViews above
-
   // Group the standard and timeline views together with a space.
   // This tells FullCalendar to render them as a single, connected button group.
   const viewButtonGroup = ['views', showResourceViews ? 'timeline' : null]
@@ -255,12 +251,12 @@ export async function renderCalendar(
     views.resourceTimelineDay = {
       type: 'resourceTimeline',
       duration: { days: 1 },
-      buttonText: 'Timeline Day'
+      buttonText: 'Timeline day'
     };
     views.resourceTimelineWeek = {
       type: 'resourceTimeline',
       duration: { weeks: 1 },
-      buttonText: 'Timeline Week',
+      buttonText: 'Timeline week',
       slotMinWidth: 100
     };
   }
@@ -314,12 +310,12 @@ export async function renderCalendar(
       click: (ev: MouseEvent) => {
         const menu = new Menu();
         menu.addItem(item =>
-          item.setTitle('Timeline Week').onClick(() => {
+          item.setTitle('Timeline week').onClick(() => {
             cal.changeView('resourceTimelineWeek');
           })
         );
         menu.addItem(item =>
-          item.setTitle('Timeline Day').onClick(() => {
+          item.setTitle('Timeline day').onClick(() => {
             cal.changeView('resourceTimelineDay');
           })
         );
@@ -443,7 +439,9 @@ export async function renderCalendar(
 
       el.addEventListener('contextmenu', e => {
         e.preventDefault();
-        openContextMenuForEvent && openContextMenuForEvent(event, e);
+        if (openContextMenuForEvent) {
+          openContextMenuForEvent(event, e);
+        }
       });
       if (toggleTask) {
         if (event.extendedProps.isTask) {
