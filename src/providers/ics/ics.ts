@@ -240,7 +240,7 @@ function icalTimeToLuxon(t: ical.Time): DateTime {
 
   // Log if we had to map a Windows timezone
   if (rawZone !== zone && rawZone !== 'utc') {
-    console.log(
+    console.debug(
       `Full Calendar ICS Parser: Mapped Windows timezone "${rawZone}" to IANA timezone "${zone}".`
     );
   }

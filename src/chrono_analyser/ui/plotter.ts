@@ -43,10 +43,13 @@ function safeEmpty(element: HTMLElement): void {
   const maybe = element as Partial<ObsidianHTMLElement>;
   if (typeof maybe.empty === 'function') {
     maybe.empty();
-    element.innerHTML = '';
   } else {
-    element.textContent = '';
+    while (element.firstChild) {
+      element.removeChild(element.firstChild);
+    }
   }
+
+  element.textContent = '';
 }
 
 interface CreateOptions {

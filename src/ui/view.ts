@@ -491,8 +491,6 @@ export class CalendarView extends ItemView {
       }
       if (!this.plugin.cache.initialized) {
         await this.plugin.cache.populate();
-      } else {
-        // console.log('Full Calendar: Cache already initialized.');
       }
 
       this.viewEnhancer = new ViewEnhancer(this.plugin.settings);

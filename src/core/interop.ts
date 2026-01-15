@@ -325,9 +325,9 @@ export function toEventInput(
     // DEBUG: Log rrule event processing for the 123123 event
     const isDebugEvent = frontmatter.title === '123123';
     if (isDebugEvent) {
-      console.log('[FC DEBUG] toEventInput processing rrule event "123123"');
-      console.log('[FC DEBUG] Input frontmatter:', JSON.stringify(frontmatter, null, 2));
-      console.log('[FC DEBUG] Settings displayTimezone:', settings.displayTimezone);
+      console.debug('[FC DEBUG] toEventInput processing rrule event "123123"');
+      console.debug('[FC DEBUG] Input frontmatter:', JSON.stringify(frontmatter, null, 2));
+      console.debug('[FC DEBUG] Settings displayTimezone:', settings.displayTimezone);
     }
 
     // Determine source and display timezones
@@ -336,8 +336,8 @@ export function toEventInput(
       settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     if (isDebugEvent) {
-      console.log('[FC DEBUG] sourceZone:', sourceZone);
-      console.log('[FC DEBUG] displayZone:', displayZone);
+      console.debug('[FC DEBUG] sourceZone:', sourceZone);
+      console.debug('[FC DEBUG] displayZone:', displayZone);
     }
 
     // Parse the event time in its source timezone first
@@ -379,11 +379,11 @@ export function toEventInput(
       dtInDisplay.ordinal - dtInSource.ordinal + (dtInDisplay.year - dtInSource.year) * 365; // Approximate, but works for small offsets
 
     if (isDebugEvent) {
-      console.log('[FC DEBUG] dtInSource:', dtInSource.toString());
-      console.log('[FC DEBUG] dtInSource weekday:', dtInSource.weekdayLong);
-      console.log('[FC DEBUG] dtInDisplay:', dtInDisplay.toString());
-      console.log('[FC DEBUG] dtInDisplay weekday:', dtInDisplay.weekdayLong);
-      console.log('[FC DEBUG] dayOffset:', dayOffset);
+      console.debug('[FC DEBUG] dtInSource:', dtInSource.toString());
+      console.debug('[FC DEBUG] dtInSource weekday:', dtInSource.weekdayLong);
+      console.debug('[FC DEBUG] dtInDisplay:', dtInDisplay.toString());
+      console.debug('[FC DEBUG] dtInDisplay weekday:', dtInDisplay.weekdayLong);
+      console.debug('[FC DEBUG] dayOffset:', dayOffset);
     }
 
     // Adjust BYDAY rules if the timezone conversion shifts the day
@@ -407,9 +407,9 @@ export function toEventInput(
         adjustedRrule = adjustedRrule.replace(/BYDAY=[A-Z,]+/, `BYDAY=${adjustedDays.join(',')}`);
 
         if (isDebugEvent) {
-          console.log('[FC DEBUG] Original BYDAY:', originalDays);
-          console.log('[FC DEBUG] Adjusted BYDAY:', adjustedDays);
-          console.log('[FC DEBUG] Adjusted rrule:', adjustedRrule);
+          console.debug('[FC DEBUG] Original BYDAY:', originalDays);
+          console.debug('[FC DEBUG] Adjusted BYDAY:', adjustedDays);
+          console.debug('[FC DEBUG] Adjusted rrule:', adjustedRrule);
         }
       }
     }
@@ -419,8 +419,8 @@ export function toEventInput(
     const dtstart = dtInDisplay;
 
     if (isDebugEvent) {
-      console.log('[FC DEBUG] Final dtstart:', dtstart.toString());
-      console.log('[FC DEBUG] dtstart weekday:', dtstart.weekdayLong);
+      console.debug('[FC DEBUG] Final dtstart:', dtstart.toString());
+      console.debug('[FC DEBUG] dtstart weekday:', dtstart.weekdayLong);
     }
 
     // Construct exdates - these need to be in "fake UTC" format where the local time
@@ -504,13 +504,13 @@ export function toEventInput(
     const rruleString = adjustedRrule;
 
     if (isDebugEvent) {
-      console.log('[FC DEBUG] dtstartString:', dtstartString);
-      console.log('[FC DEBUG] rruleString (adjusted):', rruleString);
-      console.log(
+      console.debug('[FC DEBUG] dtstartString:', dtstartString);
+      console.debug('[FC DEBUG] rruleString (adjusted):', rruleString);
+      console.debug(
         '[FC DEBUG] Combined rrule for FullCalendar:',
         [dtstartString, rruleString].join('\n')
       );
-      console.log('[FC DEBUG] exdates:', exdate);
+      console.debug('[FC DEBUG] exdates:', exdate);
     }
 
     baseEvent.rrule = [dtstartString, rruleString].join('\n');
@@ -549,9 +549,9 @@ export function toEventInput(
             });
 
             if (isDebugEvent) {
-              console.log('[FC DEBUG] startDt (source):', startDt.toString());
-              console.log('[FC DEBUG] endDt (source):', endDt.toString());
-              console.log('[FC DEBUG] Calculated duration:', baseEvent.duration);
+              console.debug('[FC DEBUG] startDt (source):', startDt.toString());
+              console.debug('[FC DEBUG] endDt (source):', endDt.toString());
+              console.debug('[FC DEBUG] Calculated duration:', baseEvent.duration);
             }
           }
         }
@@ -559,7 +559,7 @@ export function toEventInput(
     }
 
     if (isDebugEvent) {
-      console.log(
+      console.debug(
         '[FC DEBUG] Final baseEvent for FullCalendar:',
         JSON.stringify(baseEvent, null, 2)
       );

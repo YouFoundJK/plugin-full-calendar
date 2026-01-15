@@ -1081,7 +1081,7 @@ export default class EventCache {
    * @param calendarId The ID of the calendar source these updates belong to.
    * @param updates A payload containing arrays of additions, updates, and deletions.
    */
-  public async processProviderUpdates(
+  public processProviderUpdates(
     calendarId: string,
     updates: {
       additions: { event: OFCEvent; location: EventLocation | null }[];
@@ -1093,7 +1093,7 @@ export default class EventCache {
 
     // If there are no changes, exit early.
     if (additions.length === 0 && updateArr.length === 0 && deletions.length === 0) {
-      return;
+      return Promise.resolve();
     }
 
     this.isBulkUpdating = true;
@@ -1134,6 +1134,8 @@ export default class EventCache {
       this.flushUpdateQueue([], []); // This processes the .toAdd and .toRemove queues.
       this.timeEngine.scheduleCacheRebuild();
     }
+
+    return Promise.resolve();
   }
 
   // ====================================================================
@@ -1144,12 +1146,12 @@ export default class EventCache {
     return this._store;
   }
 
-  public async syncFile(
+  public syncFile(
     file: TFile,
     newEventsWithDetails: { event: OFCEvent; location: EventLocation | null; calendarId: string }[]
   ): Promise<void> {
     if (this.isBulkUpdating) {
-      return;
+      return Promise.resolve();
     }
 
     // 1. Get OLD state from the store for this specific file.
@@ -1168,7 +1170,7 @@ export default class EventCache {
 
     if (JSON.stringify(oldEventData) === JSON.stringify(newEventData)) {
       // No changes detected, nothing to do.
-      return;
+      return Promise.resolve();
     }
 
     // 3. If there are changes, perform the update.
@@ -1207,6 +1209,8 @@ export default class EventCache {
     }));
     this.flushUpdateQueue(idsToRemove, cacheEntriesToAdd);
     this.timeEngine.scheduleCacheRebuild();
+
+    return Promise.resolve();
   }
 
   private getProviderForEvent(eventId: string) {

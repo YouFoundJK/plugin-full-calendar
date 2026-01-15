@@ -37,8 +37,17 @@ const PUBLIC_CLIENT_ID = '272284435724-ltjbog78np5lnbjhgecudaqhsfba9voi.apps.goo
 // MODULE STATE
 // =================================================================================================
 
+type DesktopRequest = { url?: string };
+type DesktopResponse = { writeHead: (status: number) => void; end: (body?: string) => void };
+type DesktopServer = { close: () => void; listen: (port: number, callback: () => void) => void };
+type DesktopHttpModule = {
+  createServer: (handler: (req: DesktopRequest, res: DesktopResponse) => void) => DesktopServer;
+};
+type DesktopUrlModule = {
+  parse: (input: string, parseQueryString?: boolean) => { query?: Record<string, unknown> };
+};
+
 let pkce: { verifier: string; state: string } | null = null;
-type DesktopServer = { close: () => void; listen: (...args: any[]) => void };
 let server: DesktopServer | null = null;
 
 // =================================================================================================
@@ -73,15 +82,8 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 }
 
 function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
-  const http = window.require('http') as { createServer: (...args: any[]) => DesktopServer };
-  const url = window.require('url') as {
-    parse: (
-      input: string,
-      parseQueryString?: boolean
-    ) => {
-      query?: Record<string, unknown>;
-    };
-  };
+  const http = window.require('http') as DesktopHttpModule;
+  const url = window.require('url') as DesktopUrlModule;
   if (server) {
     window.open(authUrl);
     return;

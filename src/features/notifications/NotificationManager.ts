@@ -51,9 +51,6 @@ export class NotificationManager {
     // Combine current and upcoming for processing
     const candidates = [...(state.current ? [state.current] : []), ...state.upcoming];
 
-    // DEBUG: Log candidates count
-    // console.log(`[NotificationManager] Checking ${candidates.length} candidates at ${now.toFormat('HH:mm:ss')}`);
-
     for (const occurrence of candidates) {
       // Optimization check
       if (occurrence.start > lookaheadLimit) continue;
@@ -76,11 +73,7 @@ export class NotificationManager {
       const isTooLate = customTriggered.plus(recencyCutoff) < now;
 
       if (isDue && !isTooLate) {
-        // console.log(`[NotificationManager] Triggering Custom for ${event.title}`);
         this.tryTrigger(occurrence, 'custom', customTriggered);
-      } else {
-        // if (isDue && isTooLate)
-        // console.log(`[NotificationManager] Custom missed (too late) for ${event.title}`);
       }
     }
 
@@ -91,15 +84,7 @@ export class NotificationManager {
       // Avoid triggering for events way in the past if we just started up
       const isTooLate = defaultTriggerTime.plus(recencyCutoff) < now;
 
-      // console.log(`[NotificationManager] Default Check for ${event.title}:`, {
-      //   triggerTime: defaultTriggerTime.toFormat('HH:mm:ss'),
-      //   now: now.toFormat('HH:mm:ss'),
-      //   isDue,
-      //   isTooLate
-      // });
-
       if (isDue && !isTooLate) {
-        // console.log(`[NotificationManager] Triggering Default for ${event.title}`);
         this.tryTrigger(occurrence, 'default', defaultTriggerTime);
       }
     }
