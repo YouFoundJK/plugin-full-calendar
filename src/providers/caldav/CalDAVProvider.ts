@@ -3,7 +3,7 @@ import { getEventsFromICS } from '../ics/ics';
 import { eventToIcs, createOverrideVEvent } from '../ics/formatter';
 import ical from 'ical.js';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
-import { EventHandle, FCReactComponent } from '../typesProvider';
+import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { CalDAVProviderConfig } from './typesCalDAV';
 import FullCalendarPlugin from '../../main';
 import { CalDAVConfigComponent } from './CalDAVConfigComponent';
@@ -209,12 +209,31 @@ const CalDAVSettingRow: React.FC<{ source: Partial<import('../../types').Calenda
   );
 };
 
+type CalDAVConfigProps = {
+  config: Partial<CalDAVProviderConfig>;
+  onConfigChange: (newConfig: Partial<CalDAVProviderConfig>) => void;
+  context: ProviderConfigContext;
+  onSave: (finalConfig: CalDAVProviderConfig | CalDAVProviderConfig[]) => void;
+  onClose: () => void;
+};
+
+const CalDAVConfigWrapper: React.FC<CalDAVConfigProps> = props => {
+  const { config, onSave, onClose } = props;
+  const handleSave = (configs: CalDAVProviderConfig[]) => onSave(configs);
+
+  return React.createElement(CalDAVConfigComponent, {
+    config,
+    onSave: handleSave,
+    onClose
+  });
+};
+
 export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
   static readonly type = 'caldav';
   static readonly displayName = 'CalDAV';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static getConfigurationComponent(): FCReactComponent<any> {
-    return CalDAVConfigComponent;
+
+  static getConfigurationComponent(): FCReactComponent<CalDAVConfigProps> {
+    return CalDAVConfigWrapper;
   }
 
   private source: CalDAVProviderConfig;
@@ -417,9 +436,9 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
 
   // Boilerplate methods for the provider interface.
   async revalidate(): Promise<void> {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getConfigurationComponent(): FCReactComponent<any> {
-    return () => null;
+
+  getConfigurationComponent(): FCReactComponent<CalDAVConfigProps> {
+    return CalDAVConfigWrapper;
   }
   getSettingsRowComponent(): FCReactComponent<{
     source: Partial<import('../../types').CalendarInfo>;

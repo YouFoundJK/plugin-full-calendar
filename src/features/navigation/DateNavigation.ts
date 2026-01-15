@@ -14,7 +14,7 @@
  * @license See LICENSE.md
  */
 
-import { Calendar } from '@fullcalendar/core';
+import { Calendar, ViewApi } from '@fullcalendar/core';
 import { Menu } from 'obsidian';
 import { DatePicker, createHiddenDatePicker } from '../../ui/components/forms/DatePicker';
 import { t } from '../i18n/i18n';
@@ -226,8 +226,7 @@ export class DateNavigation {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private getDateFromMonthGrid(x: number, y: number, rect: DOMRect, view: any): Date {
+  private getDateFromMonthGrid(x: number, y: number, rect: DOMRect, view: ViewApi): Date {
     // Simple approximation for month view
     // This is a basic implementation - could be enhanced
     const startOfMonth = new Date(view.currentStart);
@@ -245,8 +244,7 @@ export class DateNavigation {
     return targetDate;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private getDateFromTimeGrid(x: number, y: number, rect: DOMRect, view: any): Date {
+  private getDateFromTimeGrid(x: number, y: number, rect: DOMRect, view: ViewApi): Date {
     // Simple approximation for week/day view
     const startOfView = new Date(view.currentStart);
     const endOfView = new Date(view.currentEnd);

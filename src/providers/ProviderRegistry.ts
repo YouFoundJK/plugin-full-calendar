@@ -11,19 +11,12 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const MILLICONDS_BETWEEN_REVALIDATIONS = 5 * MINUTE;
 
-// Keep the generic constructor loose because individual providers have distinct
-// config types (FullNoteProviderConfig, DailyNoteProviderConfig, etc.). Enforcing
-// a single CalendarInfo arg caused incompatibilities. We instead type the
-// instance side via CalendarProvider<unknown> while still avoiding pervasive `any`.
-// NOTE: We intentionally keep the constructor param typed as `any` here.
-// Each concrete provider has a distinct config type; using a union or unknown
-// causes incompatibilities (construct signature variance) when dynamically
-// importing modules. Keeping `any` localised here avoids leaking it elsewhere
-// while preserving flexibility for heterogeneous provider configs.
-
+// Keep the constructor signature broad: each provider has its own config
+// shape, but all concrete configs extend the validated CalendarInfo payload
+// loaded from settings. Using CalendarInfo here preserves flexibility for
+// dynamic imports without resorting to `any`.
 export type CalendarProviderClass = new (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  config: any,
+  config: CalendarInfo,
   plugin: FullCalendarPlugin,
   app?: ObsidianInterface
 ) => CalendarProvider<unknown>;

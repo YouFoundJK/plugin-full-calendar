@@ -4,7 +4,7 @@ import { getEventsFromICS } from './ics';
 import * as React from 'react';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
-import { EventHandle, FCReactComponent } from '../typesProvider';
+import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { ICSProviderConfig } from './typesICS';
 import { ICSConfigComponent } from './ui/ICSConfigComponent';
 import FullCalendarPlugin from '../../main';
@@ -35,13 +35,31 @@ const ICSUrlSetting: React.FC<{ source: Partial<import('../../types').CalendarIn
   );
 };
 
+type ICSConfigProps = {
+  config: Partial<ICSProviderConfig>;
+  onConfigChange: (newConfig: Partial<ICSProviderConfig>) => void;
+  context: ProviderConfigContext;
+  onSave: (finalConfig: ICSProviderConfig | ICSProviderConfig[]) => void;
+  onClose: () => void;
+};
+
+const ICSConfigWrapper: React.FC<ICSConfigProps> = props => {
+  const { onSave, context: _context, ...rest } = props;
+  const handleSave = (finalConfig: ICSProviderConfig) => onSave(finalConfig);
+
+  return React.createElement(ICSConfigComponent, {
+    ...rest,
+    onSave: handleSave
+  });
+};
+
 export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
   // Static metadata for registry
   static readonly type = 'ical';
   static readonly displayName = 'Remote Calendar (ICS)';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static getConfigurationComponent(): FCReactComponent<any> {
-    return ICSConfigComponent;
+
+  static getConfigurationComponent(): FCReactComponent<ICSConfigProps> {
+    return ICSConfigWrapper;
   }
 
   private plugin: FullCalendarPlugin;
@@ -116,9 +134,8 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
     // The actual fetching is always done in getEvents.
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getConfigurationComponent(): FCReactComponent<any> {
-    return ICSConfigComponent;
+  getConfigurationComponent(): FCReactComponent<ICSConfigProps> {
+    return ICSConfigWrapper;
   }
 
   getSettingsRowComponent(): FCReactComponent<{

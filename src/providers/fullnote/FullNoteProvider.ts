@@ -8,7 +8,7 @@ import FullCalendarPlugin from '../../main';
 import { constructTitle } from '../../features/category/categoryParser';
 import { newFrontmatter, modifyFrontmatterString, replaceFrontmatter } from './frontmatter';
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
-import { EventHandle, FCReactComponent } from '../typesProvider';
+import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { FullNoteProviderConfig } from './typesLocal';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { FullNoteConfigComponent } from './FullNoteConfigComponent';
@@ -83,6 +83,24 @@ const filenameForEvent = (event: OFCEvent, settings: TitleSettingsLike) =>
 
 const SUFFIX_PATTERN = '-_-_-';
 
+type FullNoteConfigProps = {
+  config: Partial<FullNoteProviderConfig>;
+  onConfigChange: (newConfig: Partial<FullNoteProviderConfig>) => void;
+  context: ProviderConfigContext;
+  onSave: (finalConfig: FullNoteProviderConfig | FullNoteProviderConfig[]) => void;
+  onClose: () => void;
+};
+
+const FullNoteConfigWrapper: React.FC<FullNoteConfigProps> = props => {
+  const { onSave, ...rest } = props;
+  const handleSave = (finalConfig: FullNoteProviderConfig) => onSave(finalConfig);
+
+  return React.createElement(FullNoteConfigComponent, {
+    ...rest,
+    onSave: handleSave
+  });
+};
+
 /**
  * Finds an available file path in the vault. If the desired path already exists,
  * it appends a suffix (e.g., "-_-_1") until an unused path is found.
@@ -119,9 +137,9 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
   // Static metadata for registry
   static readonly type = 'local';
   static readonly displayName = 'Local Notes';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static getConfigurationComponent(): FCReactComponent<any> {
-    return FullNoteConfigComponent;
+
+  static getConfigurationComponent(): FCReactComponent<FullNoteConfigProps> {
+    return FullNoteConfigWrapper;
   }
 
   private app: ObsidianInterface;
@@ -280,9 +298,8 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return this.createEvent(overrideEventData);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getConfigurationComponent(): FCReactComponent<any> {
-    return FullNoteConfigComponent;
+  getConfigurationComponent(): FCReactComponent<FullNoteConfigProps> {
+    return FullNoteConfigWrapper;
   }
 
   getSettingsRowComponent(): FCReactComponent<{

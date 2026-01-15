@@ -194,14 +194,14 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   readonly loadPriority = 130;
 
   // Keep constructor broadly typed to align with ProviderRegistry's dynamic loading signature.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(source: any, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+
+  constructor(source: TasksProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     if (!app) {
       throw new Error('TasksPluginProvider requires an Obsidian app interface.');
     }
     this.app = app;
     this.plugin = plugin;
-    this.source = source as TasksProviderConfig;
+    this.source = source;
     // No parser instantiation needed anymore.
   }
 

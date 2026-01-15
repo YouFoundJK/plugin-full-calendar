@@ -29,8 +29,29 @@ import { createDateNavigation } from '../../../../features/navigation/DateNaviga
 let didPatchRRule = false;
 
 // Minimal shape for the rrule plugin we monkeypatch.
+interface RRuleDateEnvLike {
+  toDate: (input: Date | string | number) => Date;
+}
+
+interface RRuleFrameRange {
+  start: Date | string | number;
+  end: Date | string | number;
+}
+
+interface RRuleSetLike {
+  tzid: () => string | null | undefined;
+  _dtstart: Date | null | undefined;
+  between: (start: Date, end: Date, include: boolean) => Date[];
+}
+
+interface RRuleExpandData {
+  rruleSet: RRuleSetLike;
+}
+
+type RRuleExpand = (errd: RRuleExpandData, fr: RRuleFrameRange, de: RRuleDateEnvLike) => Date[];
+
 interface RRulePluginLike {
-  recurringTypes: { expand: (...args: unknown[]) => unknown }[];
+  recurringTypes: { expand: RRuleExpand }[];
 }
 
 interface ExtraRenderProps {
@@ -104,8 +125,12 @@ export async function renderCalendar(
     const rrulePlugin = ((rrule as unknown as { default?: RRulePluginLike }).default ||
       (rrule as unknown as RRulePluginLike)) as RRulePluginLike;
     const originalExpand = rrulePlugin.recurringTypes[0].expand;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rrulePlugin.recurringTypes[0].expand = function (errd: any, fr: any, de: any) {
+
+    rrulePlugin.recurringTypes[0].expand = function (
+      errd: RRuleExpandData,
+      fr: RRuleFrameRange,
+      de: RRuleDateEnvLike
+    ) {
       const tzid = errd.rruleSet.tzid();
       const dtstart = errd.rruleSet._dtstart;
 
@@ -119,7 +144,7 @@ export async function renderCalendar(
         const localMinutes = dtstart ? dtstart.getUTCMinutes() : 0;
 
         // Get occurrences from the original expand
-        const result = originalExpand.call(this, errd, fr, de) as Date[];
+        const result = originalExpand.call(this, errd, fr, de);
 
         // Map each occurrence to use the correct local time
         // The result dates have the local time in UTC components, which is correct

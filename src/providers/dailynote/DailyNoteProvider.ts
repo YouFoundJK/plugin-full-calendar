@@ -24,7 +24,7 @@ import { OFCEvent, EventLocation } from '../../types';
 import { constructTitle } from '../../features/category/categoryParser';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
-import { EventHandle, FCReactComponent } from '../typesProvider';
+import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { DailyNoteProviderConfig } from './typesDaily';
 import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
 
@@ -55,13 +55,31 @@ const DailyNoteHeadingSetting: React.FC<{
   );
 };
 
+type DailyNoteConfigProps = {
+  config: Partial<DailyNoteProviderConfig>;
+  onConfigChange: (newConfig: Partial<DailyNoteProviderConfig>) => void;
+  context: ProviderConfigContext;
+  onSave: (finalConfig: DailyNoteProviderConfig | DailyNoteProviderConfig[]) => void;
+  onClose: () => void;
+};
+
+const DailyNoteConfigWrapper: React.FC<DailyNoteConfigProps> = props => {
+  const { onSave, ...rest } = props;
+  const handleSave = (finalConfig: DailyNoteProviderConfig) => onSave(finalConfig);
+
+  return React.createElement(DailyNoteConfigComponent, {
+    ...rest,
+    onSave: handleSave
+  });
+};
+
 export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConfig> {
   // Static metadata for registry
   static readonly type = 'dailynote';
   static readonly displayName = 'Daily Note';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static getConfigurationComponent(): FCReactComponent<any> {
-    return DailyNoteConfigComponent;
+
+  static getConfigurationComponent(): FCReactComponent<DailyNoteConfigProps> {
+    return DailyNoteConfigWrapper;
   }
 
   private app: ObsidianInterface;
@@ -264,9 +282,8 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getConfigurationComponent(): FCReactComponent<any> {
-    return DailyNoteConfigComponent;
+  getConfigurationComponent(): FCReactComponent<DailyNoteConfigProps> {
+    return DailyNoteConfigWrapper;
   }
 
   getSettingsRowComponent(): FCReactComponent<{

@@ -5,7 +5,7 @@ import { fromGoogleEvent, toGoogleEvent, GoogleEventLike } from './parser/parser
 import { makeAuthenticatedRequest, GoogleApiError } from './auth/request';
 
 import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
-import { EventHandle, FCReactComponent } from '../typesProvider';
+import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { GoogleProviderConfig } from './typesGCal';
 
 import { GoogleConfigComponent } from './ui/GoogleConfigComponent';
@@ -31,13 +31,52 @@ const GoogleNameSetting: React.FC<{ source: Partial<import('../../types').Calend
   );
 };
 
+type GoogleConfigProps = {
+  config: Partial<GoogleProviderConfig>;
+  onConfigChange: (newConfig: Partial<GoogleProviderConfig>) => void;
+  context: ProviderConfigContext;
+  onSave: (finalConfig: GoogleProviderConfig | GoogleProviderConfig[]) => void;
+  onClose: () => void;
+};
+
+const createGoogleConfigWrapper = (
+  pluginFromInstance?: FullCalendarPlugin
+): React.FC<GoogleConfigProps> => {
+  return props => {
+    const plugin =
+      pluginFromInstance || (props as GoogleConfigProps & { plugin?: FullCalendarPlugin }).plugin;
+
+    const forwardOnSave = props.onSave as (
+      configs: GoogleProviderConfig | GoogleProviderConfig[],
+      accountId?: string
+    ) => void;
+
+    const handleSave = (
+      selectedConfigs: Array<{ id: string; name: string; color: string }>,
+      accountId: string
+    ) => {
+      forwardOnSave(selectedConfigs as unknown as GoogleProviderConfig[], accountId);
+    };
+
+    if (!plugin) {
+      throw new Error('Google configuration requires plugin context.');
+    }
+
+    return React.createElement(GoogleConfigComponent, {
+      plugin,
+      onSave: handleSave,
+      onClose: props.onClose
+    });
+  };
+};
+
 export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
   // Static metadata for registry
   static readonly type = 'google';
   static readonly displayName = 'Google Calendar';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static getConfigurationComponent(): FCReactComponent<any> {
-    return GoogleConfigComponent;
+
+  static getConfigurationComponent(): FCReactComponent<GoogleConfigProps> {
+    return createGoogleConfigWrapper();
   }
 
   private plugin: FullCalendarPlugin;
@@ -328,21 +367,8 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getConfigurationComponent(): FCReactComponent<any> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const WrapperComponent: React.FC<any> = props => {
-      // This logic is now handled inside GoogleConfigComponent, so we can simplify this.
-      // We just need to pass the plugin instance.
-
-      const componentProps = {
-        ...props,
-        plugin: this.plugin // Pass the plugin instance
-      };
-
-      return React.createElement(GoogleConfigComponent, componentProps);
-    };
-    return WrapperComponent;
+  getConfigurationComponent(): FCReactComponent<GoogleConfigProps> {
+    return createGoogleConfigWrapper(this.plugin);
   }
 
   getSettingsRowComponent(): FCReactComponent<{
