@@ -1,6 +1,8 @@
 import EventStore from './EventStore';
 import { EventLocation, OFCEvent } from '../types';
 
+import { TFile } from 'obsidian';
+
 type MockCalendar = { id: string };
 
 const withCounter = <T>(f: (x: string) => T, label?: string) => {
@@ -13,7 +15,7 @@ const withCounter = <T>(f: (x: string) => T, label?: string) => {
 };
 
 // Create a minimal mock implementing the TFile interface shape used (only path accessed).
-const mockFile = withCounter(path => ({ path }) as any, 'file');
+const mockFile = withCounter(path => ({ path }) as unknown as TFile, 'file');
 
 const mockCalendar = withCounter((id): MockCalendar => ({ id }), 'calendar');
 

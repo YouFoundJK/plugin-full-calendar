@@ -58,18 +58,6 @@ const parseTime = (time: string): Duration | null => {
   return Duration.fromISOTime(isoTime);
 };
 
-const normalizeTimeString = (time: string): string | null => {
-  const parsed = parseTime(time);
-  if (!parsed) {
-    return null;
-  }
-  return parsed.toISOTime({
-    suppressMilliseconds: true,
-    includePrefix: false,
-    suppressSeconds: true
-  });
-};
-
 const add = (date: DateTime, time: Duration): DateTime => {
   const hours = time.hours;
   const minutes = time.minutes;
@@ -328,7 +316,11 @@ export function toEventInput(
     // Tell FullCalendar it’s all-day when relevant
     baseEvent.allDay = !!frontmatter.allDay;
   } else if (frontmatter.type === 'rrule') {
-    const fm = frontmatter as any;
+    const fm = frontmatter as unknown as {
+      startDate: string;
+      startTime: string;
+      skipDates?: string[];
+    };
 
     // DEBUG: Log rrule event processing for the 123123 event
     const isDebugEvent = frontmatter.title === '123123';

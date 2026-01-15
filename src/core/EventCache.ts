@@ -102,7 +102,7 @@ export default class EventCache {
   private viewConfigListener: (() => void) | null = null;
   private workspaceEmitter: import('obsidian').Workspace | null = null;
 
-  calendars = new Map<string, CalendarProvider<any>>();
+  calendars = new Map<string, CalendarProvider<unknown>>();
   initialized = false;
 
   public isBulkUpdating = false;
@@ -199,7 +199,6 @@ export default class EventCache {
    * Populate the cache with events from all sources.
    */
   async populate(): Promise<void> {
-    const startTime = performance.now();
     const localEvents = await this.plugin.providerRegistry.fetchAllByPriority(
       (calendarId, eventsForSync) => {
         const tuples = eventsForSync.map(
@@ -310,7 +309,7 @@ export default class EventCache {
     return this._store.getEventById(s);
   }
 
-  getCalendarById(c: string): CalendarProvider<any> | undefined {
+  getCalendarById(c: string): CalendarProvider<unknown> | undefined {
     return this.calendars.get(c);
   }
 
@@ -354,92 +353,85 @@ export default class EventCache {
       return false;
     }
 
-    try {
-      // Step 2: Optimistic state mutation
-      const optimisticId = this.generateId();
-      const optimisticEvent = event;
+    // Step 2: Optimistic state mutation
+    const optimisticId = this.generateId();
+    const optimisticEvent = event;
 
+    this._store.add({
+      calendarId: calendarId,
+      location: null, // Location is unknown until provider returns
+      id: optimisticId,
+      event: optimisticEvent
+    });
+    this.plugin.providerRegistry.addMapping(optimisticEvent, calendarId, optimisticId);
+
+    // Step 3: Immediate UI update
+    const optimisticCacheEntry: CacheEntry = {
+      event: optimisticEvent,
+      id: optimisticId,
+      calendarId: calendarId
+    };
+
+    if (options?.silent) {
+      this.updateQueue.toAdd.set(optimisticId, optimisticCacheEntry);
+    } else {
+      this.flushUpdateQueue([], [optimisticCacheEntry]);
+    }
+
+    // Step 4: Asynchronous I/O with rollback
+    try {
+      // Prepare the event for the provider (e.g., combine title and category)
+      const eventForStorage = this.enhancer.prepareForStorage(event);
+      // Delegate to ProviderRegistry
+      const [finalEvent, newLocation] = await this.plugin.providerRegistry.createEventInProvider(
+        calendarId,
+        eventForStorage
+      );
+
+      // SUCCESS: The I/O succeeded. Update the store with the authoritative event.
+      // The `finalEvent` from the provider is the source of truth. It needs to be enhanced
+      // back into the structured format for the cache.
+      const authoritativeEvent = this.enhancer.enhance(finalEvent);
+
+      // Replace the optimistic event in the store with the authoritative one.
+      this._store.delete(optimisticId);
       this._store.add({
         calendarId: calendarId,
-        location: null, // Location is unknown until provider returns
+        location: newLocation,
         id: optimisticId,
-        event: optimisticEvent
+        event: authoritativeEvent
       });
-      this.plugin.providerRegistry.addMapping(optimisticEvent, calendarId, optimisticId);
 
-      // Step 3: Immediate UI update
-      const optimisticCacheEntry: CacheEntry = {
-        event: optimisticEvent,
-        id: optimisticId,
-        calendarId: calendarId
-      };
+      // Update ID mapping with the new authoritative data.
+      this.plugin.providerRegistry.removeMapping(optimisticEvent, calendarId);
+      this.plugin.providerRegistry.addMapping(authoritativeEvent, calendarId, optimisticId);
 
+      // Flush this "correction" to the UI. The event is already visible,
+      // but this updates its data to the final state from the server.
+      // Flush this "correction" to the UI. The event is already visible,
+      // but this updates its data to the final state from the server.
+      this.timeEngine.scheduleCacheRebuild();
+
+      return true;
+    } catch (e) {
+      // FAILURE: I/O failed. Roll back all optimistic changes.
+      console.error(`Failed to create event with provider. Rolling back cache state.`, {
+        error: e
+      });
+
+      // Roll back store and mappings
+      this.plugin.providerRegistry.removeMapping(optimisticEvent, calendarId);
+      this._store.delete(optimisticId);
+
+      // Roll back UI
       if (options?.silent) {
-        this.updateQueue.toAdd.set(optimisticId, optimisticCacheEntry);
+        this.updateQueue.toAdd.delete(optimisticId);
       } else {
-        this.flushUpdateQueue([], [optimisticCacheEntry]);
+        this.flushUpdateQueue([optimisticId], []);
       }
 
-      // Step 4: Asynchronous I/O with rollback
-      try {
-        // Prepare the event for the provider (e.g., combine title and category)
-        const eventForStorage = this.enhancer.prepareForStorage(event);
-        // Delegate to ProviderRegistry
-        const [finalEvent, newLocation] = await this.plugin.providerRegistry.createEventInProvider(
-          calendarId,
-          eventForStorage
-        );
-
-        // SUCCESS: The I/O succeeded. Update the store with the authoritative event.
-        // The `finalEvent` from the provider is the source of truth. It needs to be enhanced
-        // back into the structured format for the cache.
-        const authoritativeEvent = this.enhancer.enhance(finalEvent);
-
-        // Replace the optimistic event in the store with the authoritative one.
-        this._store.delete(optimisticId);
-        this._store.add({
-          calendarId: calendarId,
-          location: newLocation,
-          id: optimisticId,
-          event: authoritativeEvent
-        });
-
-        // Update ID mapping with the new authoritative data.
-        this.plugin.providerRegistry.removeMapping(optimisticEvent, calendarId);
-        this.plugin.providerRegistry.addMapping(authoritativeEvent, calendarId, optimisticId);
-
-        // Flush this "correction" to the UI. The event is already visible,
-        // but this updates its data to the final state from the server.
-        const finalCacheEntry: CacheEntry = {
-          event: authoritativeEvent,
-          id: optimisticId,
-          calendarId: calendarId
-        };
-
-        this.timeEngine.scheduleCacheRebuild();
-
-        return true;
-      } catch (e) {
-        // FAILURE: I/O failed. Roll back all optimistic changes.
-        console.error(`Failed to create event with provider. Rolling back cache state.`, {
-          error: e
-        });
-
-        // Roll back store and mappings
-        this.plugin.providerRegistry.removeMapping(optimisticEvent, calendarId);
-        this._store.delete(optimisticId);
-
-        // Roll back UI
-        if (options?.silent) {
-          this.updateQueue.toAdd.delete(optimisticId);
-        } else {
-          this.flushUpdateQueue([optimisticId], []);
-        }
-
-        new Notice(t('notices.eventCache.createFailed'));
-        return false;
-      }
-    } finally {
+      new Notice(t('notices.eventCache.createFailed'));
+      return false;
     }
   }
 
@@ -478,83 +470,80 @@ export default class EventCache {
 
     const handle = provider.getEventHandle(event);
 
+    // Step 3: Optimistic state mutation
+    this.plugin.providerRegistry.removeMapping(event, originalDetails.calendarId);
+    this._store.delete(eventId);
+
+    // Step 4: Immediate UI update
+    if (options?.silent) {
+      this.updateQueue.toRemove.add(eventId);
+    } else {
+      this.flushUpdateQueue([eventId], []);
+    }
+
+    // Step 5: Asynchronous I/O with rollback
+    if (!handle) {
+      console.warn(
+        `Could not generate a persistent handle for the event being deleted. Proceeding with deletion from cache only.`
+      );
+      // No I/O to perform, so no rollback is necessary. The operation is complete.
+      this.timeEngine.scheduleCacheRebuild();
+      return;
+    }
+
     try {
-      // Step 3: Optimistic state mutation
-      this.plugin.providerRegistry.removeMapping(event, originalDetails.calendarId);
-      this._store.delete(eventId);
+      await this.plugin.providerRegistry.deleteEventInProvider(eventId, event, calendarId);
+      this.timeEngine.scheduleCacheRebuild();
+      // SUCCESS: The external source is now in sync with the cache.
+    } catch (e) {
+      // FAILURE: The I/O operation failed. Roll back the optimistic changes.
+      console.error(`Failed to delete event with provider. Rolling back cache state.`, {
+        eventId,
+        error: e
+      });
 
-      // Step 4: Immediate UI update
+      // Re-add event to the store
+      const locationForStore = originalDetails.location
+        ? {
+            file: { path: originalDetails.location.path },
+            lineNumber: originalDetails.location.lineNumber
+          }
+        : null;
+
+      this._store.add({
+        calendarId: originalDetails.calendarId,
+        location: locationForStore,
+        id: originalDetails.id,
+        event: originalDetails.event
+      });
+
+      // Restore ID mapping
+      this.plugin.providerRegistry.addMapping(
+        originalDetails.event,
+        originalDetails.calendarId,
+        originalDetails.id
+      );
+
+      // Roll back the UI update
+      const cacheEntry: CacheEntry = {
+        event: originalDetails.event,
+        id: originalDetails.id,
+        calendarId: originalDetails.calendarId
+      };
+
       if (options?.silent) {
-        this.updateQueue.toRemove.add(eventId);
+        // If part of a bulk operation, reverse the change in the queue.
+        this.updateQueue.toRemove.delete(eventId);
+        this.updateQueue.toAdd.set(eventId, cacheEntry);
       } else {
-        this.flushUpdateQueue([eventId], []);
+        // Otherwise, flush the reversal to the UI immediately.
+        this.flushUpdateQueue([], [cacheEntry]);
       }
 
-      // Step 5: Asynchronous I/O with rollback
-      if (!handle) {
-        console.warn(
-          `Could not generate a persistent handle for the event being deleted. Proceeding with deletion from cache only.`
-        );
-        // No I/O to perform, so no rollback is necessary. The operation is complete.
-        this.timeEngine.scheduleCacheRebuild();
-        return;
-      }
+      new Notice(t('notices.eventCache.deleteFailed'));
 
-      try {
-        await this.plugin.providerRegistry.deleteEventInProvider(eventId, event, calendarId);
-        this.timeEngine.scheduleCacheRebuild();
-        // SUCCESS: The external source is now in sync with the cache.
-      } catch (e) {
-        // FAILURE: The I/O operation failed. Roll back the optimistic changes.
-        console.error(`Failed to delete event with provider. Rolling back cache state.`, {
-          eventId,
-          error: e
-        });
-
-        // Re-add event to the store
-        const locationForStore = originalDetails.location
-          ? {
-              file: { path: originalDetails.location.path },
-              lineNumber: originalDetails.location.lineNumber
-            }
-          : null;
-
-        this._store.add({
-          calendarId: originalDetails.calendarId,
-          location: locationForStore,
-          id: originalDetails.id,
-          event: originalDetails.event
-        });
-
-        // Restore ID mapping
-        this.plugin.providerRegistry.addMapping(
-          originalDetails.event,
-          originalDetails.calendarId,
-          originalDetails.id
-        );
-
-        // Roll back the UI update
-        const cacheEntry: CacheEntry = {
-          event: originalDetails.event,
-          id: originalDetails.id,
-          calendarId: originalDetails.calendarId
-        };
-
-        if (options?.silent) {
-          // If part of a bulk operation, reverse the change in the queue.
-          this.updateQueue.toRemove.delete(eventId);
-          this.updateQueue.toAdd.set(eventId, cacheEntry);
-        } else {
-          // Otherwise, flush the reversal to the UI immediately.
-          this.flushUpdateQueue([], [cacheEntry]);
-        }
-
-        new Notice(t('notices.eventCache.deleteFailed'));
-
-        // Propagate the error to the original caller.
-        throw e;
-      }
-    } finally {
+      // Propagate the error to the original caller.
+      throw e;
     }
   }
 
@@ -853,7 +842,10 @@ export default class EventCache {
     // Find the Tasks provider instance
     const tasksProvider = this.plugin.providerRegistry
       .getActiveProviders()
-      .find(provider => provider.type === 'tasks') as any;
+      .find(provider => provider.type === 'tasks') as unknown as {
+      scheduleTask: (taskId: string, date: Date) => Promise<void>;
+      type: string;
+    };
 
     if (!tasksProvider) {
       throw new Error('No Tasks provider found. Cannot schedule task.');
