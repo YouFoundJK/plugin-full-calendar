@@ -20,7 +20,8 @@ import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
 import { toEventInput } from './core/interop';
 import { manageTimezone } from './features/Timezone';
-import { Notice, Plugin, TFile, App } from 'obsidian';
+import { Notice, Plugin, TFile, App, EventRef } from 'obsidian';
+import type { Workspace } from 'obsidian';
 import { initializeI18n, t } from './features/i18n/i18n';
 import './styles.css';
 
@@ -124,15 +125,19 @@ export default class FullCalendarPlugin extends Plugin {
     this.notificationManager.update(this.settings);
     this.statusBarManager = new StatusBarManager(this);
     this.statusBarManager.update(this.settings);
-    const workspaceEvents = this.app.workspace as unknown as {
-      // Keep `any` here because Obsidian's internal event system passes heterogeneous arguments.
-      // Localising the unsafeness avoids polluting the rest of the codebase.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      on: (name: string, cb: (...args: any[]) => unknown) => any;
+    type WorkspaceEvents = Workspace & {
+      on: Workspace['on'] &
+        ((
+          name: 'full-calendar:settings-updated',
+          cb: (settings: FullCalendarSettings) => unknown,
+          ctx?: unknown
+        ) => EventRef) &
+        ((name: string, cb: (...args: unknown[]) => unknown, ctx?: unknown) => EventRef);
+      trigger: (name: string, ...data: unknown[]) => void;
       registerHoverLinkSource?: (id: string, def: { display: string; defaultMod: boolean }) => void;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      trigger: (name: string, ...data: any[]) => void;
     };
+
+    const workspaceEvents = this.app.workspace as WorkspaceEvents;
     this.registerEvent(
       workspaceEvents.on(
         'full-calendar:settings-updated',

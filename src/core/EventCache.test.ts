@@ -1172,8 +1172,22 @@ describe('editable calendars', () => {
           lineNumber: 1
         });
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { providerRegistry } = mockPlugin as unknown as { providerRegistry: any };
+        type MutableProviderRegistry = {
+          getProvider: (id: string) => CalendarProvider<unknown> | undefined;
+          getInstance: (id: string) => CalendarProvider<unknown> | undefined;
+          getSource: (id: string) => CalendarInfo | undefined;
+          createEventInProvider: jest.Mock;
+          deleteEventInProvider: jest.Mock;
+          updateEventInProvider: jest.Mock;
+          getAllSources: () => CalendarInfo[];
+          getCapabilities: (id: string) => {
+            canCreate: boolean;
+            canEdit: boolean;
+            canDelete: boolean;
+          };
+        };
+
+        const providerRegistry = mockPlugin.providerRegistry as unknown as MutableProviderRegistry;
         const originalGetSource = providerRegistry.getSource;
         providerRegistry.getProvider = (id: string) => (id === 'cal2' ? calendar2 : calendar);
         providerRegistry.getInstance = (id: string) => (id === 'cal2' ? calendar2 : calendar);
