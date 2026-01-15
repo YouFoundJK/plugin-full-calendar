@@ -101,7 +101,7 @@ export function addCalendarButton(
           }
         ).getConfigurationComponent();
 
-        let modal = new ReactModal(plugin.app, async () => {
+        const modal = new ReactModal(plugin.app, async () => {
           await plugin.loadSettings();
 
           const usedDirectories = listUsedDirectories ? listUsedDirectories() : [];
@@ -288,7 +288,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
   private _renderInitialSetupNotice(): void {
     if (this.plugin.settings.calendarSources.length === 0) {
       const notice = this.containerEl.createDiv('full-calendar-initial-setup-notice');
-      notice.createEl('h2', { text: t('settings.quickStart.title') });
+      new Setting(notice).setName('').setHeading();
       notice.createEl('p', {
         text: t('settings.quickStart.description')
       });

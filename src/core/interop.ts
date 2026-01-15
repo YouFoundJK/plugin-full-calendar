@@ -71,8 +71,8 @@ const normalizeTimeString = (time: string): string | null => {
 };
 
 const add = (date: DateTime, time: Duration): DateTime => {
-  let hours = time.hours;
-  let minutes = time.minutes;
+  const hours = time.hours;
+  const minutes = time.minutes;
   return date.set({ hour: hours, minute: minutes });
 };
 
@@ -154,7 +154,7 @@ export function toEventInput(
     ? `${frontmatter.subCategory} - ${frontmatter.title}`
     : frontmatter.title;
 
-  let baseEvent: EventInput = {
+  const baseEvent: EventInput = {
     id,
     title: displayTitle,
     allDay: frontmatter.allDay,
@@ -297,7 +297,7 @@ export function toEventInput(
       const endTime = parseTime(frontmatter.endTime);
       if (startTime && endTime) {
         // Use Luxon to handle date math correctly, accounting for potential day crossing
-        let startDt = DateTime.fromISO(
+        const startDt = DateTime.fromISO(
           combineDateTimeStrings(frontmatter.startRecur || '2025-01-01', frontmatter.startTime)!
         );
         let endDt = DateTime.fromISO(
@@ -532,7 +532,7 @@ export function toEventInput(
         const endTime = parseTime(frontmatter.endTime);
         if (endTime) {
           // Parse in source timezone to get correct duration
-          let startDt = DateTime.fromISO(
+          const startDt = DateTime.fromISO(
             combineDateTimeStrings(frontmatter.startDate, frontmatter.startTime)!,
             { zone: sourceZone }
           );

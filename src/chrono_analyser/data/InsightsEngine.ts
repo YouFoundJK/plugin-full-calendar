@@ -35,7 +35,7 @@ export class InsightsEngine {
     config: InsightsConfig
   ): Promise<Insight[]> {
     const taggedRecords = await this._tagRecordsInBatches(allRecords, config);
-    let insights: Insight[] = [];
+    const insights: Insight[] = [];
 
     // --- 1. ALWAYS RUN GLOBAL INSIGHTS ---
     // These run on ALL data, regardless of personas.

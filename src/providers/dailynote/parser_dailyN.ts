@@ -228,7 +228,7 @@ export const addToHeading = (
   { heading, item, headingText }: AddToHeadingProps,
   settings: FullCalendarSettings
 ): { page: string; lineNumber: number } => {
-  let lines = page.split('\n');
+  const lines = page.split('\n');
   const listItem = makeListItem(item, '', settings);
   if (heading) {
     const headingLine = heading.position.start.line;

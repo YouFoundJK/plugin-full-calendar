@@ -21,7 +21,7 @@ const MILLICONDS_BETWEEN_REVALIDATIONS = 5 * MINUTE;
 // causes incompatibilities (construct signature variance) when dynamically
 // importing modules. Keeping `any` localised here avoids leaking it elsewhere
 // while preserving flexibility for heterogeneous provider configs.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export type CalendarProviderClass = new (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config: any,

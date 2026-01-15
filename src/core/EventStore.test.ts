@@ -40,7 +40,7 @@ const pathLoc = ({ file, lineNumber }: EventLocation) => ({
 });
 
 describe.each([true, false])('EventStore tests with lineNumbers=%p', withLineNumbers => {
-  let store = new EventStore();
+  const store = new EventStore();
   beforeEach(() => {
     store.clear();
   });

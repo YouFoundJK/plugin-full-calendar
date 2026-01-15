@@ -316,7 +316,7 @@ export default class FullCalendarPlugin extends Plugin {
    * Loads plugin settings from disk, merging them with default values.
    */
   async loadSettings() {
-    let loadedData = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loadedData = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
     // All migration and sanitization logic is now encapsulated in this utility function.
     const { settings: migratedSettings, needsSave } = migrateAndSanitizeSettings(loadedData);

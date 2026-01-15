@@ -230,7 +230,7 @@ export class InsightConfigModal extends Modal {
     };
 
     // --- MIGRATION LOGIC: safely migrate legacy config ---
-    let migratedConfig = existingConfig || defaultConfig;
+    const migratedConfig = existingConfig || defaultConfig;
     if (migratedConfig && migratedConfig.insightGroups) {
       // Cast to legacy config for safe migration
       const legacyConfig = migratedConfig as unknown as LegacyInsightsConfig;
@@ -346,7 +346,7 @@ export class InsightConfigModal extends Modal {
 
   // --- REPLACE THE ENTIRE renderGroupSetting METHOD ---
   private renderGroupSetting(container: HTMLElement, groupName: string, groupData: InsightGroup) {
-    let currentGroupName = groupName;
+    const currentGroupName = groupName;
     const { rules, persona } = groupData;
     const isExpanded = this.expandedGroupName === currentGroupName;
 

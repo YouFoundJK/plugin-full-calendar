@@ -209,7 +209,7 @@ export function toGoogleEvent(event: OFCEvent): object {
   gEvent.summary = constructTitle(event.category, event.subCategory, event.title);
 
   // 2. Recurrence
-  let recurrence: string[] = [];
+  const recurrence: string[] = [];
   if (event.type === 'rrule' && event.rrule) {
     recurrence.push(`RRULE:${event.rrule}`);
   } else if (event.type === 'recurring') {

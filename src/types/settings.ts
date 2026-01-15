@@ -1,7 +1,7 @@
 import { CalendarInfo } from './calendar_settings';
 // Import lazily-referenced type for chrono analyser configuration.
 // Placed inside a type-only import to avoid pulling heavy modules at runtime here.
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+
 import type { InsightsConfig } from '../chrono_analyser/ui/ui';
 
 export interface BusinessHoursSettings {

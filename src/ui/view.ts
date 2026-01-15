@@ -494,7 +494,7 @@ export class CalendarView extends ItemView {
 
     const container = this.containerEl.children[1];
     container.empty();
-    let calendarEl = container.createEl('div');
+    const calendarEl = container.createEl('div');
 
     this.registerDomEvent(
       calendarEl,

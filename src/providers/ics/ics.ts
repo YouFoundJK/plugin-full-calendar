@@ -264,7 +264,7 @@ function getLuxonDate(dt: DateTime): string | null {
 // ====================================================================
 
 function extractEventUrl(iCalEvent: ical.Event): string {
-  let urlProp = iCalEvent.component.getFirstProperty('url');
+  const urlProp = iCalEvent.component.getFirstProperty('url');
   return urlProp ? urlProp.getFirstValue() : '';
 }
 

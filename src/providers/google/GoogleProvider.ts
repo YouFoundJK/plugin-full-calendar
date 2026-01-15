@@ -124,7 +124,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
       // Remove convertEvent logic; just validate and return events
       const tuples: ([OFCEvent, EventLocation | null] | null)[] = data.items.map(
         (gEvent: GoogleEventLike) => {
-          let rawEvent = fromGoogleEvent(gEvent);
+          const rawEvent = fromGoogleEvent(gEvent);
           if (!rawEvent) return null;
 
           if (

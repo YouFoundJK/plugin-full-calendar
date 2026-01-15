@@ -88,7 +88,7 @@ export function calculateDuration(
     const start = parseTime(startTime);
     const end = parseTime(endTime);
     if (!start || !end) return 0;
-    let startMinutes = start.hours * 60 + start.minutes;
+    const startMinutes = start.hours * 60 + start.minutes;
     let endMinutes = end.hours * 60 + end.minutes;
     if (endMinutes < startMinutes) endMinutes += 24 * 60; // Handles overnight
     const durationForOneDay = (endMinutes - startMinutes) / 60;
