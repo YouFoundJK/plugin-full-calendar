@@ -2,7 +2,6 @@ import { DateTime } from 'luxon';
 import { Notice } from 'obsidian';
 import { OFCEvent } from '../../types';
 import { FullCalendarSettings } from '../../types/settings';
-import { openFileForEvent } from '../../utils/eventActions';
 import FullCalendarPlugin from '../../main';
 import { TimeState, EnrichedOFCEvent } from '../../core/TimeEngine';
 import { t } from '../i18n/i18n';
@@ -64,7 +63,7 @@ export class NotificationManager {
   }
 
   private checkAndNotify(occurrence: EnrichedOFCEvent, now: DateTime) {
-    const { id: sessionId, event, start } = occurrence;
+    const { id: _sessionId, event, start } = occurrence;
     const { enableDefaultReminder, defaultReminderMinutes } = this.plugin.settings;
     const recencyCutoff = { minutes: 5 }; // Don't notify if the trigger point was more than 5 mins ago (e.g. at startup)
 

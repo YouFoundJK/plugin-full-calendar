@@ -620,7 +620,7 @@ export class RecurringEventManager {
     if (!providerResult) {
       return false;
     }
-    const { provider, config } = providerResult;
+    const { provider, config: _config } = providerResult;
 
     const oldHandle = provider.getEventHandle(oldEvent);
     const newHandle = provider.getEventHandle(newEvent);
@@ -655,7 +655,7 @@ export class RecurringEventManager {
       if (!providerResult) {
         throw new Error(`Provider for calendar ${calendarId} not found during rename.`);
       }
-      const { provider, config } = providerResult;
+      const { provider, config: _config } = providerResult;
 
       // 1. Find the parent's session ID in the cache before doing anything.
       const parentGlobalId = this.cache.getGlobalIdentifier(oldEvent, calendarId);

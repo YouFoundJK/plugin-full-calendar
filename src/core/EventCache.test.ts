@@ -123,7 +123,7 @@ const makeCache = (events: OFCEvent[]) => {
       getSource: () => calendarInfo,
       getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false })
     }
-  } as any;
+  } as unknown as FullCalendarPlugin;
 
   const cache = new EventCache(mockPlugin);
   cache.reset();
@@ -132,7 +132,7 @@ const makeCache = (events: OFCEvent[]) => {
 
 const extractEvents = (source: OFCEventSource): OFCEvent[] =>
   source.events.map(({ event }: CachedEvent) => event);
-async function assertFailed(func: () => Promise<any>, message: RegExp) {
+async function assertFailed(func: () => Promise<unknown>, message: RegExp) {
   try {
     await func();
   } catch (e) {
@@ -410,6 +410,7 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
 };
 
 // Minimal file-like object; only path is used by store logic.
+// eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
 const mockFile = withCounter(path => ({ path }) as unknown as TFile, 'file');
 const mockLocation = (withLine = false): EventLocation => ({
   file: mockFile(),
@@ -730,6 +731,7 @@ describe('editable calendars', () => {
         location,
         calendarId: 'test'
       }));
+      // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
       await cache.syncFile(file as unknown as TFile, newEventsForSync);
 
       assertCacheContentCounts(cache, {
@@ -867,7 +869,7 @@ describe('editable calendars', () => {
           buildMap: jest.fn(),
           addMapping: jest.fn(),
           removeMapping: jest.fn()
-        } as unknown as any
+        }
       } as unknown as FullCalendarPlugin;
 
       cache = new EventCache(mockPlugin);
@@ -980,7 +982,7 @@ describe('editable calendars', () => {
                 if (onProviderComplete) {
                   onProviderComplete(settingsId, events);
                 }
-              } catch (e) {
+              } catch (_e) {
                 // Continue with next provider
               }
             }
@@ -1016,7 +1018,7 @@ describe('editable calendars', () => {
                 if (onProviderComplete) {
                   onProviderComplete(settingsId, events);
                 }
-              } catch (e) {
+              } catch (_e) {
                 // Continue with next provider
               }
             }
@@ -1033,7 +1035,7 @@ describe('editable calendars', () => {
 
       cache = new EventCache(mockPlugin);
       cache.reset();
-      const syncCalendarSpy = jest.spyOn(cache, 'syncCalendar').mockImplementation(() => {});
+      const _syncCalendarSpy = jest.spyOn(cache, 'syncCalendar').mockImplementation(() => {});
 
       // Act: Call populate and wait for completion
       await cache.populate();
@@ -1052,7 +1054,7 @@ describe('editable calendars', () => {
         await cache.populate();
 
         // Add a second calendar to move to
-        const calendar2: jest.Mocked<CalendarProvider<unknown>> = {
+        const _calendar2: jest.Mocked<CalendarProvider<unknown>> = {
           ...calendar,
           type: 'FOR_TEST_ONLY_2'
         };
@@ -1079,7 +1081,7 @@ describe('editable calendars', () => {
         };
 
         // Mock createEventInProvider for destination and ensure it returns formatted event
-        (providerRegistry.createEventInProvider as any as jest.Mock).mockImplementation(
+        (providerRegistry.createEventInProvider as jest.Mock).mockImplementation(
           async (calId: string, evt: OFCEvent) => {
             if (calId === 'cal2') {
               return [evt, mockLocation()];
@@ -1165,10 +1167,12 @@ describe('editable calendars', () => {
         };
         // We need to support `createEventInProvider` returning a location with file path for linking
         const mockLocationWithFile = (filename: string) => ({
-          file: { path: `folder/${filename}` } as unknown as TFile,
+          // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
+          file: { path: `folder/${filename}` } as TFile,
           lineNumber: 1
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { providerRegistry } = mockPlugin as unknown as { providerRegistry: any };
         const originalGetSource = providerRegistry.getSource;
         providerRegistry.getProvider = (id: string) => (id === 'cal2' ? calendar2 : calendar);
@@ -1181,11 +1185,11 @@ describe('editable calendars', () => {
                 type: 'local',
                 config: { directory: 'folder' },
                 color: 'green'
-              } as any)
+              } as unknown as CalendarInfo)
             : originalGetSource(id);
 
         // Mock createEventInProvider for destination
-        (providerRegistry.createEventInProvider as any as jest.Mock).mockImplementation(
+        (providerRegistry.createEventInProvider as jest.Mock).mockImplementation(
           async (calId: string, evt: OFCEvent) => {
             if (evt.type === 'recurring') {
               return [evt, mockLocationWithFile('NewMaster.md')];

@@ -4,7 +4,7 @@
  * @license See LICENSE.md
  */
 
-import { Setting, ButtonComponent } from 'obsidian';
+import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { WorkspaceSettings, createDefaultWorkspace } from '../../../types/settings';
 import { WorkspaceModal } from './WorkspaceModal';

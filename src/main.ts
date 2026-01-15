@@ -179,11 +179,13 @@ export default class FullCalendarPlugin extends Plugin {
 
     this.registerView(
       FULL_CALENDAR_VIEW_TYPE,
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       leaf => new (require('./ui/view').CalendarView)(leaf, this, false)
     );
 
     this.registerView(
       FULL_CALENDAR_SIDEBAR_VIEW_TYPE,
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       leaf => new (require('./ui/view').CalendarView)(leaf, this, true)
     );
 

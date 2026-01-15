@@ -129,7 +129,7 @@ export class StatusBarManager {
 
     if (this.currentState.upcoming.length > 0) {
       menu.addSeparator();
-      menu.addItem(item => item.setTitle('Upcoming Events').setDisabled(true));
+      menu.addItem(item => item.setTitle('Upcoming events').setDisabled(true));
 
       this.currentState.upcoming.slice(0, 5).forEach(eventData => {
         // Show next 5

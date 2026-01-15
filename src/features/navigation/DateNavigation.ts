@@ -221,11 +221,12 @@ export class DateNavigation {
         // For other views, return current date
         return view.currentStart;
       }
-    } catch (e) {
+    } catch (_e) {
       return null;
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private getDateFromMonthGrid(x: number, y: number, rect: DOMRect, view: any): Date {
     // Simple approximation for month view
     // This is a basic implementation - could be enhanced
@@ -244,6 +245,7 @@ export class DateNavigation {
     return targetDate;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private getDateFromTimeGrid(x: number, y: number, rect: DOMRect, view: any): Date {
     // Simple approximation for week/day view
     const startOfView = new Date(view.currentStart);
@@ -252,8 +254,8 @@ export class DateNavigation {
       (endOfView.getTime() - startOfView.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    const allDayHeight = 50; // Approximate all-day area height
-    const headerHeight = 30; // Approximate header height
+    const _allDayHeight = 50; // Approximate all-day area height
+    const _headerHeight = 30; // Approximate header height
     const timeGridX = x;
 
     let dayIndex = 0;

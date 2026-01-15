@@ -6,11 +6,7 @@
 
 import { Modal, Setting, DropdownComponent, TextComponent, ToggleComponent } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
-import {
-  WorkspaceSettings,
-  generateWorkspaceId,
-  BusinessHoursSettings
-} from '../../../types/settings';
+import { WorkspaceSettings, generateWorkspaceId } from '../../../types/settings';
 import { CalendarInfo } from '../../../types/calendar_settings';
 import { t } from '../../i18n/i18n';
 
@@ -451,7 +447,7 @@ export class WorkspaceModal extends Modal {
           } else {
             try {
               this.workspace.hiddenDays = JSON.parse(value);
-            } catch (e) {
+            } catch (_e) {
               // Invalid JSON, keep current value
             }
           }

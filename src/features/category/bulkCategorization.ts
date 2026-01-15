@@ -150,7 +150,7 @@ export async function bulkUpdateCategories(
           if (!newCategory) continue;
 
           const rawTitle = line
-            .replace(/^(\s*)\-\s+(\[(.)\]\s+)?/, '')
+            .replace(/^(\s*)-\s+(\[(.)\]\s+)?/, '')
             .replace(/\s*\[.*?\]\s*/g, '')
             .trim();
           const titleToCategorize = force ? rawTitle : existingEvent.title;

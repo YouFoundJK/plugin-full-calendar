@@ -42,7 +42,7 @@ const createMockApp = () => {
     vault: {
       getConfig: jest.fn().mockReturnValue('en')
     }
-  } as any;
+  } as unknown as import('obsidian').App;
 };
 
 describe('DateNavigation', () => {

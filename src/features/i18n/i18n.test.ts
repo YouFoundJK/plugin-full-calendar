@@ -38,7 +38,7 @@ const createMockApp = (language: string = 'en') => {
     vault: {
       getConfig: jest.fn().mockReturnValue(language)
     }
-  } as any;
+  } as unknown as import('obsidian').App;
 };
 
 describe('i18n Module', () => {
@@ -72,7 +72,7 @@ describe('i18n Module', () => {
         vault: {
           getConfig: jest.fn().mockReturnValue(undefined)
         }
-      } as any;
+      } as unknown as import('obsidian').App;
 
       await initializeI18n(mockApp);
 

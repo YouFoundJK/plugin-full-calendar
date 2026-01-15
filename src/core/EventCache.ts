@@ -161,7 +161,7 @@ export default class EventCache {
     return this._store;
   }
 
-  getProviders(): CalendarProvider<any>[] {
+  getProviders(): CalendarProvider<unknown>[] {
     return Array.from(this.calendars.values());
   }
 

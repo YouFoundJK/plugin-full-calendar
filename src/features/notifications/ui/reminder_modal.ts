@@ -3,6 +3,7 @@
  * @brief Launcher for the Reminder Modal.
  */
 import * as React from 'react';
+import { DateTime } from 'luxon';
 import ReactModal from '../../../ui/ReactModal';
 import { ReminderModal } from './ReminderModal';
 import FullCalendarPlugin from '../../../main';
@@ -42,7 +43,6 @@ export function launchReminderModal(
                 new Notice('Cannot snooze start time of all-day events.');
                 return e;
               }
-              const { DateTime } = require('luxon');
 
               const oldStart = DateTime.fromFormat(e.startTime, 'HH:mm');
               if (!oldStart.isValid) return e;

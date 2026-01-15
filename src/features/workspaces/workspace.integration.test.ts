@@ -6,8 +6,10 @@ import { WorkspaceSettings, createDefaultWorkspace, DEFAULT_SETTINGS } from '../
 
 // Mock CalendarView methods for testing
 class MockCalendarView {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   plugin: any;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(plugin: any) {
     this.plugin = plugin;
   }
@@ -21,6 +23,7 @@ class MockCalendarView {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   applyWorkspaceSettings(settings: any) {
     const workspace = this.getActiveWorkspace();
     if (!workspace) return settings;
@@ -43,6 +46,7 @@ class MockCalendarView {
     return workspaceSettings;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   filterCalendarSources(sources: any[]) {
     const workspace = this.getActiveWorkspace();
     if (!workspace) return sources;
@@ -57,6 +61,7 @@ class MockCalendarView {
     return filtered.length === 0 ? sources : filtered;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   filterEventsByCategory(events: any[]): any[] {
     // Only apply when advanced categorization is enabled
     if (!this.plugin.settings.enableAdvancedCategorization) {
@@ -74,6 +79,7 @@ class MockCalendarView {
     }
 
     const knownCategories = new Set(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.plugin.settings.categorySettings?.map((c: any) => c.name) ?? []
     );
 
@@ -109,6 +115,7 @@ class MockCalendarView {
 }
 
 describe('Workspace Integration Tests', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockPlugin: any;
   let mockView: MockCalendarView;
 

@@ -31,7 +31,7 @@ jest.mock('../../core/EventCache');
 describe('RecurringEventManager', () => {
   let manager: RecurringEventManager;
   let mockCache: jest.Mocked<EventCache>;
-  let mockProvider: jest.Mocked<CalendarProvider<any>>;
+  let mockProvider: jest.Mocked<CalendarProvider<unknown>>;
 
   const mockPlugin = {
     app: {},
@@ -51,7 +51,7 @@ describe('RecurringEventManager', () => {
       type: 'test',
       displayName: 'Test Provider',
       getEventHandle: jest.fn((event: OFCEvent) => ({ persistentId: event.title }))
-    } as any;
+    } as unknown as jest.Mocked<CalendarProvider<unknown>>;
 
     // Create mock cache
     mockCache = {
@@ -69,7 +69,7 @@ describe('RecurringEventManager', () => {
         getEventDetails: jest.fn(),
         getAllEvents: jest.fn().mockReturnValue([])
       },
-      calendars: new Map([['test-calendar', mockProvider as any]]),
+      calendars: new Map([['test-calendar', mockProvider as CalendarProvider<unknown>]]),
       plugin: mockPlugin
     } as unknown as jest.Mocked<EventCache>;
 

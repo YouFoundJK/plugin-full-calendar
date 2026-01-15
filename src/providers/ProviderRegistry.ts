@@ -15,7 +15,6 @@ const MILLICONDS_BETWEEN_REVALIDATIONS = 5 * MINUTE;
 // config types (FullNoteProviderConfig, DailyNoteProviderConfig, etc.). Enforcing
 // a single CalendarInfo arg caused incompatibilities. We instead type the
 // instance side via CalendarProvider<unknown> while still avoiding pervasive `any`.
-// eslint-disable-next-line @typescript-eslint/ban-types
 // NOTE: We intentionally keep the constructor param typed as `any` here.
 // Each concrete provider has a distinct config type; using a union or unknown
 // causes incompatibilities (construct signature variance) when dynamically
@@ -200,8 +199,8 @@ export class ProviderRegistry {
         // Call initialize() if provider supports it
         if (instance.initialize) {
           instance.initialize();
-        } else {
         }
+        // else: Provider does not require initialization
       } else {
         // Warning is already logged in getProviderForType
       }
@@ -312,7 +311,7 @@ export class ProviderRegistry {
     ) => void,
     onAllComplete?: () => void
   ): Promise<{ event: OFCEvent; location: EventLocation | null; calendarId: string }[]> {
-    const startTime = performance.now();
+    const _startTime = performance.now();
     if (!this.cache) {
       throw new Error('Cache not set on ProviderRegistry');
     }
@@ -491,6 +490,7 @@ export class ProviderRegistry {
     // The cache will diff this against its old state and remove everything.
     // Provide a minimal file-like object; syncFile only requires a .path property via TFile shape.
     // Create minimal TFile-like object for cache sync
+    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
     await this.cache.syncFile({ path } as unknown as TFile, []);
   }
 
@@ -549,7 +549,7 @@ export class ProviderRegistry {
     });
   }
 
-  public getInstance(id: string): CalendarProvider<any> | undefined {
+  public getInstance(id: string): CalendarProvider<unknown> | undefined {
     return this.instances.get(id);
   }
 

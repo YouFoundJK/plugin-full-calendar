@@ -77,6 +77,6 @@ export const i18n = i18next;
  * Type-safe translation function
  * Usage: t('commands.newEvent')
  */
-export const t = (key: string, options?: any): string => {
+export const t = (key: string, options?: Record<string, string | number | undefined>): string => {
   return i18next.t(key, options) as string;
 };
