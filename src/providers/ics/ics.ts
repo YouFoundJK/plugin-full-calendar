@@ -169,7 +169,7 @@ function icalTimeToLuxon(t: ical.Time): DateTime {
     // Validate the Date object - check if it's invalid
     if (isNaN(jsDate.getTime())) {
       // If the Date is invalid, try to parse the raw string value
-      const rawValue = t.toString();
+      const rawValue = (t as unknown as { toString(): string }).toString();
       if (rawValue) {
         const isoDate = convertICalDateToISO(rawValue, t.isDate);
         if (isoDate) {
@@ -191,7 +191,7 @@ function icalTimeToLuxon(t: ical.Time): DateTime {
     }
   } catch (err) {
     // If toJSDate() throws an error, try to parse the raw value
-    const rawValue = t.toString();
+    const rawValue = (t as unknown as { toString(): string }).toString();
     const isoDate = convertICalDateToISO(rawValue, t.isDate);
     if (isoDate) {
       const parsed = DateTime.fromISO(isoDate, { zone: t.timezone === 'Z' ? 'utc' : t.timezone });
@@ -225,7 +225,7 @@ function icalTimeToLuxon(t: ical.Time): DateTime {
     const utcDt = DateTime.fromJSDate(jsDate, { zone: 'utc' });
     if (!utcDt.isValid) {
       // If even UTC fails, try parsing the raw value
-      const rawValue = t.toString();
+      const rawValue = (t as unknown as { toString(): string }).toString();
       const isoDate = convertICalDateToISO(rawValue, t.isDate);
       if (isoDate) {
         const parsed = DateTime.fromISO(isoDate, { zone: 'utc' });
@@ -315,7 +315,11 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
   const timezone = isAllDay ? undefined : startDate.zoneName || undefined;
 
   if (input.isRecurring()) {
-    const rrule = rrulestr(input.component.getFirstProperty('rrule').getFirstValue().toString());
+    // Cast getFirstValue() return to unknown, then string to string
+    const rruleProp = input.component.getFirstProperty('rrule');
+    const rruleVal = rruleProp ? rruleProp.getFirstValue() : null;
+    const rruleStr = rruleVal ? String(rruleVal) : '';
+    const rrule = rrulestr(rruleStr);
     const exdates = input.component
       .getAllProperties('exdate')
       .map(exdateProp => {
@@ -358,7 +362,11 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
             endTime: getLuxonTime(endDate)!
           }),
       description,
-      url: url || (location && location.startsWith('http') ? location : undefined)
+      url:
+        url ||
+        (location && typeof location === 'string' && location.startsWith('http')
+          ? location
+          : undefined)
     };
   } else {
     const date = getLuxonDate(startDate);
@@ -397,7 +405,11 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
             endTime: getLuxonTime(endDate)!
           }),
       description,
-      url: url || (location && location.startsWith('http') ? location : undefined)
+      url:
+        url ||
+        (location && typeof location === 'string' && location.startsWith('http')
+          ? location
+          : undefined)
     };
   }
 }
@@ -452,12 +464,12 @@ export function getEventsFromICS(text: string): OFCEvent[] {
         evt.startDate.toJSDate();
         evt.endDate.toJSDate();
         return true;
-      } catch (_err) {
+      } catch {
         let _startDateJs;
         try {
           _startDateJs = evt.startDate?.toJSDate();
         } catch (e) {
-          _startDateJs = `Error: ${e}`;
+          // start date failed parsing
         }
         // skipping events with invalid time
         return false;

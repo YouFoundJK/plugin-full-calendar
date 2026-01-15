@@ -91,8 +91,8 @@ export function newFrontmatter(fields: Partial<OFCEvent>): string {
 
 export function modifyFrontmatterString(page: string, modifications: Partial<OFCEvent>): string {
   const frontmatter = extractFrontmatter(page);
-  const existingData = frontmatter ? parseYaml(frontmatter) : {};
-  const newData = { ...existingData, ...modifications };
+  const existingData = frontmatter ? (parseYaml(frontmatter) as Record<string, unknown>) : {};
+  const newData = { ...existingData, ...modifications } as Record<string, unknown>;
 
   // Remove properties that are null or undefined to keep frontmatter clean
   Object.keys(newData).forEach(key => {

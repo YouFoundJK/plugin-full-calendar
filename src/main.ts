@@ -160,7 +160,7 @@ export default class FullCalendarPlugin extends Plugin {
     // Respond to obsidian events
     this.registerEvent(
       this.app.metadataCache.on('changed', file => {
-        this.providerRegistry.handleFileUpdate(file);
+        void this.providerRegistry.handleFileUpdate(file);
       })
     );
     this.registerEvent(
@@ -168,14 +168,14 @@ export default class FullCalendarPlugin extends Plugin {
         if (file instanceof TFile) {
           // A rename is a delete at the old path.
           // The 'changed' event will pick up the creation at the new path.
-          this.providerRegistry.handleFileDelete(oldPath);
+          void this.providerRegistry.handleFileDelete(oldPath);
         }
       })
     );
     this.registerEvent(
       this.app.vault.on('delete', file => {
         if (file instanceof TFile) {
-          this.providerRegistry.handleFileDelete(file.path);
+          void this.providerRegistry.handleFileDelete(file.path);
         }
       })
     );
@@ -238,7 +238,7 @@ export default class FullCalendarPlugin extends Plugin {
       id: 'full-calendar-open',
       name: t('commands.openCalendar'),
       callback: () => {
-        this.activateView();
+        void this.activateView();
       }
     });
 
@@ -261,10 +261,10 @@ export default class FullCalendarPlugin extends Plugin {
         }
         const targetLeaf = this.app.workspace.getRightLeaf(false);
         if (targetLeaf) {
-          targetLeaf.setViewState({
+          void targetLeaf.setViewState({
             type: FULL_CALENDAR_SIDEBAR_VIEW_TYPE
           });
-          this.app.workspace.revealLeaf(targetLeaf);
+          void this.app.workspace.revealLeaf(targetLeaf);
         } else {
           console.warn('Right leaf not found for calendar view!');
         }
@@ -282,7 +282,7 @@ export default class FullCalendarPlugin extends Plugin {
         const { exchangeCodeForToken } = await import('./providers/google/auth/auth');
         await exchangeCodeForToken(params.code, params.state, this);
         if (this.settingsTab) {
-          await this.settingsTab.display();
+          this.settingsTab.display();
         }
       } else {
         new Notice(t('notices.googleAuthFailed'));
@@ -317,7 +317,7 @@ export default class FullCalendarPlugin extends Plugin {
    * Loads plugin settings from disk, merging them with default values.
    */
   async loadSettings() {
-    const loadedData = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loadedData = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as unknown);
 
     // All migration and sanitization logic is now encapsulated in this utility function.
     const { settings: migratedSettings, needsSave } = migrateAndSanitizeSettings(loadedData);
@@ -344,7 +344,7 @@ export default class FullCalendarPlugin extends Plugin {
    */
   async saveSettings() {
     // Deep copy of settings BEFORE any modifications.
-    const oldSettings = JSON.parse(JSON.stringify(this.settings));
+    const oldSettings = JSON.parse(JSON.stringify(this.settings)) as FullCalendarSettings;
 
     // Create a mutable copy to work with.
     const newSettings = { ...this.settings };
@@ -366,7 +366,9 @@ export default class FullCalendarPlugin extends Plugin {
     const newSettingsString = JSON.stringify(this.settings);
 
     // Parse both to objects to compare specific fields without worrying about property order
-    const oldSettingsObj = this._loadedSettings ? JSON.parse(this._loadedSettings) : oldSettings;
+    const oldSettingsObj: FullCalendarSettings = this._loadedSettings
+      ? (JSON.parse(this._loadedSettings) as FullCalendarSettings)
+      : oldSettings;
     const newSettingsObj = this.settings;
 
     const newSourcesString = JSON.stringify(newSettingsObj.calendarSources);

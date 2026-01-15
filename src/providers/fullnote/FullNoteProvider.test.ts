@@ -59,16 +59,7 @@ jest.mock(
 );
 
 // keep assertFailed helper
-async function _assertFailed(func: () => Promise<unknown>, message: RegExp) {
-  try {
-    await func();
-  } catch (e) {
-    expect(e).toBeInstanceOf(Error);
-    expect((e as Error).message).toMatch(message);
-    return;
-  }
-  expect(false).toBeTruthy();
-}
+// function _assertFailed removed because it's unused
 
 const makeApp = (app: MockApp): ObsidianInterface => ({
   getAbstractFileByPath: path => app.vault.getAbstractFileByPath(path),
@@ -100,7 +91,7 @@ const makePlugin = (settings: Partial<FullCalendarSettings> = {}): FullCalendarP
   ({
     app: {}, // Mock app if needed, though not used by constructor directly
     settings: { ...DEFAULT_SETTINGS, ...settings },
-    nonBlockingProcess: jest.fn(async (files, processor) => {
+    nonBlockingProcess: jest.fn(async (files: TFile[], processor) => {
       for (const file of files) {
         await processor(file);
       }
@@ -178,13 +169,7 @@ describe('FullNoteCalendar Tests', () => {
           .done()
       );
       // CORRECTED CONSTRUCTOR CALL
-      const _info: CalendarInfo = {
-        type: 'local',
-        id: 'local_1',
-        name: 'Test Calendar', // <-- ADD THIS LINE
-        color,
-        directory: dirName
-      };
+
       const calendar = new FullNoteProvider(
         { directory: dirName, id: 'local_1' },
         makePlugin({ enableAdvancedCategorization: true }),
@@ -206,13 +191,7 @@ describe('FullNoteCalendar Tests', () => {
   it('creates an event with a category', async () => {
     const obsidian = makeApp(MockAppBuilder.make().done());
     // CORRECTED CONSTRUCTOR CALL
-    const _info: CalendarInfo = {
-      type: 'local',
-      id: 'local_1',
-      name: 'Test Calendar', // <-- ADD THIS LINE
-      color,
-      directory: dirName
-    };
+
     const calendar = new FullNoteProvider(
       { directory: dirName, id: 'local_1' },
       makePlugin({ enableAdvancedCategorization: true }),
@@ -257,13 +236,7 @@ describe('FullNoteCalendar Tests', () => {
         .done()
     );
     // CORRECTED CONSTRUCTOR CALL
-    const _info: CalendarInfo = {
-      type: 'local',
-      id: 'local_1',
-      name: 'Test Calendar', // <-- ADD THIS LINE
-      color,
-      directory: dirName
-    };
+
     const calendar = new FullNoteProvider(
       { directory: dirName, id: 'local_1' },
       makePlugin({ enableAdvancedCategorization: true }),
@@ -281,8 +254,6 @@ describe('FullNoteCalendar Tests', () => {
 
     const contents = await obsidian.read(firstFile);
 
-    const _mockFn = jest.fn();
-
     // The event we pass to modifyEvent is the *structured* event with separate properties.
     const newEvent = parseEvent({
       ...initialEvent,
@@ -295,7 +266,8 @@ describe('FullNoteCalendar Tests', () => {
     await calendar.updateEvent(handle, initialEvent as OFCEvent, newEvent);
 
     expect(obsidian.rewrite).toHaveBeenCalledTimes(1);
-    const [_file, rewriteCallback] = (obsidian.rewrite as jest.Mock).mock.calls[0];
+    const mockRewrite = obsidian.rewrite as jest.Mock;
+    const [, rewriteCallback] = mockRewrite.mock.calls[0];
     const newContent = rewriteCallback(contents);
 
     // The rewritten content should have the new structured data.
@@ -312,10 +284,16 @@ describe('FullNoteCalendar Tests', () => {
     );
 
     // Mock TFile objects
-    const fileInDirectory = { path: 'events/test-event.md' } as unknown as TFile;
-    const fileInSubdirectory = { path: 'events/2023/test-event.md' } as unknown as TFile;
-    const fileOutsideDirectory = { path: 'notes/other.md' } as unknown as TFile;
-    const fileInSimilarPath = { path: 'events-archive/old.md' } as unknown as TFile;
+    // Mock TFile objects using TFile prototype to satisfying instanceof check
+    const makeMockFile = (path: string) => {
+      const file = Object.create(TFile.prototype);
+      Object.defineProperty(file, 'path', { value: path });
+      return file as TFile;
+    };
+    const fileInDirectory = makeMockFile('events/test-event.md');
+    const fileInSubdirectory = makeMockFile('events/2023/test-event.md');
+    const fileOutsideDirectory = makeMockFile('notes/other.md');
+    const fileInSimilarPath = makeMockFile('events-archive/old.md');
 
     // File in the configured directory should be relevant
     expect(calendar.isFileRelevant(fileInDirectory)).toBe(true);
@@ -354,7 +332,8 @@ describe('FullNoteCalendar Tests', () => {
     await calendar.createEvent(parseEvent(event));
 
     expect(obsidian.create).toHaveBeenCalledTimes(1);
-    const [_path, content] = (obsidian.create as jest.Mock).mock.calls[0];
+    const mockCreate = obsidian.create as jest.Mock;
+    const [, content] = mockCreate.mock.calls[0];
 
     // This expectation should FAIL currently because it will be [object Object]
     expect(content).toContain('repeatOn: {"week":2,"weekday":0}');

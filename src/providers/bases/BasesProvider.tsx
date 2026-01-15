@@ -139,7 +139,7 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
       const content = await this.plugin.app.vault.read(baseFile);
       let baseData: BaseFile;
       try {
-        baseData = parseYaml(content);
+        baseData = parseYaml(content) as BaseFile;
       } catch (e) {
         console.warn('Failed to parse Base file as YAML', e);
         return [];
@@ -169,14 +169,26 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
     if (!metadata) return null;
 
     // Heuristic to find date fields
-    const date = metadata.date || metadata.start || metadata.startTime || metadata.due;
+    const date: unknown = metadata.date || metadata.start || metadata.startTime || metadata.due;
     if (!date) return null;
 
-    const title = metadata.title || file.basename;
-    const category = metadata.category || metadata.Category;
-    const subCategory = metadata['sub category'] || metadata.SubCategory || metadata.subCategory;
+    const title: string = typeof metadata.title === 'string' ? metadata.title : file.basename;
+    const category: string | undefined =
+      typeof metadata.category === 'string'
+        ? metadata.category
+        : typeof metadata.Category === 'string'
+          ? metadata.Category
+          : undefined;
+    const subCategory: string | undefined =
+      typeof metadata['sub category'] === 'string'
+        ? metadata['sub category']
+        : typeof metadata.SubCategory === 'string'
+          ? metadata.SubCategory
+          : typeof metadata.subCategory === 'string'
+            ? metadata.subCategory
+            : undefined;
 
-    let finalTitle = title;
+    let finalTitle: string = title;
     if (category && subCategory) {
       finalTitle = `${category} - ${subCategory} - ${title}`;
     } else if (category) {
@@ -186,12 +198,14 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
     }
 
     // Construct a raw object to pass to validateEvent for standard processing
-    const rawEvent = {
+    const metadataType = typeof metadata.type === 'string' ? metadata.type : 'single';
+    const metadataAllDay = typeof metadata.allDay === 'boolean' ? metadata.allDay : true;
+    const rawEvent: Record<string, unknown> = {
       ...metadata,
       title: finalTitle,
       date: date,
-      type: metadata.type || 'single', // Default to single if not specified
-      allDay: metadata.allDay !== undefined ? metadata.allDay : true, // Default to all day
+      type: metadataType, // Default to single if not specified
+      allDay: metadataAllDay, // Default to all day
       category: category,
       subCategory: subCategory
     };
@@ -239,8 +253,7 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getConfigurationComponent(): FCReactComponent<any> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return BasesConfigComponent as any;
+    return BasesConfigComponent as FCReactComponent<unknown>;
   }
 
   getSettingsRowComponent(): FCReactComponent<{ source: Partial<CalendarInfo> }> {

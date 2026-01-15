@@ -153,7 +153,7 @@ export function eventToIcs(event: OFCEvent): string {
   const vevent = createVEventComponent(event);
   component.addSubcomponent(vevent);
 
-  return component.toString();
+  return (component as unknown as { toString(): string }).toString();
 }
 
 /**

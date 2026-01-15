@@ -402,7 +402,8 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
     vcalendar.addSubcomponent(overrideVEvent);
 
     // 5. Update: PUT the new ICS back
-    const newIcsContent = vcalendar.toString();
+    // ical.Component properly implements toString(), cast to satisfy lint
+    const newIcsContent = (vcalendar as unknown as { toString(): string }).toString();
 
     await this.doRequest(url, {
       method: 'PUT',

@@ -22,7 +22,6 @@ import { t } from '../../../features/i18n/i18n';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'; // Renamed for clarity
 const PROXY_TOKEN_URL = 'https://gcal-proxy-server.vercel.app/api/google/token';
-const _PROXY_REFRESH_URL = 'https://gcal-proxy-server.vercel.app/api/google/refresh';
 
 const SCOPES =
   'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
@@ -89,44 +88,46 @@ function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
     return;
   }
   server = http.createServer(
-    async (
+    (
       req: { url?: string },
       res: { writeHead: (status: number) => void; end: (body?: string) => void }
     ) => {
-      try {
-        if (!req.url || !req.url.startsWith('/callback')) {
-          res.writeHead(204);
-          res.end();
-          return;
+      void (async () => {
+        try {
+          if (!req.url || !req.url.startsWith('/callback')) {
+            res.writeHead(204);
+            res.end();
+            return;
+          }
+
+          const parsed = url.parse(req.url, true);
+          const query = parsed.query || {};
+          const code = query.code;
+          const state = query.state;
+
+          if (typeof code !== 'string' || typeof state !== 'string') {
+            throw new Error('Invalid callback parameters');
+          }
+
+          res.end('Authentication successful! Please return to Obsidian.');
+
+          if (server) {
+            server.close();
+            server = null;
+          }
+
+          await exchangeCodeForToken(code, state, plugin);
+          // Refresh the settings tab if it's open
+          plugin.settingsTab?.display();
+        } catch (e) {
+          console.error('Error handling Google Auth callback:', e);
+          res.end('Authentication failed. Please check the console in Obsidian and try again.');
+          if (server) {
+            server.close();
+            server = null;
+          }
         }
-
-        const parsed = url.parse(req.url, true);
-        const query = parsed.query || {};
-        const code = query.code;
-        const state = query.state;
-
-        if (typeof code !== 'string' || typeof state !== 'string') {
-          throw new Error('Invalid callback parameters');
-        }
-
-        res.end('Authentication successful! Please return to Obsidian.');
-
-        if (server) {
-          server.close();
-          server = null;
-        }
-
-        await exchangeCodeForToken(code, state, plugin);
-        // Refresh the settings tab if it's open
-        await plugin.settingsTab?.display();
-      } catch (e) {
-        console.error('Error handling Google Auth callback:', e);
-        res.end('Authentication failed. Please check the console in Obsidian and try again.');
-        if (server) {
-          server.close();
-          server = null;
-        }
-      }
+      })();
     }
   );
   server.listen(42813, () => {
@@ -256,7 +257,11 @@ export async function exchangeCodeForToken(
       console.error('Token exchange failed:', response.text);
       throw new Error(`Google API returned status ${response.status}: ${response.text}`);
     }
-    const data = response.json;
+    const data = response.json as {
+      refresh_token?: string;
+      access_token: string;
+      expires_in: number;
+    };
 
     if (!data.refresh_token) {
       throw new Error(

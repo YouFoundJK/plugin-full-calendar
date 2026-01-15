@@ -95,7 +95,7 @@ END:VCALENDAR
         method: 'PROPFIND',
         headers: expect.objectContaining({
           Depth: '0'
-        })
+        }) as Record<string, unknown>
       })
     );
 
@@ -107,8 +107,8 @@ END:VCALENDAR
         method: 'REPORT',
         headers: expect.objectContaining({
           Depth: '1'
-        }),
-        body: expect.stringContaining('<c:calendar-data/>')
+        }) as Record<string, unknown>,
+        body: expect.stringContaining('<c:calendar-data/>') as string
       })
     );
 

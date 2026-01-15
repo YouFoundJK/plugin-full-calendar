@@ -127,7 +127,11 @@ export class StatusBarManager {
           .setIcon('file-text')
           .onClick(() => {
             if (this.currentState?.current) {
-              openFileForEvent(this.plugin.cache, this.plugin.app, this.currentState.current.id);
+              void openFileForEvent(
+                this.plugin.cache,
+                this.plugin.app,
+                this.currentState.current.id
+              );
             }
           });
       });
@@ -142,7 +146,7 @@ export class StatusBarManager {
         menu.addItem(item => {
           const time = eventData.start.toFormat('h:mm a');
           item.setTitle(`${time}: ${eventData.event.title}`).onClick(() => {
-            openFileForEvent(this.plugin.cache, this.plugin.app, eventData.id);
+            void openFileForEvent(this.plugin.cache, this.plugin.app, eventData.id);
           });
         });
       });

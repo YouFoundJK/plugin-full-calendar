@@ -218,7 +218,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
   async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation]> {
     const baseFilename = basenameFromEvent(event, this.plugin.settings);
-    const path = await findUniquePath(this.app, this.source.directory, baseFilename);
+    const path = findUniquePath(this.app, this.source.directory, baseFilename);
 
     // The frontmatter is generated from the clean `event` object, so the title remains unsuffixed.
     const newPage = replaceFrontmatter('', newFrontmatter(event));
@@ -249,7 +249,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
     if (oldBaseFilename !== newBaseFilename) {
       // It's a rename. We must find a new unique path for the new base name.
-      finalPath = await findUniquePath(this.app, this.source.directory, newBaseFilename);
+      finalPath = findUniquePath(this.app, this.source.directory, newBaseFilename);
       await this.app.rename(file, finalPath);
     }
 

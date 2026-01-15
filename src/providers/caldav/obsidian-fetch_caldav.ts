@@ -8,7 +8,7 @@ export async function obsidianFetch(
   const url =
     typeof input === 'string'
       ? input
-      : ((input as unknown as { url?: string }).url ?? String(input));
+      : ((input as unknown as { url?: string }).url ?? (input as unknown as string));
   const method = init?.method ?? 'GET';
 
   const headers: Record<string, string> = {};

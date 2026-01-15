@@ -16,6 +16,13 @@ const PROXY_REFRESH_URL = 'https://gcal-proxy-server.vercel.app/api/google/refre
 const PUBLIC_CLIENT_ID = '272284435724-ltjbog78np5lnbjhgecudaqhsfba9voi.apps.googleusercontent.com';
 const PRIMARY_CALENDAR_URL = 'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary';
 
+interface GoogleTokenResponse {
+  access_token: string;
+  expires_in: number;
+  refresh_token?: string;
+  [key: string]: unknown;
+}
+
 // Type alias for a Google source from Zod schema
 type GoogleCalendarInfo = Extract<CalendarInfo, { type: 'google' }>;
 
@@ -85,7 +92,7 @@ export class GoogleAuthManager {
       });
 
       if (response.status >= 200 && response.status < 300) {
-        const data = response.json;
+        const data = response.json as GoogleTokenResponse;
         // Mutate the object that was passed in
         authObj.accessToken = data.access_token;
         authObj.expiryDate = Date.now() + data.expires_in * 1000;
@@ -163,7 +170,7 @@ export class GoogleAuthManager {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     // The 'id' field of the primary calendar is the user's email.
-    return response.json.id;
+    return (response.json as { id: string }).id;
   }
 
   /**

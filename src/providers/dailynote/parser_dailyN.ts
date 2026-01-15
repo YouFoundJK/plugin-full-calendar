@@ -19,11 +19,6 @@ import { FullCalendarSettings } from '../../types/settings';
 // TYPES AND CONSTANTS
 // =================================================================================================
 
-type _Line = {
-  text: string;
-  lineNumber: number;
-};
-
 type AddToHeadingProps = {
   heading: HeadingCache | undefined;
   item: OFCEvent;
@@ -87,7 +82,7 @@ export const getListsUnderHeading = (
 
 const generateInlineAttributes = (attrs: Record<string, unknown>): string => {
   return Object.entries(attrs)
-    .map(([k, v]) => `[${k}:: ${v}]`)
+    .map(([k, v]) => `[${k}:: ${String(v)}]`)
     .join('  ');
 };
 
