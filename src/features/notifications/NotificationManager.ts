@@ -60,7 +60,7 @@ export class NotificationManager {
   }
 
   private checkAndNotify(occurrence: EnrichedOFCEvent, now: DateTime) {
-    const { id: _sessionId, event, start } = occurrence;
+    const { event, start } = occurrence;
     const { enableDefaultReminder, defaultReminderMinutes } = this.plugin.settings;
     const recencyCutoff = { minutes: 5 }; // Don't notify if the trigger point was more than 5 mins ago (e.g. at startup)
 

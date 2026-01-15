@@ -221,7 +221,7 @@ export class DateNavigation {
         // For other views, return current date
         return view.currentStart;
       }
-    } catch (_e) {
+    } catch {
       return null;
     }
   }
@@ -252,8 +252,8 @@ export class DateNavigation {
       (endOfView.getTime() - startOfView.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    const _allDayHeight = 50; // Approximate all-day area height
-    const _headerHeight = 30; // Approximate header height
+    // Note: allDayHeight and headerHeight are not currently needed for the calculation
+    // but their approximate values are: allDay=50px, header=30px
     const timeGridX = x;
 
     let dayIndex = 0;
