@@ -265,7 +265,7 @@ function getLuxonDate(dt: DateTime): string | null {
 
 function extractEventUrl(iCalEvent: ical.Event): string {
   const urlProp = iCalEvent.component.getFirstProperty('url');
-  return urlProp ? urlProp.getFirstValue() : '';
+  return urlProp ? String(urlProp.getFirstValue()) : '';
 }
 
 function specifiesEnd(iCalEvent: ical.Event) {
@@ -282,8 +282,10 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
   // Simplified: just use the title directly
   const eventData = { title: summary };
 
-  const description = input.component.getFirstProperty('description')?.getFirstValue();
-  const location = input.component.getFirstProperty('location')?.getFirstValue();
+  const description = String(
+    input.component.getFirstProperty('description')?.getFirstValue() || ''
+  );
+  const location = String(input.component.getFirstProperty('location')?.getFirstValue() || '');
   // Use extractEventUrl helper or input.component.getFirstProperty('url')
   const url = extractEventUrl(input);
 
@@ -317,13 +319,13 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
   if (input.isRecurring()) {
     // Cast getFirstValue() return to unknown, then string to string
     const rruleProp = input.component.getFirstProperty('rrule');
-    const rruleVal = rruleProp ? rruleProp.getFirstValue() : null;
+    const rruleVal = rruleProp ? String(rruleProp.getFirstValue()) : null;
     const rruleStr = rruleVal ? String(rruleVal) : '';
     const rrule = rrulestr(rruleStr);
     const exdates = input.component
       .getAllProperties('exdate')
       .map(exdateProp => {
-        const exdate = exdateProp.getFirstValue();
+        const exdate = ((t: unknown) => t as ical.Time)(exdateProp.getFirstValue());
         const exdateLuxon = icalTimeToLuxon(exdate);
         if (!exdateLuxon.isValid) {
           console.warn(`Full Calendar ICS Parser: Skipping invalid EXDATE for event "${summary}"`);
@@ -465,10 +467,9 @@ export function getEventsFromICS(text: string): OFCEvent[] {
         evt.endDate.toJSDate();
         return true;
       } catch {
-        let _startDateJs;
         try {
-          _startDateJs = evt.startDate?.toJSDate();
-        } catch (e) {
+          evt.startDate?.toJSDate();
+        } catch {
           // start date failed parsing
         }
         // skipping events with invalid time

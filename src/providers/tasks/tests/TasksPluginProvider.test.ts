@@ -60,7 +60,7 @@ describe('TasksPluginProvider', () => {
           getMarkdownFiles: jest.fn().mockReturnValue([])
         },
         workspace: {
-          trigger: jest.fn((eventName, callback) => {
+          trigger: jest.fn((eventName: string, callback: (data: unknown) => void) => {
             if (eventName === 'obsidian-tasks-plugin:request-cache-update') {
               callback({ state: 'Warm', tasks: [] }); // MODIFIED: resolves cache warm promise
             }

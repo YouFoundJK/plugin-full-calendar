@@ -22,10 +22,12 @@ export function renderOnboarding(plugin: FullCalendarPlugin, el: HTMLElement) {
     'Thanks for downloading full calendar. Create a calendar below to begin.';
 
   const container = notice.createDiv();
-  addCalendarButton(plugin, container, async (source: CalendarInfo) => {
-    const { calendarSources } = plugin.settings;
-    calendarSources.push(source);
-    await plugin.saveSettings();
-    await plugin.activateView();
+  addCalendarButton(plugin, container, (source: CalendarInfo) => {
+    void (async () => {
+      const { calendarSources } = plugin.settings;
+      calendarSources.push(source);
+      await plugin.saveSettings();
+      await plugin.activateView();
+    })();
   });
 }

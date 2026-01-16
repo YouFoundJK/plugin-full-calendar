@@ -198,7 +198,7 @@ export class TasksBacklogView extends ItemView {
       }
 
       // Task location info
-      const _location = taskItem.createEl('div', {
+      taskItem.createEl('div', {
         text: `${task.location.path}:${task.location.lineNumber}`,
         cls: 'tasks-backlog-location'
       });

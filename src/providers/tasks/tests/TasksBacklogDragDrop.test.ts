@@ -53,7 +53,6 @@ describe('Tasks Backlog Drag and Drop Integration', () => {
       );
 
       expect(draggable).toBeDefined();
-      expect(draggable.destroy).toBeDefined();
       expect(typeof draggable.destroy).toBe('function');
     });
 

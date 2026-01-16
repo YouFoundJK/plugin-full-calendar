@@ -44,7 +44,7 @@ type ICSConfigProps = {
 };
 
 const ICSConfigWrapper: React.FC<ICSConfigProps> = props => {
-  const { onSave, context: _context, ...rest } = props;
+  const { onSave, ...rest } = props;
   const handleSave = (finalConfig: ICSProviderConfig) => onSave(finalConfig);
 
   return React.createElement(ICSConfigComponent, {

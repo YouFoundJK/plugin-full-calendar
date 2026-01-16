@@ -233,7 +233,7 @@ export class CalendarView extends ItemView {
     await this.plugin.saveSettings();
     // Debounce re-render to avoid redundant reloads
     this.workspaceSwitchTimeout = setTimeout(() => {
-      this.onOpen(); // Re-render the calendar with new settings
+      void this.onOpen(); // Re-render the calendar with new settings
     }, 100);
   }
 
@@ -601,73 +601,81 @@ export class CalendarView extends ItemView {
           },
           analysis: {
             text: t('ui.view.buttons.analysis'),
-            click: async () => {
-              if (this.plugin.isMobile) {
-                new Notice(t('ui.view.errors.chronoAnalyserDesktopOnly'));
-                return;
-              }
-              try {
-                const { activateAnalysisView } = await import('../chrono_analyser/AnalysisView');
-                activateAnalysisView(this.plugin.app);
-              } catch (err) {
-                console.error('Full Calendar: Failed to activate Chrono Analyser view', err);
-                new Notice(t('ui.view.errors.chronoAnalyserFailed'));
-              }
+            click: () => {
+              void (async () => {
+                if (this.plugin.isMobile) {
+                  new Notice(t('ui.view.errors.chronoAnalyserDesktopOnly'));
+                  return;
+                }
+                try {
+                  const { activateAnalysisView } = await import('../chrono_analyser/AnalysisView');
+                  await activateAnalysisView(this.plugin.app);
+                } catch (err) {
+                  console.error('Full Calendar: Failed to activate Chrono Analyser view', err);
+                  new Notice(t('ui.view.errors.chronoAnalyserFailed'));
+                }
+              })();
             }
           }
         },
-        eventClick: async info => {
-          try {
-            // Ctrl/Cmd + Click still opens the note directly.
-            if (info.jsEvent.getModifierState('Control') || info.jsEvent.getModifierState('Meta')) {
-              const { openFileForEvent } = await import('../utils/eventActions');
-              await openFileForEvent(this.plugin.cache, this.app, info.event.id);
-              return;
-            }
-
-            if (!this.plugin.cache.isEventEditable(info.event.id)) {
-              const { launchEventDetailsModal } = await import('./modals/event_modal');
-              launchEventDetailsModal(this.plugin, info.event.id);
-              return;
-            }
-
-            // THE NEW DISPATCHING LOGIC
-            const eventDetails = this.plugin.cache.store.getEventDetails(info.event.id);
-            if (!eventDetails) return;
-
-            const { calendarId } = eventDetails;
-            const capabilities = this.plugin.providerRegistry.getCapabilities(calendarId);
-
-            // Check the new capability flag.
-            if (capabilities?.hasCustomEditUI) {
-              const provider = this.plugin.providerRegistry.getInstance(calendarId);
+        eventClick: info => {
+          void (async () => {
+            try {
+              // Ctrl/Cmd + Click still opens the note directly.
               if (
-                provider &&
-                'editInProviderUI' in provider &&
-                typeof provider.editInProviderUI === 'function'
+                info.jsEvent.getModifierState('Control') ||
+                info.jsEvent.getModifierState('Meta')
               ) {
-                // Delegate to the provider's own UI.
-                await provider.editInProviderUI(info.event.id);
+                const { openFileForEvent } = await import('../utils/eventActions');
+                await openFileForEvent(this.plugin.cache, this.app, info.event.id);
+                return;
+              }
+
+              if (!this.plugin.cache.isEventEditable(info.event.id)) {
+                const { launchEventDetailsModal } = await import('./modals/event_modal');
+                launchEventDetailsModal(this.plugin, info.event.id);
+                return;
+              }
+
+              // THE NEW DISPATCHING LOGIC
+              const eventDetails = this.plugin.cache.store.getEventDetails(info.event.id);
+              if (!eventDetails) return;
+
+              const { calendarId } = eventDetails;
+              const capabilities = this.plugin.providerRegistry.getCapabilities(calendarId);
+
+              // Check the new capability flag.
+              if (capabilities?.hasCustomEditUI) {
+                const provider = this.plugin.providerRegistry.getInstance(calendarId);
+                if (
+                  provider &&
+                  'editInProviderUI' in provider &&
+                  typeof provider.editInProviderUI === 'function'
+                ) {
+                  await (
+                    provider as unknown as { editInProviderUI: (id: string) => Promise<void> }
+                  ).editInProviderUI(info.event.id);
+                } else {
+                  // This case indicates a developer error (capability is true but method is missing).
+                  console.error(
+                    `Provider for ${calendarId} claims hasCustomEditUI but method is not implemented.`
+                  );
+                  // Fallback to default modal as a safety measure.
+                  const { launchEditModal } = await import('./modals/event_modal');
+                  launchEditModal(this.plugin, info.event.id);
+                }
               } else {
-                // This case indicates a developer error (capability is true but method is missing).
-                console.error(
-                  `Provider for ${calendarId} claims hasCustomEditUI but method is not implemented.`
-                );
-                // Fallback to default modal as a safety measure.
+                // Fallback to the default Full Calendar modal for all other providers.
                 const { launchEditModal } = await import('./modals/event_modal');
                 launchEditModal(this.plugin, info.event.id);
               }
-            } else {
-              // Fallback to the default Full Calendar modal for all other providers.
-              const { launchEditModal } = await import('./modals/event_modal');
-              launchEditModal(this.plugin, info.event.id);
+            } catch (e) {
+              if (e instanceof Error) {
+                console.warn(e);
+                new Notice(e.message);
+              }
             }
-          } catch (e) {
-            if (e instanceof Error) {
-              console.warn(e);
-              new Notice(e.message);
-            }
-          }
+          })();
         },
         select: async (start, end, allDay, viewType) => {
           if (viewType === 'dayGridMonth') {
@@ -794,7 +802,7 @@ export class CalendarView extends ItemView {
                 sourcePath: location.path
               });
             }
-          } catch (_error) {
+          } catch {
             // Swallow hover-link errors to avoid interrupting hover flow.
           }
         },
@@ -829,7 +837,7 @@ export class CalendarView extends ItemView {
                 if (!this.plugin.cache) {
                   return;
                 }
-                import('../utils/eventActions').then(({ openFileForEvent }) =>
+                void import('../utils/eventActions').then(({ openFileForEvent }) =>
                   openFileForEvent(this.plugin.cache, this.app, e.id)
                 );
               })
@@ -932,12 +940,12 @@ export class CalendarView extends ItemView {
             const backlogLeaves = this.app.workspace.getLeavesOfType(TASKS_BACKLOG_VIEW_TYPE);
             for (const leaf of backlogLeaves) {
               if (leaf.view instanceof TasksBacklogView) {
-                leaf.view.refresh();
+                void leaf.view.refresh();
               }
             }
 
             // Re-fetch events for the main calendar to show the new event
-            this.onOpen();
+            void this.onOpen();
 
             // COMMENTED OUT: Do not open edit dialog after drop from backlog
             // if (window.tasksUI && typeof window.tasksUI.showEdit === 'function') {

@@ -50,10 +50,7 @@ export async function fetchGoogleCalendarList(
     if (pageToken) {
       url.searchParams.set('pageToken', pageToken);
     }
-    const data = (await makeAuthenticatedRequest(
-      token,
-      url.toString()
-    )) as GoogleCalendarListResponse;
+    const data = await makeAuthenticatedRequest<GoogleCalendarListResponse>(token, url.toString());
     if (Array.isArray(data.items)) {
       data.items.forEach((item: unknown) => {
         if (item && typeof item === 'object' && 'id' in item && 'summary' in item) {

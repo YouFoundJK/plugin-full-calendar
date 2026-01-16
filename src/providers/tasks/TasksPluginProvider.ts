@@ -383,7 +383,9 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       on: (event: string, callback: (data: TasksCacheData) => void) => void;
     };
 
-    workspace.on('obsidian-tasks-plugin:cache-update', handleLiveCacheUpdate);
+    workspace.on('obsidian-tasks-plugin:cache-update', data => {
+      void handleLiveCacheUpdate(data);
+    });
     this.isSubscribed = true;
   }
 
