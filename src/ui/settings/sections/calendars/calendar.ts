@@ -238,7 +238,7 @@ export async function renderCalendar(
     : 'prev,next today,navigate';
 
   // The comma between 'analysis' and the view group creates the visual separation.
-  const rightToolbarGroup = [!isNarrow ? 'analysis' : null, viewButtonGroup]
+  const rightToolbarGroup = [!isNarrow ? 'analysis shareAvailability' : null, viewButtonGroup]
     .filter(Boolean)
     .join(' ');
 
@@ -253,7 +253,7 @@ export async function renderCalendar(
   const footerToolbar = isNarrow
     ? {
         left: 'workspace,today,navigate,prev,next',
-        right: rightToolbarGroup // Analysis is already filtered out for narrow views.
+        right: 'shareAvailability ' + rightToolbarGroup // Include shareAvailability for narrow views
       }
     : false;
 

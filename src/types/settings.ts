@@ -84,6 +84,9 @@ export interface FullCalendarSettings {
   hiddenDays?: number[]; // Array of day numbers to hide (0=Sunday, 1=Monday, etc.)
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
   currentVersion: string | null;
+
+  // Availability feature settings
+  availabilityFolder?: string; // Folder path for saving availability files
 }
 
 export const DEFAULT_SETTINGS: FullCalendarSettings = {
@@ -125,7 +128,10 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   dayMaxEvents: false, // Use FullCalendar default behavior
   enableDefaultReminder: true,
   defaultReminderMinutes: 10,
-  currentVersion: null
+  currentVersion: null,
+
+  // Availability feature defaults
+  availabilityFolder: 'Shared availability' // Default folder for availability files
 };
 
 // Utility functions for workspace management

@@ -616,6 +616,52 @@ export class CalendarView extends ItemView {
                 }
               })();
             }
+          },
+          shareAvailability: {
+            text: 'Share Availability',
+            click: async () => {
+              try {
+                const { AvailabilityService } = await import(
+                  '../features/availability/AvailabilityService'
+                );
+                const service = new AvailabilityService(this.plugin.app, this.plugin.settings);
+
+                // Calculate availability from tomorrow (today and past dates are irrelevant)
+                const now = DateTime.local();
+                const startDate = now.plus({ days: 1 }).startOf('day').toJSDate(); // Tomorrow
+                const endDate = now.plus({ years: 1 }).endOf('day').toJSDate(); // 1 year from tomorrow
+
+                // Get filtered event sources (respects workspace filtering)
+                const allSources = this.plugin.cache.getAllEvents();
+                const sources = this.viewEnhancer?.getFilteredSources(allSources) || allSources;
+
+                // Get workspace name
+                const activeWorkspace = this.viewEnhancer?.getActiveWorkspace();
+                const workspaceName = activeWorkspace?.name || null;
+
+                // Get calendar names from sources
+                const calendarNames = sources
+                  .map(source => {
+                    const calendarInfo = this.plugin.providerRegistry.getSource(source.id);
+                    return calendarInfo?.name || source.id;
+                  })
+                  .filter((name, index, self) => self.indexOf(name) === index); // Remove duplicates
+
+                // Generate and save availability
+                const filePath = await service.generateAndSaveAvailability(
+                  sources,
+                  startDate,
+                  endDate,
+                  workspaceName,
+                  calendarNames
+                );
+
+                new Notice(`Availability saved to ${filePath}`);
+              } catch (err) {
+                console.error('Full Calendar: Failed to generate availability', err);
+                new Notice('Failed to generate availability. Please check the console.');
+              }
+            }
           }
         },
         eventClick: info => {
