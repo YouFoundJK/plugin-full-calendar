@@ -257,4 +257,25 @@ export function renderAppearanceSettings(
         await plugin.saveSettings();
       });
     });
+
+  // Availability sharing section
+  new Setting(containerEl).setName('Share availability').setHeading();
+
+  new Setting(containerEl)
+    .setName('')
+    .setDesc('Anonymize and share your availability in a separate folder. Useful with copilot or AI agents to quickly schedule meetings without manually finding time slots.')
+    .settingEl.addClass('fc-indented-setting');
+
+  new Setting(containerEl)
+    .setName('Availability Files Folder')
+    .setDesc('Folder where availability files will be saved (relative to vault root)')
+    .addText(text => {
+      text
+        .setPlaceholder('Shared availability')
+        .setValue(plugin.settings.availabilityFolder || 'Shared availability')
+        .onChange(async value => {
+          plugin.settings.availabilityFolder = value || 'Shared availability';
+          await plugin.saveSettings();
+        });
+    });
 }

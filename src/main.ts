@@ -24,6 +24,7 @@ import { Notice, Plugin, TFile, App, EventRef } from 'obsidian';
 import type { Workspace } from 'obsidian';
 import { initializeI18n, t } from './features/i18n/i18n';
 import './styles.css';
+import { DateTime } from 'luxon';
 
 // Heavy calendar classes are loaded lazily in the initializer map below
 import type { CalendarView } from './ui/view';
@@ -239,6 +240,57 @@ export default class FullCalendarPlugin extends Plugin {
       name: t('commands.openCalendar'),
       callback: () => {
         void this.activateView();
+      }
+    });
+    this.addCommand({
+      id: 'full-calendar-share-availability',
+      name: t('commands.shareAvailability'),
+      callback: async () => {
+        try {
+          // Ensure cache is initialized
+          if (!this.cache.initialized) {
+            await this.cache.populate();
+          }
+
+          const { AvailabilityService } = await import('./features/availability/AvailabilityService');
+          const service = new AvailabilityService(this.app, this.settings);
+
+          // Calculate availability from tomorrow (today and past dates are irrelevant)
+          const now = DateTime.local();
+          const startDate = now.plus({ days: 1 }).startOf('day').toJSDate(); // Tomorrow
+          const endDate = now.plus({ years: 1 }).endOf('day').toJSDate(); // 1 year from tomorrow
+
+          // Get all event sources (for command, we use all sources, not filtered by workspace)
+          const allSources = this.cache.getAllEvents();
+
+          // Get active workspace name
+          const { WorkspaceManager } = await import('./features/workspaces/WorkspaceManager');
+          const workspaceManager = new WorkspaceManager(this.settings);
+          const activeWorkspace = workspaceManager.getActiveWorkspace();
+          const workspaceName = activeWorkspace?.name || null;
+
+          // Get calendar names from sources
+          const calendarNames = allSources
+            .map(source => {
+              const calendarInfo = this.providerRegistry.getSource(source.id);
+              return calendarInfo?.name || source.id;
+            })
+            .filter((name, index, self) => self.indexOf(name) === index); // Remove duplicates
+
+          // Generate and save availability
+          const filePath = await service.generateAndSaveAvailability(
+            allSources,
+            startDate,
+            endDate,
+            workspaceName,
+            calendarNames
+          );
+
+          new Notice(`Availability saved to ${filePath}`);
+        } catch (err) {
+          console.error('Full Calendar: Failed to generate availability', err);
+          new Notice('Failed to generate availability. Please check the console.');
+        }
       }
     });
 
