@@ -430,8 +430,7 @@ export class AvailabilityService {
     }
     
     lines.push('---');
-    lines.push('');
-
+    
     // Group slots by date
     const slotsByDate = new Map<string, TimeSlot[]>();
     for (const slot of slots) {
@@ -511,7 +510,7 @@ export class AvailabilityService {
 
     const startDateStr = start.toFormat('yyyy-MM-dd');
     const endDateStr = end.toFormat('yyyy-MM-dd');
-    const filename = `${startDateStr}-availability-${startDateStr}-to-${endDateStr}.md`;
+    const filename = `${startDateStr}-availability-overview.md`;
     const filePath = `${folderPath}/${filename}`;
 
     // Check if file exists, append number if needed
