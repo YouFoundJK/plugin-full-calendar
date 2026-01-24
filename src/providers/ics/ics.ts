@@ -450,6 +450,15 @@ function preprocessICSText(text: string): string {
 
 // MODIFICATION: Remove settings parameter from getEventsFromICS
 export function getEventsFromICS(text: string): OFCEvent[] {
+  // Parsing robustness: check for VCALENDAR header
+  if (!text.includes('BEGIN:VCALENDAR')) {
+    console.error(
+      'Full Calendar ICS Parser: Missing BEGIN:VCALENDAR header in ICS file. Parsing may fail or be incomplete.'
+    );
+    // We could return [] here, but ical.js might handle partials, so we just warn.
+    // However, the user specifically asked for "console error if Header are missing"
+  }
+
   // Pre-process the text to normalize date formats
   // This ensures VALUE=DATE:YYYYMMDD and YYYYMMDDTHHMMSSZ formats are properly handled
   const correctedText = preprocessICSText(text);

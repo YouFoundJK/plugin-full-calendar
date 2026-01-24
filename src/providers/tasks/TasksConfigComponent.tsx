@@ -10,7 +10,10 @@ import { TasksProviderConfig } from './typesTask';
 import { ProviderConfigContext } from '../typesProvider';
 import { t } from '../../features/i18n/i18n';
 
+import FullCalendarPlugin from '../../main';
+
 export interface TasksConfigComponentProps {
+  plugin: FullCalendarPlugin;
   config: Partial<TasksProviderConfig>;
   onConfigChange: (newConfig: Partial<TasksProviderConfig>) => void;
   context: ProviderConfigContext;

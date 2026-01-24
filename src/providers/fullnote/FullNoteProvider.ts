@@ -84,6 +84,7 @@ const filenameForEvent = (event: OFCEvent, settings: TitleSettingsLike) =>
 const SUFFIX_PATTERN = '-_-_-';
 
 type FullNoteConfigProps = {
+  plugin: FullCalendarPlugin;
   config: Partial<FullNoteProviderConfig>;
   onConfigChange: (newConfig: Partial<FullNoteProviderConfig>) => void;
   context: ProviderConfigContext;

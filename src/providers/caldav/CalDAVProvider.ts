@@ -210,6 +210,7 @@ const CalDAVSettingRow: React.FC<{ source: Partial<import('../../types').Calenda
 };
 
 type CalDAVConfigProps = {
+  plugin: FullCalendarPlugin;
   config: Partial<CalDAVProviderConfig>;
   onConfigChange: (newConfig: Partial<CalDAVProviderConfig>) => void;
   context: ProviderConfigContext;

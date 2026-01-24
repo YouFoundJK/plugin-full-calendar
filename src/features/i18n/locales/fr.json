@@ -247,7 +247,7 @@
         "dailynote": "Note quotidienne",
         "icloud": "iCloud",
         "caldav": "CalDAV",
-        "ical": "Distant (format .ics)",
+        "ical": "ICS",
         "google": "Google Calendar",
         "tasks": "Tâches Obsidian"
       },

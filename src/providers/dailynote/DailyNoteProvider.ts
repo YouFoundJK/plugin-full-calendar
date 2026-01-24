@@ -57,6 +57,7 @@ const DailyNoteHeadingSetting: React.FC<{
 };
 
 type DailyNoteConfigProps = {
+  plugin: FullCalendarPlugin;
   config: Partial<DailyNoteProviderConfig>;
   onConfigChange: (newConfig: Partial<DailyNoteProviderConfig>) => void;
   context: ProviderConfigContext;

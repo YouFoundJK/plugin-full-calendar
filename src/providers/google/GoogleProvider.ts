@@ -32,6 +32,7 @@ const GoogleNameSetting: React.FC<{ source: Partial<import('../../types').Calend
 };
 
 type GoogleConfigProps = {
+  plugin: FullCalendarPlugin;
   config: Partial<GoogleProviderConfig>;
   onConfigChange: (newConfig: Partial<GoogleProviderConfig>) => void;
   context: ProviderConfigContext;
