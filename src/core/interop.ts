@@ -322,23 +322,10 @@ export function toEventInput(
       skipDates?: string[];
     };
 
-    // DEBUG: Log rrule event processing for the 123123 event
-    const isDebugEvent = frontmatter.title === '123123';
-    if (isDebugEvent) {
-      console.debug('[FC DEBUG] toEventInput processing rrule event "123123"');
-      console.debug('[FC DEBUG] Input frontmatter:', JSON.stringify(frontmatter, null, 2));
-      console.debug('[FC DEBUG] Settings displayTimezone:', settings.displayTimezone);
-    }
-
     // Determine source and display timezones
     const sourceZone = frontmatter.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     const displayZone =
       settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    if (isDebugEvent) {
-      console.debug('[FC DEBUG] sourceZone:', sourceZone);
-      console.debug('[FC DEBUG] displayZone:', displayZone);
-    }
 
     // Parse the event time in its source timezone first
     const dtstartStr = frontmatter.allDay
@@ -378,14 +365,6 @@ export function toEventInput(
     const dayOffset =
       dtInDisplay.ordinal - dtInSource.ordinal + (dtInDisplay.year - dtInSource.year) * 365; // Approximate, but works for small offsets
 
-    if (isDebugEvent) {
-      console.debug('[FC DEBUG] dtInSource:', dtInSource.toString());
-      console.debug('[FC DEBUG] dtInSource weekday:', dtInSource.weekdayLong);
-      console.debug('[FC DEBUG] dtInDisplay:', dtInDisplay.toString());
-      console.debug('[FC DEBUG] dtInDisplay weekday:', dtInDisplay.weekdayLong);
-      console.debug('[FC DEBUG] dayOffset:', dayOffset);
-    }
-
     // Adjust BYDAY rules if the timezone conversion shifts the day
     let adjustedRrule = frontmatter.rrule;
     if (dayOffset !== 0 && adjustedRrule.includes('BYDAY=')) {
@@ -405,23 +384,12 @@ export function toEventInput(
           return weekdays[newIndex];
         });
         adjustedRrule = adjustedRrule.replace(/BYDAY=[A-Z,]+/, `BYDAY=${adjustedDays.join(',')}`);
-
-        if (isDebugEvent) {
-          console.debug('[FC DEBUG] Original BYDAY:', originalDays);
-          console.debug('[FC DEBUG] Adjusted BYDAY:', adjustedDays);
-          console.debug('[FC DEBUG] Adjusted rrule:', adjustedRrule);
-        }
       }
     }
 
     // Use display timezone for DTSTART so times display correctly
     // The BYDAY has been adjusted to compensate for any day shift
     const dtstart = dtInDisplay;
-
-    if (isDebugEvent) {
-      console.debug('[FC DEBUG] Final dtstart:', dtstart.toString());
-      console.debug('[FC DEBUG] dtstart weekday:', dtstart.weekdayLong);
-    }
 
     // Construct exdates - these need to be in "fake UTC" format where the local time
     // in the display timezone is stored in UTC components (matching the monkeypatch behavior)
@@ -503,16 +471,6 @@ export function toEventInput(
     const dtstartString = `DTSTART;TZID=${displayZone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
     const rruleString = adjustedRrule;
 
-    if (isDebugEvent) {
-      console.debug('[FC DEBUG] dtstartString:', dtstartString);
-      console.debug('[FC DEBUG] rruleString (adjusted):', rruleString);
-      console.debug(
-        '[FC DEBUG] Combined rrule for FullCalendar:',
-        [dtstartString, rruleString].join('\n')
-      );
-      console.debug('[FC DEBUG] exdates:', exdate);
-    }
-
     baseEvent.rrule = [dtstartString, rruleString].join('\n');
     baseEvent.exdate = exdate;
     baseEvent.extendedProps = { ...baseEvent.extendedProps, isTask: !!frontmatter.isTask };
@@ -547,22 +505,9 @@ export function toEventInput(
               suppressMilliseconds: true,
               suppressSeconds: true
             });
-
-            if (isDebugEvent) {
-              console.debug('[FC DEBUG] startDt (source):', startDt.toString());
-              console.debug('[FC DEBUG] endDt (source):', endDt.toString());
-              console.debug('[FC DEBUG] Calculated duration:', baseEvent.duration);
-            }
           }
         }
       }
-    }
-
-    if (isDebugEvent) {
-      console.debug(
-        '[FC DEBUG] Final baseEvent for FullCalendar:',
-        JSON.stringify(baseEvent, null, 2)
-      );
     }
   } else if (frontmatter.type === 'single') {
     if (!frontmatter.allDay) {

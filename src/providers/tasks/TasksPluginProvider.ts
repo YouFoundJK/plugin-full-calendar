@@ -216,7 +216,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       return this.tasksPromise;
     }
     this.tasksPromise = new Promise((resolve, reject) => {
-      console.debug('Full Calendar: Tasks cache is cold. Requesting data from Tasks plugin...');
       const callback = (cacheData: TasksCacheData) => {
         if (
           cacheData &&

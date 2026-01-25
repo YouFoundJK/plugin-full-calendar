@@ -162,9 +162,8 @@ export class DateNavigation {
       if (dateAtPosition) {
         contextDate = dateAtPosition;
       }
-    } catch (e) {
+    } catch {
       // Fallback to current view date if position detection fails
-      console.debug('Could not determine date from position, using current view date:', e);
     }
 
     const menu = new Menu();

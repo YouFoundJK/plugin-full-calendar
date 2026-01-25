@@ -47,30 +47,17 @@ export interface GoogleEventLike {
 }
 
 export function fromGoogleEvent(gEvent: GoogleEventLike): OFCEvent | null {
-  // DEBUG: Log all incoming Google events for debugging recurring event issues
-  const isDebugEvent = gEvent.summary === '123123';
-  if (isDebugEvent) {
-    console.debug('[FC DEBUG] fromGoogleEvent called for "123123"');
-    console.debug('[FC DEBUG] Raw Google Event:', JSON.stringify(gEvent, null, 2));
-  }
-
   if (gEvent.status === 'cancelled') {
     // This is an exception marker for a deleted instance of a recurring event.
     // Its information is already incorporated into the master event's `exdates`.
     // We should not display it as a separate event.
-    if (isDebugEvent) {
-      console.debug('[FC DEBUG] Event is cancelled, returning null');
-    }
+
     return null;
   }
 
   if (!gEvent.id || !gEvent.summary || (!gEvent.start && !gEvent.end)) {
     // Not a valid event.
-    if (isDebugEvent) {
-      console.debug(
-        '[FC DEBUG] Event is invalid (missing id, summary, or start/end), returning null'
-      );
-    }
+
     return null;
   }
 
@@ -111,13 +98,6 @@ export function fromGoogleEvent(gEvent: GoogleEventLike): OFCEvent | null {
     const end = DateTime.fromISO(gEvent.end.dateTime, { setZone: true }).setZone(
       gEvent.end.timeZone || eventTimezone
     );
-
-    if (isDebugEvent) {
-      console.debug('[FC DEBUG] Raw dateTime:', gEvent.start.dateTime);
-      console.debug('[FC DEBUG] Event timezone:', eventTimezone);
-      console.debug('[FC DEBUG] Parsed start in event TZ:', start.toString());
-      console.debug('[FC DEBUG] Start time extracted:', start.toFormat('HH:mm'));
-    }
 
     eventData.date = start.toISODate();
     eventData.startTime = start.toFormat('HH:mm');
@@ -164,17 +144,6 @@ export function fromGoogleEvent(gEvent: GoogleEventLike): OFCEvent | null {
 
       const result = { ...eventData, ...rruleEvent } as OFCEvent;
 
-      // DEBUG: Log the parsed recurring event
-      if (isDebugEvent) {
-        console.debug('[FC DEBUG] Parsed as rrule event');
-        console.debug('[FC DEBUG] eventData:', JSON.stringify(eventData, null, 2));
-        console.debug('[FC DEBUG] rruleEvent:', JSON.stringify(rruleEvent, null, 2));
-        console.debug('[FC DEBUG] Final OFCEvent:', JSON.stringify(result, null, 2));
-        console.debug('[FC DEBUG] Original RRULE string from Google:', rruleString);
-        console.debug('[FC DEBUG] Parsed rrule.toString():', rrule.toString());
-        console.debug('[FC DEBUG] rrule options:', JSON.stringify(rrule.options, null, 2));
-      }
-
       return result;
     }
   }
@@ -185,12 +154,6 @@ export function fromGoogleEvent(gEvent: GoogleEventLike): OFCEvent | null {
   };
 
   const result = { ...eventData, ...singleEvent } as OFCEvent;
-
-  // DEBUG: Log the parsed single event
-  if (isDebugEvent) {
-    console.debug('[FC DEBUG] Parsed as single event');
-    console.debug('[FC DEBUG] Final OFCEvent:', JSON.stringify(result, null, 2));
-  }
 
   return result;
 }

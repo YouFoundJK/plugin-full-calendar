@@ -336,8 +336,6 @@ export class ProviderRegistry {
       end: new Date(now.getFullYear(), now.getMonth() + 3, 0)
     };
 
-    console.debug('Full Calendar: Starting Stage 1 loading (Critical Range)', stage1Range);
-
     // Helper to process results from a provider
     const processResults = (settingsId: string, rawEvents: [OFCEvent, EventLocation | null][]) => {
       const events = rawEvents.map(([rawEvent, location]) => ({
@@ -388,14 +386,13 @@ export class ProviderRegistry {
     await Promise.all(remotePromisesStage1);
 
     // STAGE 1 COMPLETE: The UI should now be interactive for the current view.
-    console.debug('Full Calendar: Stage 1 loading complete. Triggering initial render.');
+
     if (onAllComplete) {
       onAllComplete();
     }
 
     // --- STAGE 2: Full History Loading ---
     // Load everything else in the background.
-    console.debug('Full Calendar: Starting Stage 2 loading (Full History)');
 
     // 2.1 Load Local Providers (Sync) - STAGE 2
     for (const [settingsId, instance] of localProviders) {
@@ -421,7 +418,6 @@ export class ProviderRegistry {
     });
 
     await Promise.all(remotePromisesStage2);
-    console.debug('Full Calendar: Stage 2 loading complete.');
 
     // We don't strictly need to call onAllComplete again, as onProviderComplete
     // called within processResults handles the incremental UI updates.

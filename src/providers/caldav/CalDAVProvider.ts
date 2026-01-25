@@ -163,7 +163,7 @@ async function fetchCalendarObjects(
       if (authHeader) {
         getHeaders['Authorization'] = authHeader;
       }
-      console.debug(`[CalDAV] Fetching individual event from ${getUrl}`);
+
       return obsidianFetch(getUrl, { method: 'GET', headers: getHeaders }).then(res => res.text());
     });
 
