@@ -171,9 +171,22 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     });
   }
 
-  async getEvents(): Promise<EditableEventResponse[]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
     const notes = getAllDailyNotes();
-    const files = Object.values(notes);
+    let files = Object.values(notes);
+
+    // OPTIMIZATION: If a range is provided, only process daily notes within that range.
+    if (range) {
+      const startMoment = moment(range.start);
+      const endMoment = moment(range.end);
+      files = files.filter(file => {
+        const fileDate = getDateFromFile(file, 'day');
+        return (
+          fileDate && fileDate.isSameOrAfter(startMoment) && fileDate.isSameOrBefore(endMoment)
+        );
+      });
+    }
+
     const allEvents = await Promise.all(files.map(f => this.getEventsInFile(f)));
     return allEvents.flat();
   }

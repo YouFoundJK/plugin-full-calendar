@@ -115,7 +115,7 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
 
   // --- Event Extraction Logic ---
 
-  async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
     const events: [OFCEvent, EventLocation | null][] = [];
 
     // Check if Bases plugin is enabled

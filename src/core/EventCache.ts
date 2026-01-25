@@ -199,7 +199,7 @@ export default class EventCache {
    * Populate the cache with events from all sources.
    */
   async populate(): Promise<void> {
-    const localEvents = await this.plugin.providerRegistry.fetchAllByPriority(
+    await this.plugin.providerRegistry.fetchAllByPriority(
       (calendarId, eventsForSync) => {
         const tuples = eventsForSync.map(
           ({ event, location }) => [event, location] as [OFCEvent, EventLocation | null]
@@ -207,29 +207,18 @@ export default class EventCache {
         this.syncCalendar(calendarId, tuples);
       },
       () => {
+        // This callback runs when STAGE 1 is complete.
+        // We can trigger an initial sync/render here.
         void (async () => {
           this.initialized = true;
+          this.plugin.providerRegistry.buildMap(this._store);
           this.resync();
           await this.timeEngine.start();
         })();
       }
     );
 
-    // Add local events directly to store for immediate display
-    localEvents.forEach(({ calendarId, event, location }) => {
-      const id = this.generateId();
-      this._store.add({
-        calendarId,
-        location,
-        id,
-        event
-      });
-    });
-
-    // Mark as initialized so UI can render local events immediately
-    this.initialized = true;
-    this.plugin.providerRegistry.buildMap(this._store);
-    await this.timeEngine.start();
+    // No need to add localEvents manually anymore; fetchAllByPriority handles it via the callback/processResults.
   }
 
   // ====================================================================

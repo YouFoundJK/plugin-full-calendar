@@ -256,7 +256,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
     return event.uid ? { persistentId: event.uid } : null;
   }
 
-  async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
     // Validate collection URL using PROPFIND instead of regex
     const isValid = await checkCalendarResourceType(this.source.homeUrl, {
       username: this.source.username,

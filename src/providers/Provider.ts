@@ -25,7 +25,7 @@ export interface CalendarProvider<TConfig> {
 
   getEventHandle(event: OFCEvent): EventHandle | null;
 
-  getEvents(): Promise<[OFCEvent, EventLocation | null][]>;
+  getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]>;
   getEventsInFile?(file: import('obsidian').TFile): Promise<[OFCEvent, EventLocation | null][]>;
   isFileRelevant?(file: import('obsidian').TFile): boolean;
 

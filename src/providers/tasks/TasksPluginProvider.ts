@@ -420,7 +420,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   // DATA-SERVING METHODS (READ)
   // ====================================================================
 
-  async getEvents(): Promise<EditableEventResponse[]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
     await this._ensureTasksCacheIsWarm();
     const events: EditableEventResponse[] = [];
     for (const task of this.allTasks) {

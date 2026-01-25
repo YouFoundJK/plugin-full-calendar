@@ -97,7 +97,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
     return null;
   }
 
-  async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
     const url = this.source.url;
 
     // Early return if URL is empty

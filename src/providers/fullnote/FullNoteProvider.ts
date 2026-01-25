@@ -201,7 +201,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return [[event, { file, lineNumber: undefined }]];
   }
 
-  async getEvents(): Promise<EditableEventResponse[]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
     const eventFolder = this.app.getAbstractFileByPath(this.source.directory);
     if (!eventFolder || !(eventFolder instanceof TFolder)) {
       throw new Error(`${this.source.directory} is not a valid directory.`);

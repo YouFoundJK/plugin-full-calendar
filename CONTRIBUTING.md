@@ -12,7 +12,7 @@ Full Calendar is open to contributions, and we’re excited to have you here! Th
 
 - **Document your changes:** Update documentation (README, docs, or code comments) when you add features or change existing behavior, so that other collaborators can easily catch up.
 
-- **Test your changes:** Add or update tests for your code. Make sure all tests pass before submitting a PR. If some tests do not pass and you have good reason to believe the tests themselves are incorrect, mention this in your PR description, but do not change the tests (core maintainers will handle test updates).
+- **Test your changes:** Add or update tests for your code. Make sure all tests pass before submitting a PR. If some tests do not pass and you have good reason to believe the tests themselves are incorrect, mention this in your PR description, but do not change the tests (core maintainers will handle test updates). Run both `npm run test` and `npm run lint:eslint` before submitting a PR.
 
 ---
 
@@ -65,7 +65,7 @@ All build output will appear in the plugin directory created above.
 
 > 💡 **Recommended:** Use the [Hot Reload plugin](https://github.com/pjeby/hot-reload) to make development smoother — it auto-reloads your plugin changes.
 
-> 📘 **Start Here:** To understand the architecture and get familiar with the codebase, read our [Architecture Guide](https://github.com/YouFoundJK/plugin-full-calendar/blob/chrono-insights/src/README.md).
+> 📘 **Start Here:** To understand the architecture and get familiar with the codebase, read our [Architecture Guide](https://github.com/YouFoundJK/plugin-full-calendar/blob/main/src/README.md).
 
 > 📱 **Android Testing** For testing Android devices use `adb` together with `chrome://inspect/#devices` to see the console on the PC.
 
