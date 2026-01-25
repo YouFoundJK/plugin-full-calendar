@@ -495,7 +495,7 @@ export class CalendarView extends ItemView {
 
       this.viewEnhancer = new ViewEnhancer(this.plugin.settings);
 
-      const container = this.containerEl.children[1];
+      const container = this.contentEl;
       container.empty();
       const calendarEl = container.createEl('div');
 
