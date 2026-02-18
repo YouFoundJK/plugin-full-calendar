@@ -174,10 +174,18 @@ export class TimeEngine {
         } else if (event.type === 'recurring' || event.type === 'rrule') {
           let rule: RRule;
           try {
-            const dtstart = fromISO(
-              event.type === 'recurring' ? event.startRecur || '1970-01-01' : event.startDate,
-              event.allDay ? undefined : event.startTime
-            ).toJSDate();
+            let dtstart: Date;
+            if (event.type === 'rrule') {
+              // startDate may already contain time+offset (from timezone conversion),
+              // so parse it directly without appending startTime.
+              const dt = DateTime.fromISO(event.startDate);
+              dtstart = dt.isValid ? dt.toJSDate() : new Date(event.startDate);
+            } else {
+              dtstart = fromISO(
+                event.startRecur || '1970-01-01',
+                event.allDay ? undefined : event.startTime
+              ).toJSDate();
+            }
 
             let ruleOptions: Partial<import('rrule').Options> = { dtstart };
             if (event.type === 'recurring') {
@@ -205,7 +213,8 @@ export class TimeEngine {
                 ruleOptions.until = fromISO(event.endRecur).endOf('day').toJSDate();
               }
             } else {
-              ruleOptions = { ...rrulestr(event.rrule).options, dtstart };
+              const parsed = rrulestr(event.rrule);
+              ruleOptions = { ...parsed.origOptions, dtstart };
             }
             rule = new RRule(ruleOptions);
 

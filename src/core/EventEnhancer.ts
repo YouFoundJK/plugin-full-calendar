@@ -14,7 +14,7 @@
 import { OFCEvent } from '../types';
 import { FullCalendarSettings } from '../types/settings';
 import { constructTitle, parseTitle } from '../features/category/categoryParser';
-import { convertEvent } from '../features/Timezone';
+import { convertEvent } from '../features/timezone/Timezone';
 
 export class EventEnhancer {
   private settings: FullCalendarSettings;

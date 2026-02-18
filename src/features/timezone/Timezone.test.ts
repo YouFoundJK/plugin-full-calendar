@@ -14,7 +14,7 @@
 
 import { DateTime } from 'luxon';
 import { convertEvent } from './Timezone';
-import { OFCEvent } from '../types';
+import { OFCEvent } from '../../types';
 
 jest.mock(
   'obsidian',
@@ -27,7 +27,7 @@ jest.mock(
 );
 
 // Mock i18n
-jest.mock('./i18n/i18n', () => ({
+jest.mock('../i18n/i18n', () => ({
   t: (key: string) => key
 }));
 
@@ -160,7 +160,7 @@ describe('Timezone conversion tests', () => {
       expect((result as { date: string }).date).toBe('2025-06-15');
     });
 
-    it('should not modify recurring events (handled in interop)', () => {
+    it('should convert recurring events', () => {
       const event = {
         type: 'recurring',
         title: 'Weekly Meeting',
@@ -173,8 +173,10 @@ describe('Timezone conversion tests', () => {
 
       const result = convertEvent(event, 'Europe/Prague', 'America/New_York');
 
-      // Recurring events should be returned unchanged
-      expect(result).toEqual(event);
+      // 10:00 Prague (CET, UTC+1) = 04:00 New York (EST, UTC-5)
+      expect((result as any).startTime).toBe('04:00');
+      expect((result as any).endTime).toBe('05:00');
+      expect(result.timezone).toBe('America/New_York');
     });
   });
 

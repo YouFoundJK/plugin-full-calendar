@@ -136,39 +136,49 @@ export async function renderCalendar(
       const dtstart = errd.rruleSet._dtstart;
 
       // For events with TZID, we need custom handling because rrule.js stores
-      // the local time in UTC components. We extract the hour from dtstart's
-      // UTC components (which is actually the local time in the TZID zone)
-      // and apply it consistently to all occurrences.
+      // the local time in UTC components (getUTCHours() = display-local hours).
+      //
+      // THREE TIMEZONES AT PLAY:
+      //   SourceTZ  – where the event was created (already converted away by EventEnhancer)
+      //   DisplayTZ – the user's chosen display timezone (TZID in the rrule string)
+      //   SystemTZ  – the OS / Electron clock (what JS Date.getHours() uses)
+      //
+      // FullCalendar runs in 'local' mode (no explicit timeZone setting), so it
+      // reads .getHours() to determine the displayed hour. We must create Date
+      // objects whose .getHours() returns the DisplayTZ local time.
+      //
+      // Using `new Date(y, m, d, h, min)` (system-local constructor) means
+      // .getHours() will return exactly `h`, regardless of SystemTZ.
       if (tzid) {
-        // Get the local time (stored in UTC components by rrule.js)
+        // Display-local time is stored in dtstart's UTC components by rrule.js
         const localHours = dtstart ? dtstart.getUTCHours() : 0;
         const localMinutes = dtstart ? dtstart.getUTCMinutes() : 0;
 
         // Get occurrences from the original expand
         const result = originalExpand.call(this, errd, fr, de);
 
-        // Map each occurrence to use the correct local time
-        // The result dates have the local time in UTC components, which is correct
-        // for FullCalendar when it interprets them as "floating" times.
-        // We just need to ensure consistency across DST boundaries.
+        // Map each occurrence: preserve the date, force display-local time.
+        // new Date(y, m, d, h, min) creates a system-local Date whose
+        // .getHours() returns h — exactly what FC local-mode needs.
         const mappedDates = result.map((d: Date) => {
-          // Create a new date with the local time preserved in UTC components
-          // This is what FullCalendar expects - getUTCHours() should return the display hour
           return new Date(
-            Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), localHours, localMinutes)
+            d.getUTCFullYear(),
+            d.getUTCMonth(),
+            d.getUTCDate(),
+            localHours,
+            localMinutes
           );
         });
 
         return mappedDates;
       }
 
-      // Fallback for events without TZID - use dtstart's local hours
+      // Fallback for events without TZID (floating time) - use dtstart's local hours
       const hours = dtstart ? dtstart.getHours() : de.toDate(fr.start).getUTCHours();
 
       const betweenDates = errd.rruleSet.between(de.toDate(fr.start), de.toDate(fr.end), true);
       const mappedDates = betweenDates.map(
-        (d: Date) =>
-          new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), hours, d.getMinutes()))
+        (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), hours, d.getMinutes())
       );
 
       return mappedDates;

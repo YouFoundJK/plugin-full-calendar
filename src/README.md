@@ -162,7 +162,7 @@ It provides a two-way pipeline for event data:
 
 1.  **Read Path (`enhance`)**: When events are read from any provider, they pass through this function. It applies:
     *   **Category Parsing**: Splits titles like `"Work - Project Meeting"` into `{ category: 'Work', title: 'Project Meeting' }`.
-    *   **Timezone Conversion**: Converts the event's time from its source timezone to the user's selected "Display Timezone."
+    *   **Timezone Conversion**: Converts the event's time from its "SourceTZ" to the user's selected "DisplayTZ". Its important to note that we are dealing when three timezones when modifying any code related to this - SourceTZ (stored with the event), DisplayTZ (selected by the user) and SystemTZ (the timezone of the Electron/Obsidian system).
 
 2.  **Write Path (`prepareForStorage`)**: When an event is about to be saved back to a provider, it passes through this function. It applies the reverse transformations:
     *   **Title Construction**: Combines `category` and `title` fields back into a single string.
