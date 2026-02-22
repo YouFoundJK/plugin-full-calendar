@@ -49,7 +49,7 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
     .filter((c): c is NonNullable<typeof c> => !!c);
 
   if (calendars.length === 0) {
-    new Notice(t('modals.event.errors.createNoCalendars'));
+    new Notice(t('modals.editEvent.errors.createNoCalendars'));
     return;
   }
 
@@ -73,7 +73,7 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
           await plugin.cache.addEvent(calendarId, data);
         } catch (e) {
           if (e instanceof Error) {
-            new Notice(t('modals.event.errors.createError', { message: e.message }));
+            new Notice(t('modals.editEvent.errors.createError', { message: e.message }));
             console.error(e);
           }
         }
@@ -125,8 +125,8 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
     const onAttemptEditInherited = () => {
       new ConfirmModal(
         plugin.app,
-        t('modals.event.confirmations.editParentTitle'),
-        t('modals.event.confirmations.editParentMessage'),
+        t('modals.editEvent.confirmations.editParentTitle'),
+        t('modals.editEvent.confirmations.editParentMessage'),
         () => {
           void (async () => {
             if (eventToEdit.type === 'single' && eventToEdit.recurringEventId) {
@@ -137,7 +137,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
                 closeModal();
                 launchEditModal(plugin, parentSessionId);
               } else {
-                new Notice(t('modals.event.errors.parentNotFound'));
+                new Notice(t('modals.editEvent.errors.parentNotFound'));
               }
             }
           })();
@@ -165,7 +165,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
           }
         } catch (e) {
           if (e instanceof Error) {
-            new Notice(t('modals.event.errors.updateError', { message: e.message }));
+            new Notice(t('modals.editEvent.errors.updateError', { message: e.message }));
             console.error(e);
           }
         }
@@ -181,7 +181,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
           closeModal();
         } catch (e) {
           if (e instanceof Error) {
-            new Notice(t('modals.event.errors.deleteError', { message: e.message }));
+            new Notice(t('modals.editEvent.errors.deleteError', { message: e.message }));
             console.error(e);
           }
         }
@@ -194,19 +194,19 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
 export function launchEventDetailsModal(plugin: FullCalendarPlugin, eventId: string) {
   const event = plugin.cache.getEventById(eventId);
   if (!event) {
-    new Notice(t('modals.event.errors.eventNotFound'));
+    new Notice(t('modals.editEvent.errors.eventNotFound'));
     return;
   }
   const eventDetails = plugin.cache.store.getEventDetails(eventId);
   if (!eventDetails) {
-    new Notice(t('modals.event.errors.detailsNotFound'));
+    new Notice(t('modals.editEvent.errors.detailsNotFound'));
     return;
   }
 
   const calendarId = eventDetails.calendarId;
   const calendar = plugin.providerRegistry.getSource(calendarId);
   const calendarName =
-    calendar && calendar.name ? calendar.name : t('modals.event.misc.unknownCalendar');
+    calendar && calendar.name ? calendar.name : t('modals.editEvent.misc.unknownCalendar');
   const location = eventDetails.location;
 
   new ReactModal(plugin.app, async closeModal => {
