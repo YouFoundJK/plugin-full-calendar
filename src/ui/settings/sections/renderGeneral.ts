@@ -66,7 +66,7 @@ export function renderGeneralSettings(
     .setName(t('settings.general.displayTimezone.label'))
     .setDesc(t('settings.general.displayTimezone.description'))
     .addDropdown(dropdown => {
-      const timezones = Intl.supportedValuesOf('timeZone');
+      const timezones = ['Europe/Bucharest', 'Europe/Zagreb']; // Intl.supportedValuesOf('timeZone');
       timezones.forEach(tz => {
         dropdown.addOption(tz, tz);
       });

@@ -1,3 +1,14 @@
+/**
+ * @file Timezone.rrule.test.ts
+ * @brief Tests for timezone handling of rrule events.
+ *
+ * @description
+ * Validates that `convertEvent` correctly SKIPS timezone conversion for rrule events.
+ * The rrule expansion + timezone shifting is handled by the monkeypatched FullCalendar
+ * rrule plugin at render time, NOT by the convertEvent pipeline.
+ *
+ * @license See LICENSE.md
+ */
 import { convertEvent } from './Timezone';
 import { OFCEvent } from '../../types';
 
@@ -18,75 +29,139 @@ jest.mock('../i18n/i18n', () => ({
 interface RRuleEvent {
   type: 'rrule';
   title: string;
-  startDate: string; // ISO string with time
+  startDate: string;
   endDate?: string;
   rrule: string;
   allDay?: false;
   skipDates: string[];
+  timezone?: string;
+  startTime?: string;
+  endTime?: string;
 }
 
 const rruleEvent = (props: Partial<RRuleEvent>): RRuleEvent =>
   ({
     type: 'rrule',
     title: 'Test RRule',
-    startDate: '2025-06-01T10:00:00', // Sunday
+    startDate: '2025-06-01T10:00:00',
     rrule: 'FREQ=WEEKLY;BYDAY=SU',
     skipDates: [],
     ...props
   }) as RRuleEvent;
 
-describe('Timezone conversion for RRule events', () => {
-  it('should convert startDate time', () => {
+describe('convertEvent for rrule events (should return unmodified)', () => {
+  it('should NOT convert startDate time — rrule events are passed through unchanged', () => {
     const event = rruleEvent({
-      startDate: '2025-06-01T10:00:00', // 10:00 Prague
-      rrule: 'FREQ=WEEKLY;BYDAY=SU'
+      startDate: '2025-06-01',
+      startTime: '10:00',
+      endTime: '11:00',
+      rrule: 'FREQ=WEEKLY;BYDAY=SU',
+      timezone: 'Europe/Prague'
     });
 
-    // Prague (UTC+2) -> UTC
-    // 10:00 -> 08:00
+    // Prague (UTC+2) -> UTC: should NOT change for rrule events
     const result = convertEvent(event as OFCEvent, 'Europe/Prague', 'UTC') as RRuleEvent;
 
-    expect(result.startDate).toContain('T08:00:00');
+    // The event must be returned completely unmodified
+    expect(result.startDate).toBe('2025-06-01');
+    expect(result.startTime).toBe('10:00');
+    expect(result.endTime).toBe('11:00');
+    expect(result.rrule).toBe('FREQ=WEEKLY;BYDAY=SU');
   });
 
-  it('should shift BYDAY in rrule when crossing midnight (UTC -> East)', () => {
-    // Sunday 23:00 UTC
+  it("should NOT shift BYDAY when crossing midnight — that is the monkeypatch's job", () => {
     const event = rruleEvent({
-      startDate: '2025-06-01T23:00:00',
-      rrule: 'FREQ=WEEKLY;BYDAY=SU'
+      startDate: '2025-06-01',
+      startTime: '23:00',
+      endTime: '23:30',
+      rrule: 'FREQ=WEEKLY;BYDAY=SU',
+      timezone: 'UTC'
     });
 
-    // Sunday 23:00 UTC -> Monday 01:00 Prague (UTC+2)
+    // UTC -> Prague: should NOT change for rrule events
     const result = convertEvent(event as OFCEvent, 'UTC', 'Europe/Prague') as RRuleEvent;
 
-    expect(result.startDate).toContain('T01:00:00');
-    expect(result.rrule).toContain('BYDAY=MO');
+    expect(result.startTime).toBe('23:00');
+    expect(result.rrule).toBe('FREQ=WEEKLY;BYDAY=SU'); // No BYDAY shift
   });
 
-  it('should shift BYDAY backward when crossing midnight (UTC -> West)', () => {
-    // Monday 01:00 UTC
+  it('should NOT shift BYDAY backward — rrule events pass through unchanged', () => {
     const event = rruleEvent({
-      startDate: '2025-06-02T01:00:00', // Monday
-      rrule: 'FREQ=WEEKLY;BYDAY=MO'
+      startDate: '2025-06-02',
+      startTime: '01:00',
+      endTime: '02:00',
+      rrule: 'FREQ=WEEKLY;BYDAY=MO',
+      timezone: 'UTC'
     });
 
-    // Monday 01:00 UTC -> Sunday 21:00 New York (UTC-4)
     const result = convertEvent(event as OFCEvent, 'UTC', 'America/New_York') as RRuleEvent;
 
-    expect(result.startDate).toContain('T21:00:00');
-    expect(result.rrule).toContain('BYDAY=SU');
+    expect(result.startTime).toBe('01:00');
+    expect(result.rrule).toBe('FREQ=WEEKLY;BYDAY=MO');
   });
 
-  it('should handle complex rrules (multiple days)', () => {
-    // Monday and Wednesday at 01:00 UTC
+  it('should preserve skipDates unchanged', () => {
     const event = rruleEvent({
-      startDate: '2025-06-02T01:00:00',
-      rrule: 'FREQ=WEEKLY;BYDAY=MO,WE'
+      startDate: '2025-06-01',
+      startTime: '23:00',
+      endTime: '23:30',
+      rrule: 'FREQ=WEEKLY;BYDAY=SU',
+      skipDates: ['2025-06-08', '2025-06-15'],
+      timezone: 'UTC'
     });
 
-    // Shift West -> Sunday and Tuesday 21:00
+    const result = convertEvent(event as OFCEvent, 'UTC', 'Europe/Prague') as RRuleEvent;
+
+    expect(result.skipDates).toEqual(['2025-06-08', '2025-06-15']);
+  });
+
+  it('should preserve timezone property unchanged', () => {
+    const event = rruleEvent({
+      startDate: '2025-06-01',
+      startTime: '10:00',
+      endTime: '11:00',
+      rrule: 'FREQ=WEEKLY;BYDAY=SU',
+      timezone: 'Europe/Bucharest'
+    });
+
+    const result = convertEvent(
+      event as OFCEvent,
+      'Europe/Bucharest',
+      'America/New_York'
+    ) as RRuleEvent;
+
+    // timezone should NOT be changed to the target zone — it stays as the original source
+    expect(result.timezone).toBe('Europe/Bucharest');
+  });
+
+  it('should handle all-day rrule events (also returned unchanged)', () => {
+    const event = {
+      type: 'rrule',
+      title: 'All Day Weekly',
+      startDate: '2025-06-01',
+      rrule: 'FREQ=WEEKLY;BYDAY=SU',
+      allDay: true,
+      skipDates: [],
+      endDate: null
+    } as OFCEvent;
+
+    const result = convertEvent(event, 'America/Los_Angeles', 'Asia/Tokyo');
+
+    expect((result as any).startDate).toBe('2025-06-01');
+  });
+
+  it('should handle complex rrules (multiple BYDAY) — returned unchanged', () => {
+    const event = rruleEvent({
+      startDate: '2025-06-02',
+      startTime: '01:00',
+      endTime: '02:00',
+      rrule: 'FREQ=WEEKLY;BYDAY=MO,WE',
+      timezone: 'UTC'
+    });
+
     const result = convertEvent(event as OFCEvent, 'UTC', 'America/New_York') as RRuleEvent;
 
-    expect(result.rrule).toContain('BYDAY=SU,TU');
+    // No BYDAY mutation — rrule events are pass-through
+    expect(result.rrule).toBe('FREQ=WEEKLY;BYDAY=MO,WE');
   });
 });

@@ -112,7 +112,9 @@ export function convertEvent<T extends OFCEvent>(
   }
 
   if (event.type === 'rrule') {
-    return convertRRuleEvent(event as RRuleEvent, sourceZone, targetZone) as T;
+    // We explicitly do not convert rrule events here. FullCalendar's rrule plugin
+    // handles timezone expansion itself, provided we pass the original TZID.
+    return event;
   }
 
   // For other types, return the event unmodified for now.

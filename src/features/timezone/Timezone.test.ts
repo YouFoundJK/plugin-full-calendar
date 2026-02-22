@@ -429,3 +429,138 @@ describe('Luxon DST handling verification', () => {
     expect(newYork.hour).toBe(4);
   });
 });
+
+// ============================================================================
+// DST-aware recurring event conversion tests
+// ============================================================================
+describe('Recurring event DST boundary tests', () => {
+  it('should correctly convert recurring event time across EU spring forward', () => {
+    const eventBeforeDST = {
+      type: 'recurring',
+      title: 'Morning Meeting',
+      startRecur: '2025-03-28',
+      startTime: '09:00',
+      endTime: '10:00',
+      daysOfWeek: ['M', 'W', 'F'],
+      allDay: false
+    } as OFCEvent;
+
+    // Before DST, 09:00 CET (UTC+1) = 08:00 UTC
+    const resultBefore = convertEvent(eventBeforeDST, 'Europe/Prague', 'UTC');
+    expect((resultBefore as any).startTime).toBe('08:00');
+
+    const eventAfterDST = {
+      type: 'recurring',
+      title: 'Morning Meeting',
+      startRecur: '2025-03-31',
+      startTime: '09:00',
+      endTime: '10:00',
+      daysOfWeek: ['M', 'W', 'F'],
+      allDay: false
+    } as OFCEvent;
+
+    // After DST, 09:00 CEST (UTC+2) = 07:00 UTC
+    const resultAfter = convertEvent(eventAfterDST, 'Europe/Prague', 'UTC');
+    expect((resultAfter as any).startTime).toBe('07:00');
+  });
+
+  it('should correctly convert recurring event time across EU fall back', () => {
+    const eventBeforeDST = {
+      type: 'recurring',
+      title: 'Evening Standup',
+      startRecur: '2025-10-24',
+      startTime: '17:00',
+      endTime: '17:30',
+      daysOfWeek: ['R'],
+      allDay: false
+    } as OFCEvent;
+
+    // Before fall back: 17:00 CEST (UTC+2) = 15:00 UTC
+    const resultBefore = convertEvent(eventBeforeDST, 'Europe/Prague', 'UTC');
+    expect((resultBefore as any).startTime).toBe('15:00');
+
+    const eventAfterDST = {
+      type: 'recurring',
+      title: 'Evening Standup',
+      startRecur: '2025-10-27',
+      startTime: '17:00',
+      endTime: '17:30',
+      daysOfWeek: ['R'],
+      allDay: false
+    } as OFCEvent;
+
+    // After fall back: 17:00 CET (UTC+1) = 16:00 UTC
+    const resultAfter = convertEvent(eventAfterDST, 'Europe/Prague', 'UTC');
+    expect((resultAfter as any).startTime).toBe('16:00');
+  });
+
+  it('should handle conversion between EU and US during DST gap period', () => {
+    // US DST starts Mar 9; EU DST starts Mar 30.
+    // Between Mar 9 & Mar 30: NY=EDT (UTC-4), Prague=CET (UTC+1).
+    const event = {
+      type: 'recurring',
+      title: 'Transatlantic Call',
+      startRecur: '2025-03-10',
+      startTime: '15:00',
+      endTime: '16:00',
+      daysOfWeek: ['M'],
+      allDay: false
+    } as OFCEvent;
+
+    // 15:00 CET (UTC+1) = 14:00 UTC = 10:00 EDT (UTC-4)
+    const result = convertEvent(event, 'Europe/Prague', 'America/New_York');
+    expect((result as any).startTime).toBe('10:00');
+    expect((result as any).endTime).toBe('11:00');
+  });
+
+  it('should handle half-hour-offset timezone (India)', () => {
+    const event = {
+      type: 'recurring',
+      title: 'Mumbai Sync',
+      startRecur: '2025-06-01',
+      startTime: '14:30',
+      endTime: '15:00',
+      daysOfWeek: ['M'],
+      allDay: false
+    } as OFCEvent;
+
+    // 14:30 IST (UTC+5:30) = 09:00 UTC
+    const result = convertEvent(event, 'Asia/Kolkata', 'UTC');
+    expect((result as any).startTime).toBe('09:00');
+    expect((result as any).endTime).toBe('09:30');
+  });
+
+  it('should handle 45-minute-offset timezone (Nepal)', () => {
+    const event = {
+      type: 'recurring',
+      title: 'Nepal Call',
+      startRecur: '2025-06-01',
+      startTime: '12:00',
+      endTime: '13:00',
+      daysOfWeek: ['T'],
+      allDay: false
+    } as OFCEvent;
+
+    // 12:00 NPT (UTC+5:45) = 06:15 UTC
+    const result = convertEvent(event, 'Asia/Kathmandu', 'UTC');
+    expect((result as any).startTime).toBe('06:15');
+    expect((result as any).endTime).toBe('07:15');
+  });
+
+  it('should correctly shift skipDates across EU DST boundary', () => {
+    const event = {
+      type: 'recurring',
+      title: 'Late Night',
+      startRecur: '2025-03-23',
+      startTime: '23:30',
+      endTime: '23:55',
+      daysOfWeek: ['U'],
+      skipDates: ['2025-03-30'], // DST transition day
+      allDay: false
+    } as OFCEvent;
+
+    // 23:30 UTC on Mar 30 -> 01:30 CEST on Mar 31 (after spring forward)
+    const result = convertEvent(event, 'UTC', 'Europe/Prague');
+    expect((result as any).skipDates).toEqual(['2025-03-31']);
+  });
+});

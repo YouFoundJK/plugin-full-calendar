@@ -26,7 +26,8 @@ import { Menu } from 'obsidian';
 import type { PluginDef } from '@fullcalendar/core';
 import { createDateNavigation } from '../../../../features/navigation/DateNavigation';
 
-let didPatchRRule = false;
+// Store the truly-original rrule expand function so we never wrap our own patch.
+let _originalRRuleExpand: RRuleExpand | null = null;
 
 // Minimal shape for the rrule plugin we monkeypatch.
 interface RRuleDateEnvLike {
@@ -78,7 +79,7 @@ interface ExtraRenderProps {
   onViewChange?: () => void; // Add view change callback
   businessHours?: boolean | object; // Support for business hours
   drop?: (taskId: string, date: Date) => Promise<void>; // Drag-and-drop from backlog
-  // timeZone?: string;
+  timeZone?: string;
 
   // New granular view configuration properties
   slotMinTime?: string;
@@ -94,13 +95,14 @@ export async function renderCalendar(
   settings?: ExtraRenderProps & { enableAdvancedCategorization?: boolean }
 ): Promise<Calendar> {
   // Lazy-load FullCalendar core and plugins only when rendering
-  const [core, list, rrule, daygrid, timegrid, interaction] = await Promise.all([
+  const [core, list, rrule, daygrid, timegrid, interaction, luxon] = await Promise.all([
     import('@fullcalendar/core'),
     import('@fullcalendar/list'),
     import('@fullcalendar/rrule'),
     import('@fullcalendar/daygrid'),
     import('@fullcalendar/timegrid'),
-    import('@fullcalendar/interaction')
+    import('@fullcalendar/interaction'),
+    import('@fullcalendar/luxon3')
   ]);
 
   // Optionally load scheduler plugin only when needed
@@ -109,23 +111,22 @@ export async function renderCalendar(
     ? await import('@fullcalendar/resource-timeline')
     : null;
 
-  // Apply RRULE monkeypatch once after plugin loads
-  // This patch fixes timezone/DST handling for recurring events.
-  //
-  // PROBLEM: For events with TZID, rrule.js stores the local time in UTC components.
-  // Across DST boundaries, the actual UTC time changes, causing display time shifts.
-  //
-  // SOLUTION: For events with TZID, we:
-  //   1. Extract the local time from dtstart's UTC components
-  //   2. Get occurrences from the original expand (preserves correct dates)
-  //   3. Apply the local time consistently to all occurrences
-  //
-  // For floating-time events (no TZID), we use a similar approach with getHours().
-  if (!didPatchRRule) {
+  const isMobile = window.innerWidth < 500;
+  const isNarrow = settings?.forceNarrow || isMobile;
+
+  // Apply RRULE monkeypatch on every render to capture the latest settings.timeZone.
+  // We store the truly-original expand function in a module-level variable to prevent
+  // recursive wrapping (each render would otherwise capture the already-patched version).
+  {
     const rrulePlugin =
       (rrule as unknown as { default?: RRulePluginLike }).default ||
       (rrule as unknown as RRulePluginLike);
-    const originalExpand = rrulePlugin.recurringTypes[0].expand;
+
+    // Save the truly original expand function ONCE
+    if (!_originalRRuleExpand) {
+      _originalRRuleExpand = rrulePlugin.recurringTypes[0].expand;
+    }
+    const trueOriginalExpand = _originalRRuleExpand;
 
     rrulePlugin.recurringTypes[0].expand = function (
       errd: RRuleExpandData,
@@ -133,61 +134,55 @@ export async function renderCalendar(
       de: RRuleDateEnvLike
     ) {
       const tzid = errd.rruleSet.tzid();
-      const dtstart = errd.rruleSet._dtstart;
 
-      // For events with TZID, we need custom handling because rrule.js stores
-      // the local time in UTC components (getUTCHours() = display-local hours).
-      //
-      // THREE TIMEZONES AT PLAY:
-      //   SourceTZ  – where the event was created (already converted away by EventEnhancer)
-      //   DisplayTZ – the user's chosen display timezone (TZID in the rrule string)
-      //   SystemTZ  – the OS / Electron clock (what JS Date.getHours() uses)
-      //
-      // FullCalendar runs in 'local' mode (no explicit timeZone setting), so it
-      // reads .getHours() to determine the displayed hour. We must create Date
-      // objects whose .getHours() returns the DisplayTZ local time.
-      //
-      // Using `new Date(y, m, d, h, min)` (system-local constructor) means
-      // .getHours() will return exactly `h`, regardless of SystemTZ.
-      if (tzid) {
-        // Display-local time is stored in dtstart's UTC components by rrule.js
-        const localHours = dtstart ? dtstart.getUTCHours() : 0;
-        const localMinutes = dtstart ? dtstart.getUTCMinutes() : 0;
+      if (tzid && settings?.timeZone) {
+        // rrule.js returns dates where UTC fields = wall-clock time in the TZID zone.
+        const result = trueOriginalExpand.call(this, errd, fr, de);
+        console.log(`[DEBUG RRule Expand] tzid: ${tzid}, settings.timeZone: ${settings.timeZone}`);
 
-        // Get occurrences from the original expand
-        const result = originalExpand.call(this, errd, fr, de);
+        const { DateTime } = require('luxon');
 
-        // Map each occurrence: preserve the date, force display-local time.
-        // new Date(y, m, d, h, min) creates a system-local Date whose
-        // .getHours() returns h — exactly what FC local-mode needs.
         const mappedDates = result.map((d: Date) => {
-          return new Date(
-            d.getUTCFullYear(),
-            d.getUTCMonth(),
-            d.getUTCDate(),
-            localHours,
-            localMinutes
+          // 1. Interpret the UTC fields as wall-clock time in the SOURCE timezone (tzid)
+          const sourceDt = DateTime.fromObject(
+            {
+              year: d.getUTCFullYear(),
+              month: d.getUTCMonth() + 1,
+              day: d.getUTCDate(),
+              hour: d.getUTCHours(),
+              minute: d.getUTCMinutes()
+            },
+            { zone: tzid }
           );
+
+          // 2. Convert to the DISPLAY timezone
+          const targetDt = sourceDt.setZone(settings.timeZone!);
+
+          // 3. FullCalendar needs a Marker Date where UTC fields = display wall-clock time
+          const finalDate = new Date(
+            Date.UTC(
+              targetDt.year,
+              targetDt.month - 1,
+              targetDt.day,
+              targetDt.hour,
+              targetDt.minute,
+              targetDt.second
+            )
+          );
+          console.log(
+            `[DEBUG RRule Expand] raw D: ${d.toISOString()} -> sourceDt: ${sourceDt.toISO()} -> targetDt: ${targetDt.toISO()} -> final marker: ${finalDate.toISOString()}`
+          );
+
+          return finalDate;
         });
 
         return mappedDates;
       }
 
-      // Fallback for events without TZID (floating time) - use dtstart's local hours
-      const hours = dtstart ? dtstart.getHours() : de.toDate(fr.start).getUTCHours();
-
-      const betweenDates = errd.rruleSet.between(de.toDate(fr.start), de.toDate(fr.end), true);
-      const mappedDates = betweenDates.map(
-        (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), hours, d.getMinutes())
-      );
-
-      return mappedDates;
+      // Fallback for events without TZID (floating time) — use the unpatched original
+      return trueOriginalExpand.call(this, errd, fr, de);
     };
-    didPatchRRule = true;
   }
-
-  const isMobile = window.innerWidth < 500;
-  const isNarrow = settings?.forceNarrow || isMobile;
   const {
     eventClick,
     select,
@@ -371,6 +366,7 @@ export async function renderCalendar(
   const listPlugin = (list as { default: PluginDef }).default;
   const rrulePlugin = (rrule as { default: PluginDef }).default;
   const interactionPlugin = (interaction as { default: PluginDef }).default;
+  const luxonPlugin = (luxon as { default: PluginDef }).default;
   const resourceTimelinePlugin = resourceTimeline
     ? (resourceTimeline as { default: PluginDef }).default
     : null;
@@ -381,7 +377,7 @@ export async function renderCalendar(
       ? { schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source' }
       : {}),
     customButtons: customButtonConfig,
-    // timeZone: settings?.timeZone,
+    timeZone: settings?.timeZone,
     plugins: [
       // View plugins
       dayGridPlugin,
@@ -393,7 +389,8 @@ export async function renderCalendar(
         : ([] as const)),
       // Drag + drop and editing
       interactionPlugin,
-      rrulePlugin
+      rrulePlugin,
+      luxonPlugin
     ],
     initialView:
       settings?.initialView?.[isNarrow ? 'mobile' : 'desktop'] ||
