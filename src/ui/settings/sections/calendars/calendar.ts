@@ -27,7 +27,7 @@ import type { PluginDef } from '@fullcalendar/core';
 import { createDateNavigation } from '../../../../features/navigation/DateNavigation';
 
 // Store the truly-original rrule expand function so we never wrap our own patch.
-let _originalRRuleExpand: RRuleExpand | null = null;
+let _originalRRuleExpand: any = null;
 
 // Minimal shape for the rrule plugin we monkeypatch.
 interface RRuleDateEnvLike {
@@ -41,18 +41,14 @@ interface RRuleFrameRange {
 
 interface RRuleSetLike {
   tzid: () => string | null | undefined;
-  _dtstart: Date | null | undefined;
-  between: (start: Date, end: Date, include: boolean) => Date[];
 }
 
 interface RRuleExpandData {
   rruleSet: RRuleSetLike;
 }
 
-type RRuleExpand = (errd: RRuleExpandData, fr: RRuleFrameRange, de: RRuleDateEnvLike) => Date[];
-
 interface RRulePluginLike {
-  recurringTypes: { expand: RRuleExpand }[];
+  recurringTypes: { expand: any }[];
 }
 
 interface ExtraRenderProps {
@@ -136,53 +132,95 @@ export async function renderCalendar(
       const tzid = errd.rruleSet.tzid();
 
       if (tzid && settings?.timeZone) {
-        // rrule.js returns dates where UTC fields = wall-clock time in the TZID zone.
+        // Evaluate the raw date representations natively using the original rrule expansion.
         const result = trueOriginalExpand.call(this, errd, fr, de);
-        console.log(`[DEBUG RRule Expand] tzid: ${tzid}, settings.timeZone: ${settings.timeZone}`);
 
         const { DateTime } = require('luxon');
 
-        const mappedDates = result.map((d: Date) => {
-          // 1. Interpret the UTC fields as wall-clock time in the SOURCE timezone (tzid)
+        return result.map((d: Date) => {
+          // MATHEMATICAL PROOF OF EXTRACTION:
+          // 1. `rrule.js` parses strings like "11:00" and strictly stores them in the UTC fields of `_dtstart`.
+          //    So `_dtstart.getUTCHours()` perfectly equals the literal string "11".
+          // 2. `rrule.js` computes recurrences (`d`) by locking the browser's *local* hour at parsing time.
+          //    This causes the UTC representation of `d` to drift across midnight on DST boundaries!
+          // 3. To safely recover the exact sequence without midnight drift, we MUST read the year/month/day
+          //    from the local fields of `d` (since `rrule` aligns local days), and we MUST read the hour/min/sec
+          //    from the UTC fields of `_dtstart` (since it captures the literal string offset-free).
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const rruleObj = errd.rruleSet as any;
+          const baseHour = rruleObj._dtstart ? rruleObj._dtstart.getUTCHours() : d.getUTCHours();
+          const baseMinute = rruleObj._dtstart
+            ? rruleObj._dtstart.getUTCMinutes()
+            : d.getUTCMinutes();
+          const baseSecond = rruleObj._dtstart
+            ? rruleObj._dtstart.getUTCSeconds()
+            : d.getUTCSeconds();
+
+          console.log(
+            '[DEBUG ICS rrule patch] original d:',
+            d.toISOString(),
+            'd_local:',
+            d.toString(),
+            'tzid:',
+            tzid
+          );
+          console.log('[DEBUG ICS rrule patch] _dtstart: ', rruleObj._dtstart?.toISOString());
+          console.log('[DEBUG ICS rrule patch] extracted baseTime:', {
+            h: baseHour,
+            m: baseMinute,
+            s: baseSecond
+          });
+
+          // 1. Interpret the theoretically perfect naive fields as wall-clock time in the SOURCE timezone (tzid)
           const sourceDt = DateTime.fromObject(
             {
-              year: d.getUTCFullYear(),
-              month: d.getUTCMonth() + 1,
-              day: d.getUTCDate(),
-              hour: d.getUTCHours(),
-              minute: d.getUTCMinutes()
+              year: d.getFullYear(),
+              month: d.getMonth() + 1, // luxon months are 1-12
+              day: d.getDate(),
+              hour: baseHour,
+              minute: baseMinute,
+              second: baseSecond
             },
             { zone: tzid }
           );
 
-          // 2. Convert to the DISPLAY timezone
+          // 2. Convert to the display timezone natively
           const targetDt = sourceDt.setZone(settings.timeZone!);
 
-          // 3. FullCalendar needs a Marker Date where UTC fields = display wall-clock time
           const finalDate = new Date(
             Date.UTC(
               targetDt.year,
-              targetDt.month - 1,
+              targetDt.month - 1, // Date.UTC months are 0-11
               targetDt.day,
               targetDt.hour,
               targetDt.minute,
               targetDt.second
             )
           );
+
           console.log(
-            `[DEBUG RRule Expand] raw D: ${d.toISOString()} -> sourceDt: ${sourceDt.toISO()} -> targetDt: ${targetDt.toISO()} -> final marker: ${finalDate.toISOString()}`
+            '[DEBUG ICS rrule patch] settings.timeZone:',
+            settings.timeZone,
+            'sourceDt:',
+            sourceDt.toISO(),
+            'targetDt:',
+            targetDt.toISO(),
+            'finalDate:',
+            finalDate.toISOString(),
+            finalDate.toString()
           );
 
+          // 3. Output the required FullCalendar Marker Date (where UTC equals local display time)
           return finalDate;
         });
-
-        return mappedDates;
       }
 
-      // Fallback for events without TZID (floating time) — use the unpatched original
+      // Fallback for floating time events without a strict TZID string
       return trueOriginalExpand.call(this, errd, fr, de);
     };
   }
+
   const {
     eventClick,
     select,

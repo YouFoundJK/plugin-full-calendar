@@ -137,4 +137,62 @@ END:VCALENDAR
     const events = getEventsFromICS(ics);
     expect(events).toMatchSnapshot(ics);
   });
+
+  it('parses exactly on DST boundaries', () => {
+    // Berlin DST transition 2024:
+    // Starts: Sunday, March 31, 2024, 02:00:00 clocks are turned forward 1 hour to 03:00:00
+    // Ends: Sunday, October 27, 2024, 03:00:00 clocks are turned backward 1 hour to 02:00:00
+    const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//EN
+BEGIN:VTIMEZONE
+TZID:Europe/Berlin
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:dst-transition-test-1
+DTSTART;TZID=Europe/Berlin:20240330T100000
+DTEND;TZID=Europe/Berlin:20240330T110000
+SUMMARY:Before DST Starts
+END:VEVENT
+BEGIN:VEVENT
+UID:dst-transition-test-2
+DTSTART;TZID=Europe/Berlin:20240331T100000
+DTEND;TZID=Europe/Berlin:20240331T110000
+SUMMARY:After DST Starts
+END:VEVENT
+BEGIN:VEVENT
+UID:dst-transition-test-3
+DTSTART;TZID=Europe/Berlin:20241026T100000
+DTEND;TZID=Europe/Berlin:20241026T110000
+SUMMARY:Before DST Ends
+END:VEVENT
+BEGIN:VEVENT
+UID:dst-transition-test-4
+DTSTART;TZID=Europe/Berlin:20241028T100000
+DTEND;TZID=Europe/Berlin:20241028T110000
+SUMMARY:After DST Ends
+END:VEVENT
+END:VCALENDAR`;
+
+    const events = getEventsFromICS(ics);
+    expect(events).toHaveLength(4);
+
+    // We expect the local time components (startTime/endTime) in the OFCEvent
+    // to match exactly what is in the ICS file, regardless of UTC representation
+    const e1 = events.find(e => e.uid === 'dst-transition-test-1') as any;
+    expect(e1.startTime).toBe('10:00');
+    expect(e1.timezone).toBe('Europe/Berlin');
+
+    const e2 = events.find(e => e.uid === 'dst-transition-test-2') as any;
+    expect(e2.startTime).toBe('10:00');
+    expect(e2.timezone).toBe('Europe/Berlin');
+
+    const e3 = events.find(e => e.uid === 'dst-transition-test-3') as any;
+    expect(e3.startTime).toBe('10:00');
+    expect(e3.timezone).toBe('Europe/Berlin');
+
+    const e4 = events.find(e => e.uid === 'dst-transition-test-4') as any;
+    expect(e4.startTime).toBe('10:00');
+    expect(e4.timezone).toBe('Europe/Berlin');
+  });
 });

@@ -161,81 +161,65 @@ function icalTimeToLuxon(t: ical.Time): DateTime {
     );
   }
 
-  let jsDate: Date;
-
-  try {
-    jsDate = t.toJSDate();
-
-    // Validate the Date object - check if it's invalid
-    if (isNaN(jsDate.getTime())) {
-      // If the Date is invalid, try to parse the raw string value
-      const rawValue = (t as unknown as { toString(): string }).toString();
-      if (rawValue) {
-        const isoDate = convertICalDateToISO(rawValue, t.isDate);
-        if (isoDate) {
-          // Parse the ISO date string with Luxon
-          const parsed = DateTime.fromISO(isoDate, {
-            zone: t.timezone === 'Z' ? 'utc' : t.timezone
-          });
-          if (parsed.isValid) {
-            return parsed;
-          }
-        }
-      }
-
-      console.warn(
-        `Full Calendar ICS Parser: Invalid date from ical.js Time object. Raw value: ${rawValue || 'unknown'}`
-      );
-      // Return a fallback invalid DateTime - this will be caught later
-      return DateTime.invalid('Invalid date from ical.js');
-    }
-  } catch (err) {
-    // If toJSDate() throws an error, try to parse the raw value
-    const rawValue = (t as unknown as { toString(): string }).toString();
-    const isoDate = convertICalDateToISO(rawValue, t.isDate);
-    if (isoDate) {
-      const parsed = DateTime.fromISO(isoDate, { zone: t.timezone === 'Z' ? 'utc' : t.timezone });
-      if (parsed.isValid) {
-        return parsed;
-      }
-    }
-
-    console.warn(
-      `Full Calendar ICS Parser: Error converting ical.js Time to Date. Raw value: ${rawValue || 'unknown'}`,
-      err
-    );
-    return DateTime.invalid('Error converting ical.js Time');
-  }
-
   // The timezone property on ical.Time is what we need.
   // It can be 'Z' for UTC, a Windows identifier like 'W. Europe Standard Time',
   // an IANA identifier like 'Asia/Kolkata', or undefined/null.
   const rawZone = t.timezone === 'Z' ? 'utc' : t.timezone || undefined;
   const zone = normalizeTimezone(rawZone);
 
-  // Attempt to set the zone from the ICS file.
-  const zonedDt = DateTime.fromJSDate(jsDate).setZone(zone);
+  console.log(
+    `[DEBUG ICS DateTime] ical.Time raw fields -> year: ${t.year}, month: ${t.month}, day: ${t.day}, hour: ${t.hour}, minute: ${t.minute}, timezone: ${t.timezone}`
+  );
+
+  let zonedDt = DateTime.fromObject(
+    {
+      year: t.year,
+      month: t.month,
+      day: t.day,
+      hour: t.hour,
+      minute: t.minute,
+      second: t.second || 0
+    },
+    { zone }
+  );
+
+  console.log(
+    `[DEBUG ICS DateTime] Luxon DateTime AFTER fromObject('${zone}'): ${zonedDt.toISO()}`
+  );
 
   // Check if setting the zone resulted in an invalid DateTime.
-  // If so, fall back to UTC, which is the old behavior.
   if (!zonedDt.isValid) {
     console.warn(
-      `Full Calendar ICS Parser: Invalid timezone identifier "${rawZone}". Falling back to UTC.`
+      `Full Calendar ICS Parser: Invalid timezone identifier "${rawZone}" or invalid date fields. Falling back to UTC.`
     );
-    const utcDt = DateTime.fromJSDate(jsDate, { zone: 'utc' });
-    if (!utcDt.isValid) {
+
+    // Attempt UTC fallback
+    zonedDt = DateTime.fromObject(
+      {
+        year: t.year,
+        month: t.month,
+        day: t.day,
+        hour: t.hour,
+        minute: t.minute,
+        second: t.second || 0
+      },
+      { zone: 'utc' }
+    );
+
+    if (!zonedDt.isValid) {
       // If even UTC fails, try parsing the raw value
       const rawValue = (t as unknown as { toString(): string }).toString();
-      const isoDate = convertICalDateToISO(rawValue, t.isDate);
-      if (isoDate) {
-        const parsed = DateTime.fromISO(isoDate, { zone: 'utc' });
-        if (parsed.isValid) {
-          return parsed;
+      if (rawValue) {
+        const isoDate = convertICalDateToISO(rawValue, t.isDate);
+        if (isoDate) {
+          const parsed = DateTime.fromISO(isoDate, { zone: 'utc' });
+          if (parsed.isValid) {
+            return parsed;
+          }
         }
       }
-      return DateTime.invalid('Invalid date after timezone conversion');
+      return DateTime.invalid('Invalid date after timezone conversion and fallback');
     }
-    return utcDt;
   }
 
   return zonedDt;
@@ -283,6 +267,20 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
   const url = extractEventUrl(input);
 
   const startDate = icalTimeToLuxon(input.startDate);
+
+  console.log('[DEBUG ICS Parser] Parsing event:', summary);
+  console.log(
+    '[DEBUG ICS Parser] raw startDate:',
+    input.startDate.toString(),
+    'timezone:',
+    input.startDate.timezone
+  );
+  console.log(
+    '[DEBUG ICS Parser] luxon startDate:',
+    startDate.toISO(),
+    'isValid:',
+    startDate.isValid
+  );
 
   // Validate start date - if invalid, skip this event
   if (!startDate.isValid) {

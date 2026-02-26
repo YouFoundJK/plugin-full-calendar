@@ -128,8 +128,8 @@ export function dateEndpointsToFrontmatter(
  * formats dates, times, and recurrence rules.
  *
  * @param id The unique ID of the event.
- * @param frontmatter The OFCEvent object from the cache. Its dates/times have already been
- *                    converted to the display timezone by the `convertEvent` function.
+ * @param frontmatter The OFCEvent object from the cache. Its dates/times are recorded
+ *                    in its original source timezone.
  * @param settings The plugin settings, used for category coloring.
  * @returns An `EventInput` object, or `null` if the event data is invalid.
  */
@@ -183,7 +183,7 @@ export function toEventInput(
     // ====================================================================
 
     // 1  Pick the zone
-    const displayZone =
+    const sourceZone =
       frontmatter.timezone || settings.displayTimezone || DateTime.local().zoneName;
 
     // Use a recent default start date to avoid massive recurrence expansions when startRecur is absent.
@@ -196,12 +196,12 @@ export function toEventInput(
 
     // 2  Build the local start-of-series DateTime
     if (frontmatter.allDay) {
-      dtstart = DateTime.fromISO(startRecurDate, { zone: displayZone }).startOf('day'); // 00:00 in displayZone
+      dtstart = DateTime.fromISO(startRecurDate, { zone: sourceZone }).startOf('day'); // 00:00 in sourceZone
     } else {
       const startTimeDt = parseTime(frontmatter.startTime);
       if (!startTimeDt) return null;
 
-      dtstart = DateTime.fromISO(startRecurDate, { zone: displayZone }).set({
+      dtstart = DateTime.fromISO(startRecurDate, { zone: sourceZone }).set({
         hour: startTimeDt.hours,
         minute: startTimeDt.minutes,
         second: 0,
@@ -238,7 +238,7 @@ export function toEventInput(
     // END REPLACEMENT
 
     if (frontmatter.endRecur) {
-      const endLocal = DateTime.fromISO(frontmatter.endRecur, { zone: displayZone }).endOf('day');
+      const endLocal = DateTime.fromISO(frontmatter.endRecur, { zone: sourceZone }).endOf('day');
 
       // Only add UNTIL if it occurs on/after the first generated instance
       const firstOccurDate = rrulestr(`RRULE:${rruleString}`, {
@@ -246,7 +246,7 @@ export function toEventInput(
       }).after(dtstart.toJSDate(), true);
 
       if (firstOccurDate) {
-        const firstOccur = DateTime.fromJSDate(firstOccurDate, { zone: displayZone });
+        const firstOccur = DateTime.fromJSDate(firstOccurDate, { zone: sourceZone });
         if (endLocal >= firstOccur.startOf('day')) {
           const until = endLocal.toUTC().toFormat("yyyyMMdd'T'HHmmss'Z'");
           rruleString += `;UNTIL=${until}`;
@@ -255,25 +255,25 @@ export function toEventInput(
     }
 
     // 4  DTSTART – always include TZID to avoid floating-date bugs
-    const dtstartString = `DTSTART;TZID=${displayZone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
+    const dtstartString = `DTSTART;TZID=${sourceZone}:${dtstart.toFormat("yyyyMMdd'T'HHmmss")}`;
 
     // 5  EXDATEs – also anchored to the same zone
     const exdateStrings = (frontmatter.skipDates || [])
       .map((skipDate: string) => {
         if (frontmatter.allDay) {
-          const exDt = DateTime.fromISO(skipDate, { zone: displayZone }).startOf('day');
-          return `EXDATE;TZID=${displayZone}:${exDt.toFormat("yyyyMMdd'T'HHmmss")}`;
+          const exDt = DateTime.fromISO(skipDate, { zone: sourceZone }).startOf('day');
+          return `EXDATE;TZID=${sourceZone}:${exDt.toFormat("yyyyMMdd'T'HHmmss")}`;
         } else {
           const startTimeDt = parseTime(frontmatter.startTime);
           if (!startTimeDt) return null;
 
-          const exDt = DateTime.fromISO(skipDate, { zone: displayZone }).set({
+          const exDt = DateTime.fromISO(skipDate, { zone: sourceZone }).set({
             hour: startTimeDt.hours,
             minute: startTimeDt.minutes,
             second: 0,
             millisecond: 0
           });
-          return `EXDATE;TZID=${displayZone}:${exDt.toFormat("yyyyMMdd'T'HHmmss")}`;
+          return `EXDATE;TZID=${sourceZone}:${exDt.toFormat("yyyyMMdd'T'HHmmss")}`;
         }
       })
       .filter(Boolean) as string[];
@@ -312,7 +312,8 @@ export function toEventInput(
     // 8  Misc. extended props
     baseEvent.extendedProps = {
       ...baseEvent.extendedProps,
-      isTask: !!frontmatter.isTask
+      isTask: !!frontmatter.isTask,
+      sourceTimezone: sourceZone
     };
 
     // Tell FullCalendar it’s all-day when relevant
@@ -386,10 +387,7 @@ export function toEventInput(
     const rruleString = frontmatter.rrule;
 
     baseEvent.rrule = [dtstartString, rruleString, ...exdateStrings].join('\n');
-    console.log(`[DEBUG RRule] SourceZone: ${sourceZone}, DisplayZone: ${displayZone}`);
-    console.log(
-      `[DEBUG RRule] dtInSource: ${dtInSource.toISO()}, rrule array: \n${baseEvent.rrule}`
-    );
+
     baseEvent.extendedProps = {
       ...baseEvent.extendedProps,
       isTask: !!frontmatter.isTask,
@@ -438,25 +436,41 @@ export function toEventInput(
       }
     }
   } else if (frontmatter.type === 'single') {
+    const sourceZone =
+      frontmatter.timezone || settings.displayTimezone || DateTime.local().zoneName;
+
     if (!frontmatter.allDay) {
-      const start = combineDateTimeStrings(frontmatter.date, frontmatter.startTime);
-      if (!start) {
+      const startLocalStr = combineDateTimeStrings(frontmatter.date, frontmatter.startTime);
+      if (!startLocalStr) {
         return null;
       }
+
+      const startDt = DateTime.fromISO(startLocalStr, { zone: sourceZone });
+      baseEvent.start = startDt.toISO() ?? undefined; // Full absolute ISO timestamp
+
       let end: string | null | undefined = undefined;
       if (frontmatter.endTime) {
-        end = combineDateTimeStrings(frontmatter.endDate || frontmatter.date, frontmatter.endTime);
-        if (!end) {
+        const endLocalStr = combineDateTimeStrings(
+          frontmatter.endDate || frontmatter.date,
+          frontmatter.endTime
+        );
+        if (!endLocalStr) {
           return null;
         }
+
+        let endDt = DateTime.fromISO(endLocalStr, { zone: sourceZone });
+        if (endDt < startDt) {
+          endDt = endDt.plus({ days: 1 });
+        }
+        end = endDt.toISO() ?? undefined;
       }
 
-      baseEvent.start = start;
       baseEvent.end = end;
       baseEvent.extendedProps = {
         ...baseEvent.extendedProps,
         isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
-        taskCompleted: frontmatter.completed
+        taskCompleted: frontmatter.completed,
+        sourceTimezone: sourceZone
       };
     } else {
       let adjustedEndDate: string | undefined;
@@ -473,7 +487,8 @@ export function toEventInput(
       baseEvent.extendedProps = {
         ...baseEvent.extendedProps,
         isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
-        taskCompleted: frontmatter.completed
+        taskCompleted: frontmatter.completed,
+        sourceTimezone: sourceZone
       };
     }
   }
@@ -521,12 +536,14 @@ export function fromEventApi(
     }
   }
 
-  const displayZone = settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const sourceZone =
+    (event.extendedProps.sourceTimezone as string) ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
   const isRecurring: boolean = event.extendedProps.daysOfWeek !== undefined;
-  const startDate = getDate(event.start as Date, displayZone);
+  const startDate = getDate(event.start as Date, sourceZone);
   // Correctly calculate endDate for multi-day events.
   // FullCalendar's end date is exclusive, so we might need to subtract a day.
-  const endDate = event.end ? getDate(new Date(event.end.getTime() - 1), displayZone) : startDate;
+  const endDate = event.end ? getDate(new Date(event.end.getTime() - 1), sourceZone) : startDate;
 
   const extendedProps = (event.extendedProps || {}) as Record<string, unknown>;
   const taskCompleted = extendedProps.taskCompleted as string | boolean | null | undefined;
@@ -535,13 +552,14 @@ export function fromEventApi(
     title: (extendedProps.cleanTitle as string | undefined) || event.title,
     category,
     subCategory, // Add subCategory here
+    timezone: sourceZone, // Preserve the original timezone
     recurringEventId: extendedProps.recurringEventId as string | undefined,
     ...(event.allDay
       ? { allDay: true }
       : {
           allDay: false,
-          startTime: getTime(event.start!, displayZone),
-          endTime: getTime(event.end!, displayZone)
+          startTime: getTime(event.start!, sourceZone),
+          endTime: getTime(event.end!, sourceZone)
         }),
 
     ...(isRecurring
@@ -558,10 +576,10 @@ export function fromEventApi(
             | 'S'
           )[],
           startRecur: extendedProps.startRecur
-            ? getDate(extendedProps.startRecur as Date, displayZone)
+            ? getDate(extendedProps.startRecur as Date, sourceZone)
             : undefined,
           endRecur: extendedProps.endRecur
-            ? getDate(extendedProps.endRecur as Date, displayZone)
+            ? getDate(extendedProps.endRecur as Date, sourceZone)
             : undefined,
           skipDates: [], // Default to empty as exception info is unavailable
           isTask: extendedProps.isTask as boolean | undefined
