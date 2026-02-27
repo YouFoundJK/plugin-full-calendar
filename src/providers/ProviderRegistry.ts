@@ -372,55 +372,52 @@ export class ProviderRegistry {
       }
     }
 
-    // 1.2 Load Remote Providers (Async) - STAGE 1
-    const remotePromisesStage1 = remoteProviders.map(async ([settingsId, instance]) => {
-      try {
-        const rawEvents = await instance.getEvents(stage1Range);
-        processResults(settingsId, rawEvents);
-      } catch (e) {
-        const source = this.getSource(settingsId);
-        console.warn(`Full Calendar: Failed to load remote calendar source (Stage 1)`, source, e);
-      }
-    });
-
-    await Promise.all(remotePromisesStage1);
-
-    // STAGE 1 COMPLETE: The UI should now be interactive for the current view.
-
+    // Call completion callback here so the calendar renders immediately with local data.
     if (onAllComplete) {
       onAllComplete();
     }
 
-    // --- STAGE 2: Full History Loading ---
-    // Load everything else in the background.
+    // Start everything else in the background so it doesn't block the UI
+    void (async () => {
+      // 1.2 Load Remote Providers (Async) - STAGE 1
+      const remotePromisesStage1 = remoteProviders.map(async ([settingsId, instance]) => {
+        try {
+          const rawEvents = await instance.getEvents(stage1Range);
+          processResults(settingsId, rawEvents);
+        } catch (e) {
+          const source = this.getSource(settingsId);
+          console.warn(`Full Calendar: Failed to load remote calendar source (Stage 1)`, source, e);
+        }
+      });
 
-    // 2.1 Load Local Providers (Sync) - STAGE 2
-    for (const [settingsId, instance] of localProviders) {
-      try {
-        // Calling getEvents() without range loads everything.
-        // Providers that support range (DailyNote) will now load the rest.
-        // Providers that don't (FullNote) might re-return everything, but EventCache handles dedup.
-        const rawEvents = await instance.getEvents();
-        processResults(settingsId, rawEvents);
-      } catch {
-        // Suppress errors if they are just re-runs
+      await Promise.allSettled(remotePromisesStage1);
+
+      // --- STAGE 2: Full History Loading ---
+      // Load everything else in the background.
+
+      // 2.1 Load Local Providers (Sync) - STAGE 2
+      for (const [settingsId, instance] of localProviders) {
+        try {
+          // Calling getEvents() without range loads everything.
+          const rawEvents = await instance.getEvents();
+          processResults(settingsId, rawEvents);
+        } catch {
+          // Suppress errors if they are just re-runs
+        }
       }
-    }
 
-    // 2.2 Load Remote Providers (Async) - STAGE 2
-    const remotePromisesStage2 = remoteProviders.map(async ([settingsId, instance]) => {
-      try {
-        const rawEvents = await instance.getEvents();
-        processResults(settingsId, rawEvents);
-      } catch {
-        // Suppress errors
-      }
-    });
+      // 2.2 Load Remote Providers (Async) - STAGE 2
+      const remotePromisesStage2 = remoteProviders.map(async ([settingsId, instance]) => {
+        try {
+          const rawEvents = await instance.getEvents();
+          processResults(settingsId, rawEvents);
+        } catch {
+          // Suppress errors
+        }
+      });
 
-    await Promise.all(remotePromisesStage2);
-
-    // We don't strictly need to call onAllComplete again, as onProviderComplete
-    // called within processResults handles the incremental UI updates.
+      await Promise.allSettled(remotePromisesStage2);
+    })();
   }
 
   public async createEventInProvider(
