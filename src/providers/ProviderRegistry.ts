@@ -305,10 +305,7 @@ export class ProviderRegistry {
    * Remote providers (loadPriority >= 100) load asynchronously and call onProviderComplete.
    */
   public async fetchAllByPriority(
-    onProviderComplete?: (
-      calendarId: string,
-      events: { event: OFCEvent; location: EventLocation | null }[]
-    ) => void,
+    onProviderComplete?: (calendarId: string, events: [OFCEvent, EventLocation | null][]) => void,
     onAllComplete?: () => void
   ): Promise<void> {
     if (!this.cache) {
@@ -338,31 +335,14 @@ export class ProviderRegistry {
 
     // Helper to process results from a provider
     const processResults = (settingsId: string, rawEvents: [OFCEvent, EventLocation | null][]) => {
-      const events = rawEvents.map(([rawEvent, location]) => ({
-        event: this.cache!.enhancer.enhance(rawEvent),
-        location
-      }));
-
-      // Add to cache
-      events.forEach(({ event, location }) => {
-        const id = this.generateId();
-        this.cache!.store.add({
-          calendarId: settingsId,
-          location,
-          id,
-          event
-        });
-        this.addMapping(event, settingsId, id);
-      });
-
-      // Call completion callback for this provider (updates UI progressively)
+      // Call completion callback for this provider (updates UI progressively via EventCache)
       if (onProviderComplete) {
-        onProviderComplete(settingsId, events);
+        onProviderComplete(settingsId, rawEvents);
       }
     };
 
     // 1.1 Load Local Providers (Sync) - STAGE 1
-    for (const [settingsId, instance] of localProviders) {
+    const localPromises1 = localProviders.map(async ([settingsId, instance]) => {
       try {
         const rawEvents = await instance.getEvents(stage1Range);
         processResults(settingsId, rawEvents);
@@ -370,53 +350,46 @@ export class ProviderRegistry {
         const source = this.getSource(settingsId);
         console.warn(`Full Calendar: Failed to load local calendar source (Stage 1)`, source, e);
       }
-    }
+    });
+
+    // We still block UI rendering explicitly until local stage 1 finishes
+    await Promise.all(localPromises1);
 
     // Call completion callback here so the calendar renders immediately with local data.
     if (onAllComplete) {
       onAllComplete();
     }
 
-    // Start everything else in the background so it doesn't block the UI
+    // Start everything else in the background beautifully pipelined so nothing blocks anything else
     void (async () => {
-      // 1.2 Load Remote Providers (Async) - STAGE 1
-      const remotePromisesStage1 = remoteProviders.map(async ([settingsId, instance]) => {
+      // Background Local Providers (Sync) - STAGE 2
+      const localPromises2 = localProviders.map(async ([settingsId, instance]) => {
         try {
-          const rawEvents = await instance.getEvents(stage1Range);
-          processResults(settingsId, rawEvents);
-        } catch (e) {
-          const source = this.getSource(settingsId);
-          console.warn(`Full Calendar: Failed to load remote calendar source (Stage 1)`, source, e);
-        }
-      });
-
-      await Promise.allSettled(remotePromisesStage1);
-
-      // --- STAGE 2: Full History Loading ---
-      // Load everything else in the background.
-
-      // 2.1 Load Local Providers (Sync) - STAGE 2
-      for (const [settingsId, instance] of localProviders) {
-        try {
-          // Calling getEvents() without range loads everything.
           const rawEvents = await instance.getEvents();
           processResults(settingsId, rawEvents);
         } catch {
           // Suppress errors if they are just re-runs
         }
-      }
+      });
+      void Promise.all(localPromises2);
 
-      // 2.2 Load Remote Providers (Async) - STAGE 2
-      const remotePromisesStage2 = remoteProviders.map(async ([settingsId, instance]) => {
+      // Background Remote Providers - Pipelined STAGE 1 -> STAGE 2
+      const remotePromises = remoteProviders.map(async ([settingsId, instance]) => {
         try {
-          const rawEvents = await instance.getEvents();
-          processResults(settingsId, rawEvents);
-        } catch {
-          // Suppress errors
+          // Stage 1 Fetch
+          const rawEventsStage1 = await instance.getEvents(stage1Range);
+          processResults(settingsId, rawEventsStage1);
+
+          // Immediately kick off Stage 2 for THIS provider instead of waiting for all Stage 1.
+          const rawEventsStage2 = await instance.getEvents();
+          processResults(settingsId, rawEventsStage2);
+        } catch (e) {
+          const source = this.getSource(settingsId);
+          console.warn(`Full Calendar: Failed to load remote calendar source pipeline`, source, e);
         }
       });
 
-      await Promise.allSettled(remotePromisesStage2);
+      await Promise.allSettled(remotePromises);
     })();
   }
 
@@ -445,6 +418,12 @@ export class ProviderRegistry {
     if (!handle) {
       throw new Error(`Could not generate a persistent handle for the event being modified.`);
     }
+
+    const details = this.cache?.store.getEventDetails(sessionId);
+    if (details?.location && !handle.location) {
+      handle.location = details.location;
+    }
+
     return instance.updateEvent(handle, oldEventData, newEventData);
   }
 
@@ -460,6 +439,10 @@ export class ProviderRegistry {
     const handle = instance.getEventHandle(event);
 
     if (handle) {
+      const details = this.cache?.store.getEventDetails(sessionId);
+      if (details?.location && !handle.location) {
+        handle.location = details.location;
+      }
       await instance.deleteEvent(handle);
     } else {
       console.warn(

@@ -410,39 +410,43 @@ export default class FullCalendarPlugin extends Plugin {
    * @param processor The async function to apply to each file.
    * @param description A description of the operation for the notice.
    */
-  async nonBlockingProcess(
+  nonBlockingProcess(
     files: TFile[],
     processor: (file: TFile) => Promise<void>,
     description: string
-  ) {
-    const BATCH_SIZE = 10;
-    let index = 0;
-    const notice = new Notice('', 0); // Indefinite notice
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const BATCH_SIZE = 10;
+      let index = 0;
+      const notice = new Notice('', 0); // Indefinite notice
 
-    const processBatch = () => {
-      // End condition
-      if (index >= files.length) {
-        notice.hide();
-        // The calling function will show the final completion notice.
-        return;
-      }
-
-      notice.setMessage(`${description}: ${index}/${files.length}`);
-      const batch = files.slice(index, index + BATCH_SIZE);
-
-      Promise.all(batch.map(processor))
-        .then(() => {
-          index += BATCH_SIZE;
-          // Yield to the main thread before processing the next batch
-          setTimeout(processBatch, 20);
-        })
-        .catch(err => {
-          console.error('Error during bulk processing batch', err);
+      const processBatch = () => {
+        // End condition
+        if (index >= files.length) {
           notice.hide();
-          new Notice(t('notices.bulkUpdateError'));
-        });
-    };
+          resolve();
+          // The calling function will show the final completion notice.
+          return;
+        }
 
-    processBatch();
+        notice.setMessage(`${description}: ${index}/${files.length}`);
+        const batch = files.slice(index, index + BATCH_SIZE);
+
+        Promise.all(batch.map(processor))
+          .then(() => {
+            index += BATCH_SIZE;
+            // Yield to the main thread before processing the next batch
+            setTimeout(processBatch, 20);
+          })
+          .catch(err => {
+            console.error('Error during bulk processing batch', err);
+            notice.hide();
+            new Notice(t('notices.bulkUpdateError'));
+            reject(err instanceof Error ? err : new Error(String(err)));
+          });
+      };
+
+      processBatch();
+    });
   }
 }

@@ -4,7 +4,7 @@ import { ProviderConfigContext } from '../typesProvider';
 import FullCalendarPlugin from '../../main';
 
 export interface BasesConfigComponentProps {
-  plugin?: FullCalendarPlugin;
+  plugin: FullCalendarPlugin;
   config: Partial<BasesProviderConfig>;
   onConfigChange: (newConfig: Partial<BasesProviderConfig>) => void;
   context: ProviderConfigContext;

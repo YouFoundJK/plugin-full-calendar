@@ -56,6 +56,7 @@ export type UpdateViewCallback = (
         type: 'events';
         toRemove: string[];
         toAdd: CacheEntry[];
+        affectedCalendars: string[];
       }
     | { type: 'calendar'; calendar: OFCEventSource }
     | { type: 'resync' }
@@ -201,10 +202,7 @@ export default class EventCache {
   async populate(): Promise<void> {
     await this.plugin.providerRegistry.fetchAllByPriority(
       (calendarId, eventsForSync) => {
-        const tuples = eventsForSync.map(
-          ({ event, location }) => [event, location] as [OFCEvent, EventLocation | null]
-        );
-        this.syncCalendar(calendarId, tuples);
+        this.syncCalendar(calendarId, eventsForSync);
       },
       () => {
         // This callback runs when STAGE 1 is complete.
@@ -217,7 +215,6 @@ export default class EventCache {
         })();
       }
     );
-
     // No need to add localEvents manually anymore; fetchAllByPriority handles it via the callback/processResults.
   }
 
@@ -949,10 +946,11 @@ export default class EventCache {
    * @param toRemove IDs of events to remove from the view.
    * @param toAdd Events to add to the view.
    */
-  private updateViews(toRemove: string[], toAdd: CacheEntry[]) {
+  private updateViews(toRemove: string[], toAdd: CacheEntry[], affectedCalendars: string[]) {
     const payload = {
       toRemove,
-      toAdd
+      toAdd,
+      affectedCalendars
     };
 
     for (const callback of this.updateViewCallbacks) {
@@ -973,24 +971,41 @@ export default class EventCache {
     }
   }
 
-  public flushUpdateQueue(toRemove: string[], toAdd: CacheEntry[]): void {
-    if (toRemove.length > 0 || toAdd.length > 0) {
-      this.updateViews(toRemove, toAdd);
+  public flushUpdateQueue(
+    toRemove: string[],
+    toAdd: CacheEntry[],
+    affectedCalendars: string[] = []
+  ): void {
+    const combinedToRemove = new Set(toRemove);
+    const combinedToAdd = new Map<string, CacheEntry>();
+    const allAffectedCalendars = new Set<string>(affectedCalendars);
+
+    for (const entry of toAdd) {
+      combinedToAdd.set(entry.id, entry);
+      allAffectedCalendars.add(entry.calendarId);
     }
 
-    if (this.updateQueue.toRemove.size === 0 && this.updateQueue.toAdd.size === 0) {
-      return;
+    // Add accumulated queue items
+    for (const id of this.updateQueue.toRemove) {
+      combinedToRemove.add(id);
+      // Wait, we don't know the calendarId of elements in toRemove inside the queue easily.
+      // We rely on the caller passing affectedCalendars if they only removed elements.
+    }
+    for (const [id, entry] of this.updateQueue.toAdd) {
+      combinedToAdd.set(id, entry);
+      allAffectedCalendars.add(entry.calendarId);
     }
 
     this.isBulkUpdating = false;
-
-    toRemove = [...this.updateQueue.toRemove];
-    toAdd = [...this.updateQueue.toAdd.values()];
-
-    this.updateViews(toRemove, toAdd);
-
-    // Clear the queue for the next batch of operations.
     this.updateQueue = { toRemove: new Set(), toAdd: new Map() };
+
+    if (combinedToRemove.size > 0 || combinedToAdd.size > 0 || allAffectedCalendars.size > 0) {
+      this.updateViews(
+        [...combinedToRemove],
+        [...combinedToAdd.values()],
+        Array.from(allAffectedCalendars)
+      );
+    }
   }
 
   // VIEW SYNCHRONIZATION
@@ -1022,11 +1037,14 @@ export default class EventCache {
       calendarId
     }));
 
-    // Simple diff to avoid unnecessary updates
-    const oldEventData = oldEventsInCalendar.map(e => e.event);
-    const newEventData = newEnhancedEvents.map(e => e.event);
-    if (JSON.stringify(oldEventData) === JSON.stringify(newEventData)) {
-      return;
+    // Simple diff to avoid unnecessary updates.
+    // OPTIMIZATION: If lengths differ (e.g. Stage 2 dumping history over Stage 1), skip stringify!
+    if (oldEventsInCalendar.length === newEnhancedEvents.length) {
+      const oldEventData = oldEventsInCalendar.map(e => e.event);
+      const newEventData = newEnhancedEvents.map(e => e.event);
+      if (JSON.stringify(oldEventData) === JSON.stringify(newEventData)) {
+        return;
+      }
     }
 
     // 3. Prepare removal and addition lists.
@@ -1061,7 +1079,7 @@ export default class EventCache {
       id,
       calendarId
     }));
-    this.flushUpdateQueue(idsToRemove, cacheEntriesToAdd);
+    this.flushUpdateQueue(idsToRemove, cacheEntriesToAdd, [calendarId]);
     this.timeEngine.scheduleCacheRebuild();
   }
 

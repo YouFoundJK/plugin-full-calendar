@@ -5,7 +5,7 @@ import { OFCEvent, EventLocation, CalendarInfo, validateEvent } from '../../type
 import { FCReactComponent, EventHandle } from '../typesProvider';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
-import { BasesConfigComponent } from './BasesConfigComponent';
+import { BasesConfigComponent, BasesConfigComponentProps } from './BasesConfigComponent';
 
 export interface BasesProviderConfig {
   type: 'bases';
@@ -29,8 +29,7 @@ interface BaseFile {
 export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
   static type = 'bases';
   static displayName = 'Obsidian Bases';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static getConfigurationComponent(): FCReactComponent<any> {
+  static getConfigurationComponent(): FCReactComponent<BasesConfigComponentProps> {
     return BasesConfigComponent;
   }
 
@@ -227,33 +226,32 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
     return null;
   }
 
-  async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
-    throw new Error('Not implemented');
+  createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
+    return Promise.reject(new Error('Not implemented'));
   }
 
-  async updateEvent(
+  updateEvent(
     handle: EventHandle,
     oldEvent: OFCEvent,
     newEvent: OFCEvent
   ): Promise<EventLocation | null> {
-    throw new Error('Not implemented');
+    return Promise.reject(new Error('Not implemented'));
   }
 
-  async deleteEvent(handle: EventHandle): Promise<void> {
-    throw new Error('Not implemented');
+  deleteEvent(handle: EventHandle): Promise<void> {
+    return Promise.reject(new Error('Not implemented'));
   }
 
-  async createInstanceOverride(
+  createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
-    throw new Error('Not implemented');
+    return Promise.reject(new Error('Not implemented'));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getConfigurationComponent(): FCReactComponent<any> {
-    return BasesConfigComponent as FCReactComponent<unknown>;
+  getConfigurationComponent(): FCReactComponent<BasesConfigComponentProps> {
+    return BasesConfigComponent;
   }
 
   getSettingsRowComponent(): FCReactComponent<{ source: Partial<CalendarInfo> }> {
