@@ -63,20 +63,6 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
 
   const startDate = parseTimezoneAwareString(input.startDate);
 
-  console.log('[DEBUG ICS Parser] Parsing event:', summary);
-  console.log(
-    '[DEBUG ICS Parser] raw startDate:',
-    input.startDate.toString(),
-    'timezone:',
-    input.startDate.timezone
-  );
-  console.log(
-    '[DEBUG ICS Parser] luxon startDate:',
-    startDate.toISO(),
-    'isValid:',
-    startDate.isValid
-  );
-
   // Validate start date - if invalid, skip this event
   if (!startDate.isValid) {
     console.warn(

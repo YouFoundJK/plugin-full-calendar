@@ -227,10 +227,6 @@ export function parseTimezoneAwareString(t: ical.Time): DateTime {
   const rawZone = t.timezone === 'Z' ? 'utc' : t.timezone || undefined;
   const zone = normalizeTimezone(rawZone);
 
-  console.log(
-    `[DEBUG ICS DateTime] ical.Time raw fields -> year: ${t.year}, month: ${t.month}, day: ${t.day}, hour: ${t.hour}, minute: ${t.minute}, timezone: ${t.timezone}`
-  );
-
   let zonedDt = DateTime.fromObject(
     {
       year: t.year,
@@ -243,16 +239,8 @@ export function parseTimezoneAwareString(t: ical.Time): DateTime {
     { zone }
   );
 
-  console.log(
-    `[DEBUG ICS DateTime] Luxon DateTime AFTER fromObject('${zone}'): ${zonedDt.toISO()}`
-  );
-
   // Check if setting the zone resulted in an invalid DateTime.
   if (!zonedDt.isValid) {
-    console.warn(
-      `Full Calendar ICS Parser: Invalid timezone identifier "${rawZone}" or invalid date fields. Falling back to UTC.`
-    );
-
     // Attempt UTC fallback
     zonedDt = DateTime.fromObject(
       {
@@ -358,21 +346,6 @@ export function patchRRuleTimezoneExpansion(
           ? rruleObj._dtstart.getUTCSeconds()
           : d.getUTCSeconds();
 
-        console.log(
-          '[DEBUG ICS rrule patch] original d:',
-          d.toISOString(),
-          'd_local:',
-          d.toString(),
-          'tzid:',
-          tzid
-        );
-        console.log('[DEBUG ICS rrule patch] _dtstart: ', rruleObj._dtstart?.toISOString());
-        console.log('[DEBUG ICS rrule patch] extracted baseTime:', {
-          h: baseHour,
-          m: baseMinute,
-          s: baseSecond
-        });
-
         // --- Reconstruct correct wall-clock time in the event's SOURCE timezone ---
         // Luxon handles DST automatically: e.g. "11:00 Europe/Bucharest" yields
         // UTC+3 in summer (EEST) and UTC+2 in winter (EET).
@@ -398,18 +371,6 @@ export function patchRRuleTimezoneExpansion(
         const trueUtcMs = sourceDt.toMillis();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const marker = (de as any).createMarker(new Date(trueUtcMs));
-
-        console.log(
-          '[DEBUG ICS rrule patch] settings.timeZone:',
-          settingsTimeZone,
-          'sourceDt:',
-          sourceDt.toISO(),
-          'trueUTC:',
-          new Date(trueUtcMs).toISOString(),
-          'marker:',
-          marker?.toISOString(),
-          marker?.toString()
-        );
 
         return marker;
       });
