@@ -30,11 +30,13 @@ export async function obsidianFetch(
   const r = await requestUrl(req);
 
   const text = typeof r.text === 'string' ? r.text : '';
-  const resp = new Response(text, { status: r.status, headers: r.headers as HeadersInit });
-  (resp as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer = () =>
-    r.arrayBuffer
-      ? Promise.resolve(r.arrayBuffer)
-      : Promise.resolve(new TextEncoder().encode(text).buffer);
+  const isNullBodyStatus = r.status === 204 || r.status === 205 || r.status === 304;
+  const resp = new Response(isNullBodyStatus ? null : text, {
+    status: r.status,
+    headers: r.headers as HeadersInit
+  });
+  (resp as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer = async () =>
+    r.arrayBuffer ? r.arrayBuffer : new TextEncoder().encode(text).buffer;
 
   return resp;
 }

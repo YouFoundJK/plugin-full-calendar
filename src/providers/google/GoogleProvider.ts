@@ -32,6 +32,7 @@ const GoogleNameSetting: React.FC<{ source: Partial<import('../../types').Calend
 };
 
 type GoogleConfigProps = {
+  plugin: FullCalendarPlugin;
   config: Partial<GoogleProviderConfig>;
   onConfigChange: (newConfig: Partial<GoogleProviderConfig>) => void;
   context: ProviderConfigContext;
@@ -106,7 +107,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
     return null;
   }
 
-  async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
     const token = await this.authManager.getTokenForSource({
       type: 'google',
       id: this.source.id,

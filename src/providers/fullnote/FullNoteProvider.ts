@@ -84,6 +84,7 @@ const filenameForEvent = (event: OFCEvent, settings: TitleSettingsLike) =>
 const SUFFIX_PATTERN = '-_-_-';
 
 type FullNoteConfigProps = {
+  plugin: FullCalendarPlugin;
   config: Partial<FullNoteProviderConfig>;
   onConfigChange: (newConfig: Partial<FullNoteProviderConfig>) => void;
   context: ProviderConfigContext;
@@ -177,10 +178,10 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return !!directory && file.path.startsWith(directory + '/');
   }
 
-  public getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
+  public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
     const metadata = this.app.getMetadata(file);
     if (!metadata?.frontmatter) {
-      return Promise.resolve([]);
+      return [];
     }
 
     const rawEventData = {
@@ -190,17 +191,17 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
     const event = validateEvent(rawEventData);
     if (!event) {
-      return Promise.resolve([]);
+      return [];
     }
 
     // Populate UID from the file path.
     event.uid = file.path;
 
     // The raw event is returned as-is. The EventEnhancer will handle timezone conversion.
-    return Promise.resolve([[event, { file, lineNumber: undefined }]]);
+    return [[event, { file, lineNumber: undefined }]];
   }
 
-  async getEvents(): Promise<EditableEventResponse[]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
     const eventFolder = this.app.getAbstractFileByPath(this.source.directory);
     if (!eventFolder || !(eventFolder instanceof TFolder)) {
       throw new Error(`${this.source.directory} is not a valid directory.`);

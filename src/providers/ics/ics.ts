@@ -18,235 +18,7 @@ import { rrulestr } from 'rrule';
 import ical from 'ical.js';
 import { OFCEvent, validateEvent } from '../../types';
 
-/**
- * Maps Windows timezone identifiers to IANA timezone identifiers.
- * Some ICS files (especially from Outlook/Exchange) use Windows timezone names
- * instead of IANA identifiers, which Luxon requires.
- */
-function mapWindowsTimezoneToIANA(windowsTz: string): string | null {
-  const windowsToIANA: Record<string, string> = {
-    // Western Europe
-    'W. Europe Standard Time': 'Europe/Berlin',
-    'Central Europe Standard Time': 'Europe/Budapest',
-    'E. Europe Standard Time': 'Europe/Bucharest',
-    'Russian Standard Time': 'Europe/Moscow',
-    'GMT Standard Time': 'Europe/London',
-    'Greenwich Standard Time': 'Europe/London',
-    // Americas
-    'Eastern Standard Time': 'America/New_York',
-    'Central Standard Time': 'America/Chicago',
-    'Mountain Standard Time': 'America/Denver',
-    'Pacific Standard Time': 'America/Los_Angeles',
-    'Alaskan Standard Time': 'America/Anchorage',
-    'Hawaiian Standard Time': 'Pacific/Honolulu',
-    'Atlantic Standard Time': 'America/Halifax',
-    'Central America Standard Time': 'America/Guatemala',
-    'Mexico Standard Time': 'America/Mexico_City',
-    'SA Pacific Standard Time': 'America/Bogota',
-    'SA Western Standard Time': 'America/Caracas',
-    'SA Eastern Standard Time': 'America/Sao_Paulo',
-    'Pacific SA Standard Time': 'America/Santiago',
-    // Asia
-    'Tokyo Standard Time': 'Asia/Tokyo',
-    'Korea Standard Time': 'Asia/Seoul',
-    'China Standard Time': 'Asia/Shanghai',
-    'India Standard Time': 'Asia/Kolkata',
-    'Singapore Standard Time': 'Asia/Singapore',
-    'W. Australia Standard Time': 'Australia/Perth',
-    'AUS Eastern Standard Time': 'Australia/Sydney',
-    'New Zealand Standard Time': 'Pacific/Auckland',
-    // Middle East
-    'Arab Standard Time': 'Asia/Riyadh',
-    'Israel Standard Time': 'Asia/Jerusalem',
-    'Turkey Standard Time': 'Europe/Istanbul',
-    // Africa
-    'South Africa Standard Time': 'Africa/Johannesburg',
-    'Egypt Standard Time': 'Africa/Cairo'
-  };
-
-  return windowsToIANA[windowsTz] || null;
-}
-
-/**
- * Normalizes a timezone identifier to an IANA timezone identifier.
- * Handles UTC ('Z'), Windows timezone identifiers, and IANA identifiers.
- */
-function normalizeTimezone(zone: string | undefined | null): string {
-  // Handle undefined, null, or empty strings
-  if (!zone || zone.trim() === '') {
-    return 'utc';
-  }
-
-  // Handle UTC
-  if (zone === 'Z' || zone.toLowerCase() === 'utc') {
-    return 'utc';
-  }
-
-  // Check if it's already a valid IANA timezone
-  try {
-    const testDt = DateTime.now().setZone(zone);
-    if (testDt.isValid) {
-      return zone;
-    }
-  } catch {
-    // Not a valid IANA timezone, continue to Windows mapping
-  }
-
-  // Try to map Windows timezone to IANA
-  const mapped = mapWindowsTimezoneToIANA(zone);
-  if (mapped) {
-    return mapped;
-  }
-
-  // Return original if no mapping found (will be handled by caller)
-  return zone;
-}
-
-/**
- * Converts an iCal date string (YYYYMMDD or YYYYMMDDTHHMMSSZ) to ISO extended format.
- * This ensures FullCalendar receives dates in the format it expects.
- */
-function convertICalDateToISO(dateStr: string, isDateOnly: boolean = false): string | null {
-  // Handle YYYYMMDD format (date only)
-  if (dateStr.length === 8 && /^\d{8}$/.test(dateStr)) {
-    const year = dateStr.substring(0, 4);
-    const month = dateStr.substring(4, 6);
-    const day = dateStr.substring(6, 8);
-    return `${year}-${month}-${day}`;
-  }
-
-  // Handle YYYYMMDDTHHMMSSZ format (date-time with UTC)
-  if (dateStr.length === 16 && dateStr.endsWith('Z') && /^\d{8}T\d{6}Z$/.test(dateStr)) {
-    const year = dateStr.substring(0, 4);
-    const month = dateStr.substring(4, 6);
-    const day = dateStr.substring(6, 8);
-    const hour = dateStr.substring(9, 11);
-    const minute = dateStr.substring(11, 13);
-    const second = dateStr.substring(13, 15);
-    return `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
-  }
-
-  // Handle YYYYMMDDTHHMMSS format (date-time without timezone)
-  if (dateStr.length === 15 && /^\d{8}T\d{6}$/.test(dateStr)) {
-    const year = dateStr.substring(0, 4);
-    const month = dateStr.substring(4, 6);
-    const day = dateStr.substring(6, 8);
-    const hour = dateStr.substring(9, 11);
-    const minute = dateStr.substring(11, 13);
-    const second = dateStr.substring(13, 15);
-    return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-  }
-
-  return null;
-}
-
-/**
- * Converts an ical.js Time object into a Luxon DateTime object.
- * This version uses .toJSDate() to get a baseline moment in time and then
- * applies the original timezone from the iCal data.
- * Handles Windows timezone identifiers by mapping them to IANA identifiers.
- * Added validation to handle invalid dates that might come from malformed iCal data.
- */
-function icalTimeToLuxon(t: ical.Time): DateTime {
-  // FAST PATH: Handle date-only (floating) values directly to avoid timezone conversion shifts.
-  // We explicitly create the DateTime in UTC to preserve the exact date regardless of local system time.
-  if (t.isDate) {
-    return DateTime.fromObject(
-      {
-        year: t.year,
-        month: t.month,
-        day: t.day
-      },
-      { zone: 'utc' }
-    );
-  }
-
-  let jsDate: Date;
-
-  try {
-    jsDate = t.toJSDate();
-
-    // Validate the Date object - check if it's invalid
-    if (isNaN(jsDate.getTime())) {
-      // If the Date is invalid, try to parse the raw string value
-      const rawValue = (t as unknown as { toString(): string }).toString();
-      if (rawValue) {
-        const isoDate = convertICalDateToISO(rawValue, t.isDate);
-        if (isoDate) {
-          // Parse the ISO date string with Luxon
-          const parsed = DateTime.fromISO(isoDate, {
-            zone: t.timezone === 'Z' ? 'utc' : t.timezone
-          });
-          if (parsed.isValid) {
-            return parsed;
-          }
-        }
-      }
-
-      console.warn(
-        `Full Calendar ICS Parser: Invalid date from ical.js Time object. Raw value: ${rawValue || 'unknown'}`
-      );
-      // Return a fallback invalid DateTime - this will be caught later
-      return DateTime.invalid('Invalid date from ical.js');
-    }
-  } catch (err) {
-    // If toJSDate() throws an error, try to parse the raw value
-    const rawValue = (t as unknown as { toString(): string }).toString();
-    const isoDate = convertICalDateToISO(rawValue, t.isDate);
-    if (isoDate) {
-      const parsed = DateTime.fromISO(isoDate, { zone: t.timezone === 'Z' ? 'utc' : t.timezone });
-      if (parsed.isValid) {
-        return parsed;
-      }
-    }
-
-    console.warn(
-      `Full Calendar ICS Parser: Error converting ical.js Time to Date. Raw value: ${rawValue || 'unknown'}`,
-      err
-    );
-    return DateTime.invalid('Error converting ical.js Time');
-  }
-
-  // The timezone property on ical.Time is what we need.
-  // It can be 'Z' for UTC, a Windows identifier like 'W. Europe Standard Time',
-  // an IANA identifier like 'Asia/Kolkata', or undefined/null.
-  const rawZone = t.timezone === 'Z' ? 'utc' : t.timezone || undefined;
-  const zone = normalizeTimezone(rawZone);
-
-  // Attempt to set the zone from the ICS file.
-  const zonedDt = DateTime.fromJSDate(jsDate).setZone(zone);
-
-  // Check if setting the zone resulted in an invalid DateTime.
-  // If so, fall back to UTC, which is the old behavior.
-  if (!zonedDt.isValid) {
-    console.warn(
-      `Full Calendar ICS Parser: Invalid timezone identifier "${rawZone}". Falling back to UTC.`
-    );
-    const utcDt = DateTime.fromJSDate(jsDate, { zone: 'utc' });
-    if (!utcDt.isValid) {
-      // If even UTC fails, try parsing the raw value
-      const rawValue = (t as unknown as { toString(): string }).toString();
-      const isoDate = convertICalDateToISO(rawValue, t.isDate);
-      if (isoDate) {
-        const parsed = DateTime.fromISO(isoDate, { zone: 'utc' });
-        if (parsed.isValid) {
-          return parsed;
-        }
-      }
-      return DateTime.invalid('Invalid date after timezone conversion');
-    }
-    return utcDt;
-  }
-
-  // Log if we had to map a Windows timezone
-  if (rawZone !== zone && rawZone !== 'utc') {
-    console.debug(
-      `Full Calendar ICS Parser: Mapped Windows timezone "${rawZone}" to IANA timezone "${zone}".`
-    );
-  }
-
-  return zonedDt;
-}
+import { parseTimezoneAwareString } from '../../features/timezone/Timezone';
 
 /**
  * Extracts the time part (HH:mm) from a Luxon DateTime object.
@@ -289,7 +61,7 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
   // Use extractEventUrl helper or input.component.getFirstProperty('url')
   const url = extractEventUrl(input);
 
-  const startDate = icalTimeToLuxon(input.startDate);
+  const startDate = parseTimezoneAwareString(input.startDate);
 
   // Validate start date - if invalid, skip this event
   if (!startDate.isValid) {
@@ -299,7 +71,7 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
     return null;
   }
 
-  const endDate = input.endDate ? icalTimeToLuxon(input.endDate) : startDate;
+  const endDate = input.endDate ? parseTimezoneAwareString(input.endDate) : startDate;
 
   // Validate end date - if invalid, use start date
   const validEndDate = endDate.isValid ? endDate : startDate;
@@ -326,7 +98,7 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
       .getAllProperties('exdate')
       .map(exdateProp => {
         const exdate = ((t: unknown) => t as ical.Time)(exdateProp.getFirstValue());
-        const exdateLuxon = icalTimeToLuxon(exdate);
+        const exdateLuxon = parseTimezoneAwareString(exdate);
         if (!exdateLuxon.isValid) {
           console.warn(`Full Calendar ICS Parser: Skipping invalid EXDATE for event "${summary}"`);
           return null;
@@ -450,6 +222,15 @@ function preprocessICSText(text: string): string {
 
 // MODIFICATION: Remove settings parameter from getEventsFromICS
 export function getEventsFromICS(text: string): OFCEvent[] {
+  // Parsing robustness: check for VCALENDAR header
+  if (!text.includes('BEGIN:VCALENDAR')) {
+    console.error(
+      'Full Calendar ICS Parser: Missing BEGIN:VCALENDAR header in ICS file. Parsing may fail or be incomplete.'
+    );
+    // We could return [] here, but ical.js might handle partials, so we just warn.
+    // However, the user specifically asked for "console error if Header are missing"
+  }
+
   // Pre-process the text to normalize date formats
   // This ensures VALUE=DATE:YYYYMMDD and YYYYMMDDTHHMMSSZ formats are properly handled
   const correctedText = preprocessICSText(text);

@@ -1,5 +1,6 @@
 import { OFCEvent, EventLocation } from '../types';
 import { EventHandle, ProviderConfigContext, FCReactComponent } from './typesProvider';
+import type FullCalendarPlugin from '../main';
 
 export interface CalendarProviderCapabilities {
   canCreate: boolean;
@@ -24,7 +25,7 @@ export interface CalendarProvider<TConfig> {
 
   getEventHandle(event: OFCEvent): EventHandle | null;
 
-  getEvents(): Promise<[OFCEvent, EventLocation | null][]>;
+  getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]>;
   getEventsInFile?(file: import('obsidian').TFile): Promise<[OFCEvent, EventLocation | null][]>;
   isFileRelevant?(file: import('obsidian').TFile): boolean;
 
@@ -64,6 +65,7 @@ export interface CalendarProvider<TConfig> {
   canBeScheduledAt?(event: OFCEvent, date: Date): Promise<{ isValid: boolean; reason?: string }>;
 
   getConfigurationComponent(): FCReactComponent<{
+    plugin: FullCalendarPlugin;
     config: Partial<TConfig>;
     onConfigChange: (newConfig: Partial<TConfig>) => void;
     context: ProviderConfigContext;

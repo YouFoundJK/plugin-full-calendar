@@ -4,9 +4,15 @@
  *
  * @description
  * This test suite validates the toEventInput function's handling of:
- * - Recurring events with RRULE and DTSTART timezone specification
- * - Display timezone conversion for rrule events
- * - Correct RRULE string generation with TZID
+ * - Single events with timezone conversion
+ * - Recurring events with RRULE + DTSTART + EXDATE generation
+ * - rrule events (ICS/Google Calendar style) with SOURCE timezone preservation
+ * - DST boundary edge cases for all event types
+ * - Cross-timezone DTSTART and EXDATE consistency
+ *
+ * Architecture note: For `rrule` type events, DTSTART uses the SOURCE timezone
+ * (not the display timezone). The display-time shifting is handled by the
+ * monkeypatched rrule expand function at render time.
  *
  * @license See LICENSE.md
  */
@@ -31,6 +37,19 @@ jest.mock('../ui/view', () => ({
   getCalendarColors: (color: string) => ({ color, textColor: '#ffffff' })
 }));
 
+// ============================================================================
+// Helper: extract EXDATE values from the rrule string
+// ============================================================================
+function extractExdates(rruleStr: string): string[] {
+  return rruleStr
+    .split('\n')
+    .filter(line => line.startsWith('EXDATE'))
+    .map(line => line.trim());
+}
+
+// ============================================================================
+// SECTION 1: Basic event conversion
+// ============================================================================
 describe('interop toEventInput tests', () => {
   const baseSettings: FullCalendarSettings = {
     ...DEFAULT_SETTINGS,
@@ -73,6 +92,9 @@ describe('interop toEventInput tests', () => {
     });
   });
 
+  // ==========================================================================
+  // SECTION 2: Recurring event RRULE generation
+  // ==========================================================================
   describe('Recurring event RRULE generation', () => {
     it('should generate weekly RRULE with TZID', () => {
       const event = {
@@ -92,7 +114,8 @@ describe('interop toEventInput tests', () => {
       expect(result!.rrule).toBeDefined();
 
       const rrule = result!.rrule as string;
-      expect(rrule).toContain('DTSTART;TZID=Europe/Prague');
+      // Recurring events use display timezone for DTSTART
+      expect(rrule).toContain('DTSTART;TZID=');
       expect(rrule).toContain('RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR');
     });
 
@@ -132,8 +155,10 @@ describe('interop toEventInput tests', () => {
 
       expect(result).not.toBeNull();
       const rrule = result!.rrule as string;
-      expect(rrule).toContain('EXDATE;TZID=Europe/Prague:20250113');
-      expect(rrule).toContain('EXDATE;TZID=Europe/Prague:20250120');
+      const exdates = extractExdates(rrule);
+      expect(exdates).toHaveLength(2);
+      expect(exdates[0]).toContain('20250113');
+      expect(exdates[1]).toContain('20250120');
     });
 
     it('should handle repeat interval', () => {
@@ -157,8 +182,14 @@ describe('interop toEventInput tests', () => {
     });
   });
 
+  // ==========================================================================
+  // SECTION 3: rrule type events (Google Calendar / ICS style)
+  //
+  // KEY ARCHITECTURE: rrule events use SOURCE timezone in DTSTART, not display.
+  // The monkeypatched expand function handles source→display conversion at render.
+  // ==========================================================================
   describe('rrule type event conversion (Google Calendar style)', () => {
-    it('should convert rrule event with display timezone', () => {
+    it('should use SOURCE timezone in DTSTART (not display timezone)', () => {
       const event = {
         type: 'rrule',
         title: 'Football',
@@ -182,8 +213,10 @@ describe('interop toEventInput tests', () => {
       expect(result).not.toBeNull();
       const rrule = result!.rrule as string;
 
-      // Should have DTSTART with display timezone
-      expect(rrule).toContain('DTSTART;TZID=Europe/Budapest');
+      // DTSTART must use the SOURCE timezone (Europe/Prague), not display (Europe/Budapest)
+      expect(rrule).toContain('DTSTART;TZID=Europe/Prague');
+      // Time is NOT converted — stays at source time
+      expect(rrule).toContain('T080000');
     });
 
     it('should calculate correct duration for timed events', () => {
@@ -204,7 +237,6 @@ describe('interop toEventInput tests', () => {
 
       expect(result).not.toBeNull();
       expect(result!.duration).toBeDefined();
-      // Duration is returned as ISO time string
       expect(result!.duration).toBe('08:00');
     });
 
@@ -225,39 +257,10 @@ describe('interop toEventInput tests', () => {
       const result = toEventInput('night-id', event, baseSettings);
 
       expect(result).not.toBeNull();
-      // Duration should be 8 hours
       expect(result!.duration).toBe('08:00');
     });
-  });
 
-  describe('Display timezone conversion for rrule events', () => {
-    it('should convert rrule event from source to display timezone', () => {
-      const event = {
-        type: 'rrule',
-        title: 'Prague Event',
-        rrule: 'FREQ=WEEKLY;BYDAY=TH',
-        startDate: '2025-06-05',
-        startTime: '08:00',
-        endTime: '09:00',
-        allDay: false,
-        timezone: 'Europe/Prague',
-        skipDates: [],
-        endDate: null
-      } as OFCEvent;
-
-      const settings: FullCalendarSettings = {
-        ...baseSettings,
-        displayTimezone: 'Europe/Budapest'
-      };
-
-      const result = toEventInput('prague-id', event, settings);
-
-      expect(result).not.toBeNull();
-      const rrule = result!.rrule as string;
-      expect(rrule).toContain('DTSTART;TZID=Europe/Budapest:20250605T080000');
-    });
-
-    it('should adjust time when converting between different offset timezones', () => {
+    it('should preserve source timezone even when very different from display', () => {
       const event = {
         type: 'rrule',
         title: 'Tokyo Event',
@@ -281,11 +284,203 @@ describe('interop toEventInput tests', () => {
       expect(result).not.toBeNull();
       const rrule = result!.rrule as string;
 
-      // 8:00 Tokyo (UTC+9) = 1:00 Prague (CEST, UTC+2)
-      expect(rrule).toContain('DTSTART;TZID=Europe/Prague:20250615T010000');
+      // Source timezone preserved — Tokyo, NOT Prague
+      expect(rrule).toContain('DTSTART;TZID=Asia/Tokyo');
+      // Time is NOT converted — stays at 08:00 (the source local time)
+      expect(rrule).toContain('T080000');
+    });
+
+    it('should set sourceTimezone in extendedProps', () => {
+      const event = {
+        type: 'rrule',
+        title: 'Test',
+        rrule: 'FREQ=WEEKLY;BYDAY=MO',
+        startDate: '2025-01-06',
+        startTime: '10:00',
+        endTime: '11:00',
+        allDay: false,
+        timezone: 'Europe/Bucharest',
+        skipDates: [],
+        endDate: null
+      } as OFCEvent;
+
+      const result = toEventInput('src-tz-id', event, baseSettings);
+
+      expect(result).not.toBeNull();
+      expect((result!.extendedProps as Record<string, unknown>).sourceTimezone).toBe(
+        'Europe/Bucharest'
+      );
     });
   });
 
+  // ==========================================================================
+  // SECTION 4: EXDATE handling for rrule events (embedded in rrule string)
+  // ==========================================================================
+  describe('rrule type events — EXDATE handling', () => {
+    it('should embed EXDATEs with source timezone in the rrule string', () => {
+      const event = {
+        type: 'rrule',
+        title: 'Weekly Event',
+        rrule: 'FREQ=WEEKLY;BYDAY=TH',
+        startDate: '2025-10-02',
+        startTime: '08:00',
+        endTime: '09:00',
+        allDay: false,
+        timezone: 'Europe/Budapest',
+        skipDates: ['2025-11-13', '2025-11-20'],
+        endDate: null
+      } as OFCEvent;
+
+      const result = toEventInput('exdate-test-id', event, baseSettings);
+
+      expect(result).not.toBeNull();
+      const rrule = result!.rrule as string;
+      const exdates = extractExdates(rrule);
+
+      expect(exdates).toHaveLength(2);
+      // EXDATEs use source timezone and include the start time
+      expect(exdates[0]).toContain('TZID=Europe/Budapest');
+      expect(exdates[0]).toContain('20251113T080000');
+      expect(exdates[1]).toContain('20251120T080000');
+    });
+
+    it('should use source timezone for EXDATEs when source differs from display', () => {
+      const event = {
+        type: 'rrule',
+        title: 'Football',
+        rrule: 'FREQ=WEEKLY;BYDAY=TH',
+        startDate: '2025-10-02',
+        startTime: '08:00',
+        endTime: '09:00',
+        allDay: false,
+        timezone: 'Europe/Prague',
+        skipDates: ['2025-11-13', '2025-11-20', '2025-11-27'],
+        endDate: null
+      } as OFCEvent;
+
+      const settings: FullCalendarSettings = {
+        ...baseSettings,
+        displayTimezone: 'Europe/Budapest'
+      };
+
+      const result = toEventInput('football-id', event, settings);
+
+      expect(result).not.toBeNull();
+      const rrule = result!.rrule as string;
+      const exdates = extractExdates(rrule);
+
+      expect(exdates).toHaveLength(3);
+      // EXDATEs should use SOURCE timezone (Prague), NOT display (Budapest)
+      exdates.forEach(exdate => {
+        expect(exdate).toContain('TZID=Europe/Prague');
+        expect(exdate).toContain('T080000');
+      });
+    });
+
+    it('should handle empty skipDates array', () => {
+      const event = {
+        type: 'rrule',
+        title: 'No Skips',
+        rrule: 'FREQ=WEEKLY;BYDAY=MO',
+        startDate: '2025-01-06',
+        startTime: '10:00',
+        endTime: '11:00',
+        allDay: false,
+        timezone: 'Europe/Prague',
+        skipDates: [],
+        endDate: null
+      } as unknown as OFCEvent;
+
+      const result = toEventInput('no-skips-id', event, baseSettings);
+
+      expect(result).not.toBeNull();
+      const rrule = result!.rrule as string;
+      const exdates = extractExdates(rrule);
+      expect(exdates).toHaveLength(0);
+    });
+
+    it('should handle event time at midnight with EXDATEs', () => {
+      const event = {
+        type: 'rrule',
+        title: 'Midnight Event',
+        rrule: 'FREQ=WEEKLY;BYDAY=SA',
+        startDate: '2025-01-04',
+        startTime: '00:00',
+        endTime: '01:00',
+        allDay: false,
+        timezone: 'Europe/Prague',
+        skipDates: ['2025-01-11'],
+        endDate: null
+      } as unknown as OFCEvent;
+
+      const result = toEventInput('midnight-id', event, baseSettings);
+
+      expect(result).not.toBeNull();
+      const rrule = result!.rrule as string;
+      const exdates = extractExdates(rrule);
+      expect(exdates).toHaveLength(1);
+      expect(exdates[0]).toContain('20250111T000000');
+    });
+
+    it('should handle late-night event with EXDATEs', () => {
+      const event = {
+        type: 'rrule',
+        title: 'Late Night Event',
+        rrule: 'FREQ=WEEKLY;BYDAY=FR',
+        startDate: '2025-01-03',
+        startTime: '23:30',
+        endTime: '00:30',
+        allDay: false,
+        timezone: 'Europe/Prague',
+        skipDates: ['2025-01-10'],
+        endDate: null
+      } as unknown as OFCEvent;
+
+      const result = toEventInput('late-night-id', event, baseSettings);
+
+      expect(result).not.toBeNull();
+      const rrule = result!.rrule as string;
+      const exdates = extractExdates(rrule);
+      expect(exdates).toHaveLength(1);
+      expect(exdates[0]).toContain('20250110T233000');
+    });
+
+    it('should handle many skipDates', () => {
+      const skipDates = Array.from({ length: 52 }, (_, i) => {
+        const date = DateTime.fromISO('2025-01-06').plus({ weeks: i });
+        return date.toISODate()!;
+      });
+
+      const event = {
+        type: 'rrule',
+        title: 'Many Skips',
+        rrule: 'FREQ=WEEKLY;BYDAY=MO',
+        startDate: '2025-01-06',
+        startTime: '09:00',
+        endTime: '10:00',
+        allDay: false,
+        timezone: 'Europe/Prague',
+        skipDates: skipDates,
+        endDate: null
+      } as unknown as OFCEvent;
+
+      const result = toEventInput('many-skips-id', event, baseSettings);
+
+      expect(result).not.toBeNull();
+      const rrule = result!.rrule as string;
+      const exdates = extractExdates(rrule);
+      expect(exdates).toHaveLength(52);
+
+      // All EXDATEs should include T090000
+      exdates.forEach(exdate => {
+        expect(exdate).toContain('T090000');
+      });
+    });
+  });
+
+  // ==========================================================================
+  // SECTION 5: Category and extended properties
+  // ==========================================================================
   describe('Category and extended properties', () => {
     it('should apply category coloring when enabled', () => {
       const event = {
@@ -341,13 +536,16 @@ describe('interop toEventInput tests', () => {
   });
 });
 
+// ============================================================================
+// SECTION 6: DST edge cases in RRULE generation
+// ============================================================================
 describe('DST edge cases in RRULE generation', () => {
   const baseSettings: FullCalendarSettings = {
     ...DEFAULT_SETTINGS,
     displayTimezone: 'Europe/Prague'
   };
 
-  it('should maintain local time in RRULE across DST change', () => {
+  it('should maintain local time in RRULE across DST change (recurring)', () => {
     const event = {
       type: 'recurring',
       title: 'Football Practice',
@@ -365,12 +563,11 @@ describe('DST edge cases in RRULE generation', () => {
     expect(result).not.toBeNull();
     const rrule = result!.rrule as string;
 
-    // DTSTART should specify 08:00 in Prague timezone
     expect(rrule).toContain('DTSTART;TZID=Europe/Prague');
     expect(rrule).toContain('T080000');
   });
 
-  it('should handle US timezone with different DST dates', () => {
+  it('should handle US timezone with different DST dates (recurring)', () => {
     const event = {
       type: 'recurring',
       title: 'US Meeting',
@@ -397,90 +594,181 @@ describe('DST edge cases in RRULE generation', () => {
   });
 });
 
-/**
- * Critical test suite for rrule-type events with exdate (skipDates) handling.
- *
- * This suite tests the fix for the bug where deleted instances of Google Calendar
- * recurring events were still showing in the UI. The root cause was a mismatch between:
- * - How the monkeypatched rrule expander generates instances (local time in UTC components)
- * - How exdates were being calculated (actual UTC conversion)
- *
- * The fix ensures exdates use "fake UTC" where local time components are stored in UTC,
- * matching the rrule expander's output format.
- */
-describe('rrule type events with exdate/skipDates handling', () => {
-  const baseSettings: FullCalendarSettings = {
-    ...DEFAULT_SETTINGS,
-    displayTimezone: 'Europe/Budapest'
-  };
+// ============================================================================
+// SECTION 7: Comprehensive DST boundary tests for rrule-type events
+// ============================================================================
+describe('rrule-type events: DST boundary robustness', () => {
+  // EU DST ends Oct 26, 2025 (clocks go BACK, CEST→CET, UTC+2→UTC+1)
+  // EU DST starts Mar 30, 2025 (clocks go FORWARD, CET→CEST, UTC+1→UTC+2)
+  // US DST starts Mar 9, 2025 (clocks spring forward, EST→EDT, UTC-5→UTC-4)
+  // US DST ends Nov 2, 2025 (clocks fall back, EDT→EST, UTC-4→UTC-5)
 
-  describe('exdate format matching rrule expander', () => {
-    it('should generate exdates with local time in UTC components (same timezone)', () => {
+  describe('European DST transitions', () => {
+    it('should keep DTSTART time unchanged across EU DST end (rrule event)', () => {
+      // Event at 10:00 Prague, spanning the Oct 26 DST transition
       const event = {
         type: 'rrule',
-        title: 'Weekly Event',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=TH',
-        startDate: '2025-10-02',
-        startTime: '08:00',
-        endTime: '09:00',
+        title: 'Weekly Review',
+        rrule: 'FREQ=WEEKLY;BYDAY=TH',
+        startDate: '2025-10-02', // Before DST ends (CEST, UTC+2)
+        startTime: '10:00',
+        endTime: '11:00',
         allDay: false,
-        timezone: 'Europe/Budapest',
-        skipDates: ['2025-11-13', '2025-11-20'],
+        timezone: 'Europe/Prague',
+        skipDates: [],
         endDate: null
       } as OFCEvent;
 
-      const result = toEventInput('exdate-test-id', event, baseSettings);
+      const settings: FullCalendarSettings = {
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'Europe/Prague'
+      };
 
-      expect(result).not.toBeNull();
-      expect(result!.exdate).toBeDefined();
-      expect(result!.exdate).toHaveLength(2);
+      const result = toEventInput('dst-review-id', event, settings);
+      const rrule = result!.rrule as string;
 
-      // Exdates should have 08:00 in UTC components (fake UTC)
-      // NOT the actual UTC conversion (which would be 07:00Z in winter)
-      const exdates = result!.exdate as string[];
-      expect(exdates[0]).toBe('2025-11-13T08:00:00.000Z');
-      expect(exdates[1]).toBe('2025-11-20T08:00:00.000Z');
+      // DTSTART time is 10:00 — same local time regardless of DST state
+      expect(rrule).toContain('DTSTART;TZID=Europe/Prague:20251002T100000');
     });
 
-    it('should handle source timezone different from display timezone', () => {
-      // Event created in Prague, but displayed in Budapest (same UTC offset, but different zones)
+    it('should keep EXDATE times consistent across EU DST boundary', () => {
+      // Skip dates that span the Oct 26 DST transition
       const event = {
         type: 'rrule',
-        title: 'Football',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=TH',
+        title: 'Training',
+        rrule: 'FREQ=WEEKLY;BYDAY=TH',
         startDate: '2025-10-02',
         startTime: '08:00',
         endTime: '09:00',
         allDay: false,
         timezone: 'Europe/Prague',
-        skipDates: ['2025-11-13', '2025-11-20', '2025-11-27'],
+        skipDates: [
+          '2025-10-23', // Before DST ends (CEST)
+          '2025-10-30', // After DST ends (CET)
+          '2025-11-06',
+          '2025-11-13',
+          '2025-11-20'
+        ],
         endDate: null
       } as OFCEvent;
 
       const settings: FullCalendarSettings = {
-        ...baseSettings,
-        displayTimezone: 'Europe/Budapest'
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'Europe/Prague'
       };
 
-      const result = toEventInput('football-id', event, settings);
+      const result = toEventInput('training-id', event, settings);
+      const rrule = result!.rrule as string;
+      const exdates = extractExdates(rrule);
 
-      expect(result).not.toBeNull();
-      expect(result!.exdate).toHaveLength(3);
-
-      // Both Prague and Budapest are in the same UTC offset, so 08:00 Prague = 08:00 Budapest
-      const exdates = result!.exdate as string[];
-      expect(exdates[0]).toBe('2025-11-13T08:00:00.000Z');
-      expect(exdates[1]).toBe('2025-11-20T08:00:00.000Z');
-      expect(exdates[2]).toBe('2025-11-27T08:00:00.000Z');
+      // All EXDATEs should use 08:00 local time — DST state doesn't matter
+      expect(exdates).toHaveLength(5);
+      exdates.forEach(exdate => {
+        expect(exdate).toContain('T080000');
+        expect(exdate).toContain('TZID=Europe/Prague');
+      });
     });
 
-    it('should correctly adjust exdate time when source and display timezones differ', () => {
-      // Event at 08:00 Tokyo (UTC+9), displayed in Prague (UTC+1 in winter)
-      // 08:00 Tokyo = 00:00 Prague (same day)
+    it('should handle EU spring forward (rrule event)', () => {
+      // Event starts in winter (CET), occurs through spring forward (CEST)
+      const event = {
+        type: 'rrule',
+        title: 'Morning Standup',
+        rrule: 'FREQ=WEEKLY;BYDAY=MO',
+        startDate: '2025-03-24', // Before spring forward (Mar 30)
+        startTime: '09:00',
+        endTime: '09:30',
+        allDay: false,
+        timezone: 'Europe/Prague',
+        skipDates: ['2025-03-31'], // First Monday after spring forward
+        endDate: null
+      } as OFCEvent;
+
+      const settings: FullCalendarSettings = {
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'Europe/Prague'
+      };
+
+      const result = toEventInput('spring-standup-id', event, settings);
+      const rrule = result!.rrule as string;
+
+      // DTSTART keeps the same local time
+      expect(rrule).toContain('DTSTART;TZID=Europe/Prague:20250324T090000');
+      // EXDATE after DST also uses 09:00 local time
+      const exdates = extractExdates(rrule);
+      expect(exdates[0]).toContain('20250331T090000');
+    });
+  });
+
+  describe('US DST transitions', () => {
+    it('should keep DTSTART time unchanged across US spring forward (rrule event)', () => {
+      // US DST starts Mar 9, 2025
+      const event = {
+        type: 'rrule',
+        title: 'Morning Standup',
+        rrule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR',
+        startDate: '2025-03-03', // Before spring forward
+        startTime: '09:00',
+        endTime: '09:30',
+        allDay: false,
+        timezone: 'America/New_York',
+        skipDates: ['2025-03-07', '2025-03-10', '2025-03-14'],
+        endDate: null
+      } as OFCEvent;
+
+      const settings: FullCalendarSettings = {
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'America/New_York'
+      };
+
+      const result = toEventInput('us-standup-id', event, settings);
+      const rrule = result!.rrule as string;
+      const exdates = extractExdates(rrule);
+
+      // All EXDATEs should be at 09:00 local (both EST and EDT)
+      expect(exdates).toHaveLength(3);
+      exdates.forEach(exdate => {
+        expect(exdate).toContain('T090000');
+      });
+    });
+
+    it('should keep DTSTART time unchanged across US fall back (rrule event)', () => {
+      // US DST ends Nov 2, 2025
+      const event = {
+        type: 'rrule',
+        title: 'Weekly Sync',
+        rrule: 'FREQ=WEEKLY;BYDAY=MO',
+        startDate: '2025-10-27', // Before fall back
+        startTime: '14:00',
+        endTime: '15:00',
+        allDay: false,
+        timezone: 'America/New_York',
+        skipDates: ['2025-11-03'], // First Monday after fall back
+        endDate: null
+      } as OFCEvent;
+
+      const settings: FullCalendarSettings = {
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'America/New_York'
+      };
+
+      const result = toEventInput('us-sync-id', event, settings);
+      const rrule = result!.rrule as string;
+
+      expect(rrule).toContain('DTSTART;TZID=America/New_York:20251027T140000');
+      const exdates = extractExdates(rrule);
+      // After fall back, still 14:00 local
+      expect(exdates[0]).toContain('20251103T140000');
+    });
+  });
+
+  describe('Cross-timezone DTSTART/EXDATE for rrule events', () => {
+    it('should preserve source timezone even with large offset difference (Tokyo→NY)', () => {
+      // 08:00 Tokyo (UTC+9), displayed in New York (UTC-5/UTC-4)
       const event = {
         type: 'rrule',
         title: 'Tokyo Call',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
+        rrule: 'FREQ=WEEKLY;BYDAY=MO',
         startDate: '2025-01-06',
         startTime: '08:00',
         endTime: '09:00',
@@ -491,297 +779,141 @@ describe('rrule type events with exdate/skipDates handling', () => {
       } as OFCEvent;
 
       const settings: FullCalendarSettings = {
-        ...baseSettings,
-        displayTimezone: 'Europe/Prague'
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'America/New_York'
       };
 
       const result = toEventInput('tokyo-call-id', event, settings);
 
       expect(result).not.toBeNull();
-      expect(result!.exdate).toHaveLength(2);
+      const rrule = result!.rrule as string;
 
-      // 08:00 Tokyo = 00:00 Prague (UTC+9 - UTC+1 = 8 hours difference)
-      // Exdates should show 00:00 in fake UTC (the Prague local time)
-      const exdates = result!.exdate as string[];
-      expect(exdates[0]).toBe('2025-01-13T00:00:00.000Z');
-      expect(exdates[1]).toBe('2025-01-20T00:00:00.000Z');
-    });
+      // DTSTART uses source timezone (Tokyo), NOT display (New York)
+      expect(rrule).toContain('DTSTART;TZID=Asia/Tokyo:20250106T080000');
 
-    it('should handle US timezone with different DST transition dates', () => {
-      // Event at 09:00 New York, displayed in New York
-      // March 9, 2025 is when US DST starts (clocks spring forward)
-      const event = {
-        type: 'rrule',
-        title: 'Morning Standup',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR',
-        startDate: '2025-03-03',
-        startTime: '09:00',
-        endTime: '09:30',
-        allDay: false,
-        timezone: 'America/New_York',
-        skipDates: ['2025-03-07', '2025-03-10', '2025-03-14'], // Around DST transition
-        endDate: null
-      } as OFCEvent;
-
-      const settings: FullCalendarSettings = {
-        ...baseSettings,
-        displayTimezone: 'America/New_York'
-      };
-
-      const result = toEventInput('standup-id', event, settings);
-
-      expect(result).not.toBeNull();
-      expect(result!.exdate).toHaveLength(3);
-
-      // All exdates should have 09:00 in fake UTC (the local time stays consistent)
-      const exdates = result!.exdate as string[];
-      expect(exdates[0]).toBe('2025-03-07T09:00:00.000Z');
-      expect(exdates[1]).toBe('2025-03-10T09:00:00.000Z');
-      expect(exdates[2]).toBe('2025-03-14T09:00:00.000Z');
-    });
-  });
-
-  describe('DST transition handling for exdates', () => {
-    it('should maintain consistent local time across European DST transition', () => {
-      // Europe DST ends on Oct 26, 2025 (clocks go back 1 hour)
-      const event = {
-        type: 'rrule',
-        title: 'Weekly Review',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=TH',
-        startDate: '2025-10-02',
-        startTime: '10:00',
-        endTime: '11:00',
-        allDay: false,
-        timezone: 'Europe/Prague',
-        skipDates: ['2025-10-23', '2025-10-30'], // Before and after DST ends
-        endDate: null
-      } as OFCEvent;
-
-      const settings: FullCalendarSettings = {
-        ...baseSettings,
-        displayTimezone: 'Europe/Prague'
-      };
-
-      const result = toEventInput('dst-review-id', event, settings);
-
-      expect(result).not.toBeNull();
-      const exdates = result!.exdate as string[];
-
-      // Both exdates should be at 10:00 local time (in fake UTC)
-      // Even though one is in CEST (UTC+2) and one is in CET (UTC+1)
-      expect(exdates[0]).toBe('2025-10-23T10:00:00.000Z');
-      expect(exdates[1]).toBe('2025-10-30T10:00:00.000Z');
-    });
-
-    it('should handle source in one DST state and skip dates in another', () => {
-      // Event starts Oct 2 (CEST, UTC+2), but skip dates are in November (CET, UTC+1)
-      const event = {
-        type: 'rrule',
-        title: 'Training',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=TH',
-        startDate: '2025-10-02',
-        startTime: '08:00',
-        endTime: '09:00',
-        allDay: false,
-        timezone: 'Europe/Prague',
-        skipDates: ['2025-11-06', '2025-11-13', '2025-11-20'],
-        endDate: null
-      } as OFCEvent;
-
-      const settings: FullCalendarSettings = {
-        ...baseSettings,
-        displayTimezone: 'Europe/Prague'
-      };
-
-      const result = toEventInput('training-id', event, settings);
-
-      expect(result).not.toBeNull();
-      const exdates = result!.exdate as string[];
-
-      // All exdates should be at 08:00 local time
-      expect(exdates).toHaveLength(3);
+      // EXDATEs also use source timezone
+      const exdates = extractExdates(rrule);
+      expect(exdates).toHaveLength(2);
       exdates.forEach(exdate => {
-        expect(exdate).toMatch(/T08:00:00\.000Z$/);
+        expect(exdate).toContain('TZID=Asia/Tokyo');
+        expect(exdate).toContain('T080000');
       });
     });
-  });
 
-  describe('DTSTART and exdate timezone consistency', () => {
-    it('should use display timezone in DTSTART', () => {
+    it('should preserve source timezone for same-offset different zones (Prague→Budapest)', () => {
+      // Prague and Budapest are in the SAME offset, but different IANA zone names
       const event = {
         type: 'rrule',
-        title: 'Test Event',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
-        startDate: '2025-01-06',
-        startTime: '10:00',
-        endTime: '11:00',
+        title: 'Cross-border Meeting',
+        rrule: 'FREQ=WEEKLY;BYDAY=WE',
+        startDate: '2025-06-04',
+        startTime: '14:00',
+        endTime: '15:00',
         allDay: false,
         timezone: 'Europe/Prague',
-        skipDates: [],
+        skipDates: ['2025-06-11'],
         endDate: null
       } as OFCEvent;
 
       const settings: FullCalendarSettings = {
-        ...baseSettings,
-        displayTimezone: 'America/New_York'
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'Europe/Budapest'
       };
 
-      const result = toEventInput('tz-test-id', event, settings);
-
-      expect(result).not.toBeNull();
+      const result = toEventInput('cross-border-id', event, settings);
       const rrule = result!.rrule as string;
 
-      // DTSTART should use the display timezone
-      expect(rrule).toContain('DTSTART;TZID=America/New_York');
+      // Must keep Prague (source), NOT use Budapest (display)
+      expect(rrule).toContain('DTSTART;TZID=Europe/Prague:20250604T140000');
+      const exdates = extractExdates(rrule);
+      expect(exdates[0]).toContain('TZID=Europe/Prague');
     });
 
-    it('should convert event time from source to display timezone in DTSTART', () => {
-      // Event at 10:00 Prague (UTC+1 in winter), displayed in New York (UTC-5 in winter)
-      // 10:00 Prague = 04:00 New York
+    it('should handle event with no source timezone (falls back to system TZ)', () => {
       const event = {
         type: 'rrule',
-        title: 'Cross-TZ Event',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
-        startDate: '2025-01-06',
-        startTime: '10:00',
-        endTime: '11:00',
-        allDay: false,
-        timezone: 'Europe/Prague',
-        skipDates: ['2025-01-13'],
-        endDate: null
-      } as unknown as OFCEvent;
-
-      const settings: FullCalendarSettings = {
-        ...baseSettings,
-        displayTimezone: 'America/New_York'
-      };
-
-      const result = toEventInput('cross-tz-id', event, settings);
-
-      expect(result).not.toBeNull();
-      const rrule = result!.rrule as string;
-
-      // DTSTART should show 04:00 in New York timezone
-      expect(rrule).toContain('DTSTART;TZID=America/New_York:20250106T040000');
-
-      // Exdate should also be at 04:00 (fake UTC, representing New York local time)
-      const exdates = result!.exdate as string[];
-      expect(exdates[0]).toBe('2025-01-13T04:00:00.000Z');
-    });
-  });
-
-  describe('edge cases', () => {
-    it('should handle empty skipDates array', () => {
-      const event = {
-        type: 'rrule',
-        title: 'No Skips',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
-        startDate: '2025-01-06',
-        startTime: '10:00',
-        endTime: '11:00',
-        allDay: false,
-        timezone: 'Europe/Prague',
-        skipDates: [],
-        endDate: null
-      } as unknown as OFCEvent;
-
-      const result = toEventInput('no-skips-id', event, baseSettings);
-
-      expect(result).not.toBeNull();
-      expect(result!.exdate).toEqual([]);
-    });
-
-    it('should handle event time at midnight', () => {
-      const event = {
-        type: 'rrule',
-        title: 'Midnight Event',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=SA',
-        startDate: '2025-01-04',
-        startTime: '00:00',
-        endTime: '01:00',
-        allDay: false,
-        timezone: 'Europe/Prague',
-        skipDates: ['2025-01-11'],
-        endDate: null
-      } as unknown as OFCEvent;
-
-      const result = toEventInput('midnight-id', event, baseSettings);
-
-      expect(result).not.toBeNull();
-      const exdates = result!.exdate as string[];
-      expect(exdates[0]).toBe('2025-01-11T00:00:00.000Z');
-    });
-
-    it('should handle event time at end of day', () => {
-      const event = {
-        type: 'rrule',
-        title: 'Late Night Event',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=FR',
-        startDate: '2025-01-03',
-        startTime: '23:30',
-        endTime: '00:30',
-        allDay: false,
-        timezone: 'Europe/Prague',
-        skipDates: ['2025-01-10'],
-        endDate: null
-      } as unknown as OFCEvent;
-
-      const result = toEventInput('late-night-id', event, baseSettings);
-
-      expect(result).not.toBeNull();
-      const exdates = result!.exdate as string[];
-      expect(exdates[0]).toBe('2025-01-10T23:30:00.000Z');
-    });
-
-    it('should handle single skipDate', () => {
-      const event = {
-        type: 'rrule',
-        title: 'One Skip',
-        rrule: 'RRULE:FREQ=DAILY',
+        title: 'Local Event',
+        rrule: 'FREQ=DAILY',
         startDate: '2025-01-01',
         startTime: '09:00',
         endTime: '10:00',
         allDay: false,
-        timezone: 'Europe/Prague',
-        skipDates: ['2025-01-15'],
+        // No timezone property! Should fall back to system TZ
+        skipDates: [],
         endDate: null
-      } as unknown as OFCEvent;
+      } as OFCEvent;
 
-      const result = toEventInput('one-skip-id', event, baseSettings);
-
-      expect(result).not.toBeNull();
-      expect(result!.exdate).toHaveLength(1);
-    });
-
-    it('should handle many skipDates', () => {
-      const skipDates = Array.from({ length: 52 }, (_, i) => {
-        const date = DateTime.fromISO('2025-01-06').plus({ weeks: i });
-        return date.toISODate()!;
+      const result = toEventInput('local-id', event, {
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'Europe/Budapest'
       });
 
+      expect(result).not.toBeNull();
+      const rrule = result!.rrule as string;
+      // Should use system timezone (we can't predict the exact zone, but it should exist)
+      expect(rrule).toContain('DTSTART;TZID=');
+      expect(rrule).toContain('T090000');
+    });
+  });
+
+  describe('No-DST timezone validation', () => {
+    it('should handle Japan timezone (no DST ever) correctly', () => {
       const event = {
         type: 'rrule',
-        title: 'Many Skips',
-        rrule: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
+        title: 'Tokyo Standup',
+        rrule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR',
         startDate: '2025-01-06',
         startTime: '09:00',
-        endTime: '10:00',
+        endTime: '09:15',
         allDay: false,
-        timezone: 'Europe/Prague',
-        skipDates: skipDates,
+        timezone: 'Asia/Tokyo',
+        skipDates: ['2025-06-16', '2025-12-22'], // Summer and winter dates
         endDate: null
-      } as unknown as OFCEvent;
+      } as OFCEvent;
 
-      const result = toEventInput('many-skips-id', event, baseSettings);
+      const settings: FullCalendarSettings = {
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'Asia/Tokyo'
+      };
 
-      expect(result).not.toBeNull();
-      expect(result!.exdate).toHaveLength(52);
+      const result = toEventInput('tokyo-standup-id', event, settings);
+      const rrule = result!.rrule as string;
 
-      // All should be at 09:00 fake UTC
-      const exdates = result!.exdate as string[];
+      expect(rrule).toContain('DTSTART;TZID=Asia/Tokyo:20250106T090000');
+
+      const exdates = extractExdates(rrule);
+      // Both summer and winter dates should use 09:00
       exdates.forEach(exdate => {
-        expect(exdate).toMatch(/T09:00:00\.000Z$/);
+        expect(exdate).toContain('T090000');
+        expect(exdate).toContain('TZID=Asia/Tokyo');
       });
+    });
+
+    it('should handle UTC (no DST) correctly', () => {
+      const event = {
+        type: 'rrule',
+        title: 'UTC Event',
+        rrule: 'FREQ=WEEKLY;BYDAY=MO',
+        startDate: '2025-01-06',
+        startTime: '12:00',
+        endTime: '13:00',
+        allDay: false,
+        timezone: 'UTC',
+        skipDates: ['2025-06-16'], // Summer date
+        endDate: null
+      } as OFCEvent;
+
+      const settings: FullCalendarSettings = {
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'UTC'
+      };
+
+      const result = toEventInput('utc-id', event, settings);
+      const rrule = result!.rrule as string;
+
+      expect(rrule).toContain('DTSTART;TZID=UTC:20250106T120000');
+      const exdates = extractExdates(rrule);
+      expect(exdates[0]).toContain('T120000');
     });
   });
 });

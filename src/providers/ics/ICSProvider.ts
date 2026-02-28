@@ -1,4 +1,4 @@
-import { request } from 'obsidian';
+import { request, TFile } from 'obsidian';
 import { OFCEvent, EventLocation } from '../../types';
 import { getEventsFromICS } from './ics';
 import * as React from 'react';
@@ -36,6 +36,7 @@ const ICSUrlSetting: React.FC<{ source: Partial<import('../../types').CalendarIn
 };
 
 type ICSConfigProps = {
+  plugin: FullCalendarPlugin;
   config: Partial<ICSProviderConfig>;
   onConfigChange: (newConfig: Partial<ICSProviderConfig>) => void;
   context: ProviderConfigContext;
@@ -56,7 +57,7 @@ const ICSConfigWrapper: React.FC<ICSConfigProps> = props => {
 export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
   // Static metadata for registry
   static readonly type = 'ical';
-  static readonly displayName = 'Remote Calendar (ICS)';
+  static readonly displayName = 'ICS Calendar';
 
   static getConfigurationComponent(): FCReactComponent<ICSConfigProps> {
     return ICSConfigWrapper;
@@ -66,9 +67,19 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
   private source: ICSProviderConfig;
 
   readonly type = 'ical';
-  readonly displayName = 'Remote Calendar (ICS)';
-  readonly isRemote = true;
   readonly loadPriority = 100;
+
+  /** Dynamic: returns true for remote URLs, false for local file paths */
+  get isRemote(): boolean {
+    const url = this.source.url;
+    if (!url) return true; // Default to remote if not configured
+    return url.startsWith('https://') || url.startsWith('http://') || url.startsWith('webcal');
+  }
+
+  /** Dynamic display name based on source type */
+  get displayName(): string {
+    return this.isRemote ? 'Remote Calendar (ICS)' : 'Local Calendar (ICS)';
+  }
 
   constructor(source: ICSProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
     this.plugin = plugin;
@@ -86,21 +97,52 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
     return null;
   }
 
-  async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
-    let url = this.source.url;
-    if (url.startsWith(WEBCAL)) {
-      url = 'https' + url.slice(WEBCAL.length);
+  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
+    const url = this.source.url;
+
+    // Early return if URL is empty
+    if (!url) {
+      console.warn('ICSProvider: No URL configured.');
+      return [];
+    }
+
+    // Check if this is a local file path (not a remote URL)
+    const isRemoteUrl =
+      url.startsWith('https://') || url.startsWith('http://') || url.startsWith(WEBCAL);
+
+    if (!isRemoteUrl) {
+      // This is a local file path
+      const file = this.plugin.app.vault.getAbstractFileByPath(url);
+      if (file instanceof TFile) {
+        try {
+          const content = await this.plugin.app.vault.read(file);
+          return getEventsFromICS(content).map(event => [event, null]);
+        } catch (e) {
+          console.error(`Error reading local ICS file ${url}`, e);
+          return [];
+        }
+      } else {
+        // File not found - don't fall through to network request
+        console.error(`Local ICS file not found: ${url}`);
+        return [];
+      }
+    }
+
+    // Remote URL handling
+    let remoteUrl = url;
+    if (remoteUrl.startsWith(WEBCAL)) {
+      remoteUrl = 'https' + remoteUrl.slice(WEBCAL.length);
     }
 
     try {
-      const response = await request({ url, method: 'GET' });
+      const response = await request({ url: remoteUrl, method: 'GET' });
       const displayTimezone = this.plugin.settings.displayTimezone;
       if (!displayTimezone) return [];
 
       // Remove timezone conversion logic; just return raw events
       return getEventsFromICS(response).map(event => [event, null]);
     } catch (e) {
-      console.error(`Error fetching ICS calendar from ${url}`, e);
+      console.error(`Error fetching ICS calendar from ${remoteUrl}`, e);
       return [];
     }
   }

@@ -216,7 +216,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       return this.tasksPromise;
     }
     this.tasksPromise = new Promise((resolve, reject) => {
-      console.debug('Full Calendar: Tasks cache is cold. Requesting data from Tasks plugin...');
       const callback = (cacheData: TasksCacheData) => {
         if (
           cacheData &&
@@ -420,7 +419,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   // DATA-SERVING METHODS (READ)
   // ====================================================================
 
-  async getEvents(): Promise<EditableEventResponse[]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
     await this._ensureTasksCacheIsWarm();
     const events: EditableEventResponse[] = [];
     for (const task of this.allTasks) {
@@ -467,7 +466,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     );
   }
 
-  public getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
+  public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
     const events: EditableEventResponse[] = [];
     // Filter the live cache for tasks in the specified file. This is very fast.
     const tasksInFile = this.allTasks.filter(task => task.filePath === file.path);
@@ -493,7 +492,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         events.push([ofcEvent, location]);
       }
     }
-    return Promise.resolve(events);
+    return events;
   }
 
   // ====================================================================

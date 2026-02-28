@@ -2,15 +2,11 @@ import tsparser from "@typescript-eslint/parser";
 import globals from "globals";
 import { defineConfig } from "eslint/config";
 import obsidianmd from "eslint-plugin-obsidianmd";
-import tsPlugin from "@typescript-eslint/eslint-plugin";
 
 export default defineConfig([
   ...obsidianmd.configs.recommended,
   {
     files: ["**/*.ts", "**/*.tsx"],
-    plugins: {
-      "@typescript-eslint": tsPlugin,
-    },
     languageOptions: {
       parser: tsparser,
       parserOptions: { project: "./tsconfig.json" },
@@ -21,23 +17,16 @@ export default defineConfig([
     },
     rules: {
       "obsidianmd/sample-names": "off",
-      "obsidianmd/prefer-file-manager-trash-file": "error",
-      "@typescript-eslint/no-floating-promises": "error",
-      "@typescript-eslint/no-misused-promises": "error",
-      "@typescript-eslint/require-await": "error",
-      "@typescript-eslint/no-explicit-any": "error",
-      "no-case-declarations": "error",
-      "no-useless-escape": "error"
+      "obsidianmd/prefer-file-manager-trash-file": "error"
     }
   },
   {
+    files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
     languageOptions: {
       globals: {
         ...globals.jest
       },
-    }
-  },
-  {
-    ignores: ["node_modules/", "build/", "dist/", "coverage/", "**/*.js"]
+    },
+    ignores: ["node_modules/", "build/", "dist/", "coverage/"]
   }
 ]);

@@ -495,7 +495,7 @@ export class CalendarView extends ItemView {
 
       this.viewEnhancer = new ViewEnhancer(this.plugin.settings);
 
-      const container = this.containerEl.children[1];
+      const container = this.contentEl;
       container.empty();
       const calendarEl = container.createEl('div');
 
@@ -566,8 +566,8 @@ export class CalendarView extends ItemView {
       };
 
       this.fullCalendarView = await renderCalendar(calendarEl, sources, {
-        // timeZone:
-        //   this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timeZone:
+          this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         forceNarrow: this.inSidebar,
         // resources added lazily when entering timeline view
         enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
@@ -686,7 +686,10 @@ export class CalendarView extends ItemView {
             // The fix is just to subtract 1 from the end date before processing.
             end.setDate(end.getDate() - 1);
           }
-          const partialEvent = dateEndpointsToFrontmatter(start, end, allDay);
+          const displayZone =
+            this.plugin.settings.displayTimezone ||
+            Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const partialEvent = dateEndpointsToFrontmatter(start, end, allDay, displayZone);
           try {
             if (
               this.plugin.settings.clickToCreateEventFromMonthView ||
@@ -760,7 +763,7 @@ export class CalendarView extends ItemView {
                 throw new Error('Could not determine instance date from recurring event.');
               }
 
-              const modifiedEvent = fromEventApi(newEvent, newResource);
+              const modifiedEvent = fromEventApi(newEvent, this.plugin.settings, newResource);
 
               await this.plugin.cache.modifyRecurringInstance(
                 oldEvent.id,
@@ -774,7 +777,7 @@ export class CalendarView extends ItemView {
               // Let it update normally.
               const didModify = await this.plugin.cache.updateEventWithId(
                 oldEvent.id,
-                fromEventApi(newEvent, newResource)
+                fromEventApi(newEvent, this.plugin.settings, newResource)
               );
               return !!didModify;
             }
@@ -992,20 +995,11 @@ export class CalendarView extends ItemView {
           return;
         }
 
-        // handle resync event
+        // handle resync event — full rebuild is required because the rrule
+        // monkeypatch and FullCalendar's timeZone option are set at construction
+        // time. A simple event-source swap would leave stale timezone data.
         if (info.type === 'resync') {
-          // DON'T call onOpen() - that resets everything!
-          // Instead, just refresh the event sources from the current cache state
-          this.viewEnhancer.updateSettings(this.plugin.settings);
-          const allCachedSources = this.plugin.cache.getAllEvents();
-          const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
-
-          requestAnimationFrame(() => {
-            if (this.fullCalendarView) {
-              this.fullCalendarView.removeAllEventSources();
-              sources.forEach(source => this.fullCalendarView!.addEventSource(source));
-            }
-          });
+          void this.onOpen();
           return;
         }
 

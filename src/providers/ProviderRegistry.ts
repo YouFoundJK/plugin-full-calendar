@@ -310,13 +310,10 @@ export class ProviderRegistry {
       events: { event: OFCEvent; location: EventLocation | null }[]
     ) => void,
     onAllComplete?: () => void
-  ): Promise<{ event: OFCEvent; location: EventLocation | null; calendarId: string }[]> {
-    // Performance timing available if needed: performance.now()
+  ): Promise<void> {
     if (!this.cache) {
       throw new Error('Cache not set on ProviderRegistry');
     }
-
-    const results: { event: OFCEvent; location: EventLocation | null; calendarId: string }[] = [];
 
     // Sort all providers by loadPriority (lower number = higher priority)
     const prioritizedProviders = Array.from(this.instances.entries()).sort(
@@ -331,69 +328,96 @@ export class ProviderRegistry {
       ([, provider]) => provider.loadPriority >= 100
     );
 
-    // Load local providers synchronously for immediate display
+    // --- STAGE 1: Critical Range Loading ---
+    // Load events for +/- 3 months to make the calendar interactive quickly.
+    const now = new Date();
+    const stage1Range = {
+      start: new Date(now.getFullYear(), now.getMonth() - 3, 1),
+      end: new Date(now.getFullYear(), now.getMonth() + 3, 0)
+    };
+
+    // Helper to process results from a provider
+    const processResults = (settingsId: string, rawEvents: [OFCEvent, EventLocation | null][]) => {
+      const events = rawEvents.map(([rawEvent, location]) => ({
+        event: this.cache!.enhancer.enhance(rawEvent),
+        location
+      }));
+
+      // Add to cache
+      events.forEach(({ event, location }) => {
+        const id = this.generateId();
+        this.cache!.store.add({
+          calendarId: settingsId,
+          location,
+          id,
+          event
+        });
+        this.addMapping(event, settingsId, id);
+      });
+
+      // Call completion callback for this provider (updates UI progressively)
+      if (onProviderComplete) {
+        onProviderComplete(settingsId, events);
+      }
+    };
+
+    // 1.1 Load Local Providers (Sync) - STAGE 1
     for (const [settingsId, instance] of localProviders) {
       try {
-        const rawEvents = await instance.getEvents();
-        const events = rawEvents.map(([rawEvent, location]) => ({
-          event: this.cache!.enhancer.enhance(rawEvent),
-          location
-        }));
-
-        // Add to results for immediate return
-        events.forEach(({ event, location }) => {
-          results.push({ event, location, calendarId: settingsId });
-        });
-
-        // Don't call callback for local providers - they are handled directly by EventCache
+        const rawEvents = await instance.getEvents(stage1Range);
+        processResults(settingsId, rawEvents);
       } catch (e) {
         const source = this.getSource(settingsId);
-        console.warn(`Full Calendar: Failed to load local calendar source`, source, e);
+        console.warn(`Full Calendar: Failed to load local calendar source (Stage 1)`, source, e);
       }
     }
 
-    // Load remote providers asynchronously in background
-    if (remoteProviders.length > 0) {
-      (async () => {
-        const promises = remoteProviders.map(async ([settingsId, instance]) => {
-          try {
-            const rawEvents = await instance.getEvents();
-            const events = rawEvents.map(([rawEvent, location]) => ({
-              event: this.cache!.enhancer.enhance(rawEvent),
-              location
-            }));
+    // Call completion callback here so the calendar renders immediately with local data.
+    if (onAllComplete) {
+      onAllComplete();
+    }
 
-            // Call callback when this provider completes
-            if (onProviderComplete) {
-              onProviderComplete(settingsId, events);
-            }
-          } catch (e) {
-            const source = this.getSource(settingsId);
-            console.warn(`Full Calendar: Failed to load remote calendar source`, source, e);
-          }
-        });
-
-        await Promise.all(promises);
-
-        // All remote providers have completed
-        if (onAllComplete) {
-          onAllComplete();
-        }
-      })().catch(error => {
-        console.error('Full Calendar: Error loading remote calendars:', error);
-        // Still call onAllComplete even if there was an error
-        if (onAllComplete) {
-          onAllComplete();
+    // Start everything else in the background so it doesn't block the UI
+    void (async () => {
+      // 1.2 Load Remote Providers (Async) - STAGE 1
+      const remotePromisesStage1 = remoteProviders.map(async ([settingsId, instance]) => {
+        try {
+          const rawEvents = await instance.getEvents(stage1Range);
+          processResults(settingsId, rawEvents);
+        } catch (e) {
+          const source = this.getSource(settingsId);
+          console.warn(`Full Calendar: Failed to load remote calendar source (Stage 1)`, source, e);
         }
       });
-    } else {
-      // No remote providers, trigger completion immediately
-      if (onAllComplete) {
-        onAllComplete();
-      }
-    }
 
-    return results;
+      await Promise.allSettled(remotePromisesStage1);
+
+      // --- STAGE 2: Full History Loading ---
+      // Load everything else in the background.
+
+      // 2.1 Load Local Providers (Sync) - STAGE 2
+      for (const [settingsId, instance] of localProviders) {
+        try {
+          // Calling getEvents() without range loads everything.
+          const rawEvents = await instance.getEvents();
+          processResults(settingsId, rawEvents);
+        } catch {
+          // Suppress errors if they are just re-runs
+        }
+      }
+
+      // 2.2 Load Remote Providers (Async) - STAGE 2
+      const remotePromisesStage2 = remoteProviders.map(async ([settingsId, instance]) => {
+        try {
+          const rawEvents = await instance.getEvents();
+          processResults(settingsId, rawEvents);
+        } catch {
+          // Suppress errors
+        }
+      });
+
+      await Promise.allSettled(remotePromisesStage2);
+    })();
   }
 
   public async createEventInProvider(

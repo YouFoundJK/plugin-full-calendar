@@ -49,39 +49,37 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
     .filter((c): c is NonNullable<typeof c> => !!c);
 
   if (calendars.length === 0) {
-    new Notice(t('modals.event.errors.createNoCalendars'));
+    new Notice(t('modals.editEvent.errors.createNoCalendars'));
     return;
   }
 
   // MODIFICATION: Get available categories
   const availableCategories = plugin.cache.getAllCategories();
 
-  new ReactModal(plugin.app, closeModal =>
-    Promise.resolve(
-      React.createElement(EditEvent, {
-        initialEvent: partialEvent,
-        calendars,
-        defaultCalendarIndex: 0,
-        availableCategories,
-        enableCategory: plugin.settings.enableAdvancedCategorization,
-        enableBackgroundEvents: plugin.settings.enableBackgroundEvents,
-        enableReminders: plugin.settings.enableReminders,
-        submit: async (data, calendarIndex) => {
-          const calendarId = calendars[calendarIndex].id;
-          try {
-            // Note: The data source layer is now responsible for constructing the full title.
-            // The `data` object here has a clean title and category.
-            await plugin.cache.addEvent(calendarId, data);
-          } catch (e) {
-            if (e instanceof Error) {
-              new Notice(t('modals.event.errors.createError', { message: e.message }));
-              console.error(e);
-            }
+  new ReactModal(plugin.app, async closeModal =>
+    React.createElement(EditEvent, {
+      initialEvent: partialEvent,
+      calendars,
+      defaultCalendarIndex: 0,
+      availableCategories,
+      enableCategory: plugin.settings.enableAdvancedCategorization,
+      enableBackgroundEvents: plugin.settings.enableBackgroundEvents,
+      enableReminders: plugin.settings.enableReminders,
+      submit: async (data, calendarIndex) => {
+        const calendarId = calendars[calendarIndex].id;
+        try {
+          // Note: The data source layer is now responsible for constructing the full title.
+          // The `data` object here has a clean title and category.
+          await plugin.cache.addEvent(calendarId, data);
+        } catch (e) {
+          if (e instanceof Error) {
+            new Notice(t('modals.editEvent.errors.createError', { message: e.message }));
+            console.error(e);
           }
-          closeModal();
         }
-      })
-    )
+        closeModal();
+      }
+    })
   ).open();
 }
 
@@ -123,12 +121,12 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
   const calIdx = calendars.findIndex(({ id }) => id === calId);
   const availableCategories = plugin.cache.getAllCategories();
 
-  new ReactModal(plugin.app, closeModal => {
+  new ReactModal(plugin.app, async closeModal => {
     const onAttemptEditInherited = () => {
       new ConfirmModal(
         plugin.app,
-        t('modals.event.confirmations.editParentTitle'),
-        t('modals.event.confirmations.editParentMessage'),
+        t('modals.editEvent.confirmations.editParentTitle'),
+        t('modals.editEvent.confirmations.editParentMessage'),
         () => {
           void (async () => {
             if (eventToEdit.type === 'single' && eventToEdit.recurringEventId) {
@@ -139,7 +137,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
                 closeModal();
                 launchEditModal(plugin, parentSessionId);
               } else {
-                new Notice(t('modals.event.errors.parentNotFound'));
+                new Notice(t('modals.editEvent.errors.parentNotFound'));
               }
             }
           })();
@@ -147,88 +145,84 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
       ).open();
     };
 
-    return Promise.resolve(
-      React.createElement(EditEvent, {
-        initialEvent: eventToEdit,
-        calendars,
-        defaultCalendarIndex: calIdx,
-        availableCategories,
-        enableCategory: plugin.settings.enableAdvancedCategorization,
-        enableBackgroundEvents: plugin.settings.enableBackgroundEvents,
-        enableReminders: plugin.settings.enableReminders, // ADD THIS PROP
-        submit: async (data, calendarIndex) => {
-          try {
-            const newCalendarSettingsId = calendars[calendarIndex].id;
-            const oldCalendarSettingsId = eventDetails.calendarId;
+    return React.createElement(EditEvent, {
+      initialEvent: eventToEdit,
+      calendars,
+      defaultCalendarIndex: calIdx,
+      availableCategories,
+      enableCategory: plugin.settings.enableAdvancedCategorization,
+      enableBackgroundEvents: plugin.settings.enableBackgroundEvents,
+      enableReminders: plugin.settings.enableReminders, // ADD THIS PROP
+      submit: async (data, calendarIndex) => {
+        try {
+          const newCalendarSettingsId = calendars[calendarIndex].id;
+          const oldCalendarSettingsId = eventDetails.calendarId;
 
-            if (newCalendarSettingsId !== oldCalendarSettingsId) {
-              await plugin.cache.moveEventToCalendar(eventId, newCalendarSettingsId, data);
-            } else {
-              await plugin.cache.updateEventWithId(eventId, data);
-            }
-          } catch (e) {
-            if (e instanceof Error) {
-              new Notice(t('modals.event.errors.updateError', { message: e.message }));
-              console.error(e);
-            }
+          if (newCalendarSettingsId !== oldCalendarSettingsId) {
+            await plugin.cache.moveEventToCalendar(eventId, newCalendarSettingsId, data);
+          } else {
+            await plugin.cache.updateEventWithId(eventId, data);
           }
-          closeModal();
-        },
-        open: async () => {
-          await openFileForEvent(plugin.cache, plugin.app, eventId);
-          closeModal();
-        },
-        deleteEvent: async () => {
-          try {
-            await plugin.cache.deleteEvent(eventId);
-            closeModal();
-          } catch (e) {
-            if (e instanceof Error) {
-              new Notice(t('modals.event.errors.deleteError', { message: e.message }));
-              console.error(e);
-            }
+        } catch (e) {
+          if (e instanceof Error) {
+            new Notice(t('modals.editEvent.errors.updateError', { message: e.message }));
+            console.error(e);
           }
-        },
-        onAttemptEditInherited // Pass the new handler as a prop
-      })
-    );
+        }
+        closeModal();
+      },
+      open: async () => {
+        await openFileForEvent(plugin.cache, plugin.app, eventId);
+        closeModal();
+      },
+      deleteEvent: async () => {
+        try {
+          await plugin.cache.deleteEvent(eventId);
+          closeModal();
+        } catch (e) {
+          if (e instanceof Error) {
+            new Notice(t('modals.editEvent.errors.deleteError', { message: e.message }));
+            console.error(e);
+          }
+        }
+      },
+      onAttemptEditInherited // Pass the new handler as a prop
+    });
   }).open();
 }
 
 export function launchEventDetailsModal(plugin: FullCalendarPlugin, eventId: string) {
   const event = plugin.cache.getEventById(eventId);
   if (!event) {
-    new Notice(t('modals.event.errors.eventNotFound'));
+    new Notice(t('modals.editEvent.errors.eventNotFound'));
     return;
   }
   const eventDetails = plugin.cache.store.getEventDetails(eventId);
   if (!eventDetails) {
-    new Notice(t('modals.event.errors.detailsNotFound'));
+    new Notice(t('modals.editEvent.errors.detailsNotFound'));
     return;
   }
 
   const calendarId = eventDetails.calendarId;
   const calendar = plugin.providerRegistry.getSource(calendarId);
   const calendarName =
-    calendar && calendar.name ? calendar.name : t('modals.event.misc.unknownCalendar');
+    calendar && calendar.name ? calendar.name : t('modals.editEvent.misc.unknownCalendar');
   const location = eventDetails.location;
 
-  new ReactModal(plugin.app, closeModal => {
-    return Promise.resolve(
-      React.createElement(EventDetails, {
-        event,
-        calendarName,
-        location,
-        onClose: () => closeModal(),
-        onOpenNote: location
-          ? () => {
-              void (async () => {
-                await openFileForEvent(plugin.cache, plugin.app, eventId);
-                closeModal();
-              })();
-            }
-          : undefined
-      })
-    );
+  new ReactModal(plugin.app, async closeModal => {
+    return React.createElement(EventDetails, {
+      event,
+      calendarName,
+      location,
+      onClose: () => closeModal(),
+      onOpenNote: location
+        ? () => {
+            void (async () => {
+              await openFileForEvent(plugin.cache, plugin.app, eventId);
+              closeModal();
+            })();
+          }
+        : undefined
+    });
   }).open();
 }

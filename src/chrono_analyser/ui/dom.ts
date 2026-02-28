@@ -1,3 +1,6 @@
+// Disabling sentence casing rule which incorrectly flags many UI strings
+/* eslint-disable obsidianmd/ui/sentence-case */
+
 import { setIcon } from 'obsidian';
 
 const setCssProps = (element: HTMLElement, props: Record<string, string>): void => {
@@ -18,7 +21,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   const container = rootEl.createDiv({ cls: 'container' });
 
   const header = container.createDiv({ cls: 'header' });
-  header.createEl('h1', { text: '📊 ' + 'Chrono analyser' });
+  header.createEl('h1', { text: '📊 ChronoAnalyser' });
   header.createEl('p', { text: 'Interactive analysis of your time tracking data' });
 
   const insightsPanel = container.createDiv({
@@ -31,21 +34,21 @@ export function createDOMStructure(rootEl: HTMLElement): void {
     attr: { id: 'proTipsPanel', title: 'Click to see the next tip' }
   });
   const proTipsContent = proTipsPanel.createDiv({ cls: 'pro-tips-content' });
-  proTipsContent.createEl('span', { cls: 'pro-tips-title', text: 'Pro tip' });
+  proTipsContent.createEl('span', { cls: 'pro-tips-title', text: 'PRO TIP' });
   proTipsContent.createEl('p', { attr: { id: 'proTipText' } });
   proTipsPanel.createDiv({ cls: 'pro-tips-nav', text: '›' });
 
   const insightsHeader = insightsPanel.createDiv({ cls: 'insights-header' });
-  insightsHeader.createDiv({ cls: 'insights-title', text: 'Insights' });
+  insightsHeader.createDiv({ cls: 'insights-title', text: '💡 Insights' });
   const insightsActions = insightsHeader.createDiv({ cls: 'insights-actions' });
   insightsActions.createEl('button', {
     cls: 'mod-cta',
     attr: { id: 'generateInsightsBtn' },
-    text: 'Generate insights'
+    text: 'Generate Insights'
   });
   const configureBtn = insightsActions.createEl('button', {
     cls: 'clickable-icon',
-    attr: { id: 'configureInsightsBtn', 'aria-label': 'Configure insights' }
+    attr: { id: 'configureInsightsBtn', 'aria-label': 'Configure Insights' }
   });
   setIcon(configureBtn, 'settings');
 
@@ -55,7 +58,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   insightsBody.createDiv({
     cls: 'insights-placeholder',
-    text: 'Click "Generate insights" to analyze your data.'
+    text: 'Click "Generate Insights" to analyze your data.'
   });
 
   const controls = container.createDiv({ cls: 'controls' });
@@ -64,28 +67,28 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   const hierarchyItem = filterGroup.createDiv({ cls: 'control-item' });
   hierarchyItem.createEl('label', {
     attr: { for: 'hierarchyFilterInput' },
-    text: 'Filter by hierarchy (calendar source)'
+    text: '📂 Filter by Hierarchy (Calendar Source)'
   });
   const hierarchyWrapper = hierarchyItem.createDiv({ cls: 'autocomplete-wrapper' });
   hierarchyWrapper.createEl('input', {
     attr: {
       id: 'hierarchyFilterInput',
       type: 'text',
-      placeholder: 'All hierarchies (type to filter...)'
+      placeholder: 'All Hierarchies (type to filter...)'
     }
   });
 
   const projectItem = filterGroup.createDiv({ cls: 'control-item' });
   projectItem.createEl('label', {
     attr: { for: 'projectFilterInput' },
-    text: 'Filter by project'
+    text: '📋 Filter by Project'
   });
   const projectWrapper = projectItem.createDiv({ cls: 'autocomplete-wrapper' });
   projectWrapper.createEl('input', {
     attr: {
       id: 'projectFilterInput',
       type: 'text',
-      placeholder: 'All projects (type to filter...)'
+      placeholder: 'All Projects (type to filter...)'
     }
   });
 
@@ -95,46 +98,46 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   categoryItem.createEl('label', {
     attr: { for: 'patternInput' },
-    text: '🔍 ' + 'Filter by category (e.g. keyword -exclude)'
+    text: '🔍 Filter by Category (e.g., keyword -exclude)'
   });
   categoryItem.createEl('input', {
-    attr: { id: 'patternInput', type: 'text', placeholder: 'Example: task.* -review' }
+    attr: { id: 'patternInput', type: 'text', placeholder: 'e.g., Task.* -review' }
   });
 
   const dateGroup = controls.createDiv({ cls: 'control-group' });
   const dateItem = dateGroup.createDiv({ cls: 'control-item' });
-  dateItem.createEl('label', { attr: { for: 'dateRangePicker' }, text: '📅 ' + 'Date range' });
+  dateItem.createEl('label', { attr: { for: 'dateRangePicker' }, text: '📅 Date Range' });
   dateItem.createEl('input', {
     attr: {
       id: 'dateRangePicker',
       type: 'text',
-      placeholder: 'Select date range (yyyy-mm-dd to yyyy-mm-dd)'
+      placeholder: 'Select Date Range (YYYY-MM-DD to YYYY-MM-DD)'
     }
   });
   const presetButtons = dateItem.createDiv({ cls: 'date-preset-buttons' });
   setCssProps(presetButtons, { marginTop: '10px' });
   presetButtons.createEl('button', { attr: { id: 'setTodayBtn' }, text: 'Today' });
   presetButtons.createEl('button', { attr: { id: 'setYesterdayBtn' }, text: 'Yesterday' });
-  presetButtons.createEl('button', { attr: { id: 'setThisWeekBtn' }, text: 'This week' });
-  presetButtons.createEl('button', { attr: { id: 'setThisMonthBtn' }, text: 'This month' });
+  presetButtons.createEl('button', { attr: { id: 'setThisWeekBtn' }, text: 'This Week' });
+  presetButtons.createEl('button', { attr: { id: 'setThisMonthBtn' }, text: 'This Month' });
   presetButtons.createEl('button', {
     cls: 'clear-dates-btn',
     attr: { id: 'clearDatesBtn', title: 'Clear date filters' },
-    text: 'Clear dates'
+    text: '🗑️ Clear Dates'
   });
 
   const analysisGroup = controls.createDiv({ cls: 'control-group analysis-config-group' });
 
   const metricItem = analysisGroup.createDiv({ cls: 'control-item' });
-  metricItem.createEl('label', { attr: { for: 'metricSelect' }, text: 'Metric' });
+  metricItem.createEl('label', { attr: { for: 'metricSelect' }, text: '📏 Metric' });
   const metricSelect = metricItem.createEl('select', { attr: { id: 'metricSelect' } });
-  metricSelect.createEl('option', { attr: { value: 'duration' }, text: 'Duration (hours)' });
-  metricSelect.createEl('option', { attr: { value: 'count' }, text: 'Event count' });
+  metricSelect.createEl('option', { attr: { value: 'duration' }, text: 'Duration (Hours)' });
+  metricSelect.createEl('option', { attr: { value: 'count' }, text: 'Event Count' });
 
   const analysisTypeItem = analysisGroup.createDiv({ cls: 'control-item' });
   analysisTypeItem.createEl('label', {
     attr: { for: 'analysisTypeSelect' },
-    text: 'Analysis type'
+    text: '🎯 Analysis Type'
   });
   const analysisTypeSelect = analysisTypeItem.createEl('select', {
     attr: { id: 'analysisTypeSelect' }
@@ -144,29 +147,29 @@ export function createDOMStructure(rootEl: HTMLElement): void {
       value: 'pie',
       title: 'Visualize how time is distributed across different categories.'
     },
-    text: 'Categorywise (pie)'
+    text: 'Categorywise (Pie)'
   });
   analysisTypeSelect.createEl('option', {
     attr: {
       value: 'sunburst',
       title: 'Visualize how time is distributed across different categories.'
     },
-    text: 'Categorywise (sunburst)'
+    text: 'Categorywise (Sunburst)'
   });
   analysisTypeSelect.createEl('option', {
     attr: { value: 'time-series', title: 'Visualize how time spent changes over a period.' },
-    text: 'Time-series trend'
+    text: 'Time-Series Trend'
   });
   analysisTypeSelect.createEl('option', {
     attr: { value: 'activity', title: 'Identify patterns in when tasks are typically performed.' },
-    text: 'Activity patterns'
+    text: 'Activity Patterns'
   });
 
   const pieContainer = analysisGroup.createDiv({
     cls: 'control-item hidden-controls',
     attr: { id: 'pieBreakdownLevelContainer' }
   });
-  pieContainer.createEl('label', { attr: { for: 'levelSelect_pie' }, text: 'Breakdown level' });
+  pieContainer.createEl('label', { attr: { for: 'levelSelect_pie' }, text: '📈 Breakdown Level' });
   const pieSelect = pieContainer.createEl('select', { attr: { id: 'levelSelect_pie' } });
   pieSelect.createEl('option', { attr: { value: 'hierarchy' }, text: 'Hierarchy' });
   pieSelect.createEl('option', { attr: { value: 'project' }, text: 'Project' });
@@ -176,15 +179,15 @@ export function createDOMStructure(rootEl: HTMLElement): void {
     cls: 'control-item hidden-controls',
     attr: { id: 'sunburstBreakdownLevelContainer' }
   });
-  sunburstContainer.createEl('label', { attr: { for: 'levelSelect' }, text: 'Breakdown level' });
+  sunburstContainer.createEl('label', { attr: { for: 'levelSelect' }, text: '📈 Breakdown Level' });
   const sunburstSelect = sunburstContainer.createEl('select', { attr: { id: 'levelSelect' } });
   sunburstSelect.createEl('option', {
     attr: { value: 'project' },
-    text: 'Projects by hierarchy'
+    text: 'Projects by Hierarchy'
   });
   sunburstSelect.createEl('option', {
     attr: { value: 'subproject' },
-    text: 'Sub-projects by project'
+    text: 'Sub-projects by Project'
   });
 
   const timeSeriesGranularityContainer = analysisGroup.createDiv({
@@ -193,7 +196,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   timeSeriesGranularityContainer.createEl('label', {
     attr: { for: 'timeSeriesGranularitySelect' },
-    text: 'Granularity'
+    text: '🕒 Granularity'
   });
   const timeSeriesGranularitySelect = timeSeriesGranularityContainer.createEl('select', {
     attr: { id: 'timeSeriesGranularitySelect' }
@@ -208,15 +211,15 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   timeSeriesTypeContainer.createEl('label', {
     attr: { for: 'timeSeriesTypeSelect' },
-    text: 'Chart type'
+    text: '📊 Chart Type'
   });
   const timeSeriesTypeSelect = timeSeriesTypeContainer.createEl('select', {
     attr: { id: 'timeSeriesTypeSelect' }
   });
-  timeSeriesTypeSelect.createEl('option', { attr: { value: 'line' }, text: 'Overall trend' });
+  timeSeriesTypeSelect.createEl('option', { attr: { value: 'line' }, text: 'Overall Trend' });
   timeSeriesTypeSelect.createEl('option', {
     attr: { value: 'stackedArea' },
-    text: 'Stacked by category'
+    text: 'Stacked by Category'
   });
 
   const timeSeriesStackingLevelContainer = analysisGroup.createDiv({
@@ -225,7 +228,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   timeSeriesStackingLevelContainer.createEl('label', {
     attr: { for: 'timeSeriesStackingLevelSelect' },
-    text: 'Stack by'
+    text: '📚 Stack By'
   });
   const timeSeriesStackingLevelSelect = timeSeriesStackingLevelContainer.createEl('select', {
     attr: { id: 'timeSeriesStackingLevelSelect' }
@@ -246,7 +249,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   activityPatternContainer.createEl('label', {
     attr: { for: 'activityPatternTypeSelect' },
-    text: 'Analyze by'
+    text: '📅 Analyze by'
   });
   const activityPatternTypeSelect = activityPatternContainer.createEl('select', {
     attr: { id: 'activityPatternTypeSelect' }
@@ -256,7 +259,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
       value: 'dayOfWeek',
       title: 'Displays a bar chart showing the total hours spent on each day of the week.'
     },
-    text: 'Day of week'
+    text: 'Day of Week'
   });
   activityPatternTypeSelect.createEl('option', {
     attr: {
@@ -264,7 +267,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
       title:
         'Displays a bar chart showing the total hours associated with tasks that start in each hour of the day.'
     },
-    text: 'Hour of day (task start)'
+    text: 'Hour of Day (Task Start)'
   });
   activityPatternTypeSelect.createEl('option', {
     attr: {
@@ -272,7 +275,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
       title:
         'Displays a heatmap where rows are days of the week, columns are hours of the day, and the color intensity of each cell represents the total hours for tasks starting at that specific day/hour combination.'
     },
-    text: 'Heatmap (day vs hour)'
+    text: 'Heatmap (Day vs Hour)'
   });
 
   const dashboardLayout = container.createDiv({ cls: 'dashboard-layout-container' });
@@ -282,11 +285,11 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   const totalHoursCard = statsGrid.createDiv({ cls: 'stat-card' });
   totalHoursCard.createDiv({ cls: 'stat-value', attr: { id: 'totalHours' }, text: '0' });
-  totalHoursCard.createDiv({ cls: 'stat-label', text: 'Total hours (filtered)' });
+  totalHoursCard.createDiv({ cls: 'stat-label', text: 'Total Hours (Filtered)' });
 
   const totalFilesCard = statsGrid.createDiv({ cls: 'stat-card' });
   totalFilesCard.createDiv({ cls: 'stat-value', attr: { id: 'totalFiles' }, text: '0' });
-  totalFilesCard.createDiv({ cls: 'stat-label', text: 'Files in filter' });
+  totalFilesCard.createDiv({ cls: 'stat-label', text: 'Files in Filter' });
 
   const analysisTypeCard = statsGrid.createDiv({ cls: 'stat-card' });
   analysisTypeCard.createDiv({
@@ -294,7 +297,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
     attr: { id: 'currentAnalysisTypeStat' },
     text: 'N/A'
   });
-  analysisTypeCard.createDiv({ cls: 'stat-label', text: 'Active analysis' });
+  analysisTypeCard.createDiv({ cls: 'stat-label', text: 'Active Analysis' });
 
   const mainChartContainer = dashboardLayout.createDiv({
     cls: 'main-chart-container hidden-controls',
@@ -306,7 +309,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
     cls: 'log-container hidden-controls',
     attr: { id: 'errorLogContainer' }
   });
-  logContainer.createEl('h2', { text: 'Processing log & issues' });
+  logContainer.createEl('h2', { text: '📋 Processing Log & Issues' });
   logContainer.createDiv({
     cls: 'log-summary hidden-controls',
     attr: { id: 'cacheStatusDisplay' }
@@ -324,7 +327,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   popupHeader.createEl('h2', {
     cls: 'popup-title',
     attr: { id: 'popupTitle' },
-    text: 'Category details'
+    text: 'Category Details'
   });
   popupHeader.createEl('button', {
     cls: 'close-btn',
@@ -341,9 +344,9 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   const tableHead = detailTable.createEl('thead');
   const tableHeaderRow = tableHead.createEl('tr');
   tableHeaderRow.createEl('th', { text: 'Project' });
-  tableHeaderRow.createEl('th', { text: 'Sub-project (full)' });
+  tableHeaderRow.createEl('th', { text: 'Sub-project (Full)' });
   tableHeaderRow.createEl('th', { text: 'Duration (hrs)' });
   tableHeaderRow.createEl('th', { text: 'Date' });
-  tableHeaderRow.createEl('th', { text: 'File path' });
+  tableHeaderRow.createEl('th', { text: 'File Path' });
   detailTable.createEl('tbody', { attr: { id: 'popupTableBody' } });
 }

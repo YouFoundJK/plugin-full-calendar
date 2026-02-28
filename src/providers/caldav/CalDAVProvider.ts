@@ -163,7 +163,7 @@ async function fetchCalendarObjects(
       if (authHeader) {
         getHeaders['Authorization'] = authHeader;
       }
-      console.debug(`[CalDAV] Fetching individual event from ${getUrl}`);
+
       return obsidianFetch(getUrl, { method: 'GET', headers: getHeaders }).then(res => res.text());
     });
 
@@ -210,6 +210,7 @@ const CalDAVSettingRow: React.FC<{ source: Partial<import('../../types').Calenda
 };
 
 type CalDAVConfigProps = {
+  plugin: FullCalendarPlugin;
   config: Partial<CalDAVProviderConfig>;
   onConfigChange: (newConfig: Partial<CalDAVProviderConfig>) => void;
   context: ProviderConfigContext;
@@ -255,7 +256,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
     return event.uid ? { persistentId: event.uid } : null;
   }
 
-  async getEvents(): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
     // Validate collection URL using PROPFIND instead of regex
     const isValid = await checkCalendarResourceType(this.source.homeUrl, {
       username: this.source.username,

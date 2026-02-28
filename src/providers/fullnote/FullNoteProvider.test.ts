@@ -1,5 +1,7 @@
 import { TFile, normalizePath } from 'obsidian';
 import { load } from 'js-yaml'; // Import 'load' from js-yaml
+import { DateTime } from 'luxon';
+import { EventApi } from '@fullcalendar/core';
 
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { MockApp, MockAppBuilder } from '../../../test_helpers/AppBuilder';
@@ -50,6 +52,27 @@ jest.mock(
       TFile,
       TFolder,
       Notice: class {},
+      Modal: class {},
+      PluginSettingTab: class {},
+      Setting: class {
+        setName() {
+          return this;
+        }
+        setDesc() {
+          return this;
+        }
+        addDropdown() {
+          return this;
+        }
+        addToggle() {
+          return this;
+        }
+        addText() {
+          return this;
+        }
+      },
+      Plugin: class {},
+      App: class {},
       // Use the imported 'load' function as our mock implementation
       parseYaml: (s: string) => load(s)
     };
@@ -349,5 +372,125 @@ describe('FullNoteCalendar Tests', () => {
 
     // This expectation should FAIL currently because it will be [object Object]
     expect(content).toContain('repeatOn: {"week":2,"weekday":0}');
+  });
+
+  it('correctly reads and writes on exact DST boundaries', async () => {
+    // Berlin DST transition: March 31, 2024 at 02:00 -> 03:00
+    const filename = '2024-03-31 Berlin DST Event.md';
+    const initialEvent = {
+      title: 'Berlin DST Event',
+      allDay: false,
+      date: '2024-03-31',
+      startTime: '10:00',
+      endTime: '11:00',
+      timezone: 'Europe/Berlin'
+    };
+
+    const obsidian = makeApp(
+      MockAppBuilder.make()
+        .folder(
+          new MockAppBuilder('events').file(filename, new FileBuilder().frontmatter(initialEvent))
+        )
+        .done()
+    );
+
+    const calendar = new FullNoteProvider(
+      { directory: dirName, id: 'local_1' },
+      makePlugin({ enableAdvancedCategorization: false }),
+      obsidian
+    );
+
+    // Read test
+    const events = await calendar.getEvents();
+    expect(events.length).toBe(1);
+    const parsedEvent = events[0][0];
+    expect(parsedEvent).toHaveProperty('startTime', '10:00');
+    expect(parsedEvent.timezone).toBe('Europe/Berlin');
+
+    // Write test mimicking a time shift on the DST day
+    const updatedEvent = {
+      ...parsedEvent,
+      startTime: '14:00',
+      endTime: '15:00'
+    };
+
+    const handle = calendar.getEventHandle(parsedEvent);
+    await calendar.updateEvent(handle!, parsedEvent, updatedEvent as OFCEvent);
+
+    const mockObsidian = obsidian as unknown as MockObsidian;
+    const mockRewrite = mockObsidian.rewrite;
+    const [, rewriteCallback] = mockRewrite.mock.calls[0] as [string, (content: string) => string];
+    const newContent = rewriteCallback('');
+
+    expect(newContent).toContain('startTime: 14:00');
+    expect(newContent).toContain('timezone: Europe/Berlin');
+  });
+
+  it('downstream: modifies time in display TZ but provider receives preconvertd source TZ', async () => {
+    // 1. Initial Local Provider Event in 'Europe/Berlin' Source TZ
+    const sourceZone = 'Europe/Berlin';
+
+    // 2. The User views the calendar in 'America/New_York' (Display TZ).
+    // Berlin is UTC+2 in May. NY is UTC-4 in May. A 6-hour difference.
+    // So 10:00 Berlin = 04:00 NY.
+    // User drags the event in the UI to 09:00 NY time.
+    // The UI (FullCalendar) fires an `eventDrop` with `event.start` representing 09:00 NY (which is 15:00 Berlin).
+
+    // Create a mock FullCalendar EventApi object representing the dropped state.
+    // Absolute time: 09:00 NY = 13:00 UTC = 15:00 Berlin
+    const newStartUTC = new Date(Date.UTC(2024, 4, 15, 13, 0, 0)); // Month is 0-indexed in JS Dates
+    const newEndUTC = new Date(Date.UTC(2024, 4, 15, 14, 0, 0));
+
+    const mockEventApi: Partial<EventApi> = {
+      title: 'Downstream TZ Test',
+      start: newStartUTC,
+      end: newEndUTC,
+      allDay: false,
+      extendedProps: {
+        sourceTimezone: sourceZone, // Interop layers preserve source TZ in extended props
+        uid: 'test-tz-UID-123',
+        cleanTitle: 'Downstream TZ Test'
+      }
+    };
+
+    // 3. System Interop converts FC's UI event back to an internal OFCEvent using the source TZ
+    // We explicitly mock the downstream interop extraction utilizing explicit Luxon boundaries:
+    const startLux = DateTime.fromJSDate(mockEventApi.start as Date, { zone: sourceZone });
+    const endLux = DateTime.fromJSDate(mockEventApi.end as Date, { zone: sourceZone });
+
+    const convertedEvent: Partial<OFCEvent> = {
+      title: mockEventApi.title as string,
+      allDay: false,
+      date: startLux.toISODate() as string,
+      startTime: startLux.toFormat('HH:mm'),
+      endTime: endLux.toFormat('HH:mm'),
+      timezone: sourceZone
+    };
+
+    // Assert that intermediate conversion exactly targets the source TZ, not display TZ or UTC.
+    expect(convertedEvent.startTime).toBe('15:00');
+    expect(convertedEvent.timezone).toBe(sourceZone);
+
+    // 4. Finally, verify the Local Provider natively respects and stores this converted source TZ string
+    const obsidian = makeApp(MockAppBuilder.make().done());
+    const calendar = new FullNoteProvider(
+      { directory: dirName, id: 'local_1' },
+      makePlugin(),
+      obsidian
+    );
+
+    (obsidian.create as jest.Mock).mockReturnValue({
+      path: `${dirName}/2024-05-15 Downstream TZ Test.md`
+    });
+
+    await calendar.createEvent(convertedEvent as OFCEvent);
+
+    const mockObsidian = obsidian as unknown as MockObsidian;
+    expect(mockObsidian.create).toHaveBeenCalledTimes(1);
+    const [, content] = mockObsidian.create.mock.calls[0] as [string, string];
+
+    // Assert file frontmatter commits the pure source timezone properties and localized HH:mm
+    expect(content).toContain('startTime: 15:00');
+    expect(content).toContain('timezone: Europe/Berlin');
   });
 });

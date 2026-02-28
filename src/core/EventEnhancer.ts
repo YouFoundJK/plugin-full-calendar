@@ -14,7 +14,6 @@
 import { OFCEvent } from '../types';
 import { FullCalendarSettings } from '../types/settings';
 import { constructTitle, parseTitle } from '../features/category/categoryParser';
-import { convertEvent } from '../features/Timezone';
 
 export class EventEnhancer {
   private settings: FullCalendarSettings;
@@ -54,20 +53,8 @@ export class EventEnhancer {
       };
     }
 
-    // 2. Second, perform timezone conversion for display.
-    const displayZone =
-      this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const sourceZone = rawEvent.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    if (sourceZone === displayZone) {
-      return categorizedEvent; // No conversion needed.
-    }
-
-    const convertedEvent = convertEvent(categorizedEvent, sourceZone, displayZone);
-
-    // 3. Preserve the original timezone on the event object for the write-back path.
-    // `convertEvent` doesn't modify this, so it's preserved from the original `rawEvent`.
-    return convertedEvent;
+    // Timezone conversion is no longer necessary here. We pass the event with its original coordinates.
+    return categorizedEvent;
   }
 
   /**
@@ -79,20 +66,13 @@ export class EventEnhancer {
    * @returns A new event object ready to be written to a provider.
    */
   public prepareForStorage(structuredEvent: OFCEvent): OFCEvent {
-    // 1. First, perform timezone conversion.
-    const displayZone =
-      this.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     // Determine the target timezone for storage. If the event has one, use it.
     // Otherwise, it's a floating event that should be stored in the system's local time.
     const targetZone = structuredEvent.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     let eventForStorage = { ...structuredEvent };
 
-    if (displayZone !== targetZone) {
-      eventForStorage = convertEvent(structuredEvent, displayZone, targetZone);
-    }
-
-    // After conversion, explicitly set/remove the timezone property to ensure
+    // Explicitly set/remove the timezone property to ensure
     // it is correctly serialized into the note file.
     if (!eventForStorage.allDay) {
       // For any timed event, ensure the timezone property is set to its target zone.

@@ -19,7 +19,7 @@ import { ensureCalendarIds, migrateAndSanitizeSettings } from './ui/settings/uti
 import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
 import { toEventInput } from './core/interop';
-import { manageTimezone } from './features/Timezone';
+import { manageTimezone } from './features/timezone/Timezone';
 import { Notice, Plugin, TFile, App, EventRef } from 'obsidian';
 import type { Workspace } from 'obsidian';
 import { initializeI18n, t } from './features/i18n/i18n';
@@ -386,6 +386,7 @@ export default class FullCalendarPlugin extends Plugin {
       JSON.stringify(oldSettingsObj.businessHours) !==
         JSON.stringify(newSettingsObj.businessHours) ||
       oldSettingsObj.enableAdvancedCategorization !== newSettingsObj.enableAdvancedCategorization ||
+      oldSettingsObj.displayTimezone !== newSettingsObj.displayTimezone ||
       JSON.stringify(oldSettingsObj.categorySettings) !==
         JSON.stringify(newSettingsObj.categorySettings);
 
@@ -409,7 +410,7 @@ export default class FullCalendarPlugin extends Plugin {
    * @param processor The async function to apply to each file.
    * @param description A description of the operation for the notice.
    */
-  nonBlockingProcess(
+  async nonBlockingProcess(
     files: TFile[],
     processor: (file: TFile) => Promise<void>,
     description: string
@@ -443,6 +444,5 @@ export default class FullCalendarPlugin extends Plugin {
     };
 
     processBatch();
-    return Promise.resolve();
   }
 }
