@@ -25,7 +25,10 @@ import type {
 import { Menu } from 'obsidian';
 import type { PluginDef } from '@fullcalendar/core';
 import { createDateNavigation } from '../../../../features/navigation/DateNavigation';
-import { patchRRuleTimezoneExpansion } from '../../../../features/timezone/Timezone';
+import {
+  patchRRuleTimezoneExpansion,
+  type RRulePluginLike
+} from '../../../../features/timezone/Timezone';
 
 interface ExtraRenderProps {
   eventClick?: (info: EventClickArg) => void;
@@ -89,8 +92,8 @@ export async function renderCalendar(
   // Apply RRULE monkeypatch on every render to capture the latest settings.timeZone.
   // We apply the extracted logic from Timezone.ts to safely handle DST offsets.
   {
-    const rrulePlugin =
-      (rrule as unknown as { default?: any }).default || (rrule as unknown as any);
+    const rrulePlugin = ((rrule as unknown as { default?: RRulePluginLike }).default ||
+      rrule) as unknown as RRulePluginLike;
 
     patchRRuleTimezoneExpansion(rrulePlugin, settings?.timeZone);
   }

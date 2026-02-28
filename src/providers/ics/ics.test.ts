@@ -179,20 +179,20 @@ END:VCALENDAR`;
 
     // We expect the local time components (startTime/endTime) in the OFCEvent
     // to match exactly what is in the ICS file, regardless of UTC representation
-    const e1 = events.find(e => e.uid === 'dst-transition-test-1') as any;
-    expect(e1.startTime).toBe('10:00');
+    const e1 = events.find(e => e.uid === 'dst-transition-test-1')!;
+    expect(e1).toHaveProperty('startTime', '10:00');
     expect(e1.timezone).toBe('Europe/Berlin');
 
-    const e2 = events.find(e => e.uid === 'dst-transition-test-2') as any;
-    expect(e2.startTime).toBe('10:00');
+    const e2 = events.find(e => e.uid === 'dst-transition-test-2')!;
+    expect(e2).toHaveProperty('startTime', '10:00');
     expect(e2.timezone).toBe('Europe/Berlin');
 
-    const e3 = events.find(e => e.uid === 'dst-transition-test-3') as any;
-    expect(e3.startTime).toBe('10:00');
+    const e3 = events.find(e => e.uid === 'dst-transition-test-3')!;
+    expect(e3).toHaveProperty('startTime', '10:00');
     expect(e3.timezone).toBe('Europe/Berlin');
 
-    const e4 = events.find(e => e.uid === 'dst-transition-test-4') as any;
-    expect(e4.startTime).toBe('10:00');
+    const e4 = events.find(e => e.uid === 'dst-transition-test-4')!;
+    expect(e4).toHaveProperty('startTime', '10:00');
     expect(e4.timezone).toBe('Europe/Berlin');
   });
 });

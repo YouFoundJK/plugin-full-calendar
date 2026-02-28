@@ -327,8 +327,6 @@ export function toEventInput(
 
     // Determine source and display timezones
     const sourceZone = frontmatter.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const displayZone =
-      settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     // Parse the event time in its source timezone first
     const dtstartStr = frontmatter.allDay
@@ -396,7 +394,7 @@ export function toEventInput(
     try {
       // NOTE: Even though rrule is provided, FullCalendar requires explicit timezone
       // and base start fields on the EventInput itself for some edge cases.
-      (baseEvent as any).timeZone = sourceZone;
+      baseEvent.timeZone = sourceZone;
     } catch (e) {
       console.warn('FC explicit timeZone EventInput assignment failed', e);
     }

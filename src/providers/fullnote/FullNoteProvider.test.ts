@@ -403,8 +403,8 @@ describe('FullNoteCalendar Tests', () => {
     // Read test
     const events = await calendar.getEvents();
     expect(events.length).toBe(1);
-    const parsedEvent = events[0][0] as any;
-    expect(parsedEvent.startTime).toBe('10:00');
+    const parsedEvent = events[0][0];
+    expect(parsedEvent).toHaveProperty('startTime', '10:00');
     expect(parsedEvent.timezone).toBe('Europe/Berlin');
 
     // Write test mimicking a time shift on the DST day
@@ -414,8 +414,8 @@ describe('FullNoteCalendar Tests', () => {
       endTime: '15:00'
     };
 
-    const handle = calendar.getEventHandle(parsedEvent as OFCEvent);
-    await calendar.updateEvent(handle!, parsedEvent as OFCEvent, updatedEvent as OFCEvent);
+    const handle = calendar.getEventHandle(parsedEvent);
+    await calendar.updateEvent(handle!, parsedEvent, updatedEvent as OFCEvent);
 
     const mockObsidian = obsidian as unknown as MockObsidian;
     const mockRewrite = mockObsidian.rewrite;
@@ -429,14 +429,6 @@ describe('FullNoteCalendar Tests', () => {
   it('downstream: modifies time in display TZ but provider receives preconvertd source TZ', async () => {
     // 1. Initial Local Provider Event in 'Europe/Berlin' Source TZ
     const sourceZone = 'Europe/Berlin';
-    const initialEvent: Partial<OFCEvent> = {
-      title: 'Downstream TZ Test',
-      allDay: false,
-      date: '2024-05-15',
-      startTime: '10:00',
-      endTime: '11:00',
-      timezone: sourceZone
-    };
 
     // 2. The User views the calendar in 'America/New_York' (Display TZ).
     // Berlin is UTC+2 in May. NY is UTC-4 in May. A 6-hour difference.
@@ -466,7 +458,7 @@ describe('FullNoteCalendar Tests', () => {
     const startLux = DateTime.fromJSDate(mockEventApi.start as Date, { zone: sourceZone });
     const endLux = DateTime.fromJSDate(mockEventApi.end as Date, { zone: sourceZone });
 
-    const convertedEvent: any = {
+    const convertedEvent: Partial<OFCEvent> = {
       title: mockEventApi.title as string,
       allDay: false,
       date: startLux.toISODate() as string,
@@ -491,7 +483,7 @@ describe('FullNoteCalendar Tests', () => {
       path: `${dirName}/2024-05-15 Downstream TZ Test.md`
     });
 
-    await calendar.createEvent(convertedEvent);
+    await calendar.createEvent(convertedEvent as OFCEvent);
 
     const mockObsidian = obsidian as unknown as MockObsidian;
     expect(mockObsidian.create).toHaveBeenCalledTimes(1);

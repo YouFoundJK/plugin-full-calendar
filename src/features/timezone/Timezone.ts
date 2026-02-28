@@ -22,12 +22,29 @@ import ical from 'ical.js';
 import FullCalendarPlugin from '../../main';
 import { t } from '../i18n/i18n';
 
+/** Signature for the rrule expand function used by FullCalendar's rrule plugin. */
+type RRuleExpandFn = (
+  this: unknown,
+  errd: RRuleExpandData,
+  fr: RRuleFrameRange,
+  de: RRuleDateEnvLike
+) => Date[];
+
+/**
+ * Internal shape of the rruleSet object, exposing the private `_dtstart`
+ * property that FullCalendar's rrule plugin uses internally.
+ */
+interface RRuleSetInternal extends RRuleSetLike {
+  _dtstart?: Date;
+}
+
 // Store the truly-original rrule expand function so we never wrap our own patch.
-let _originalRRuleExpand: any = null;
+let _originalRRuleExpand: RRuleExpandFn | null = null;
 
 // Minimal shape for the rrule plugin we monkeypatch.
 export interface RRuleDateEnvLike {
   toDate: (input: Date | string | number) => Date;
+  createMarker: (input: Date | string | number) => Date;
 }
 
 export interface RRuleFrameRange {
@@ -44,7 +61,7 @@ export interface RRuleExpandData {
 }
 
 export interface RRulePluginLike {
-  recurringTypes: { expand: any }[];
+  recurringTypes: { expand: RRuleExpandFn }[];
 }
 
 /**
@@ -307,13 +324,14 @@ export function parseTimezoneAwareString(t: ical.Time): DateTime {
  * display timezone combinations (DST and non-DST alike).
  */
 export function patchRRuleTimezoneExpansion(
-  rrulePlugin: any,
+  rrulePlugin: RRulePluginLike,
   settingsTimeZone: string | undefined | null
 ) {
   // Save the truly original expand function ONCE
   if (!_originalRRuleExpand) {
     _originalRRuleExpand = rrulePlugin.recurringTypes[0].expand;
   }
+  // Non-null assertion safe: assigned above if was null
   const trueOriginalExpand = _originalRRuleExpand;
 
   rrulePlugin.recurringTypes[0].expand = function (
@@ -336,8 +354,7 @@ export function patchRRuleTimezoneExpansion(
         // d.getFullYear/Month/Date (browser-local fields) give the correct calendar date
         // because rrule aligns recurrences to local days and the browser<->event timezone
         // difference is small enough not to shift the date.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const rruleObj = errd.rruleSet as any;
+        const rruleObj = errd.rruleSet as RRuleSetInternal;
         const baseHour = rruleObj._dtstart ? rruleObj._dtstart.getUTCHours() : d.getUTCHours();
         const baseMinute = rruleObj._dtstart
           ? rruleObj._dtstart.getUTCMinutes()
@@ -369,8 +386,7 @@ export function patchRRuleTimezoneExpansion(
         // This is the same path that non-recurring events take, ensuring
         // correctness for all display timezone combinations.
         const trueUtcMs = sourceDt.toMillis();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const marker = (de as any).createMarker(new Date(trueUtcMs));
+        const marker = de.createMarker(new Date(trueUtcMs));
 
         return marker;
       });

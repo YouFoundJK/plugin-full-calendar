@@ -307,7 +307,9 @@ describe('interop toEventInput tests', () => {
       const result = toEventInput('src-tz-id', event, baseSettings);
 
       expect(result).not.toBeNull();
-      expect((result!.extendedProps as any).sourceTimezone).toBe('Europe/Bucharest');
+      expect((result!.extendedProps as Record<string, unknown>).sourceTimezone).toBe(
+        'Europe/Bucharest'
+      );
     });
   });
 
