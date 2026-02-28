@@ -2,18 +2,62 @@
 
 This page provides a detailed breakdown of every version of the Full Calendar plugin, including new features, improvements, and bugfixes.
 
-
-
-## Version 0.12.7
+## Version 0.12.7.1
 
 ### New Features
 
--   **Local ICS Support**
+-   **Asynchronous Event Discovery Pipeline**  
+    _The core synchronization engine has been rewritten to eliminate UI freezes and dramatically improve load performance._
+    -   Re-architected `ProviderRegistry` remote discovery into a true Stage 1 → Stage 2 pipeline.
+    -   Stage 2 for each provider now begins immediately after its own Stage 1 completes, removing the previous global Promise barrier.
+    -   Enables background pipelining and significantly reduces perceived startup time.
+
+### Improvements & Fixes
+
+-   **Local Provider Concurrency**  
+    _Improved I/O throughput and removed unnecessary blocking during startup._
+    -   Parallelized Local Provider Stage 1 reads using `Promise.all` instead of sequential `for..of` iteration.
+    -   Prevents main-thread stalls during large vault scans.
+
+-   **EventCache Optimization**  
+    _Removed expensive diffing operations that caused major slowdowns on large datasets._
+    -   Eliminated O(N) `JSON.stringify` comparisons in `EventCache.syncCalendar` when cache size changes significantly (e.g., Stage 2 replacing Stage 1 data).
+    -   Added short-circuit invalidation logic to bypass redundant comparisons.
+
+-   **Selective UI Reconciliation**  
+    _Replaced full calendar teardown cycles with targeted updates._
+    -   Updated `EventCache` and `CalendarView` flush callbacks to accept an `affectedCalendars` array.
+    -   Replaced `removeAllEventSources()` with selective `removeEventSource` / `addEventSource` operations for dirty calendars only.
+    -   Fully resolves prior 1–3 second UI freezes during large refreshes.
+
+-   **DailyNoteProvider Algorithm Fix**  
+    _Eliminated a critical O(N²) bottleneck in event resolution._
+    -   Removed full Vault Daily Note cache iteration from `getEventHandle`.
+    -   Events now resolve purely by date string.
+    -   `ProviderRegistry` securely injects authoritative `location.path` metadata before write/delete operations.
+
+-   **Performance Audit Results**  
+    _Benchmark run on 1000+ Daily Note events and 69 Google Calendar events._
+    -   Daily Note Stage 1: 1209.1ms → 110.8ms (~11x faster)
+    -   Daily Note Stage 2: 2839.4ms → 143.3ms (~20x faster)
+    -   Remote Stage timings remain steady while now starting earlier in the pipeline.
+    -   Total two-stage discovery: 4880.9ms → 908.9ms (>5x faster overall)
+    -   Complete elimination of observable main-thread UI freezing on load.
+
+-   **Linting & Type Safety**  
+    _Strengthened long-term maintainability and compliance._
+    -   Enforced ESLint rules for UI string formatting consistency.
+    -   Improved TypeScript type safety across core components.
+    -   Refactored related modules to align with stricter linting and safer type contracts.
+
+---
+
+## Version 0.12.7
+
+-   **Local ICS Support**  
     _You can now view `.ics` files stored directly in your Obsidian vault!_
     -   Added a mode toggle for standard Web URLs versus Vault relative files.
     -   Extended provider interfaces to safely support the `app.vault` API.
-
-### Improvements & Fixes
 
 -   **Timezone & DST Hardening** (#194)  
     _The timezone pipeline has been modularized and significantly hardened for recurring events crossing Daylight Saving Time boundaries._
@@ -22,12 +66,12 @@ This page provides a detailed breakdown of every version of the Full Calendar pl
     -   Restored dynamic display timezone toggles.
     -   Fixed missing DTSTART/EXDATE alignment in RRule passthrough.
 
--   **Staged Loading Architecture** 
+-   **Staged Loading Architecture**  
     _Dramatic startup performance and UI responsiveness improvements._
     -   Providers now load events in two stages: Stage 1 quickly fetches a 3-month window surrounding the current date, while Stage 2 quietly loads the full history in the background.
     -   Eliminates UI locking when CalDAV or Google APIs stall or time out on huge event caches.
 
--   **Linting & Code Quality**
+-   **Linting & Code Quality**  
     _The codebase has been migrated to standard `eslint.config.mjs` and native `eslint-plugin-obsidianmd`._
     -   Refactored 80+ warnings across 18 core files.
     -   Eliminated thousands of unsafe `any` usages and tightened type safety for caching and Google Auth.

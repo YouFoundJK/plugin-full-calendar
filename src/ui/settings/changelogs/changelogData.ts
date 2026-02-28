@@ -14,7 +14,7 @@ export interface Version {
 // Add new versions to the TOP of this array.
 export const changelogData: Version[] = [
   {
-    version: '0.12.7',
+    version: '0.12.7.1',
     changes: [
       {
         type: 'new',
@@ -29,9 +29,9 @@ export const changelogData: Version[] = [
       },
       {
         type: 'improvement',
-        title: 'Staged Loading Architecture',
+        title: 'Staged Loading Architecture viz v0.12.7.1',
         description:
-          'Dramatic startup performance improvements. Providers now quickly load a 3-month window surrounding the current date first, then quietly load your full calendar history in the background.'
+          'Dramatic startup performance improvements (5x in [selective audit](https://youfoundjk.github.io/plugin-full-calendar/changelog/#version-01271)). Providers now quickly load a 3-month window surrounding the current date first, then quietly load your full calendar history in the background.'
       },
       {
         type: 'improvement',
