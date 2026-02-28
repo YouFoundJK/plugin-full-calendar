@@ -31,7 +31,7 @@ type CategoryProvider = (file: TFile) => string | undefined;
 /**
  * Gathers all TFile objects from local and daily note calendar sources.
  */
-async function getFilesToProcess(plugin: FullCalendarPlugin): Promise<TFile[]> {
+function getFilesToProcess(plugin: FullCalendarPlugin): TFile[] {
   const files = new Set<TFile>();
 
   // 1. Get files from 'local' (Full Note) providers
@@ -94,7 +94,7 @@ export async function bulkUpdateCategories(
   };
 
   const force = choice !== 'smart';
-  const files = await getFilesToProcess(plugin);
+  const files = getFilesToProcess(plugin);
   if (files.length === 0) {
     new Notice(t('notices.bulkCategorization.noNotesFound'));
     return;
@@ -200,7 +200,7 @@ export async function bulkRemoveCategories(plugin: FullCalendarPlugin): Promise<
   const knownCategories = new Set<string>(
     plugin.settings.categorySettings.map((s: { name: string }) => s.name)
   );
-  const files = await getFilesToProcess(plugin);
+  const files = getFilesToProcess(plugin);
   if (files.length === 0) {
     new Notice(t('notices.bulkDecategorization.noNotesFound'));
     return;
