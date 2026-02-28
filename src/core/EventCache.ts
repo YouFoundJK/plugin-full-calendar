@@ -200,32 +200,21 @@ export default class EventCache {
    * Populate the cache with events from all sources.
    */
   async populate(): Promise<void> {
-    const tStart = performance.now();
-    console.debug(`[Profiler] EventCache.populate: Started`);
     await this.plugin.providerRegistry.fetchAllByPriority(
       (calendarId, eventsForSync) => {
-        const cStart = performance.now();
         this.syncCalendar(calendarId, eventsForSync);
-        console.debug(
-          `[Profiler] EventCache.populate.onProviderComplete(${calendarId}): Processed in ${performance.now() - cStart}ms`
-        );
       },
       () => {
         // This callback runs when STAGE 1 is complete.
         // We can trigger an initial sync/render here.
         void (async () => {
-          const cStart = performance.now();
           this.initialized = true;
           this.plugin.providerRegistry.buildMap(this._store);
           this.resync();
           await this.timeEngine.start();
-          console.debug(
-            `[Profiler] EventCache.populate.onAllComplete: Initial sync/render triggered in ${performance.now() - cStart}ms`
-          );
         })();
       }
     );
-    console.debug(`[Profiler] EventCache.populate: Finished in ${performance.now() - tStart}ms`);
     // No need to add localEvents manually anymore; fetchAllByPriority handles it via the callback/processResults.
   }
 

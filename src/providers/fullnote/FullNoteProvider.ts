@@ -178,10 +178,10 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return !!directory && file.path.startsWith(directory + '/');
   }
 
-  public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
+  public getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
     const metadata = this.app.getMetadata(file);
     if (!metadata?.frontmatter) {
-      return [];
+      return Promise.resolve([]);
     }
 
     const rawEventData = {
@@ -191,14 +191,14 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
     const event = validateEvent(rawEventData);
     if (!event) {
-      return [];
+      return Promise.resolve([]);
     }
 
     // Populate UID from the file path.
     event.uid = file.path;
 
     // The raw event is returned as-is. The EventEnhancer will handle timezone conversion.
-    return [[event, { file, lineNumber: undefined }]];
+    return Promise.resolve([[event, { file, lineNumber: undefined }]]);
   }
 
   async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
