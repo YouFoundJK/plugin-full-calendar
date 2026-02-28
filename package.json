@@ -1,6 +1,6 @@
 {
-    "name": "full-calendar-remasteredr",
-    "version": "0.12.6",
+    "name": "full-calendar-remastered",
+    "version": "0.12.7",
     "description": "Obsidian integration with Full Calendar (fullcalendar.io)",
     "main": "main.js",
     "scripts": {
@@ -23,8 +23,8 @@
     "keywords": [],
     "author": {
         "name": "Jovi Koikkara | Davis Haupt",
-        "email": "contact@davishaupt.com",
-        "url": "https://davi.sh"
+        "email": "jovikoikkara@destyleer.in.net",
+        "url": "https://github.com/YouFoundJK"
     },
     "license": "MIT",
     "devDependencies": {

@@ -4,11 +4,43 @@ This page provides a detailed breakdown of every version of the Full Calendar pl
 
 
 
+## Version 0.12.7
+
+### New Features
+
+-   **Local ICS Support**
+    _You can now view `.ics` files stored directly in your Obsidian vault!_
+    -   Added a mode toggle for standard Web URLs versus Vault relative files.
+    -   Extended provider interfaces to safely support the `app.vault` API.
+
+### Improvements & Fixes
+
+-   **Timezone & DST Hardening** (#194)  
+    _The timezone pipeline has been modularized and significantly hardened for recurring events crossing Daylight Saving Time boundaries._
+    -   Removed `luxon` entirely in favor of native and internal logic.
+    -   Corrected floating time expansion, EU/US DST transitions, and half-hour/45-min offset zones.
+    -   Restored dynamic display timezone toggles.
+    -   Fixed missing DTSTART/EXDATE alignment in RRule passthrough.
+
+-   **Staged Loading Architecture** 
+    _Dramatic startup performance and UI responsiveness improvements._
+    -   Providers now load events in two stages: Stage 1 quickly fetches a 3-month window surrounding the current date, while Stage 2 quietly loads the full history in the background.
+    -   Eliminates UI locking when CalDAV or Google APIs stall or time out on huge event caches.
+
+-   **Linting & Code Quality**
+    _The codebase has been migrated to standard `eslint.config.mjs` and native `eslint-plugin-obsidianmd`._
+    -   Refactored 80+ warnings across 18 core files.
+    -   Eliminated thousands of unsafe `any` usages and tightened type safety for caching and Google Auth.
+    -   Safeguarded tests with mocked vaults and standard JS generic mocks.
+
+-   **General UI Fixes** (#169, #191, #214, #218)  
+    _Fixed LiveSync header injections by targeting `contentEl`, improved mobile responsiveness across fullcalendar views, improved edit modal error namespace, and added proper API error handling for HTTP POST timeouts._
+
+---
+
 ## Version 0.12.6
 
 Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.com/mivanit) for the incredible contributions in this release!
-
-### New Features
 
 -   **Full CalDAV Two-Way Sync** (#205)  
     _CalDAV calendars are no longer read-only! You can now create, edit, and delete events directly in Obsidian, and changes will sync back to your CalDAV server._
@@ -24,8 +56,6 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 -   **Rich Read-Only Modal** (#205)  
     _The event details modal for read-only events has been upgraded to show rich information including descriptions, attendees, and more, matching the editing experience._
-
-### Improvements & Fixes
 
 -   **ICS Parsing & Date Validation** (#199, #203)  
     _Major hardening of the ICS parser for better compatibility and stability:_

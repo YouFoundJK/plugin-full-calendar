@@ -2,11 +2,11 @@
 
 Keep your calendar in your vault! This plugin integrates the [FullCalendar.io](https://fullcalendar.io/) library into your Obsidian Vault. Keep your schedule, events, and plans alongside your tasks and notes, and link freely between them.
 
-With Full Calendar, you can connect to local note-based calendars, your daily notes, and even remote sources like Google Calendar, iCloud, and Fastmail. The latest version 0.12.2 introduces **[event reminders with desktop notifications](whats_new.md#-event-reminder-system)**, **[multi-account Google Calendar support](whats_new.md#-multi-account-google-calendar)**, and **[lightning-fast performance improvements](whats_new.md#-lightning-fast-performance)** with lazy loading and event-driven architecture.
+With Full Calendar, you can connect to [local note-based calendars](calendars/local.md), your [daily notes](calendars/dailynote.md), remote sources like [Google Calendar](calendars/gcal.md) with two-way sync, [CalDAV providers](calendars/caldav.md) (iCloud, Fastmail), local or remote [`.ics` files](calendars/ics.md), and even your [Obsidian Tasks](calendars/tasks-plugin-integration.md).
 
-The latest versions introduces **multi-language support** (the UI adapts to your Obsidian language, and developers can contribute new translations via the [i18n documentation](features/i18n.md)), and a **refactored provider architecture** (making calendar sources easier to extend, more reliable, and with improved CalDAV support).
+The latest version 0.12.7 introduces **[Local ICS Support](calendars/ics.md)**, a dramatically improved **Staged Loading Architecture** for lightning-fast startup, and completely rewritten **[Timezone & DST Hardening](events/timezones.md)** to ensure accurate events everywhere.
 
-Previous releases brought powerful **[Advanced Categories system](events/categories.md)** for coloring and organization, a reimagined **[recurring event engine](events/recurring.md)**, **[Calendar Workspaces](whats_new.md#-calendar-workspaces)** for quick setup switching, and the **[Chrono Analyser dashboard](chrono_analyser/introduction.md)** for time-based insights.
+Recent major releases have brought incredible features like **[Full CalDAV Two-Way Sync](calendars/caldav.md)**, **[Mobile Workspaces & Monthly Views](views/workspaces.md)**, **[Multi-Language (i18n) Support](features/i18n.md)**, a deeply integrated **[Tasks Provider](calendars/tasks-plugin-integration.md)** with drag-and-drop backlog, and powerful additions like the **[Chrono Analyser dashboard](chrono_analyser/introduction.md)** and **[Advanced Categories system](events/categories.md)**.
 
 
 This documentation site will guide you through setup and advanced features. If something is unclear, don't hesitate to [submit an issue on GitHub](https://github.com/YouFoundJK/plugin-full-calendar/issues).
