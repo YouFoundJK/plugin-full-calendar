@@ -116,15 +116,14 @@ const makeCache = (events: OFCEvent[]) => {
       fetchAllByPriority: (
         onProviderComplete?: (
           calendarId: string,
-          events: { event: OFCEvent; location: EventLocation | null }[]
+          events: [OFCEvent, EventLocation | null][]
         ) => void,
         onAllComplete?: () => void
       ) => {
         // Return local events via callback
-        const localEvents = events.map(e => ({
-          event: e,
-          location: null as EventLocation | null
-        }));
+        const localEvents = events.map(
+          e => [e, null as EventLocation | null] as [OFCEvent, EventLocation | null]
+        );
         if (onProviderComplete) {
           onProviderComplete('test', localEvents);
         }
@@ -232,20 +231,18 @@ describe('event cache with readonly calendar', () => {
         fetchAllByPriority: (
           onProviderComplete?: (
             calendarId: string,
-            events: { event: OFCEvent; location: EventLocation | null }[]
+            events: [OFCEvent, EventLocation | null][]
           ) => void,
           onAllComplete?: () => void
         ) => {
           // Return local events via callback
 
-          const localResults1 = events1.map(e => ({
-            event: e,
-            location: null as EventLocation | null
-          }));
-          const localResults2 = events2.map(e => ({
-            event: e,
-            location: null as EventLocation | null
-          }));
+          const localResults1 = events1.map(
+            e => [e, null as EventLocation | null] as [OFCEvent, EventLocation | null]
+          );
+          const localResults2 = events2.map(
+            e => [e, null as EventLocation | null] as [OFCEvent, EventLocation | null]
+          );
 
           if (onProviderComplete) {
             onProviderComplete('cal1', localResults1);
@@ -385,15 +382,14 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
       fetchAllByPriority: (
         onProviderComplete?: (
           calendarId: string,
-          events: { event: OFCEvent; location: EventLocation | null }[]
+          events: [OFCEvent, EventLocation | null][]
         ) => void,
         onAllComplete?: () => void
       ) => {
         // Return local events via callback
-        const localResults = events.map(([event, location]) => ({
-          event,
-          location
-        }));
+        const localResults = events.map(
+          ([event, location]) => [event, location] as [OFCEvent, EventLocation | null]
+        );
 
         if (onProviderComplete) {
           onProviderComplete('test', localResults);
@@ -883,7 +879,7 @@ describe('editable calendars', () => {
           fetchAllByPriority: async (
             onProviderComplete?: (
               calId: string,
-              events: { event: OFCEvent; location: EventLocation | null }[]
+              events: [OFCEvent, EventLocation | null][]
             ) => void,
             onAllComplete?: () => void
           ) => {
@@ -892,7 +888,7 @@ describe('editable calendars', () => {
             if (onProviderComplete) {
               onProviderComplete(
                 'local1',
-                localEvents.map(([e, l]) => ({ event: e, location: l }))
+                localEvents.map(([e, l]) => [e, l] as [OFCEvent, EventLocation | null])
               );
             }
             // 2. Local Complete Callback (Stage 1 Complete)
@@ -907,7 +903,7 @@ describe('editable calendars', () => {
               if (onProviderComplete) {
                 onProviderComplete(
                   'remote1',
-                  remoteEvents.map(([e, l]) => ({ event: e, location: l }))
+                  remoteEvents.map(([e, l]) => [e, l] as [OFCEvent, EventLocation | null])
                 );
               }
             });

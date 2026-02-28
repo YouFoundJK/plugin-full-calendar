@@ -1009,13 +1009,34 @@ export class CalendarView extends ItemView {
         const allCachedSources = this.plugin.cache.getAllEvents();
         const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
 
-        // 3. Resync the entire calendar view.
+        // 3. Resync the entire calendar view or partially update it.
         if (this.fullCalendarView) {
           requestAnimationFrame(() => {
             // Add a final guard right before using the object to prevent race conditions.
             if (this.fullCalendarView) {
-              this.fullCalendarView.removeAllEventSources();
-              sources.forEach(source => this.fullCalendarView!.addEventSource(source));
+              if (
+                info.type === 'events' &&
+                info.affectedCalendars &&
+                info.affectedCalendars.length > 0
+              ) {
+                // Partial update: Only remove and re-add the affected calendar sources
+                info.affectedCalendars.forEach(calendarId => {
+                  const oldSource = this.fullCalendarView!.getEventSourceById(calendarId);
+                  if (oldSource) {
+                    oldSource.remove();
+                  }
+                  const newSource = sources.find(
+                    s => typeof s === 'object' && s !== null && 'id' in s && s.id === calendarId
+                  );
+                  if (newSource) {
+                    this.fullCalendarView!.addEventSource(newSource);
+                  }
+                });
+              } else {
+                // Full rebuild
+                this.fullCalendarView.removeAllEventSources();
+                sources.forEach(source => this.fullCalendarView!.addEventSource(source));
+              }
             }
           });
         }
