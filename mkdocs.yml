@@ -40,9 +40,9 @@ nav:
     - Calendar Types:
           - Full Note Calendar: calendars/local.md
           - Daily Note Calendar: calendars/dailynote.md
-          - Remote (ICS): calendars/ics.md
-          - Remote (CalDAV): calendars/caldav.md
-          - Remote (Google Calender): calendars/gcal.md
+          - ICS (Remote and Local): calendars/ics.md
+          - CalDAV: calendars/caldav.md
+          - Google Calendar: calendars/gcal.md
           - Tasks Plugin Integration: calendars/tasks-plugin-integration.md
           - Obsidian Bases Calendar: calendars/bases.md
     - Events & Features:

@@ -1,6 +1,8 @@
-[![Version](https://img.shields.io/badge/Version-v0.12.0-blue)](https://github.com/YouFoundJK/plugin-full-calendar)
+[![Version](https://img.shields.io/badge/Version-v0.12.7-blue)](https://github.com/YouFoundJK/plugin-full-calendar)
 
-# Full Calendar Plugin - Developer Documentation
+# Full Calendar Plugin - Developer Documentation v0.12.7
+> Last updated: 28 Feb 2026
+
 
 Obsidian Full Calendar's goal is to give users a robust and feature-ful calendar view into their Obsidian Vault. In addition to displaying and modifying events stored in note frontmatter and daily note bulleted lists, it can also read events from remote sources like Google Calendar, CalDAV servers, and public ICS feeds.
 
@@ -11,8 +13,9 @@ As of now, the plugin supports events from the following sources:
 *   **Local Notes**: Frontmatter of notes in the open Obsidian Vault.
 *   **Daily Notes**: Bulleted list items under a specified heading in Daily Notes.
 *   **Google Calendar**: Two-way synchronization with Google Calendar via OAuth 2.0.
-*   **CalDAV**: Read-only access to CalDAV servers (e.g., iCloud, Fastmail).
-*   **ICS**: Read-only access to public `.ics` URLs.
+*   **CalDAV**: Two-way synchronization with CalDAV servers (e.g., iCloud, Fastmail).
+*   **ICS**: Read-only access to public `.ics` URLs and local `.ics` files in the Vault.
+*   **Tasks**: Deeply integrated provider for Obsidian Tasks, supporting drag-and-drop.
 
 This document provides a comprehensive overview of the plugin's architecture, data flows, and key concepts for developers.
 
@@ -168,7 +171,7 @@ It provides a two-way pipeline for event data:
     *   **Title Construction**: Combines `category` and `title` fields back into a single string.
     *   **Timezone Conversion**: Converts the event's time from the "Display Timezone" back to its source timezone.
 
-This ensures that all logic within the plugin's core operates on a consistent, normalized `OFCEvent` object, regardless of its origin or destination.
+This logic is powered by a new dependency-free dedicated module (`features/timezone/Timezone.ts`) which completely replaces `luxon` for all Timezone conversions and DST (Daylight Saving Time) logic. This ensures that all logic within the plugin's core operates on a consistent, normalized `OFCEvent` object, regardless of its origin or destination without drifting across boundaries.
 
 ### ViewEnhancer & WorkspaceManager: The Presentation Layer
 
@@ -205,11 +208,13 @@ These classes are specialized services that encapsulate complex business logic, 
 ### Flow 1: Initial Load & Remote Sync
 
 1.  **`main.ts`**: On load, `plugin.cache.populate()` is called.
-2.  **`EventCache`**: Calls `plugin.providerRegistry.fetchAllEvents()`.
-3.  **`ProviderRegistry`**: Iterates through all instantiated providers, calling `getEvents()` on each.
-4.  **Providers**: Local providers read from the vault; remote providers make network requests. Each returns raw event data.
-5.  **`ProviderRegistry`**: As results come in, they are passed through `cache.enhancer.enhance()` for normalization. The normalized events are aggregated.
-6.  **`EventCache`**: Receives the full list of normalized events and populates its `EventStore`.
+2.  **`EventCache`**: Calls `plugin.providerRegistry.fetchAllByPriority()` to initiate the Staged Loading sequence.
+3.  **`ProviderRegistry`**: Executes loading in two stages:
+    *   **Stage 1 (Critical Range)**: Quickly fetches events from all providers within a 3-month window surrounding the current date, ensuring the UI populates instantly.
+    *   **Stage 2 (Full History)**: Quietly loads the rest of the calendar history in the background.
+4.  **Providers**: Local providers read from the vault synchronously; remote providers make network requests asynchronously. Each returns raw event data.
+5.  **`ProviderRegistry`**: As results come in during both stages, they are passed through `cache.enhancer.enhance()` for normalization.
+6.  **`EventCache`**: Receives the normalized events and populates its `EventStore`, triggering UI updates as stages complete.
 7.  **`CalendarView`**: On open, it gets the initial data from the cache via the `ViewEnhancer` and renders.
 8.  **Remote Sync**: A re-validation is triggered (e.g., on mouse-enter). The flow from step 2 is repeated for remote providers only. `EventCache` then receives the new data, diffs it with the old state in its `EventStore`, and publishes an update notification to the `CalendarView`.
 
@@ -245,7 +250,7 @@ These classes are specialized services that encapsulate complex business logic, 
 
 ### Data Normalization Pipeline
 
-The `EventEnhancer` is central to ensuring data consistency. Every event, regardless of source, goes through this pipeline:
+The `EventEnhancer` and `features/timezone/Timezone.ts` are central to ensuring data consistency. Every event, regardless of source, goes through this pipeline:
 
 `Source (File/API)` -> `Provider.getEvents()` -> `EventEnhancer.enhance()` -> `EventCache` -> `ViewEnhancer` -> `UI`
 

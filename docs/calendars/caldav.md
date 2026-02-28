@@ -25,9 +25,19 @@ If an event from your CalDAV source has a title like `Personal - Doctor's Appoin
 
 ## Apple Calendar
 
-In order to use your [iCloud Calendar](https://www.icloud.com/calendar), you'll first need to create an [app-specific password](https://support.apple.com/en-us/HT204397). Armed with that info, you can now add your private Apple Calendars.
+In order to use your [iCloud Calendar](https://www.icloud.com/calendar), you'll first need to create an [app-specific password](https://support.apple.com/en-us/HT204397). Armed with that info and the calendar specific url (given below), you can now add your private Apple Calendars.
+
+### Advanced Setup with Specific Calendar URL
+
+You can create a URL string of the format `https://p[rn]-caldav.icloud.com/[dsid]/calendars/[pGuid]` by using the developer tools (e.g., Safari Dev Tools) on a Mac while logged into your iCloud Calendar web interface to capture the network requests. More info can be found [here](https://sdoerner.de/2024/05/07/import-apple-icloud-calendars-with-caldav/).
+
+Your URL should look something like this:
+`https://p37-caldav.icloud.com/8172357017/calendars/2AC2AE2B4-94BE-4DB8-9078-C6907C5E3388`
+
 
 ![](../assets/sync-setup-caldav.gif)
+
+> Thanks to [@FlyByNite17](https://github.com/FlyByNite17) ([Issue #211](https://github.com/YouFoundJK/plugin-full-calendar/issues/211)) for the iCloud url docs.
 
 ## Fastmail
 
@@ -65,9 +75,3 @@ Under `CalDAV URL`, you can copy the URL but make sure you **only** copy up to t
 ### Flythrough
 
 ![](../assets/sync-setup-fastmail.gif)
-
-## Non-working providers
-
-There are a few providers which are not yet supported by the CalDAV sync option:
-
--   Google Calendar requires OAuth instead of HTTP basic authentication.

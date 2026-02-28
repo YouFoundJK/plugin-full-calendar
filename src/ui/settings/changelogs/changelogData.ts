@@ -14,6 +14,40 @@ export interface Version {
 // Add new versions to the TOP of this array.
 export const changelogData: Version[] = [
   {
+    version: '0.12.7',
+    changes: [
+      {
+        type: 'new',
+        title: 'Local ICS Support',
+        description: 'You can now view `.ics` files stored directly in your Obsidian vault!'
+      },
+      {
+        type: 'improvement',
+        title: 'Timezone & DST Hardening',
+        description:
+          'The timezone pipeline has been completely rewritten and hardened to properly handle recurring events crossing Daylight Saving Time boundaries, and complex EU/US transit scenarios without drifting. Removed luxon dependency.'
+      },
+      {
+        type: 'improvement',
+        title: 'Staged Loading Architecture',
+        description:
+          'Dramatic startup performance improvements. Providers now quickly load a 3-month window surrounding the current date first, then quietly load your full calendar history in the background.'
+      },
+      {
+        type: 'improvement',
+        title: 'Codebase Linting & Safety',
+        description:
+          'Migrated to ESLint 9 and native obsidianmd rules. Eliminated unsafe casting and improved the UI responsiveness by wrapping unhandled background promises.'
+      },
+      {
+        type: 'fix',
+        title: 'UI Fixes and LiveSync Compatibility',
+        description:
+          'Improved mobile responsiveness across various views. Fixed UI injection conflicts with the Self-Hosted LiveSync plugin.'
+      }
+    ]
+  },
+  {
     version: '0.12.6',
     changes: [
       {
