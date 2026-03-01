@@ -234,7 +234,7 @@ export class InsightConfigModal extends Modal {
     };
 
     // --- MIGRATION LOGIC: safely migrate legacy config ---
-    let migratedConfig = existingConfig || defaultConfig;
+    const migratedConfig = existingConfig || defaultConfig;
     if (migratedConfig && migratedConfig.insightGroups) {
       // Cast to legacy config for safe migration
       const legacyConfig = migratedConfig as unknown as LegacyInsightsConfig;

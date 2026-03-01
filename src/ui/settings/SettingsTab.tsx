@@ -79,7 +79,7 @@ export function addCalendarButton(
           const basesPlugin =
             app.internalPlugins?.getPluginById('bases') || app.plugins?.getPlugin('bases');
           if (!basesPlugin) {
-            new Notice(t('settings.calendars.notices.enableBases'));
+            new Notice(t('modals.workspace.fields.notices.enableBases'));
             return;
           }
         }

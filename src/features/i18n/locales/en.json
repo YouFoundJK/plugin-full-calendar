@@ -81,12 +81,10 @@
     "cannotOpenRemote": "Cannot open note for a remote event.",
     "bulkCategorization": {
       "noNotesFound": "No local event notes found to categorize.",
-      "progress": "Categorizing event notes: {{index}}/{{total}}",
       "complete": "Bulk categorization complete."
     },
     "bulkDecategorization": {
       "noNotesFound": "No local event notes found to de-categorize.",
-      "progress": "De-categorizing event notes: {{index}}/{{total}}",
       "complete": "Bulk de-categorization complete."
     },
     "tasks": {
@@ -102,7 +100,8 @@
     "readOnly": "Cannot add event to a read-only calendar.",
     "createFailed": "Failed to create event. Change has been reverted.",
     "deleteFailed": "Failed to delete event. Change has been reverted.",
-    "updateFailed": "Failed to update event. Change has been reverted."
+    "updateFailed": "Failed to update event. Change has been reverted.",
+    "movePartialSuccess": "Event moved successfully, but some children may not have been moved."
   },
   "recurEvents": {
     "promotingChildren": "Promoting {{count}} child event(s).",
@@ -112,7 +111,8 @@
     "preservingTiming": "Preserving modified event timing and uncompleting task.",
     "revertingControl": "Reverting control to Main Recurring event sequence.",
     "updatingChildren": "Updating {{count}} child event(s) to match new parent title.",
-    "updateError": "Error updating recurring event. Some children may not have been updated."
+    "updateError": "Error updating recurring event. Some children may not have been updated.",
+    "movingChildren": "Moving {{count}} child event(s) to the new calendar."
   },
   "ribbon": {
     "openCalendar": "Open Full Calendar"
@@ -340,7 +340,6 @@
       "copyName": "{{name}} Copy"
     },
     "quickStart": {
-      "title": "Quick Start: Add Your First Calendar",
       "description": "To begin, add a calendar source using the \"+\" button in the \"Manage calendars\" section."
     },
     "viewOptions": {
@@ -394,18 +393,14 @@
         "edit": "Edit Event"
       },
       "buttons": {
-        "openNote": "Open Note",
-        "delete": "Delete",
-        "save": "Save Event"
+        "openNote": "Open Note"
       },
       "errors": {
         "createNoCalendars": "Cannot create event: No writable calendars are available.",
         "createError": "Error when creating event: {{message}}",
-        "notFound": "Cannot edit event that doesn't exist.",
         "eventNotFound": "Event not found.",
         "detailsNotFound": "Event details not found.",
         "parentNotFound": "Could not find the parent recurring event.",
-        "moveCalendarNotSupported": "Moving events between calendars is not yet supported.",
         "updateError": "Error when updating event: {{message}}",
         "deleteError": "Error when deleting event: {{message}}"
       },
@@ -492,8 +487,7 @@
       },
       "tooltips": {
         "recurringTaskCompletion": "Completion for recurring tasks can be toggled on individual instances in the calendar view.",
-        "dailyNoteRecurring": "Recurring events are not supported in Daily Notes. Please use a 'Full Note' calendar instead.",
-        "inheritedEvent": "This event inherits from a recurring series. To edit it, first open the series note."
+        "dailyNoteRecurring": "Recurring events are not supported in Daily Notes. Please use a 'Full Note' calendar instead."
       }
     },
     "deleteRecurring": {
@@ -606,14 +600,12 @@
         },
         "slotMaxTime": {
           "label": "Latest time to display",
-          "description": "Override the latest time visible in time grid views (format: HH:mm)",
-          "placeholder": "Use global default"
+          "description": "Override the latest time visible in time grid views (format: HH:mm)"
         },
         "weekendDisplay": {
           "label": "Weekend display",
           "description": "Override whether to show weekends in the calendar",
           "options": {
-            "useDefault": "Use global default",
             "show": "Show weekends",
             "hide": "Hide weekends"
           }
@@ -622,7 +614,6 @@
           "label": "Hidden days",
           "description": "Override which days to hide from the calendar",
           "options": {
-            "useDefault": "Use global default",
             "showAll": "Show all days",
             "hideWeekends": "Hide weekends (Sun, Sat)",
             "hideSunday": "Hide Sunday",
@@ -635,7 +626,6 @@
           "label": "Max events per day (month view)",
           "description": "Override the maximum number of events to show per day in month view",
           "options": {
-            "useGlobal": "Use global default",
             "useDefault": "Use default limit",
             "noLimit": "No limit",
             "one": "1 event",
@@ -773,12 +763,7 @@
   },
   "notifications": {
     "eventStarting": {
-      "title": "Event Starting Soon",
-      "body": "{{title}} starts at {{time}}"
-    },
-    "eventEnding": {
-      "title": "Event Ending Soon",
-      "body": "{{title}} ends at {{time}}"
+      "title": "Event Starting Soon"
     },
     "allDaySuffix": "(All-day)",
     "inMinutes": "(In {{mins}} minutes)",

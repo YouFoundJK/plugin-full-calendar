@@ -81,12 +81,10 @@
     "cannotOpenRemote": "No se puede abrir la nota de un evento remoto.",
     "bulkCategorization": {
       "noNotesFound": "No se encontraron notas de eventos locales para categorizar.",
-      "progress": "Categorizando notas de eventos: {{index}}/{{total}}",
       "complete": "Categorización masiva completa."
     },
     "bulkDecategorization": {
       "noNotesFound": "No se encontraron notas de eventos locales para descategorizar.",
-      "progress": "Descategorizando notas de eventos: {{index}}/{{total}}",
       "complete": "Descategorización masiva completa."
     },
     "tasks": {
@@ -116,10 +114,6 @@
       "clickToCreateEvent": {
         "label": "Haz clic en un día en la vista mensual para crear evento",
         "description": "Desactiva para abrir la vista diaria al hacer clic."
-      },
-      "enableReminders": {
-        "label": "Habilitar recordatorios de eventos",
-        "description": "Mostrar una notificación de escritorio 10 minutos antes de que comience un evento."
       }
     },
     "appearance": {
@@ -227,7 +221,8 @@
         "caldav": "CalDAV",
         "ical": "ICS",
         "google": "Google Calendar",
-        "tasks": "Tareas de Obsidian"
+        "tasks": "Tareas de Obsidian",
+        "bases": "Obsidian Bases"
       },
       "fullNote": {
         "directory": {
@@ -314,7 +309,6 @@
       "copyName": "{{name}} Copia"
     },
     "quickStart": {
-      "title": "Inicio rápido: Agrega tu primer calendario",
       "description": "Para comenzar, agrega una fuente de calendario usando el botón '+' en la sección 'Gestionar calendarios'."
     },
     "viewOptions": {
@@ -344,6 +338,17 @@
     },
     "warnings": {
       "oneDailyNote": "Solo se permite una nota diaria."
+    },
+    "reminders": {
+      "title": "Recordatorios",
+      "enableDefault": {
+        "label": "Habilitar recordatorio predeterminado",
+        "description": "Agrega automáticamente un recordatorio a los nuevos eventos."
+      },
+      "defaultTime": {
+        "label": "Hora de recordatorio predeterminada",
+        "description": "Minutos de antelación para el recordatorio (predeterminado: 10)"
+      }
     }
   },
   "modals": {
@@ -368,9 +373,7 @@
         "edit": "Editar evento"
       },
       "buttons": {
-        "openNote": "Abrir nota",
-        "delete": "Eliminar",
-        "save": "Guardar evento"
+        "openNote": "Abrir nota"
       },
       "fields": {
         "title": {
@@ -403,9 +406,7 @@
           "label": "Opciones",
           "allDay": "Todo el día",
           "isTask": "Es una tarea",
-          "completed": "Completado",
-          "endReminder": "Recordar 10m antes de terminar",
-          "endReminderTooltip": "Un recordatorio de fin requiere una hora de finalización específica."
+          "completed": "Completado"
         },
         "repeats": {
           "label": "Repeticiones",
@@ -434,12 +435,39 @@
           },
           "yearlyText": "Se repite cada año en {{date}}.",
           "endRepeat": "Fin de repetición"
+        },
+        "notification": {
+          "label": "Notificar:",
+          "mins": "Min.",
+          "select": "Seleccionar...",
+          "presets": {
+            "30m": "30 min",
+            "1h": "1 hora",
+            "6h": "6 horas",
+            "12h": "12 horas",
+            "24h": "24 horas"
+          }
         }
       },
       "tooltips": {
         "recurringTaskCompletion": "La finalización de tareas recurrentes puede alternarse en instancias individuales en la vista de calendario.",
-        "dailyNoteRecurring": "Los eventos recurrentes no son compatibles en Notas Diarias. Por favor usa un calendario de 'Nota completa'.",
-        "inheritedEvent": "Este evento hereda de una serie recurrente. Para editarlo, primero abre la nota de la serie."
+        "dailyNoteRecurring": "Los eventos recurrentes no son compatibles en Notas Diarias. Por favor usa un calendario de 'Nota completa'."
+      },
+      "errors": {
+        "createNoCalendars": "No se puede crear el evento: No hay calendarios editables disponibles.",
+        "createError": "Error al crear el evento: {{message}}",
+        "eventNotFound": "Evento no encontrado.",
+        "detailsNotFound": "Detalles del evento no encontrados.",
+        "parentNotFound": "No se pudo encontrar el evento recurrente padre.",
+        "updateError": "Error al actualizar el evento: {{message}}",
+        "deleteError": "Error al eliminar el evento: {{message}}"
+      },
+      "confirmations": {
+        "editParentTitle": "¿Editar evento padre?",
+        "editParentMessage": "Esta propiedad se hereda del evento recurrente padre. ¿Deseas abrir el padre para hacer cambios?"
+      },
+      "misc": {
+        "unknownCalendar": "Calendario Desconocido"
       }
     },
     "deleteRecurring": {
@@ -552,14 +580,12 @@
         },
         "slotMaxTime": {
           "label": "Hora más tardía a mostrar",
-          "description": "Anular la hora más tardía visible en las vistas de cuadrícula de tiempo (formato: HH:mm)",
-          "placeholder": "Usar predeterminado global"
+          "description": "Anular la hora más tardía visible en las vistas de cuadrícula de tiempo (formato: HH:mm)"
         },
         "weekendDisplay": {
           "label": "Mostrar fines de semana",
           "description": "Anular si mostrar los fines de semana en el calendario",
           "options": {
-            "useDefault": "Usar predeterminado global",
             "show": "Mostrar fines de semana",
             "hide": "Ocultar fines de semana"
           }
@@ -568,7 +594,6 @@
           "label": "Días ocultos",
           "description": "Anular qué días ocultar en el calendario",
           "options": {
-            "useDefault": "Usar predeterminado global",
             "showAll": "Mostrar todos los días",
             "hideWeekends": "Ocultar fines de semana (Dom, Sáb)",
             "hideSunday": "Ocultar domingo",
@@ -581,7 +606,6 @@
           "label": "Máx eventos por día (vista mensual)",
           "description": "Anular el número máximo de eventos a mostrar por día en la vista mensual",
           "options": {
-            "useGlobal": "Usar predeterminado global",
             "useDefault": "Usar límite predeterminado",
             "noLimit": "Sin límite",
             "one": "1 evento",
@@ -685,20 +709,65 @@
       "viewMonth": "Ver mes",
       "viewWeek": "Ver semana",
       "viewDay": "Ver día"
+    },
+    "view": {
+      "errors": {
+        "cacheNotLoaded": "La caché de eventos de Full Calendar no está cargada.",
+        "viewEnhancerNotInitialized": "El mejorador de vistas de Full Calendar no está inicializado.",
+        "chronoAnalyserDesktopOnly": "El Analizador Chrono solo está disponible en la versión de escritorio.",
+        "chronoAnalyserFailed": "No se pudo abrir el Analizador Chrono. Revisa la consola.",
+        "modifyEventFailed": "No se pudo modificar el evento.",
+        "taskScheduleFailed": "No se pudo programar la tarea: {{message}}",
+        "moveRecurringDayError": "No se puede mover una instancia recurrente a un día diferente. Modifica solo la hora o edita el evento recurrente principal.",
+        "moveRecurringInstanceError": "No se puede mover una instancia recurrente a un día diferente. Solo puedes cambiar la hora."
+      },
+      "success": {
+        "deletedEvent": "Evento eliminado \"{{title}}\".",
+        "taskScheduled": "Tarea programada con éxito"
+      },
+      "workspace": {
+        "switcherLabel": "Espacio de trabajo"
+      },
+      "buttons": {
+        "analysis": "Análisis",
+        "defaultView": "Vista por defecto"
+      },
+      "contextMenu": {
+        "turnIntoTask": "Convertir en tarea",
+        "removeCheckbox": "Quitar casilla",
+        "goToNote": "Ir a la nota",
+        "delete": "Eliminar",
+        "noActions": "No hay acciones disponibles en eventos remotos"
+      }
     }
   },
   "notifications": {
     "eventStarting": {
-      "title": "Evento comenzando pronto",
-      "body": "{{title}} comienza a las {{time}}"
-    },
-    "eventEnding": {
-      "title": "Evento terminando pronto",
-      "body": "{{title}} termina a las {{time}}"
+      "title": "Evento comenzando pronto"
     },
     "allDaySuffix": "(Todo el día)",
     "inMinutes": "(En {{mins}} minutos)",
     "failed": "Full Calendar: Falló al crear la notificación de escritorio.",
     "errorBody": "Full Calendar: No se pudo mostrar la notificación de escritorio. Revisa la consola para ver errores."
+  },
+  "eventCache": {
+    "calendarNotFound": "No se puede añadir el evento: no se encontró el calendario con ID {{calendarId}}.",
+    "providerNotFound": "No se puede añadir el evento: no se encontró proveedor para el tipo {{type}}.",
+    "readOnly": "No se puede añadir un evento a un calendario de solo lectura.",
+    "createFailed": "No se pudo crear el evento. Se ha revertido el cambio.",
+    "deleteFailed": "No se pudo eliminar el evento. Se ha revertido el cambio.",
+    "updateFailed": "No se pudo actualizar el evento. Se ha revertido el cambio.",
+    "movePartialSuccess": "Evento movido correctamente, pero es posible que algunos hijos no se hayan movido."
+  },
+  "recurEvents": {
+    "promotingChildren": "Promoviendo {{count}} evento(s) hijo(s).",
+    "deletedAndPromoted": "Evento recurrente eliminado y los hijos han sido promovidos.",
+    "deletingWithChildren": "Eliminando evento recurrente y su(s) {{count}} anulación(es) hija(s)...",
+    "deletedAll": "Evento recurrente y todos sus hijos eliminados correctamente.",
+    "preservingTiming": "Manteniendo el horario modificado del evento y revirtiendo la tarea.",
+    "revertingControl": "Revirtiendo el control a la secuencia de eventos recurrentes principal.",
+    "updatingChildren": "Actualizando {{count}} evento(s) hijo(s) para que coincida con el nuevo título del padre.",
+    "updateError": "Error al actualizar evento recurrente. Es posible que algunos hijos no se hayan actualizado.",
+    "movingChildren": "Moviendo {{count}} evento(s) hijo(s) al nuevo calendario."
   }
 }

@@ -70,7 +70,7 @@ export class EventEnhancer {
     // Otherwise, it's a floating event that should be stored in the system's local time.
     const targetZone = structuredEvent.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    let eventForStorage = { ...structuredEvent };
+    const eventForStorage = { ...structuredEvent };
 
     // Explicitly set/remove the timezone property to ensure
     // it is correctly serialized into the note file.

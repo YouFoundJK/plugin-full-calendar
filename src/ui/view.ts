@@ -327,7 +327,7 @@ export class CalendarView extends ItemView {
     }
 
     for (const event of mainEvents) {
-      if (event.resourceId && event.resourceId.includes('::')) {
+      if (typeof event.resourceId === 'string' && event.resourceId.includes('::')) {
         // This is a subcategory event, create a shadow event for the parent
         const parentCategory = event.resourceId.split('::')[0];
         const shadowEvent: EventInput = {
@@ -541,7 +541,9 @@ export class CalendarView extends ItemView {
           if (isTimeline) {
             if (!this.timelineResources) {
               this.timelineResources = this.buildTimelineResources();
+              // @ts-expect-error FullCalendar typings don't include all scheduler options
               this.fullCalendarView?.setOption('resources', this.timelineResources);
+              // @ts-expect-error FullCalendar typings don't include all scheduler options
               this.fullCalendarView?.setOption('resourcesInitiallyExpanded', false);
             }
             this.addShadowEventsToView();
@@ -967,7 +969,9 @@ export class CalendarView extends ItemView {
       if (currentViewType.includes('resourceTimeline')) {
         if (!this.timelineResources) {
           this.timelineResources = this.buildTimelineResources();
+          // @ts-expect-error FullCalendar typings don't include all scheduler options
           this.fullCalendarView?.setOption('resources', this.timelineResources);
+          // @ts-expect-error FullCalendar typings don't include all scheduler options
           this.fullCalendarView?.setOption('resourcesInitiallyExpanded', false);
         }
         this.addShadowEventsToView();
