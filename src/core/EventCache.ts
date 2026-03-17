@@ -128,6 +128,7 @@ export default class EventCache {
       void this.onSettingsChanged();
     };
     emitter.on('full-calendar:view-config-changed', this.viewConfigListener);
+    emitter.on('full-calendar:sources-changed', this.viewConfigListener);
   }
 
   public stopListening(): void {
@@ -136,6 +137,7 @@ export default class EventCache {
         off: (name: string, cb: () => void) => void;
       };
       emitter.off('full-calendar:view-config-changed', this.viewConfigListener);
+      emitter.off('full-calendar:sources-changed', this.viewConfigListener);
       this.viewConfigListener = null;
       this.workspaceEmitter = null;
     }
@@ -326,18 +328,18 @@ export default class EventCache {
     // Step 1: Get Provider, Config, and pre-flight checks
     const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
     if (!calendarInfo) {
-      new Notice(t('notices.eventCache.calendarNotFound', { calendarId }));
+      new Notice(t('eventCache.calendarNotFound', { calendarId }));
       return false;
     }
     // CORRECTED: Check capabilities through the registry, not by getting a provider instance.
     const capabilities = this.plugin.providerRegistry.getCapabilities(calendarId);
     if (!capabilities) {
-      new Notice(t('notices.eventCache.providerNotFound', { type: calendarInfo.type }));
+      new Notice(t('eventCache.providerNotFound', { type: calendarInfo.type }));
       return false;
     }
 
     if (!capabilities.canCreate) {
-      new Notice(t('notices.eventCache.readOnly'));
+      new Notice(t('eventCache.readOnly'));
       return false;
     }
 
@@ -418,7 +420,7 @@ export default class EventCache {
         this.flushUpdateQueue([optimisticId], []);
       }
 
-      new Notice(t('notices.eventCache.createFailed'));
+      new Notice(t('eventCache.createFailed'));
       return false;
     }
   }
@@ -528,7 +530,7 @@ export default class EventCache {
         this.flushUpdateQueue([], [cacheEntry]);
       }
 
-      new Notice(t('notices.eventCache.deleteFailed'));
+      new Notice(t('eventCache.deleteFailed'));
 
       // Propagate the error to the original caller.
       throw e;
@@ -699,7 +701,7 @@ export default class EventCache {
           this.flushUpdateQueue([eventId], [originalCacheEntry]);
         }
 
-        new Notice(t('notices.eventCache.updateFailed'));
+        new Notice(t('eventCache.updateFailed'));
         return false;
       }
     } finally {
@@ -812,7 +814,7 @@ export default class EventCache {
       await this.deleteEvent(eventId);
     } catch (e) {
       console.error('Failed to delete event from old calendar after moving it.', e);
-      new Notice(t('notices.eventCache.movePartialSuccess'));
+      new Notice(t('eventCache.movePartialSuccess'));
       // We do not rollback the creation because data safety is priority.
       // Better to have a duplicate than to lose data.
       throw e;

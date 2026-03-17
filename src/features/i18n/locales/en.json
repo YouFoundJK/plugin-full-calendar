@@ -102,7 +102,8 @@
     "readOnly": "Cannot add event to a read-only calendar.",
     "createFailed": "Failed to create event. Change has been reverted.",
     "deleteFailed": "Failed to delete event. Change has been reverted.",
-    "updateFailed": "Failed to update event. Change has been reverted."
+    "updateFailed": "Failed to update event. Change has been reverted.",
+    "movePartialSuccess": "Event was added to the new calendar, but deleting it from the old calendar failed. You may see a duplicate."
   },
   "recurEvents": {
     "promotingChildren": "Promoting {{count}} child event(s).",
