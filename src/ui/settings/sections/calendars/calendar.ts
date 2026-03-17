@@ -329,7 +329,8 @@ export async function renderCalendar(
     // Prevent dropping events onto parent category rows
     eventAllow: (dropInfo, draggedEvent) => {
       // dropInfo.resource is the resource that the event is being dropped on
-      if (dropInfo.resource?.extendedProps?.isParent) {
+      const info = dropInfo as unknown as { resource?: { extendedProps?: { isParent?: boolean } } };
+      if (info.resource?.extendedProps?.isParent) {
         return false; // Disallow drop on parent
       }
       return true; // Allow drop on children (or in non-resource views)

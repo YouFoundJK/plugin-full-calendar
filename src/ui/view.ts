@@ -327,7 +327,7 @@ export class CalendarView extends ItemView {
     }
 
     for (const event of mainEvents) {
-      if (event.resourceId && event.resourceId.includes('::')) {
+      if (typeof event.resourceId === 'string' && event.resourceId.includes('::')) {
         // This is a subcategory event, create a shadow event for the parent
         const parentCategory = event.resourceId.split('::')[0];
         const shadowEvent: EventInput = {
