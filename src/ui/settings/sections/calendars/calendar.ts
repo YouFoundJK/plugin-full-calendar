@@ -148,7 +148,7 @@ export async function renderCalendar(
 
   // Group the standard and timeline views together with a space.
   // This tells FullCalendar to render them as a single, connected button group.
-  const viewButtonGroup = ['views', showResourceViews ? 'timeline' : null]
+  const viewButtonGroup = ['views', !isNarrow && showResourceViews ? 'timeline' : null]
     .filter(Boolean)
     .join(',');
 
@@ -172,8 +172,8 @@ export async function renderCalendar(
 
   const footerToolbar = isNarrow
     ? {
-        left: 'workspace,today,navigate,prev,next',
-        right: rightToolbarGroup // Analysis is already filtered out for narrow views.
+        left: 'today prev,next',
+        right: 'views,more'
       }
     : false;
 
@@ -212,6 +212,8 @@ export async function renderCalendar(
   const customButtonConfig: Record<string, { text: string; click: (ev: MouseEvent) => void }> =
     Object.assign({}, customButtons);
 
+  let dateNavigation: ReturnType<typeof createDateNavigation> | null = null;
+
   // Always add the "Views" dropdown
   customButtonConfig.views = {
     text: 'View ▾',
@@ -247,7 +249,43 @@ export async function renderCalendar(
   customButtonConfig.navigate = {
     text: '▾',
     click: (ev: MouseEvent) => {
-      // This will be replaced after calendar creation
+      dateNavigation?.showNavigationMenu(ev);
+    }
+  };
+
+  // Keep mobile toolbar compact by routing secondary actions into a single menu.
+  customButtonConfig.more = {
+    text: 'More ▾',
+    click: (ev: MouseEvent) => {
+      const menu = new Menu();
+
+      menu.addItem(item => {
+        item.setTitle('Workspace').onClick(() => {
+          void customButtons?.workspace?.click(ev);
+        });
+      });
+
+      menu.addItem(item => {
+        item.setTitle('Go to date').onClick(() => {
+          dateNavigation?.showNavigationMenu(ev);
+        });
+      });
+
+      if (showResourceViews) {
+        menu.addSeparator();
+        menu.addItem(item =>
+          item.setTitle('Timeline week').onClick(() => {
+            cal.changeView('resourceTimelineWeek');
+          })
+        );
+        menu.addItem(item =>
+          item.setTitle('Timeline day').onClick(() => {
+            cal.changeView('resourceTimelineDay');
+          })
+        );
+      }
+
+      menu.showAtMouseEvent(ev);
     }
   };
 
@@ -453,7 +491,7 @@ export async function renderCalendar(
   cal.render();
 
   // Set up date navigation after calendar is created
-  const dateNavigation = createDateNavigation(cal, containerEl);
+  dateNavigation = createDateNavigation(cal, containerEl);
 
   // Update the navigate button click handler
   const navigateButton = containerEl.querySelector('.fc-navigate-button') as HTMLButtonElement;
