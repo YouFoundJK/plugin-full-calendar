@@ -289,8 +289,9 @@
         "description": "Habilita el coloreo por categoría y desbloquea vistas de línea de tiempo. Esto modificará los títulos de las notas de eventos y permitirá la visualización por categoría."
       },
       "disable": {
-        "modalTitle": "⚠️ Deshabilitar y limpiar",
-        "modalDescription": "Deshabilitar esta función eliminará los prefijos de categoría conocidos de los títulos de tus eventos y eliminará permanentemente todos los ajustes de color de categoría guardados.",
+        "modalTitle": "⚠️ Deshabilitar categorización avanzada",
+        "modalDescription": "Elige cómo deshabilitar esta función. Sin limpieza se conservan los títulos de eventos y los colores de categoría guardados; con limpieza se eliminan los prefijos de categoría conocidos y los colores guardados.",
+        "buttonDisableWithoutCleanup": "Deshabilitar sin limpieza",
         "buttonDisable": "Deshabilitar y limpiar notas",
         "buttonCancel": "Cancelar"
       }

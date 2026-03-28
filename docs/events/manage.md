@@ -24,6 +24,7 @@ When using the modal to create or edit an event, the plugin validates inputs in 
 	- Daily Note calendars: duplicates are not allowed; another list item with the same visible title on that date under the configured heading will be flagged.
 	- Note: Duplicate checks in Daily Notes compare the visible title (category prefix is ignored if Advanced Categories are enabled).
 - Category-aware titles: If Advanced Categories are enabled, the Title field accepts "SubCategory - Title" and the Category is selected separately. The plugin reconstructs the full title when writing.
+- Literal titles when disabled: If Advanced Categories are disabled, the Title field is treated as plain text and is not split by ` - `.
 
 Limitations applied by calendar type during editing:
 

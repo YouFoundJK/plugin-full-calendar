@@ -316,8 +316,9 @@
         "description": "Enable category-based coloring and unlock timeline views. This will modify event note titles and allow timeline visualization by category."
       },
       "disable": {
-        "modalTitle": "⚠️ Disable and clean up",
-        "modalDescription": "Disabling this feature will remove known category prefixes from your event titles and will permanently delete all saved category color settings.",
+        "modalTitle": "⚠️ Disable advanced categorization",
+        "modalDescription": "Choose how to disable this feature. You can disable without cleanup to preserve event titles and saved category settings, or disable and clean up to remove known category prefixes and saved category colors.",
+        "buttonDisableWithoutCleanup": "Disable without cleanup",
         "buttonDisable": "Disable and clean up notes",
         "buttonCancel": "Cancel"
       }

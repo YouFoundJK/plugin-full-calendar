@@ -59,8 +59,18 @@ export function renderCategorizationSettings(
           new Setting(contentEl)
             .addButton(btn =>
               btn
+                .setButtonText(t('settings.categorization.disable.buttonDisableWithoutCleanup'))
+                .setCta()
+                .onClick(async () => {
+                  plugin.settings.enableAdvancedCategorization = false;
+                  await plugin.saveData(plugin.settings);
+                  confirmModal.close();
+                  rerender();
+                })
+            )
+            .addButton(btn =>
+              btn
                 .setButtonText(t('settings.categorization.disable.buttonDisable'))
-                .setWarning()
                 .onClick(async () => {
                   plugin.settings.enableAdvancedCategorization = false;
                   plugin.settings.categorySettings = [];

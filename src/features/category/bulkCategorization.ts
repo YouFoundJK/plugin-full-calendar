@@ -23,6 +23,7 @@ import {
   modifyListItem
 } from '../../providers/dailynote/parser_dailyN';
 import { constructTitle, parseTitle } from './categoryParser';
+import { shouldSkipBulkCategorization } from './categorizationWorkflow';
 import { validateEvent } from '../../types/schema';
 import { t } from '../i18n/i18n';
 
@@ -100,9 +101,6 @@ export async function bulkUpdateCategories(
     return;
   }
 
-  // Create a set of defined category names for validation
-  const definedCategories = new Set(plugin.settings.categorySettings.map(cat => cat.name));
-
   // Processor for Full Note calendars
   const fullNoteProcessor = async (file: TFile) => {
     await plugin.app.fileManager.processFrontMatter(
@@ -111,11 +109,9 @@ export async function bulkUpdateCategories(
         const event = validateEvent(frontmatter);
         if (!event || !event.title) return;
 
-        const { category: existingCategory, title: cleanTitle } = parseTitle(
-          event.title,
-          definedCategories
-        );
-        if (existingCategory && !force) return;
+        if (shouldSkipBulkCategorization(event, choice)) return;
+
+        const { title: cleanTitle } = parseTitle(event.title);
 
         const newCategory = categoryProvider(file);
         if (!newCategory) return;
@@ -146,8 +142,9 @@ export async function bulkUpdateCategories(
           const existingEvent = getInlineEventFromLine(line, {});
           if (!existingEvent) continue;
 
-          const { category: existingCategory } = parseTitle(existingEvent.title, definedCategories);
-          if (existingCategory && !force) continue;
+          if (shouldSkipBulkCategorization(existingEvent, choice)) continue;
+
+          const { title: cleanTitle } = parseTitle(existingEvent.title);
 
           const newCategory = categoryProvider(file);
           if (!newCategory) continue;
@@ -156,20 +153,15 @@ export async function bulkUpdateCategories(
             .replace(/^(\s*)-\s+(\[(.)\]\s+)?/, '')
             .replace(/\s*\[.*?\]\s*/g, '')
             .trim();
-          const titleToCategorize = force ? rawTitle : existingEvent.title;
+          const titleToCategorize = force ? rawTitle : cleanTitle;
           const newFullTitle = constructTitle(newCategory, undefined, titleToCategorize);
-
-          const {
-            category: finalCategory,
-            subCategory: finalSubCategory,
-            title: finalTitle
-          } = parseTitle(newFullTitle, definedCategories);
 
           const eventWithNewCategory: OFCEvent = {
             ...existingEvent,
-            title: finalTitle,
-            category: finalCategory,
-            subCategory: finalSubCategory
+            // Daily note lines serialize only from `title`, so keep full prefixed title here.
+            title: newFullTitle,
+            category: undefined,
+            subCategory: undefined
           };
 
           const newLine = modifyListItem(line, eventWithNewCategory, plugin.settings);

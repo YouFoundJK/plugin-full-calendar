@@ -289,8 +289,9 @@
         "description": "Abilita la colorazione per categoria e sblocca le viste timeline. Questo modificherà i titoli delle note evento e permetterà la visualizzazione timeline per categoria."
       },
       "disable": {
-        "modalTitle": "⚠️ Disabilita e pulisci",
-        "modalDescription": "Disabilitando questa funzione verranno rimossi i prefissi di categoria noti dai titoli degli eventi e verranno eliminati definitivamente tutte le impostazioni di colore categoria salvate.",
+        "modalTitle": "⚠️ Disabilita categorizzazione avanzata",
+        "modalDescription": "Scegli come disabilitare questa funzione. Senza pulizia i titoli degli eventi e i colori categoria salvati vengono mantenuti; con pulizia vengono rimossi i prefissi di categoria noti e i colori salvati.",
+        "buttonDisableWithoutCleanup": "Disabilita senza pulizia",
         "buttonDisable": "Disabilita e pulisci note",
         "buttonCancel": "Annulla"
       }
