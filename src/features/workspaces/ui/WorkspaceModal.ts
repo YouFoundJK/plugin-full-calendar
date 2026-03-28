@@ -185,21 +185,17 @@ export class WorkspaceModal extends Modal {
     calendars.forEach(calendar => {
       const checkboxContainer = container.createEl('div', { cls: 'workspace-checkbox-item' });
 
-      // Generate a meaningful display name based on calendar type
+      // Show labels in the format "<calendar type>: <user-defined name>"
       let displayName: string;
       switch (calendar.type) {
         case 'local':
-          displayName = `${t('modals.workspace.calendarTypes.local')} ${calendar.directory}`;
+          displayName = `${t('modals.workspace.calendarTypes.local')} ${calendar.name}`;
           break;
         case 'dailynote':
-          displayName = `${t('modals.workspace.calendarTypes.dailyNotes')} ${calendar.heading}`;
+          displayName = `${t('modals.workspace.calendarTypes.dailyNotes')} ${calendar.name}`;
           break;
         case 'ical':
-          try {
-            displayName = `${t('modals.workspace.calendarTypes.ics')} ${new URL(calendar.url).hostname}`;
-          } catch {
-            displayName = t('modals.workspace.calendarTypes.ics').replace(':', '');
-          }
+          displayName = `${t('modals.workspace.calendarTypes.ics')} ${calendar.name}`;
           break;
         case 'caldav':
           displayName = `${t('modals.workspace.calendarTypes.caldav')} ${calendar.name}`;
@@ -208,7 +204,7 @@ export class WorkspaceModal extends Modal {
           displayName = `${t('modals.workspace.calendarTypes.google')} ${calendar.name}`;
           break;
         default:
-          displayName = t('modals.workspace.calendarTypes.generic', { type: calendar.type });
+          displayName = `${calendar.type}: ${calendar.name || calendar.id}`;
       }
 
       new Setting(checkboxContainer).setName(displayName).addToggle(toggle => {
