@@ -1,7 +1,7 @@
 /**
  * @file TasksUpdateTimeInLine.test.ts
  * @brief Tests for updateTimeInLine — inserting, updating and removing time
- *        blocks in task markdown lines.
+ *        blocks in task markdown lines, in both 24h and 12h modes.
  */
 
 import { updateTimeInLine } from '../TasksPluginProvider';
@@ -11,8 +11,10 @@ const BASE = '- [ ] My task ⏳ 2024-06-15';
 const BASE_BLOCK = '- [ ] My task ⏳ 2024-06-15 ^abc123';
 const WITH_TIME = '- [ ] My task (9:00) ⏳ 2024-06-15';
 const WITH_RANGE = '- [ ] My task (9:00-10:30) ⏳ 2024-06-15';
+const WITH_TIME_12H = '- [ ] My task (9:00 AM) ⏳ 2024-06-15';
+const WITH_RANGE_12H = '- [ ] My task (9:00 AM-5:00 PM) ⏳ 2024-06-15';
 
-describe('updateTimeInLine', () => {
+describe('updateTimeInLine (24h mode, default)', () => {
   describe('inserting a time block', () => {
     it('inserts a single time before ⏳ when no time was present', () => {
       expect(updateTimeInLine(BASE, '9:00', null)).toBe(
@@ -27,7 +29,6 @@ describe('updateTimeInLine', () => {
     });
 
     it('preserves a block link when inserting time with no ⏳ fallback', () => {
-      // Simulate a line with no ⏳ but with a block link
       const line = '- [ ] My task ^abc123';
       expect(updateTimeInLine(line, '14:00', null)).toBe(
         '- [ ] My task (14:00) ^abc123'
@@ -59,6 +60,18 @@ describe('updateTimeInLine', () => {
         '- [ ] My task (9:00) ⏳ 2024-06-15'
       );
     });
+
+    it('replaces a 12h time block with a 24h time block', () => {
+      expect(updateTimeInLine(WITH_TIME_12H, '09:00', null, true)).toBe(
+        '- [ ] My task (9:00) ⏳ 2024-06-15'
+      );
+    });
+
+    it('replaces a 12h range with a 24h range', () => {
+      expect(updateTimeInLine(WITH_RANGE_12H, '09:00', '17:00', true)).toBe(
+        '- [ ] My task (9:00-17:00) ⏳ 2024-06-15'
+      );
+    });
   });
 
   describe('removing the time block (all-day drop)', () => {
@@ -70,6 +83,18 @@ describe('updateTimeInLine', () => {
 
     it('removes a time range when startTime is null', () => {
       expect(updateTimeInLine(WITH_RANGE, null, null)).toBe(
+        '- [ ] My task ⏳ 2024-06-15'
+      );
+    });
+
+    it('removes a 12h time block when startTime is null', () => {
+      expect(updateTimeInLine(WITH_TIME_12H, null, null)).toBe(
+        '- [ ] My task ⏳ 2024-06-15'
+      );
+    });
+
+    it('removes a 12h range when startTime is null', () => {
+      expect(updateTimeInLine(WITH_RANGE_12H, null, null)).toBe(
         '- [ ] My task ⏳ 2024-06-15'
       );
     });
@@ -105,6 +130,64 @@ describe('updateTimeInLine', () => {
       const line = '- [ ] My task (8:00) ⏳ 2024-06-15';
       expect(updateTimeInLine(line, '9:00', null)).toBe(
         '- [ ] My task (9:00) ⏳ 2024-06-15'
+      );
+    });
+  });
+});
+
+describe('updateTimeInLine (12h mode)', () => {
+  const use12h = false; // timeFormat24h = false
+
+  describe('inserting a 12h time block', () => {
+    it('inserts a 12h single time before ⏳', () => {
+      expect(updateTimeInLine(BASE, '09:00', null, use12h)).toBe(
+        '- [ ] My task (9:00 AM) ⏳ 2024-06-15'
+      );
+    });
+
+    it('inserts a 12h range before ⏳', () => {
+      expect(updateTimeInLine(BASE, '09:00', '17:00', use12h)).toBe(
+        '- [ ] My task (9:00 AM-5:00 PM) ⏳ 2024-06-15'
+      );
+    });
+
+    it('formats noon correctly', () => {
+      expect(updateTimeInLine(BASE, '12:00', null, use12h)).toBe(
+        '- [ ] My task (12:00 PM) ⏳ 2024-06-15'
+      );
+    });
+
+    it('formats midnight correctly', () => {
+      expect(updateTimeInLine(BASE, '00:00', null, use12h)).toBe(
+        '- [ ] My task (12:00 AM) ⏳ 2024-06-15'
+      );
+    });
+  });
+
+  describe('replacing an existing time block with 12h output', () => {
+    it('replaces a 24h time block with a 12h block', () => {
+      expect(updateTimeInLine(WITH_TIME, '09:00', null, use12h)).toBe(
+        '- [ ] My task (9:00 AM) ⏳ 2024-06-15'
+      );
+    });
+
+    it('replaces a 12h time block with an updated 12h block', () => {
+      expect(updateTimeInLine(WITH_TIME_12H, '10:00', null, use12h)).toBe(
+        '- [ ] My task (10:00 AM) ⏳ 2024-06-15'
+      );
+    });
+  });
+
+  describe('removing a 12h time block', () => {
+    it('removes a 12h single time when startTime is null', () => {
+      expect(updateTimeInLine(WITH_TIME_12H, null, null)).toBe(
+        '- [ ] My task ⏳ 2024-06-15'
+      );
+    });
+
+    it('removes a 12h range when startTime is null', () => {
+      expect(updateTimeInLine(WITH_RANGE_12H, null, null)).toBe(
+        '- [ ] My task ⏳ 2024-06-15'
       );
     });
   });

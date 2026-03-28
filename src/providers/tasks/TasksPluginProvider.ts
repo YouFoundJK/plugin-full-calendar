@@ -39,15 +39,21 @@ export function extractTimeFromTitle(title: string): {
   endTime: string | null;
   cleanTitle: string;
 } {
-  // Match (H:MM-H:MM) or (H:MM), allowing single or double-digit hours
-  const timeRangePattern = /\((\d{1,2}:\d{2})-(\d{1,2}:\d{2})\)/;
-  const timePattern = /\((\d{1,2}:\d{2})\)/;
+  // A single time token: H:MM or H:MM AM/PM (case-insensitive, optional space before meridiem).
+  const TIME_TOKEN = String.raw`\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?`;
+  const timeRangePattern = new RegExp(`\\((${TIME_TOKEN})-(${TIME_TOKEN})\\)`);
+  const timePattern = new RegExp(`\\((${TIME_TOKEN})\\)`);
+
+  // Normalise a captured time token: ensure a single space + uppercase meridiem where present.
+  // e.g. "9:00am" → "9:00 AM", "14:30" → "14:30"
+  const normalise = (t: string) =>
+    t.replace(/\s*([AaPp][Mm])$/, (_, m: string) => ` ${m.toUpperCase()}`);
 
   const rangeMatch = title.match(timeRangePattern);
   if (rangeMatch) {
     return {
-      startTime: rangeMatch[1],
-      endTime: rangeMatch[2],
+      startTime: normalise(rangeMatch[1]),
+      endTime: normalise(rangeMatch[2]),
       cleanTitle: title.replace(rangeMatch[0], '').trim()
     };
   }
@@ -55,7 +61,7 @@ export function extractTimeFromTitle(title: string): {
   const singleMatch = title.match(timePattern);
   if (singleMatch) {
     return {
-      startTime: singleMatch[1],
+      startTime: normalise(singleMatch[1]),
       endTime: null,
       cleanTitle: title.replace(singleMatch[0], '').trim()
     };
@@ -65,32 +71,34 @@ export function extractTimeFromTitle(title: string): {
 }
 
 /**
- * Updates or removes the time block `(H:MM)` or `(H:MM-H:MM)` embedded in a
- * task's markdown line (i.e. inside the description, before metadata emojis).
+ * Updates or removes the time block `(H:MM)` / `(H:MM AM)` or their range forms
+ * embedded in a task's markdown line (i.e. inside the description, before metadata emojis).
  *
  * Pass `startTime = null` to strip the time block entirely (all-day).
  * Pass `startTime` equal to `endTime` (or `endTime = null`) to write a
- * single-time block `(H:MM)`.  Otherwise a range `(H:MM-H:MM)` is written.
+ * single-time block.  Otherwise a range is written.
  *
- * @param line      The full task markdown line (after date update).
- * @param startTime New start time string (e.g. "9:00"), or null to remove.
- * @param endTime   New end time string, or null for a single-time block.
+ * @param line          The full task markdown line (after date update).
+ * @param startTime     New start time in `HH:mm` (24h) format, or null to remove.
+ * @param endTime       New end time in `HH:mm` (24h) format, or null for a single-time block.
+ * @param timeFormat24h When true (default), write `H:MM`; when false write `H:MM AM/PM`.
  * @returns The modified line.
  */
 export function updateTimeInLine(
   line: string,
   startTime: string | null,
-  endTime: string | null
+  endTime: string | null,
+  timeFormat24h = true
 ): string {
-  // Strip any existing time block from the line
-  const timeBlockPattern = /\s*\(\d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?\)/g;
+  // Strip any existing time block (24h or 12h) from the line.
+  const timeBlockPattern = /\s*\(\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?(?:-\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?)?\)/g;
   let result = line.replace(timeBlockPattern, '');
 
   if (startTime) {
-    const timeBlock =
-      endTime && endTime !== startTime
-        ? `(${startTime}-${endTime})`
-        : `(${startTime})`;
+    const fmt = (t: string) => formatTimeToken(t, timeFormat24h);
+    const fmtStart = fmt(startTime);
+    const fmtEnd = endTime && endTime !== startTime ? fmt(endTime) : null;
+    const timeBlock = fmtEnd ? `(${fmtStart}-${fmtEnd})` : `(${fmtStart})`;
 
     // Insert before the scheduled emoji ⏳ (guaranteed present after updateTaskLine).
     const scheduledEmojiIdx = result.indexOf('⏳');
@@ -112,6 +120,25 @@ export function updateTimeInLine(
   }
 
   return result;
+}
+
+/**
+ * Formats a time string token for embedding in a task title.
+ * Input is expected to be in `HH:mm` (24h) format as produced by `getTime()`.
+ * When `timeFormat24h` is false the output is formatted as `h:mm AM/PM`.
+ */
+function formatTimeToken(time: string, timeFormat24h: boolean): string {
+  if (timeFormat24h) {
+    // Normalise to H:MM (drop leading zero) for a clean, compact appearance.
+    const parsed = DateTime.fromFormat(time, 'HH:mm');
+    return parsed.isValid ? parsed.toFormat('H:mm') : time;
+  }
+  // 12h: "9:00 AM", "12:30 PM", etc.
+  const parsed =
+    DateTime.fromFormat(time, 'HH:mm').isValid
+      ? DateTime.fromFormat(time, 'HH:mm')
+      : DateTime.fromFormat(time, 'H:mm');
+  return parsed.isValid ? parsed.toFormat('h:mm a').toUpperCase() : time;
 }
 
 // This is our own internal, simplified interface for a task from the Tasks plugin's cache.
@@ -639,8 +666,9 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     // Extract time from the dropped event.  allDay → clear time block; timed → update it.
     const startTime = newEvent.allDay ? null : newEvent.startTime;
     const endTime = newEvent.allDay ? null : (newEvent.endTime ?? null);
+    const timeFormat24h = this.plugin.settings.timeFormat24h;
 
-    await this._surgicallyUpdateTask(taskId, newDate, startTime, endTime);
+    await this._surgicallyUpdateTask(taskId, newDate, startTime, endTime, timeFormat24h);
     const [filePath, lineNumberStr] = taskId.split('::');
     return {
       file: { path: filePath },
@@ -661,16 +689,18 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   /**
    * Centralized helper for surgically updating a task line in a file.
    * This is called by both updateEvent (for drags) and scheduleTask (for backlog drops).
-   * @param taskId    The persistent ID of the task (filePath::lineNumber).
-   * @param newDate   The new date to apply to the task.
-   * @param startTime New start time, null to clear, or undefined to leave unchanged.
-   * @param endTime   New end time, null to clear, or undefined to leave unchanged.
+   * @param taskId        The persistent ID of the task (filePath::lineNumber).
+   * @param newDate       The new date to apply to the task.
+   * @param startTime     New start time in HH:mm, null to clear, or undefined to leave unchanged.
+   * @param endTime       New end time in HH:mm, null to clear, or undefined to leave unchanged.
+   * @param timeFormat24h Whether to write times in 24h format (default true).
    */
   private async _surgicallyUpdateTask(
     taskId: string,
     newDate: Date,
     startTime?: string | null,
-    endTime?: string | null
+    endTime?: string | null,
+    timeFormat24h = true
   ): Promise<void> {
     const task = this.allTasks.find(t => t.id === taskId);
     if (!task) {
@@ -679,7 +709,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     let newLine = this.updateTaskLine(task.originalMarkdown, newDate);
     // Only update the time block when explicitly provided (undefined = no change).
     if (startTime !== undefined) {
-      newLine = updateTimeInLine(newLine, startTime, endTime ?? null);
+      newLine = updateTimeInLine(newLine, startTime, endTime ?? null, timeFormat24h);
     }
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
   }

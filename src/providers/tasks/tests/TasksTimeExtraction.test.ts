@@ -88,4 +88,43 @@ describe('extractTimeFromTitle', () => {
       cleanTitle: 'Meet at 18:00 for dinner'
     });
   });
+
+  // --- 12h AM/PM format ---
+
+  it('extracts a single 12h time with uppercase AM', () => {
+    expect(extractTimeFromTitle('Dentist (9:00 AM)')).toEqual({
+      startTime: '9:00 AM',
+      endTime: null,
+      cleanTitle: 'Dentist'
+    });
+  });
+
+  it('extracts a single 12h time with lowercase am (normalises to uppercase)', () => {
+    expect(extractTimeFromTitle('Yoga (7:30am)')).toEqual({
+      startTime: '7:30 AM',
+      endTime: null,
+      cleanTitle: 'Yoga'
+    });
+  });
+
+  it('extracts a 12h time range', () => {
+    expect(extractTimeFromTitle('Meeting (9:00 AM-5:00 PM)')).toEqual({
+      startTime: '9:00 AM',
+      endTime: '5:00 PM',
+      cleanTitle: 'Meeting'
+    });
+  });
+
+  it('normalises AM/PM to uppercase with a space even when no space was present', () => {
+    expect(extractTimeFromTitle('Standup (9:00AM-10:00AM)')).toEqual({
+      startTime: '9:00 AM',
+      endTime: '10:00 AM',
+      cleanTitle: 'Standup'
+    });
+  });
+
+  it('strips a 12h time pattern from the title', () => {
+    const { cleanTitle } = extractTimeFromTitle('Lunch (12:00 PM)');
+    expect(cleanTitle).toBe('Lunch');
+  });
 });
