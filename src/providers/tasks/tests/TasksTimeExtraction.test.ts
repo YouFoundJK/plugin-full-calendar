@@ -57,6 +57,30 @@ describe('extractTimeFromTitle', () => {
     expect(cleanTitle).toBe('Dentist');
   });
 
+  it('extracts a single-digit hour time (H:MM)', () => {
+    expect(extractTimeFromTitle('Morning run (9:00)')).toEqual({
+      startTime: '9:00',
+      endTime: null,
+      cleanTitle: 'Morning run'
+    });
+  });
+
+  it('extracts a time range with single-digit hours (H:MM-H:MM)', () => {
+    expect(extractTimeFromTitle('Yoga class (8:00-9:30)')).toEqual({
+      startTime: '8:00',
+      endTime: '9:30',
+      cleanTitle: 'Yoga class'
+    });
+  });
+
+  it('extracts a mixed range with single and double-digit hours', () => {
+    expect(extractTimeFromTitle('Long meeting (9:00-10:30)')).toEqual({
+      startTime: '9:00',
+      endTime: '10:30',
+      cleanTitle: 'Long meeting'
+    });
+  });
+
   it('does not match partial time-like patterns without parentheses', () => {
     expect(extractTimeFromTitle('Meet at 18:00 for dinner')).toEqual({
       startTime: null,

@@ -39,9 +39,9 @@ export function extractTimeFromTitle(title: string): {
   endTime: string | null;
   cleanTitle: string;
 } {
-  // Match (HH:MM-HH:MM) or (HH:MM)
-  const timeRangePattern = /\((\d{2}:\d{2})-(\d{2}:\d{2})\)/;
-  const timePattern = /\((\d{2}:\d{2})\)/;
+  // Match (H:MM-H:MM) or (H:MM), allowing single or double-digit hours
+  const timeRangePattern = /\((\d{1,2}:\d{2})-(\d{1,2}:\d{2})\)/;
+  const timePattern = /\((\d{1,2}:\d{2})\)/;
 
   const rangeMatch = title.match(timeRangePattern);
   if (rangeMatch) {

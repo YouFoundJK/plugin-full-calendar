@@ -37,7 +37,13 @@ const parseTime = (time: string): Duration | null => {
     parsed = DateTime.fromFormat(time, 'HH:mm');
   }
   if (parsed.invalidReason) {
+    parsed = DateTime.fromFormat(time, 'H:mm');
+  }
+  if (parsed.invalidReason) {
     parsed = DateTime.fromFormat(time, 'HH:mm:ss');
+  }
+  if (parsed.invalidReason) {
+    parsed = DateTime.fromFormat(time, 'H:mm:ss');
   }
 
   if (parsed.invalidReason) {
