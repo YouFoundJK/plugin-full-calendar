@@ -1,6 +1,20 @@
 import { getEventsFromICS } from './ics';
 
 describe('ics tests', () => {
+  it('throws on empty ICS input', () => {
+    expect(() => getEventsFromICS('   ')).toThrow('ICS content is empty');
+  });
+
+  it('throws when VCALENDAR header is missing', () => {
+    const invalidIcs = `BEGIN:VEVENT
+UID:missing-calendar
+SUMMARY:Broken
+END:VEVENT`;
+    expect(() => getEventsFromICS(invalidIcs)).toThrow(
+      'ICS content is missing BEGIN:VCALENDAR header'
+    );
+  });
+
   it('parses all day event', () => {
     const ics = `BEGIN:VCALENDAR
 PRODID:blah

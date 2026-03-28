@@ -25,6 +25,41 @@ function ymdhmsZ(d: Date): string {
     .replace(/\.\d{3}Z$/, 'Z');
 }
 
+function assertNonEmptyText(text: string, message: string): string {
+  if (!text.trim()) {
+    throw new Error(message);
+  }
+  return text;
+}
+
+function assertIcsPayload(ics: string, source: string): string {
+  if (!ics.trim()) {
+    throw new Error(`${source} returned an empty ICS payload.`);
+  }
+  if (!/BEGIN:VCALENDAR/i.test(ics)) {
+    throw new Error(`${source} returned invalid ICS payload (missing BEGIN:VCALENDAR).`);
+  }
+  return ics;
+}
+
+function ensureXmlDocument(xml: string, source: string): Document {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'application/xml');
+  const parserError = doc.querySelector('parsererror');
+  if (parserError) {
+    throw new Error(`${source} returned malformed XML.`);
+  }
+  return doc;
+}
+
+function parseStatusCode(statusLine: string): number | null {
+  const match = statusLine.match(/\s(\d{3})(?:\s|$)/);
+  if (!match) {
+    return null;
+  }
+  return Number(match[1]);
+}
+
 // --- Direct REPORT + GET implementation (standards-compliant) ---
 async function fetchCalendarObjects(
   collectionUrl: string,
@@ -72,14 +107,15 @@ async function fetchCalendarObjects(
 
   const xml = await reportRes.text();
 
-  if (reportRes.status >= 400) {
+  if (reportRes.status < 200 || reportRes.status >= 300) {
     console.error('[CalDAVProvider] REPORT request failed', reportRes.status, xml.slice(0, 800));
     throw new Error(`REPORT ${reportRes.status}`);
   }
 
+  assertNonEmptyText(xml, 'CalDAV REPORT returned an empty body.');
+
   // STEP 2: Parse the XML response using DOMParser
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xml, 'text/xml');
+  const doc = ensureXmlDocument(xml, 'CalDAV REPORT');
   const icsList: { ics: string; etag?: string }[] = [];
 
   // Robustly find calendar-data elements regardless of namespace prefix
@@ -95,7 +131,8 @@ async function fetchCalendarObjects(
     for (let i = 0; i < propstats.length; i++) {
       const propstat = propstats[i];
       const status = propstat.getElementsByTagNameNS('*', 'status')[0]?.textContent || '';
-      if (!status.includes('200')) continue;
+      const statusCode = parseStatusCode(status);
+      if (statusCode == null || statusCode < 200 || statusCode >= 300) continue;
 
       const prop = propstat.getElementsByTagNameNS('*', 'prop')[0];
       if (!prop) continue;
@@ -115,7 +152,11 @@ async function fetchCalendarObjects(
         }
       }
 
-      if (calendarData && calendarData.textContent) {
+      if (calendarData) {
+        const calendarText = assertNonEmptyText(
+          calendarData.textContent || '',
+          'CalDAV REPORT returned empty calendar-data payload.'
+        );
         // Try to find etag
         let etag = prop.getElementsByTagNameNS('DAV:', 'getetag')[0]?.textContent;
         if (!etag) {
@@ -124,7 +165,7 @@ async function fetchCalendarObjects(
         }
 
         icsList.push({
-          ics: calendarData.textContent,
+          ics: assertIcsPayload(calendarText, 'CalDAV REPORT'),
           etag: etag || undefined
         });
       }
@@ -157,14 +198,21 @@ async function fetchCalendarObjects(
 
     // Fetch each .ics file individually
     const collectionOrigin = new URL(collectionUrl).origin;
-    const getPromises = eventHrefs.map(href => {
+    const getPromises = eventHrefs.map(async href => {
       const getUrl = collectionOrigin + href;
       const getHeaders: Record<string, string> = { Accept: 'text/calendar' };
       if (authHeader) {
         getHeaders['Authorization'] = authHeader;
       }
 
-      return obsidianFetch(getUrl, { method: 'GET', headers: getHeaders }).then(res => res.text());
+      const getRes = await obsidianFetch(getUrl, { method: 'GET', headers: getHeaders });
+      const getText = await getRes.text();
+
+      if (getRes.status < 200 || getRes.status >= 300) {
+        throw new Error(`CalDAV fallback GET failed (${getRes.status}) for ${href}`);
+      }
+
+      return assertIcsPayload(getText, `CalDAV fallback GET for ${href}`);
     });
 
     const fetchedIcs = await Promise.all(getPromises);

@@ -143,6 +143,117 @@ END:VCALENDAR
     await expect(provider.getEvents()).rejects.toThrow('Invalid collection URL or not a calendar');
   });
 
+  it('should fail fast when REPORT response body is empty', async () => {
+    const mockPropfindResponse = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <d:collection/>
+                <c:calendar xmlns:c="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    mockObsidianFetch
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockPropfindResponse)
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve('   ')
+      } as Response);
+
+    await expect(provider.getEvents()).rejects.toThrow('CalDAV REPORT returned an empty body');
+  });
+
+  it('should fail fast when REPORT XML is malformed', async () => {
+    const mockPropfindResponse = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <d:collection/>
+                <c:calendar xmlns:c="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    mockObsidianFetch
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockPropfindResponse)
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve('<d:multistatus><broken></d:multistatus>')
+      } as Response);
+
+    await expect(provider.getEvents()).rejects.toThrow('CalDAV REPORT returned malformed XML');
+  });
+
+  it('should fail fast when fallback GET returns empty ICS payload', async () => {
+    const mockPropfindResponse = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <d:collection/>
+                <c:calendar xmlns:c="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    const mockReportWithoutCalendarData = `
+      <d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/event-empty.ics</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:getetag>"empty-etag"</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    mockObsidianFetch
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockPropfindResponse)
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockReportWithoutCalendarData)
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        text: () => Promise.resolve('')
+      } as Response);
+
+    await expect(provider.getEvents()).rejects.toThrow('empty ICS payload');
+  });
+
   it('supports create, rename/update, and delete workflow for editable events', async () => {
     const baseEvent: OFCEvent = {
       uid: 'evt-workflow-1',
