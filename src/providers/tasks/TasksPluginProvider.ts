@@ -64,6 +64,56 @@ export function extractTimeFromTitle(title: string): {
   return { startTime: null, endTime: null, cleanTitle: title };
 }
 
+/**
+ * Updates or removes the time block `(H:MM)` or `(H:MM-H:MM)` embedded in a
+ * task's markdown line (i.e. inside the description, before metadata emojis).
+ *
+ * Pass `startTime = null` to strip the time block entirely (all-day).
+ * Pass `startTime` equal to `endTime` (or `endTime = null`) to write a
+ * single-time block `(H:MM)`.  Otherwise a range `(H:MM-H:MM)` is written.
+ *
+ * @param line      The full task markdown line (after date update).
+ * @param startTime New start time string (e.g. "9:00"), or null to remove.
+ * @param endTime   New end time string, or null for a single-time block.
+ * @returns The modified line.
+ */
+export function updateTimeInLine(
+  line: string,
+  startTime: string | null,
+  endTime: string | null
+): string {
+  // Strip any existing time block from the line
+  const timeBlockPattern = /\s*\(\d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?\)/g;
+  let result = line.replace(timeBlockPattern, '');
+
+  if (startTime) {
+    const timeBlock =
+      endTime && endTime !== startTime
+        ? `(${startTime}-${endTime})`
+        : `(${startTime})`;
+
+    // Insert before the scheduled emoji ⏳ (guaranteed present after updateTaskLine).
+    const scheduledEmojiIdx = result.indexOf('⏳');
+    if (scheduledEmojiIdx !== -1) {
+      const before = result.slice(0, scheduledEmojiIdx).trimEnd();
+      const after = result.slice(scheduledEmojiIdx);
+      result = `${before} ${timeBlock} ${after}`;
+    } else {
+      // Fallback: insert before any block link, or append to end.
+      const blockLinkRegex = /(\s*\^[a-zA-Z0-9-]+)$/;
+      const blockLinkMatch = result.match(blockLinkRegex);
+      if (blockLinkMatch) {
+        const withoutBlockLink = result.replace(blockLinkRegex, '');
+        result = `${withoutBlockLink.trimEnd()} ${timeBlock}${blockLinkMatch[1]}`;
+      } else {
+        result = `${result.trimEnd()} ${timeBlock}`;
+      }
+    }
+  }
+
+  return result;
+}
+
 // This is our own internal, simplified interface for a task from the Tasks plugin's cache.
 // It prevents the need to import anything from the Tasks plugin itself.
 interface CalendarTask {
@@ -585,7 +635,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
 
     const taskId = handle.persistentId;
-    await this._surgicallyUpdateTask(taskId, newDate);
+
+    // Extract time from the dropped event.  allDay → clear time block; timed → update it.
+    const startTime = newEvent.allDay ? null : newEvent.startTime;
+    const endTime = newEvent.allDay ? null : (newEvent.endTime ?? null);
+
+    await this._surgicallyUpdateTask(taskId, newDate, startTime, endTime);
     const [filePath, lineNumberStr] = taskId.split('::');
     return {
       file: { path: filePath },
@@ -606,15 +661,26 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   /**
    * Centralized helper for surgically updating a task line in a file.
    * This is called by both updateEvent (for drags) and scheduleTask (for backlog drops).
-   * @param taskId The persistent ID of the task (filePath::lineNumber).
-   * @param newDate The new date to apply to the task.
+   * @param taskId    The persistent ID of the task (filePath::lineNumber).
+   * @param newDate   The new date to apply to the task.
+   * @param startTime New start time, null to clear, or undefined to leave unchanged.
+   * @param endTime   New end time, null to clear, or undefined to leave unchanged.
    */
-  private async _surgicallyUpdateTask(taskId: string, newDate: Date): Promise<void> {
+  private async _surgicallyUpdateTask(
+    taskId: string,
+    newDate: Date,
+    startTime?: string | null,
+    endTime?: string | null
+  ): Promise<void> {
     const task = this.allTasks.find(t => t.id === taskId);
     if (!task) {
       throw new Error(`Cannot find original task with ID ${taskId} to update.`);
     }
-    const newLine = this.updateTaskLine(task.originalMarkdown, newDate);
+    let newLine = this.updateTaskLine(task.originalMarkdown, newDate);
+    // Only update the time block when explicitly provided (undefined = no change).
+    if (startTime !== undefined) {
+      newLine = updateTimeInLine(newLine, startTime, endTime ?? null);
+    }
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
   }
 

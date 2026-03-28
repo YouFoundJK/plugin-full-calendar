@@ -1,0 +1,111 @@
+/**
+ * @file TasksUpdateTimeInLine.test.ts
+ * @brief Tests for updateTimeInLine — inserting, updating and removing time
+ *        blocks in task markdown lines.
+ */
+
+import { updateTimeInLine } from '../TasksPluginProvider';
+
+// A typical task line produced by updateTaskLine (⏳ is always present).
+const BASE = '- [ ] My task ⏳ 2024-06-15';
+const BASE_BLOCK = '- [ ] My task ⏳ 2024-06-15 ^abc123';
+const WITH_TIME = '- [ ] My task (9:00) ⏳ 2024-06-15';
+const WITH_RANGE = '- [ ] My task (9:00-10:30) ⏳ 2024-06-15';
+
+describe('updateTimeInLine', () => {
+  describe('inserting a time block', () => {
+    it('inserts a single time before ⏳ when no time was present', () => {
+      expect(updateTimeInLine(BASE, '9:00', null)).toBe(
+        '- [ ] My task (9:00) ⏳ 2024-06-15'
+      );
+    });
+
+    it('inserts a time range before ⏳ when no time was present', () => {
+      expect(updateTimeInLine(BASE, '9:00', '10:30')).toBe(
+        '- [ ] My task (9:00-10:30) ⏳ 2024-06-15'
+      );
+    });
+
+    it('preserves a block link when inserting time with no ⏳ fallback', () => {
+      // Simulate a line with no ⏳ but with a block link
+      const line = '- [ ] My task ^abc123';
+      expect(updateTimeInLine(line, '14:00', null)).toBe(
+        '- [ ] My task (14:00) ^abc123'
+      );
+    });
+  });
+
+  describe('updating an existing time block', () => {
+    it('replaces an existing single time with a new single time', () => {
+      expect(updateTimeInLine(WITH_TIME, '11:00', null)).toBe(
+        '- [ ] My task (11:00) ⏳ 2024-06-15'
+      );
+    });
+
+    it('replaces an existing single time with a new range', () => {
+      expect(updateTimeInLine(WITH_TIME, '11:00', '12:00')).toBe(
+        '- [ ] My task (11:00-12:00) ⏳ 2024-06-15'
+      );
+    });
+
+    it('replaces an existing range with a new range (resize)', () => {
+      expect(updateTimeInLine(WITH_RANGE, '9:00', '11:00')).toBe(
+        '- [ ] My task (9:00-11:00) ⏳ 2024-06-15'
+      );
+    });
+
+    it('replaces an existing range with a single time', () => {
+      expect(updateTimeInLine(WITH_RANGE, '9:00', '9:00')).toBe(
+        '- [ ] My task (9:00) ⏳ 2024-06-15'
+      );
+    });
+  });
+
+  describe('removing the time block (all-day drop)', () => {
+    it('removes a single time block when startTime is null', () => {
+      expect(updateTimeInLine(WITH_TIME, null, null)).toBe(
+        '- [ ] My task ⏳ 2024-06-15'
+      );
+    });
+
+    it('removes a time range when startTime is null', () => {
+      expect(updateTimeInLine(WITH_RANGE, null, null)).toBe(
+        '- [ ] My task ⏳ 2024-06-15'
+      );
+    });
+
+    it('is a no-op on a line that has no time block', () => {
+      expect(updateTimeInLine(BASE, null, null)).toBe(BASE);
+    });
+  });
+
+  describe('block link preservation', () => {
+    it('preserves a block link when adding a time', () => {
+      expect(updateTimeInLine(BASE_BLOCK, '8:00', '9:00')).toBe(
+        '- [ ] My task (8:00-9:00) ⏳ 2024-06-15 ^abc123'
+      );
+    });
+
+    it('preserves a block link when removing a time', () => {
+      const line = '- [ ] My task (9:00) ⏳ 2024-06-15 ^abc123';
+      expect(updateTimeInLine(line, null, null)).toBe(
+        '- [ ] My task ⏳ 2024-06-15 ^abc123'
+      );
+    });
+  });
+
+  describe('single-digit hour support', () => {
+    it('handles single-digit start and end hours', () => {
+      expect(updateTimeInLine(BASE, '8:00', '9:30')).toBe(
+        '- [ ] My task (8:00-9:30) ⏳ 2024-06-15'
+      );
+    });
+
+    it('replaces a single-digit hour time block', () => {
+      const line = '- [ ] My task (8:00) ⏳ 2024-06-15';
+      expect(updateTimeInLine(line, '9:00', null)).toBe(
+        '- [ ] My task (9:00) ⏳ 2024-06-15'
+      );
+    });
+  });
+});
