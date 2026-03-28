@@ -29,6 +29,41 @@ import { t } from '../../features/i18n/i18n';
 // CHANGE: Define Scheduled emoji instead of Due
 const getScheduledDateEmoji = (): string => '⏳';
 
+/**
+ * Extracts a time or time range from a task title.
+ * Matches patterns like (18:00) or (18:00-20:00) anywhere in the title.
+ * Returns { startTime, endTime, cleanTitle } where cleanTitle has the pattern removed.
+ */
+export function extractTimeFromTitle(title: string): {
+  startTime: string | null;
+  endTime: string | null;
+  cleanTitle: string;
+} {
+  // Match (HH:MM-HH:MM) or (HH:MM)
+  const timeRangePattern = /\((\d{2}:\d{2})-(\d{2}:\d{2})\)/;
+  const timePattern = /\((\d{2}:\d{2})\)/;
+
+  const rangeMatch = title.match(timeRangePattern);
+  if (rangeMatch) {
+    return {
+      startTime: rangeMatch[1],
+      endTime: rangeMatch[2],
+      cleanTitle: title.replace(rangeMatch[0], '').trim()
+    };
+  }
+
+  const singleMatch = title.match(timePattern);
+  if (singleMatch) {
+    return {
+      startTime: singleMatch[1],
+      endTime: null,
+      cleanTitle: title.replace(singleMatch[0], '').trim()
+    };
+  }
+
+  return { startTime: null, endTime: null, cleanTitle: title };
+}
+
 // This is our own internal, simplified interface for a task from the Tasks plugin's cache.
 // It prevents the need to import anything from the Tasks plugin itself.
 interface CalendarTask {
@@ -41,6 +76,8 @@ interface CalendarTask {
   filePath: string;
   lineNumber: number; // 1-based line number.
   isDone: boolean;
+  startTime: string | null; // HH:mm if a time pattern was found in the title
+  endTime: string | null; // HH:mm if a time range pattern was found in the title
 }
 
 interface TasksPluginTaskDate {
@@ -260,16 +297,27 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       return null;
     }
 
-    const ofcEvent: OFCEvent = {
-      type: 'single',
-      title: task.title,
-      allDay: true,
-      date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'), // MODIFIED
-      // FIX: Ensure tasks are never multi-day by setting endDate to null.
-      endDate: null,
-      completed: task.isDone ? DateTime.now().toISO() : false, // MODIFIED
-      uid: task.id // The UID is our persistent handle.
-    };
+    const ofcEvent: OFCEvent = task.startTime
+      ? {
+          type: 'single',
+          title: task.title,
+          allDay: false,
+          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'),
+          endDate: null,
+          startTime: task.startTime,
+          endTime: task.endTime ?? task.startTime,
+          completed: task.isDone ? DateTime.now().toISO() : false,
+          uid: task.id
+        }
+      : {
+          type: 'single',
+          title: task.title,
+          allDay: true,
+          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'),
+          endDate: null,
+          completed: task.isDone ? DateTime.now().toISO() : false,
+          uid: task.id
+        };
 
     const location: EventLocation = {
       file: { path: task.filePath },
@@ -397,10 +445,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     // FIX: Use the stable, nested line number from taskLocation and convert to 1-based index.
     const calendarTasks = tasks.map((task, index) => {
       const oneBasedLineNumber = task.taskLocation.lineNumber + 1;
+      const { startTime, endTime, cleanTitle } = extractTimeFromTitle(task.description);
       return {
         // The ID must be based on the 0-indexed number to match the live-update diffing logic.
         id: `${task.path}::${task.taskLocation.lineNumber}`,
-        title: task.description,
+        title: cleanTitle,
         startDate: task.startDate ? task.startDate.toDate() : null,
         dueDate: task.dueDate ? task.dueDate.toDate() : null,
         scheduledDate: task.scheduledDate ? task.scheduledDate.toDate() : null,
@@ -408,7 +457,9 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         filePath: task.path,
         // The internal lineNumber must be 1-based for surgical editing.
         lineNumber: oneBasedLineNumber,
-        isDone: task.isDone || !!task.doneDatez
+        isDone: task.isDone || !!task.doneDatez,
+        startTime,
+        endTime
       };
     });
 
@@ -421,28 +472,9 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
     await this._ensureTasksCacheIsWarm();
-    const events: EditableEventResponse[] = [];
-    for (const task of this.allTasks) {
-      const primaryDate = task.scheduledDate;
-      if (primaryDate) {
-        const ofcEvent: OFCEvent = {
-          type: 'single',
-          title: task.title,
-          allDay: true,
-          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'), // MODIFIED
-          endDate: null,
-          completed: task.isDone ? DateTime.now().toISO() : false, // MODIFIED
-          uid: task.id
-        };
-
-        const location: EventLocation = {
-          file: { path: task.filePath },
-          lineNumber: task.lineNumber
-        };
-        events.push([ofcEvent, location]);
-      }
-    }
-    return events;
+    return this.allTasks
+      .map(task => this._taskToOFCEvent(task))
+      .filter((e): e is [OFCEvent, EventLocation | null] => e !== null);
   }
 
   // REPLACE getUndatedTasks with corrected logic
@@ -473,24 +505,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
     // REPLACE the for-loop with corrected date priority and single-day logic
     for (const task of tasksInFile) {
-      const primaryDate = task.scheduledDate || task.dueDate || task.startDate;
-      if (primaryDate) {
-        const ofcEvent: OFCEvent = {
-          type: 'single',
-          title: task.title,
-          allDay: true,
-          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'), // MODIFIED
-          endDate: null,
-          completed: task.isDone ? DateTime.now().toISO() : false, // MODIFIED
-          uid: task.id
-        };
-
-        const location: EventLocation = {
-          file: { path: task.filePath },
-          lineNumber: task.lineNumber
-        };
-        events.push([ofcEvent, location]);
-      }
+      const result = this._taskToOFCEvent(task);
+      if (result) events.push(result);
     }
     return Promise.resolve(events);
   }
