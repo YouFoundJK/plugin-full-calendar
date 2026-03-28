@@ -83,6 +83,24 @@ const filenameForEvent = (event: OFCEvent, settings: TitleSettingsLike) =>
 
 const SUFFIX_PATTERN = '-_-_-';
 
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+
+const waitForFileAtPath = async (
+  app: ObsidianInterface,
+  path: string,
+  attempts = 20,
+  delayMs = 25
+): Promise<TFile | null> => {
+  for (let i = 0; i < attempts; i++) {
+    const file = app.getFileByPath(path);
+    if (file && file.path === path) {
+      return file;
+    }
+    await sleep(delayMs);
+  }
+  return null;
+};
+
 type FullNoteConfigProps = {
   plugin: FullCalendarPlugin;
   config: Partial<FullNoteProviderConfig>;
@@ -237,8 +255,8 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     newEventData: OFCEvent
   ): Promise<EventLocation | null> {
     const oldPath = handle.persistentId;
-    const file = this.app.getFileByPath(oldPath);
-    if (!file) {
+    const originalFile = this.app.getFileByPath(oldPath);
+    if (!originalFile) {
       throw new Error(`File ${oldPath} not found.`);
     }
 
@@ -247,16 +265,24 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     const newBaseFilename = basenameFromEvent(newEventData, this.plugin.settings);
 
     let finalPath = oldPath;
+    let fileToRewrite = originalFile;
 
     if (oldBaseFilename !== newBaseFilename) {
       // It's a rename. We must find a new unique path for the new base name.
       finalPath = findUniquePath(this.app, this.source.directory, newBaseFilename);
-      await this.app.rename(file, finalPath);
+
+      await this.app.rename(originalFile, finalPath);
+
+      const renamedFile = await waitForFileAtPath(this.app, finalPath);
+      if (!renamedFile) {
+        throw new Error(`File ${finalPath} not found after rename.`);
+      }
+      fileToRewrite = renamedFile;
     }
 
     // The `newEventData` from the cache always has a clean title.
     // Write this clean data to the frontmatter.
-    await this.app.rewrite(file, page => modifyFrontmatterString(page, newEventData));
+    await this.app.rewrite(fileToRewrite, page => modifyFrontmatterString(page, newEventData));
 
     // The location returned must have the final, potentially new, path.
     return { file: { path: finalPath }, lineNumber: undefined };

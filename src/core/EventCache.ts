@@ -37,7 +37,7 @@
  * @license See LICENSE.md
  */
 
-import { Notice, TFile } from 'obsidian';
+import { Notice } from 'obsidian';
 import { FullCalendarSettings } from '../types/settings';
 
 import FullCalendarPlugin from '../main';
@@ -1158,7 +1158,7 @@ export default class EventCache {
   }
 
   public syncFile(
-    file: TFile,
+    file: { path: string },
     newEventsWithDetails: { event: OFCEvent; location: EventLocation | null; calendarId: string }[]
   ): Promise<void> {
     if (this.isBulkUpdating) {

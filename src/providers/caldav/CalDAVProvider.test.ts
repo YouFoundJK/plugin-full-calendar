@@ -5,6 +5,7 @@ import { CalDAVProvider } from './CalDAVProvider';
 import { obsidianFetch } from './obsidian-fetch_caldav';
 import { CalDAVProviderConfig } from './typesCalDAV';
 import FullCalendarPlugin from '../../main';
+import { OFCEvent } from '../../types';
 
 // Mock obsidianFetch
 jest.mock('./obsidian-fetch_caldav', () => ({
@@ -140,5 +141,68 @@ END:VCALENDAR
     } as Response);
 
     await expect(provider.getEvents()).rejects.toThrow('Invalid collection URL or not a calendar');
+  });
+
+  it('supports create, rename/update, and delete workflow for editable events', async () => {
+    const baseEvent: OFCEvent = {
+      uid: 'evt-workflow-1',
+      title: 'Initial Name',
+      type: 'single',
+      allDay: true,
+      date: '2026-03-27',
+      endDate: null
+    };
+
+    const renamedEvent: OFCEvent = {
+      ...baseEvent,
+      title: 'Renamed Name'
+    };
+
+    mockObsidianFetch
+      .mockResolvedValueOnce({ status: 201, statusText: 'Created' } as Response)
+      .mockResolvedValueOnce({ status: 204, statusText: 'No Content' } as Response)
+      .mockResolvedValueOnce({ status: 204, statusText: 'No Content' } as Response);
+
+    expect(provider.getCapabilities()).toEqual({ canCreate: true, canEdit: true, canDelete: true });
+
+    const [createdEvent] = await provider.createEvent({ ...baseEvent });
+    expect(createdEvent.uid).toBe('evt-workflow-1');
+
+    await provider.updateEvent(
+      { persistentId: 'evt-workflow-1' },
+      { ...baseEvent, etag: 'old-etag' },
+      renamedEvent
+    );
+
+    await provider.deleteEvent({ persistentId: 'evt-workflow-1' });
+
+    expect(mockObsidianFetch).toHaveBeenCalledTimes(3);
+
+    expect(mockObsidianFetch).toHaveBeenNthCalledWith(
+      1,
+      'https://example.com/caldav/user/calendar/events/evt-workflow-1.ics',
+      expect.objectContaining({
+        method: 'PUT'
+      })
+    );
+
+    expect(mockObsidianFetch).toHaveBeenNthCalledWith(
+      2,
+      'https://example.com/caldav/user/calendar/events/evt-workflow-1.ics',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({
+          'If-Match': '"old-etag"'
+        }) as Record<string, unknown>
+      })
+    );
+
+    expect(mockObsidianFetch).toHaveBeenNthCalledWith(
+      3,
+      'https://example.com/caldav/user/calendar/events/evt-workflow-1.ics',
+      expect.objectContaining({
+        method: 'DELETE'
+      })
+    );
   });
 });
