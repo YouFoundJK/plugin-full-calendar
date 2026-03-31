@@ -50,6 +50,10 @@ function specifiesEnd(iCalEvent: ical.Event) {
 // MODIFICATION: Remove settings parameter from icsToOFC
 function icsToOFC(input: ical.Event): OFCEvent | null {
   const summary = input.summary || '';
+  const uid = input.uid;
+  const rruleProp = input.component.getFirstProperty('rrule');
+  const rruleVal = rruleProp ? String(rruleProp.getFirstValue()) : null;
+  const rruleStr = rruleVal ? String(rruleVal) : '';
 
   // Simplified: just use the title directly
   const eventData = { title: summary };
@@ -81,7 +85,6 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
     );
   }
 
-  const uid = input.uid;
   const isAllDay = input.startDate.isDate;
 
   // The Luxon DateTime object now holds the correct zone from the ICS file.
@@ -89,10 +92,6 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
   const timezone = isAllDay ? undefined : startDate.zoneName || undefined;
 
   if (input.isRecurring()) {
-    // Cast getFirstValue() return to unknown, then string to string
-    const rruleProp = input.component.getFirstProperty('rrule');
-    const rruleVal = rruleProp ? String(rruleProp.getFirstValue()) : null;
-    const rruleStr = rruleVal ? String(rruleVal) : '';
     const rrule = rrulestr(rruleStr);
     const exdates = input.component
       .getAllProperties('exdate')

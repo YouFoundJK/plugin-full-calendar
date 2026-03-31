@@ -2,6 +2,8 @@
 
 Full Calendar is fully timezone-aware to ensure that your events are always accurate, especially if you travel, work with remote teams, or use calendar feeds from different timezones.
 
+For implementation details of a past one-day recurrence shift bug and its patch, see the [RRULE timezone patch devlog](../advanced/devlog_rrule_timezone_patch.md).
+
 ## Display Timezone
 
 This is the most important setting. It determines the timezone that the entire calendar view is rendered in. By default, it uses your computer's local system timezone.
