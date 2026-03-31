@@ -541,9 +541,8 @@ export class CalendarView extends ItemView {
           if (isTimeline) {
             if (!this.timelineResources) {
               this.timelineResources = this.buildTimelineResources();
-              // @ts-expect-error FullCalendar typings don't include all scheduler options
+              //  FullCalendar typings don't include all scheduler options
               this.fullCalendarView?.setOption('resources', this.timelineResources);
-              // @ts-expect-error FullCalendar typings don't include all scheduler options
               this.fullCalendarView?.setOption('resourcesInitiallyExpanded', false);
             }
             this.addShadowEventsToView();
@@ -969,9 +968,7 @@ export class CalendarView extends ItemView {
       if (currentViewType.includes('resourceTimeline')) {
         if (!this.timelineResources) {
           this.timelineResources = this.buildTimelineResources();
-          // @ts-expect-error FullCalendar typings don't include all scheduler options
           this.fullCalendarView?.setOption('resources', this.timelineResources);
-          // @ts-expect-error FullCalendar typings don't include all scheduler options
           this.fullCalendarView?.setOption('resourcesInitiallyExpanded', false);
         }
         this.addShadowEventsToView();

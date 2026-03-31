@@ -49,12 +49,13 @@ export function extractTimeFromTitle(title: string): {
   const normalise = (t: string) =>
     t.replace(/\s*([AaPp][Mm])$/, (_, m: string) => ` ${m.toUpperCase()}`);
 
+  const collapseSpaces = (s: string) => s.replace(/\s+/g, ' ').trim();
   const rangeMatch = title.match(timeRangePattern);
   if (rangeMatch) {
     return {
       startTime: normalise(rangeMatch[1]),
       endTime: normalise(rangeMatch[2]),
-      cleanTitle: title.replace(rangeMatch[0], '').trim()
+      cleanTitle: collapseSpaces(title.replace(rangeMatch[0], ''))
     };
   }
 
@@ -63,11 +64,11 @@ export function extractTimeFromTitle(title: string): {
     return {
       startTime: normalise(singleMatch[1]),
       endTime: null,
-      cleanTitle: title.replace(singleMatch[0], '').trim()
+      cleanTitle: collapseSpaces(title.replace(singleMatch[0], ''))
     };
   }
 
-  return { startTime: null, endTime: null, cleanTitle: title };
+  return { startTime: null, endTime: null, cleanTitle: collapseSpaces(title) };
 }
 
 /**
@@ -91,7 +92,8 @@ export function updateTimeInLine(
   timeFormat24h = true
 ): string {
   // Strip any existing time block (24h or 12h) from the line.
-  const timeBlockPattern = /\s*\(\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?(?:-\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?)?\)/g;
+  const timeBlockPattern =
+    /\s*\(\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?(?:-\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?)?\)/g;
   let result = line.replace(timeBlockPattern, '');
 
   if (startTime) {
@@ -134,10 +136,9 @@ function formatTimeToken(time: string, timeFormat24h: boolean): string {
     return parsed.isValid ? parsed.toFormat('H:mm') : time;
   }
   // 12h: "9:00 AM", "12:30 PM", etc.
-  const parsed =
-    DateTime.fromFormat(time, 'HH:mm').isValid
-      ? DateTime.fromFormat(time, 'HH:mm')
-      : DateTime.fromFormat(time, 'H:mm');
+  const parsed = DateTime.fromFormat(time, 'HH:mm').isValid
+    ? DateTime.fromFormat(time, 'HH:mm')
+    : DateTime.fromFormat(time, 'H:mm');
   return parsed.isValid ? parsed.toFormat('h:mm a').toUpperCase() : time;
 }
 

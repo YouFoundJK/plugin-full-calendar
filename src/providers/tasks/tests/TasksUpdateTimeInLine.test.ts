@@ -17,9 +17,7 @@ const WITH_RANGE_12H = '- [ ] My task (9:00 AM-5:00 PM) ⏳ 2024-06-15';
 describe('updateTimeInLine (24h mode, default)', () => {
   describe('inserting a time block', () => {
     it('inserts a single time before ⏳ when no time was present', () => {
-      expect(updateTimeInLine(BASE, '9:00', null)).toBe(
-        '- [ ] My task (9:00) ⏳ 2024-06-15'
-      );
+      expect(updateTimeInLine(BASE, '9:00', null)).toBe('- [ ] My task (9:00) ⏳ 2024-06-15');
     });
 
     it('inserts a time range before ⏳ when no time was present', () => {
@@ -30,9 +28,7 @@ describe('updateTimeInLine (24h mode, default)', () => {
 
     it('preserves a block link when inserting time with no ⏳ fallback', () => {
       const line = '- [ ] My task ^abc123';
-      expect(updateTimeInLine(line, '14:00', null)).toBe(
-        '- [ ] My task (14:00) ^abc123'
-      );
+      expect(updateTimeInLine(line, '14:00', null)).toBe('- [ ] My task (14:00) ^abc123');
     });
   });
 
@@ -76,27 +72,19 @@ describe('updateTimeInLine (24h mode, default)', () => {
 
   describe('removing the time block (all-day drop)', () => {
     it('removes a single time block when startTime is null', () => {
-      expect(updateTimeInLine(WITH_TIME, null, null)).toBe(
-        '- [ ] My task ⏳ 2024-06-15'
-      );
+      expect(updateTimeInLine(WITH_TIME, null, null)).toBe('- [ ] My task ⏳ 2024-06-15');
     });
 
     it('removes a time range when startTime is null', () => {
-      expect(updateTimeInLine(WITH_RANGE, null, null)).toBe(
-        '- [ ] My task ⏳ 2024-06-15'
-      );
+      expect(updateTimeInLine(WITH_RANGE, null, null)).toBe('- [ ] My task ⏳ 2024-06-15');
     });
 
     it('removes a 12h time block when startTime is null', () => {
-      expect(updateTimeInLine(WITH_TIME_12H, null, null)).toBe(
-        '- [ ] My task ⏳ 2024-06-15'
-      );
+      expect(updateTimeInLine(WITH_TIME_12H, null, null)).toBe('- [ ] My task ⏳ 2024-06-15');
     });
 
     it('removes a 12h range when startTime is null', () => {
-      expect(updateTimeInLine(WITH_RANGE_12H, null, null)).toBe(
-        '- [ ] My task ⏳ 2024-06-15'
-      );
+      expect(updateTimeInLine(WITH_RANGE_12H, null, null)).toBe('- [ ] My task ⏳ 2024-06-15');
     });
 
     it('is a no-op on a line that has no time block', () => {
@@ -113,9 +101,7 @@ describe('updateTimeInLine (24h mode, default)', () => {
 
     it('preserves a block link when removing a time', () => {
       const line = '- [ ] My task (9:00) ⏳ 2024-06-15 ^abc123';
-      expect(updateTimeInLine(line, null, null)).toBe(
-        '- [ ] My task ⏳ 2024-06-15 ^abc123'
-      );
+      expect(updateTimeInLine(line, null, null)).toBe('- [ ] My task ⏳ 2024-06-15 ^abc123');
     });
   });
 
@@ -128,9 +114,7 @@ describe('updateTimeInLine (24h mode, default)', () => {
 
     it('replaces a single-digit hour time block', () => {
       const line = '- [ ] My task (8:00) ⏳ 2024-06-15';
-      expect(updateTimeInLine(line, '9:00', null)).toBe(
-        '- [ ] My task (9:00) ⏳ 2024-06-15'
-      );
+      expect(updateTimeInLine(line, '9:00', null)).toBe('- [ ] My task (9:00) ⏳ 2024-06-15');
     });
   });
 });
@@ -180,15 +164,11 @@ describe('updateTimeInLine (12h mode)', () => {
 
   describe('removing a 12h time block', () => {
     it('removes a 12h single time when startTime is null', () => {
-      expect(updateTimeInLine(WITH_TIME_12H, null, null)).toBe(
-        '- [ ] My task ⏳ 2024-06-15'
-      );
+      expect(updateTimeInLine(WITH_TIME_12H, null, null)).toBe('- [ ] My task ⏳ 2024-06-15');
     });
 
     it('removes a 12h range when startTime is null', () => {
-      expect(updateTimeInLine(WITH_RANGE_12H, null, null)).toBe(
-        '- [ ] My task ⏳ 2024-06-15'
-      );
+      expect(updateTimeInLine(WITH_RANGE_12H, null, null)).toBe('- [ ] My task ⏳ 2024-06-15');
     });
   });
 });
