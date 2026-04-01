@@ -541,6 +541,7 @@ export class CalendarView extends ItemView {
           if (isTimeline) {
             if (!this.timelineResources) {
               this.timelineResources = this.buildTimelineResources();
+              //  FullCalendar typings don't include all scheduler options
               this.fullCalendarView?.setOption('resources', this.timelineResources);
               this.fullCalendarView?.setOption('resourcesInitiallyExpanded', false);
             }
