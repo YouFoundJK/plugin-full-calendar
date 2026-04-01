@@ -33,3 +33,8 @@ exported*
 
 # Local vault configuration (private)
 .vault-config.json
+
+# direnv config
+.envrc
+.direnv
+
