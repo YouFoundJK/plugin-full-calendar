@@ -3,6 +3,8 @@
  */
 import { CalDAVProvider } from './CalDAVProvider';
 import { obsidianFetch } from './obsidian-fetch_caldav';
+import { fetchCalendarInfo } from './helper_caldav';
+import { importCalendars } from './import_caldav';
 import { CalDAVProviderConfig } from './typesCalDAV';
 import FullCalendarPlugin from '../../main';
 import { OFCEvent } from '../../types';
@@ -315,5 +317,255 @@ END:VCALENDAR
         method: 'DELETE'
       })
     );
+  });
+});
+
+describe('fetchCalendarInfo', () => {
+  beforeEach(() => {
+    mockObsidianFetch.mockReset();
+  });
+
+  it('returns isCalendar=true with displayName and color from a full PROPFIND response', async () => {
+    const xml = `
+      <d:multistatus xmlns:d="DAV:" xmlns:ical="http://apple.com/ns/ical/">
+        <d:response>
+          <d:href>/cal/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <d:collection/>
+                <cal:calendar xmlns:cal="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+              <d:displayname>Work Calendar</d:displayname>
+              <ical:calendar-color>#FF5733FF</ical:calendar-color>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 207,
+      text: () => Promise.resolve(xml)
+    } as Response);
+
+    const result = await fetchCalendarInfo('https://example.com/cal/', {
+      username: 'user',
+      password: 'pass'
+    });
+
+    expect(result.isCalendar).toBe(true);
+    expect(result.displayName).toBe('Work Calendar');
+    expect(result.color).toBe('#FF5733'); // alpha stripped
+  });
+
+  it('passes through a 6-digit hex color without modification', async () => {
+    const xml = `
+      <d:multistatus xmlns:d="DAV:" xmlns:ical="http://apple.com/ns/ical/">
+        <d:response>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <cal:calendar xmlns:cal="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+              <d:displayname>Personal</d:displayname>
+              <ical:calendar-color>#3A86FF</ical:calendar-color>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 207,
+      text: () => Promise.resolve(xml)
+    } as Response);
+
+    const result = await fetchCalendarInfo('https://example.com/cal/');
+    expect(result.color).toBe('#3A86FF');
+  });
+
+  it('returns undefined displayName and color when server omits them', async () => {
+    const xml = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <cal:calendar xmlns:cal="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 207,
+      text: () => Promise.resolve(xml)
+    } as Response);
+
+    const result = await fetchCalendarInfo('https://example.com/cal/');
+    expect(result.isCalendar).toBe(true);
+    expect(result.displayName).toBeUndefined();
+    expect(result.color).toBeUndefined();
+  });
+
+  it('returns isCalendar=false when resourcetype is not a calendar', async () => {
+    const xml = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype><d:collection/></d:resourcetype>
+              <d:displayname>Files</d:displayname>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 207,
+      text: () => Promise.resolve(xml)
+    } as Response);
+
+    const result = await fetchCalendarInfo('https://example.com/files/');
+    expect(result.isCalendar).toBe(false);
+  });
+
+  it('returns isCalendar=false on HTTP error', async () => {
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 401,
+      text: () => Promise.resolve('Unauthorized')
+    } as Response);
+
+    const result = await fetchCalendarInfo('https://example.com/cal/', {
+      username: 'bad',
+      password: 'creds'
+    });
+    expect(result.isCalendar).toBe(false);
+  });
+
+  it('handles color values without a leading # prefix', async () => {
+    const xml = `
+      <d:multistatus xmlns:d="DAV:" xmlns:ical="http://apple.com/ns/ical/">
+        <d:response>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <cal:calendar xmlns:cal="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+              <ical:calendar-color>FF5733FF</ical:calendar-color>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 207,
+      text: () => Promise.resolve(xml)
+    } as Response);
+
+    const result = await fetchCalendarInfo('https://example.com/cal/');
+    expect(result.color).toBe('#FF5733');
+  });
+});
+
+describe('importCalendars', () => {
+  beforeEach(() => {
+    mockObsidianFetch.mockReset();
+  });
+
+  it('uses server-provided name and color when available', async () => {
+    const xml = `
+      <d:multistatus xmlns:d="DAV:" xmlns:ical="http://apple.com/ns/ical/">
+        <d:response>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <cal:calendar xmlns:cal="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+              <d:displayname>Home</d:displayname>
+              <ical:calendar-color>#AABBCCDD</ical:calendar-color>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 207,
+      text: () => Promise.resolve(xml)
+    } as Response);
+
+    const sources = await importCalendars(
+      { type: 'basic', username: 'u', password: 'p' },
+      'https://example.com/cal/',
+      []
+    );
+
+    expect(sources).toHaveLength(1);
+    expect(sources[0].name).toBe('Home');
+    expect(sources[0].color).toBe('#AABBCC'); // alpha stripped
+  });
+
+  it('falls back to defaults when server omits name and color', async () => {
+    const xml = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <cal:calendar xmlns:cal="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 207,
+      text: () => Promise.resolve(xml)
+    } as Response);
+
+    const sources = await importCalendars(
+      { type: 'basic', username: 'u', password: 'p' },
+      'https://example.com/cal/',
+      []
+    );
+
+    expect(sources).toHaveLength(1);
+    expect(sources[0].name).toBe('CalDAV Calendar');
+    expect(sources[0].color).toBe('#888888');
+  });
+
+  it('throws when the URL is not a calendar collection', async () => {
+    const xml = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype><d:collection/></d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 207,
+      text: () => Promise.resolve(xml)
+    } as Response);
+
+    await expect(
+      importCalendars(
+        { type: 'basic', username: 'u', password: 'p' },
+        'https://example.com/files/',
+        []
+      )
+    ).rejects.toThrow('does not appear to be a valid CalDAV calendar collection');
   });
 });

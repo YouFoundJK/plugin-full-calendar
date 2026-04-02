@@ -10,7 +10,7 @@ import { CalDAVConfigComponent } from './CalDAVConfigComponent';
 import * as React from 'react';
 import { obsidianFetch } from './obsidian-fetch_caldav';
 
-import { checkCalendarResourceType } from './helper_caldav';
+import { fetchCalendarInfo } from './helper_caldav';
 
 // Helper function to ensure URL formatting is consistent.
 function canonCollection(u?: string): string {
@@ -306,7 +306,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
 
   async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
     // Validate collection URL using PROPFIND instead of regex
-    const isValid = await checkCalendarResourceType(this.source.homeUrl, {
+    const { isCalendar: isValid } = await fetchCalendarInfo(this.source.homeUrl, {
       username: this.source.username,
       password: this.source.password
     });

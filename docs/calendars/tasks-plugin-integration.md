@@ -47,6 +47,33 @@ You can manage your tasks without ever leaving the calendar interface.
 
 All changes are synced back to the Tasks plugin in real-time.
 
+### Time Blocks
+
+You can schedule a task to a specific time—or a time range—by embedding a time block directly in the task's title. Full Calendar reads this block to position the task on the timed calendar view.
+
+In the calendar view, you can also drag and drop tasks between the "all day" area and the timed calendar view.
+
+**Supported formats:**
+
+| Format | Example | Result |
+|---|---|---|
+| Single time (24h) | `(14:30)` | Event starts at 2:30 PM |
+| Time range (24h) | `(9:00-10:30)` | Event from 9:00 AM to 10:30 AM |
+| Single time (12h) | `(2:30 PM)` | Event starts at 2:30 PM |
+| Time range (12h) | `(9:00 AM-10:30 AM)` | Event from 9:00 AM to 10:30 AM |
+
+A complete task line with a time block looks like this:
+
+```
+- [ ] Review meeting notes (14:00-15:00) ⏳ 2025-03-28
+```
+
+The time block is placed **before** the scheduled emoji (`⏳`) in the task description. When you drag a task to a time slot on the calendar, the time block is written back automatically. Editing the event start/end time from the calendar view will update the embedded time block in the markdown file in real time.
+
+!!! tip "Time Format Setting"
+    Full Calendar reads time blocks in both 12-hour and 24-hour format. It writes time blocks in
+    the format specified under **Settings → Appearance**.
+
 ### Advanced Parsing and Settings
 
 The integration is built with flexibility in mind.

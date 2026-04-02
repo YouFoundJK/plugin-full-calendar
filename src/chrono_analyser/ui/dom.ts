@@ -1,5 +1,3 @@
-// Disabling sentence casing rule which incorrectly flags many UI strings
-
 import { setIcon } from 'obsidian';
 
 const setCssProps = (element: HTMLElement, props: Record<string, string>): void => {

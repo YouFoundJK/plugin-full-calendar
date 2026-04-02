@@ -81,12 +81,10 @@
     "cannotOpenRemote": "Notiz für ein Remote-Ereignis kann nicht geöffnet werden.",
     "bulkCategorization": {
       "noNotesFound": "Keine lokalen Ereignisnotizen zum Kategorisieren gefunden.",
-      "progress": "Ereignisnotizen werden kategorisiert: {{index}}/{{total}}",
       "complete": "Massenkategorisierung abgeschlossen."
     },
     "bulkDecategorization": {
       "noNotesFound": "Keine lokalen Ereignisnotizen zum Dekategorisieren gefunden.",
-      "progress": "Ereignisnotizen werden dekategorisiert: {{index}}/{{total}}",
       "complete": "Massen-Dekategorisierung abgeschlossen."
     },
     "tasks": {
@@ -97,26 +95,24 @@
     }
   },
   "eventCache": {
-    "errors": {
-      "calendarNotFound": "Ereignis kann nicht hinzugefügt werden: Kalender mit ID {{calendarId}} nicht gefunden.",
-      "providerNotFound": "Ereignis kann nicht hinzugefügt werden: Provider für Typ {{type}} nicht gefunden.",
-      "readOnly": "Ereignis kann nicht zu einem schreibgeschützten Kalender hinzugefügt werden.",
-      "createFailed": "Fehler beim Erstellen des Ereignisses. Änderung wurde rückgängig gemacht.",
-      "deleteFailed": "Fehler beim Löschen des Ereignisses. Änderung wurde rückgängig gemacht.",
-      "updateFailed": "Fehler beim Aktualisieren des Ereignisses. Änderung wurde rückgängig gemacht."
-    }
+    "calendarNotFound": "Ereignis kann nicht hinzugefügt werden: Kalender mit der ID {{calendarId}} nicht gefunden.",
+    "providerNotFound": "Ereignis kann nicht hinzugefügt werden: Anbieter für den Typ {{type}} nicht gefunden.",
+    "readOnly": "Ereignis kann nicht zu einem schreibgeschützten Kalender hinzugefügt werden.",
+    "createFailed": "Ereignis konnte nicht erstellt werden. Die Änderung wurde rückgängig gemacht.",
+    "deleteFailed": "Ereignis konnte nicht gelöscht werden. Die Änderung wurde rückgängig gemacht.",
+    "updateFailed": "Ereignis konnte nicht aktualisiert werden. Die Änderung wurde rückgängig gemacht.",
+    "movePartialSuccess": "Ereignis erfolgreich verschoben, aber einige untergeordnete Elemente wurden möglicherweise nicht verschoben."
   },
   "recurEvents": {
-    "notices": {
-      "promotingChildren": "Befördere {{count}} untergeordnete Ereignis(se).",
-      "deletedAndPromoted": "Wiederkehrendes Ereignis gelöscht und untergeordnete befördert.",
-      "deletingWithChildren": "Lösche wiederkehrendes Ereignis und seine {{count}} untergeordnete(n) Überschreibung(en)...",
-      "deletedAll": "Wiederkehrendes Ereignis und alle untergeordneten erfolgreich gelöscht.",
-      "preservingTiming": "Behalte geänderte Ereigniszeit bei und setze Aufgabe zurück.",
-      "revertingControl": "Kehre zur Hauptsequenz des wiederkehrenden Ereignisses zurück.",
-      "updatingChildren": "Aktualisiere Titel von {{count}} untergeordneten Ereignis(sen), um dem neuen übergeordneten Titel zu entsprechen.",
-      "updateError": "Fehler beim Aktualisieren des wiederkehrenden Ereignisses. Einige untergeordnete wurden möglicherweise nicht aktualisiert."
-    }
+    "promotingChildren": "Förderung von {{count}} untergeordneten Ereignis(sen).",
+    "deletedAndPromoted": "Wiederkehrendes Ereignis gelöscht und untergeordnete Elemente gefördert.",
+    "deletingWithChildren": "Wiederkehrendes Ereignis und seine {{count}} untergeordnete(n) Überschreibung(en) werden gelöscht...",
+    "deletedAll": "Wiederkehrendes Ereignis und alle untergeordneten Elemente erfolgreich gelöscht.",
+    "preservingTiming": "Beibehaltung des geänderten Ereigniszeitpunkts und Rückgängigmachung der Aufgabenfertigstellung.",
+    "revertingControl": "Rückgabe der Kontrolle an die Hauptsequenz für wiederkehrende Ereignisse.",
+    "updatingChildren": "Aktualisierung von {{count}} untergeordnete(n) Ereignis(sen), um dem neuen übergeordneten Titel zu entsprechen.",
+    "updateError": "Fehler beim Aktualisieren des wiederkehrenden Ereignisses. Einige untergeordnete Elemente wurden möglicherweise nicht aktualisiert.",
+    "movingChildren": "Verschieben von {{count}} untergeordnete(n) Ereignis(sen) in den neuen Kalender."
   },
   "ribbon": {
     "openCalendar": "Full Calendar öffnen"
@@ -138,10 +134,6 @@
       "clickToCreateEvent": {
         "label": "Klicken Sie auf einen Tag in der Monatsansicht, um ein Ereignis zu erstellen",
         "description": "Deaktivieren, um stattdessen die Tagesansicht zu öffnen."
-      },
-      "enableReminders": {
-        "label": "Ereignis-Erinnerungen aktivieren",
-        "description": "Zeigt 10 Minuten vor Beginn eines Ereignisses eine Desktop-Benachrichtigung an."
       }
     },
     "appearance": {
@@ -249,7 +241,8 @@
         "caldav": "CalDAV",
         "ical": "ICS",
         "google": "Google Kalender",
-        "tasks": "Obsidian Tasks"
+        "tasks": "Obsidian Tasks",
+        "bases": "Obsidian Bases"
       },
       "fullNote": {
         "directory": {
@@ -337,7 +330,6 @@
       "copyName": "{{name}} Kopie"
     },
     "quickStart": {
-      "title": "Schnellstart: Fügen Sie Ihren ersten Kalender hinzu",
       "description": "Fügen Sie eine Kalenderquelle mit der \"+\"-Schaltfläche im Bereich 'Kalender verwalten' hinzu."
     },
     "viewOptions": {
@@ -367,6 +359,17 @@
     },
     "warnings": {
       "oneDailyNote": "Nur eine tägliche Notiz ist erlaubt."
+    },
+    "reminders": {
+      "title": "Erinnerungen",
+      "enableDefault": {
+        "label": "Standarderinnerung aktivieren",
+        "description": "Fügen Sie neuen Ereignissen automatisch eine Erinnerung hinzu."
+      },
+      "defaultTime": {
+        "label": "Standarderinnerungszeit",
+        "description": "Minuten vor dem Ereignis zur Erinnerung (Standard: 10)"
+      }
     }
   },
   "modals": {
@@ -391,9 +394,7 @@
         "edit": "Ereignis bearbeiten"
       },
       "buttons": {
-        "openNote": "Notiz öffnen",
-        "delete": "Löschen",
-        "save": "Ereignis speichern"
+        "openNote": "Notiz öffnen"
       },
       "fields": {
         "title": {
@@ -426,9 +427,7 @@
           "label": "Optionen",
           "allDay": "Ganztägig",
           "isTask": "Ist eine Aufgabe",
-          "completed": "Abgeschlossen",
-          "endReminder": "10 Min. vor Ende erinnern",
-          "endReminderTooltip": "Eine End-Erinnerung erfordert eine bestimmte Endzeit."
+          "completed": "Abgeschlossen"
         },
         "repeats": {
           "label": "Wiederholt sich",
@@ -457,12 +456,39 @@
           },
           "yearlyText": "Wiederholt sich jedes Jahr am {{date}}.",
           "endRepeat": "Wiederholung beenden"
+        },
+        "notification": {
+          "label": "Benachrichtigen:",
+          "mins": "Min.",
+          "select": "Auswählen...",
+          "presets": {
+            "30m": "30 Min.",
+            "1h": "1 Stunde",
+            "6h": "6 Stunden",
+            "12h": "12 Stunden",
+            "24h": "24 Stunden"
+          }
         }
       },
       "tooltips": {
         "recurringTaskCompletion": "Die Fertigstellung für wiederkehrende Aufgaben kann für einzelne Instanzen in der Kalenderansicht umgeschaltet werden.",
-        "dailyNoteRecurring": "Wiederkehrende Ereignisse werden in Tagesnotizen nicht unterstützt. Bitte verwenden Sie stattdessen einen 'Vollständige Notiz'-Kalender.",
-        "inheritedEvent": "Dieses Ereignis stammt aus einer wiederkehrenden Serie. Um es zu bearbeiten, öffnen Sie zuerst die Seriennotiz."
+        "dailyNoteRecurring": "Wiederkehrende Ereignisse werden in Tagesnotizen nicht unterstützt. Bitte verwenden Sie stattdessen einen 'Vollständige Notiz'-Kalender."
+      },
+      "errors": {
+        "createNoCalendars": "Ereignis kann nicht erstellt werden: Es sind keine beschreibbaren Kalender verfügbar.",
+        "createError": "Fehler beim Erstellen des Ereignisses: {{message}}",
+        "eventNotFound": "Ereignis nicht gefunden.",
+        "detailsNotFound": "Ereignisdetails nicht gefunden.",
+        "parentNotFound": "Das übergeordnete wiederkehrende Ereignis konnte nicht gefunden werden.",
+        "updateError": "Fehler beim Aktualisieren des Ereignisses: {{message}}",
+        "deleteError": "Fehler beim Löschen des Ereignisses: {{message}}"
+      },
+      "confirmations": {
+        "editParentTitle": "Übergeordnetes Ereignis bearbeiten?",
+        "editParentMessage": "Diese Eigenschaft wird vom übergeordneten wiederkehrenden Ereignis geerbt. Möchten Sie das übergeordnete Element öffnen, um Änderungen vorzunehmen?"
+      },
+      "misc": {
+        "unknownCalendar": "Unbekannter Kalender"
       }
     },
     "deleteRecurring": {
@@ -575,14 +601,12 @@
         },
         "slotMaxTime": {
           "label": "Späteste angezeigte Zeit",
-          "description": "Überschreibt die späteste Zeit in Zeitrasteransichten (Format: HH:mm)",
-          "placeholder": "Globalen Standard verwenden"
+          "description": "Überschreibt die späteste Zeit in Zeitrasteransichten (Format: HH:mm)"
         },
         "weekendDisplay": {
           "label": "Wochenendanzeige",
           "description": "Überschreibt, ob Wochenenden im Kalender angezeigt werden",
           "options": {
-            "useDefault": "Globalen Standard verwenden",
             "show": "Wochenenden anzeigen",
             "hide": "Wochenenden ausblenden"
           }
@@ -591,7 +615,6 @@
           "label": "Versteckte Tage",
           "description": "Überschreibt, welche Tage im Kalender ausgeblendet werden",
           "options": {
-            "useDefault": "Globalen Standard verwenden",
             "showAll": "Alle Tage anzeigen",
             "hideWeekends": "Wochenenden ausblenden (So, Sa)",
             "hideSunday": "Sonntag ausblenden",
@@ -604,7 +627,6 @@
           "label": "Maximale Ereignisse pro Tag (Monatsansicht)",
           "description": "Überschreibt die maximale Anzahl von Ereignissen pro Tag in der Monatsansicht",
           "options": {
-            "useGlobal": "Globalen Standard verwenden",
             "useDefault": "Standardlimit verwenden",
             "noLimit": "Kein Limit",
             "one": "1 Ereignis",
@@ -708,16 +730,41 @@
       "viewMonth": "Monat anzeigen",
       "viewWeek": "Woche anzeigen",
       "viewDay": "Tag anzeigen"
+    },
+    "view": {
+      "errors": {
+        "cacheNotLoaded": "Der Ereignis-Cache von Full Calendar wurde nicht geladen.",
+        "viewEnhancerNotInitialized": "Der Ansichtsverbesserer von Full Calendar wurde nicht initialisiert.",
+        "chronoAnalyserDesktopOnly": "Der Chrono-Analysator ist nur auf dem Desktop verfügbar.",
+        "chronoAnalyserFailed": "Fehler beim Öffnen des Chrono-Analysators. Bitte überprüfen Sie die Konsole.",
+        "modifyEventFailed": "Fehler beim Ändern des Ereignisses.",
+        "taskScheduleFailed": "Fehler beim Planen der Aufgabe: {{message}}",
+        "moveRecurringDayError": "Eine wiederkehrende Instanz kann nicht auf einen anderen Tag verschoben werden. Ändern Sie nur die Uhrzeit oder bearbeiten Sie das wiederkehrende Hauptereignis.",
+        "moveRecurringInstanceError": "Eine wiederkehrende Instanz kann nicht auf einen anderen Tag verschoben werden. Sie können nur die Uhrzeit ändern."
+      },
+      "success": {
+        "deletedEvent": "Ereignis \"{{title}}\" gelöscht.",
+        "taskScheduled": "Aufgabe erfolgreich geplant"
+      },
+      "workspace": {
+        "switcherLabel": "Arbeitsbereich"
+      },
+      "buttons": {
+        "analysis": "Analyse",
+        "defaultView": "Standardansicht"
+      },
+      "contextMenu": {
+        "turnIntoTask": "In eine Aufgabe verwandeln",
+        "removeCheckbox": "Kontrollkästchen entfernen",
+        "goToNote": "Gehe zur Notiz",
+        "delete": "Löschen",
+        "noActions": "Keine Aktionen für Remote-Ereignisse verfügbar"
+      }
     }
   },
   "notifications": {
     "eventStarting": {
-      "title": "Ereignis beginnt bald",
-      "body": "{{title}} beginnt um {{time}}"
-    },
-    "eventEnding": {
-      "title": "Ereignis endet bald",
-      "body": "{{title}} endet um {{time}}"
+      "title": "Ereignis beginnt bald"
     },
     "allDaySuffix": "(Ganztägig)",
     "inMinutes": "(In {{mins}} Minuten)",

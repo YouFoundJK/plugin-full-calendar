@@ -1,10 +1,11 @@
 // import_caldav.ts
 import { Authentication, CalDAVSource } from '../../types';
 import { generateCalendarId } from '../../types/calendar_settings';
-import { splitCalDAVUrl, ensureTrailingSlash, checkCalendarResourceType } from './helper_caldav';
+import { splitCalDAVUrl, ensureTrailingSlash, fetchCalendarInfo } from './helper_caldav';
 
 /**
- * Imports a CalDAV calendar by validating the URL using PROPFIND.
+ * Imports a CalDAV calendar by validating the URL using PROPFIND,
+ * and auto-populates name and color from server-provided metadata.
  */
 export async function importCalendars(
   auth: Authentication,
@@ -13,13 +14,12 @@ export async function importCalendars(
 ): Promise<CalDAVSource[]> {
   const { serverUrl, collectionUrl } = splitCalDAVUrl(inputUrl);
 
-  // Validate that the URL is actually a calendar collection
-  const isValid = await checkCalendarResourceType(collectionUrl, {
+  const { isCalendar, displayName, color } = await fetchCalendarInfo(collectionUrl, {
     username: auth.username,
     password: auth.password
   });
 
-  if (!isValid) {
+  if (!isCalendar) {
     throw new Error(
       'The provided URL does not appear to be a valid CalDAV calendar collection. Please ensure it points directly to a calendar.'
     );
@@ -32,10 +32,10 @@ export async function importCalendars(
     {
       type: 'caldav',
       id,
-      name: 'CalDAV Calendar', // Default name, user can change it
+      name: displayName ?? 'CalDAV Calendar',
       url: ensureTrailingSlash(serverUrl),
       homeUrl: ensureTrailingSlash(collectionUrl),
-      color: '#888888',
+      color: color ?? '#888888',
       username: auth.username,
       password: auth.password
     }
