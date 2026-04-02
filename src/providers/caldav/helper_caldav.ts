@@ -12,13 +12,13 @@ export function eqUrl(a: string, b: string) {
 }
 
 /**
- * Checks if the given URL is a valid CalDAV calendar collection.
- * Uses PROPFIND to check for resourcetype.
+ * Fetches calendar metadata (name, color) and validates that the URL is a
+ * CalDAV calendar collection — all in a single PROPFIND request.
  */
-export async function checkCalendarResourceType(
+export async function fetchCalendarInfo(
   url: string,
   auth?: { username?: string; password?: string }
-): Promise<boolean> {
+): Promise<{ isCalendar: boolean; displayName?: string; color?: string }> {
   const headers: Record<string, string> = {
     Depth: '0',
     'Content-Type': 'application/xml; charset=utf-8',
@@ -31,24 +31,23 @@ export async function checkCalendarResourceType(
   }
 
   const body = `<?xml version="1.0" encoding="utf-8" ?>
-<d:propfind xmlns:d="DAV:">
+<d:propfind xmlns:d="DAV:" xmlns:ical="http://apple.com/ns/ical/">
   <d:prop>
     <d:resourcetype/>
+    <d:displayname/>
+    <ical:calendar-color/>
   </d:prop>
 </d:propfind>`;
 
   try {
-    const res = await obsidianFetch(url, {
-      method: 'PROPFIND',
-      headers,
-      body
-    });
+    const res = await obsidianFetch(url, { method: 'PROPFIND', headers, body });
 
     if (res.status >= 400) {
-      return false;
+      return { isCalendar: false };
     }
 
     const xml = await res.text();
+
     // Check for <calendar> inside <resourcetype>
     // Note: namespaces can vary, so we check for local name "calendar"
     // and ensure it's within resourcetype.
@@ -60,19 +59,25 @@ export async function checkCalendarResourceType(
     const resourceTypeMatch = /<[^:]*:?resourcetype[^>]*>([\s\S]*?)<\/[^:]*:?resourcetype>/i.exec(
       xml
     );
-    if (!resourceTypeMatch) {
-      return false;
-    }
+    const isCalendar = resourceTypeMatch
+      ? /<(?:[a-zA-Z0-9]+:)?calendar\b[^>]*>/i.test(resourceTypeMatch[1])
+      : false;
 
-    const resourceTypeContent = resourceTypeMatch[1];
-    // Check for calendar tag (ignoring namespace prefix)
-    // Allow attributes (like xmlns)
-    // Ensure it starts with a letter (or prefix) to avoid matching comments <!--
-    const isCalendar = /<(?:[a-zA-Z0-9]+:)?calendar\b[^>]*>/i.test(resourceTypeContent);
-    return isCalendar;
+    // Extract displayname
+    const displayName = /<[^:]*:?displayname[^>]*>([^<]*)<\/[^:]*:?displayname>/i
+      .exec(xml)?.[1]
+      ?.trim();
+
+    // Extract calendar-color and normalize
+    const color = /<[^:]*:?calendar-color[^>]*>(#?[0-9A-Fa-f]+)<\/[^:]*:?calendar-color>/i
+      .exec(xml)?.[1]
+      ?.replace(/^(?!#)/, '#')
+      ?.match(/^.{7}/)?.[0];
+
+    return { isCalendar, displayName, color };
   } catch (e) {
-    console.error(`[CalDAV] Error checking resource type for ${url}`, e);
-    return false;
+    console.error(`[CalDAV] Error fetching calendar info for ${url}`, e);
+    return { isCalendar: false };
   }
 }
 
