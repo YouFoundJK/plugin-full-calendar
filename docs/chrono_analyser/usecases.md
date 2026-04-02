@@ -52,8 +52,8 @@ Chrono Analyser is designed to help you make sense of your time, no matter your 
 ## 🔗 Related Documentation
 
 - [Chrono Analyser Introduction](introduction.md)
-- [Getting Started with Full Calendar](../../getting_started.md)
-- [Category Coloring](../../events/categories.md)
+- [Getting Started with Full Calendar](../getting_started.md)
+- [Category Coloring](../events/categories.md)
 - [FAQ & Troubleshooting](faq.md)
 
 ---

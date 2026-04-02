@@ -299,8 +299,9 @@ describe('FullNoteCalendar Tests', () => {
     (obsidian.create as jest.Mock).mockImplementation((path: string, data: string) =>
       app.vault.create(path, data)
     );
-    (obsidian.rename as jest.Mock).mockImplementation(async (file: TFile, newPath: string) => {
+    (obsidian.rename as jest.Mock).mockImplementation((file: TFile, newPath: string) => {
       file.name = newPath.split('/').pop() || file.name;
+      return Promise.resolve();
     });
     (obsidian.delete as jest.Mock).mockImplementation((file: TFile) => {
       if (file.parent) {
@@ -370,8 +371,9 @@ describe('FullNoteCalendar Tests', () => {
       )
       .done();
     const obsidian = makeApp(app);
-    (obsidian.rename as jest.Mock).mockImplementation(async (file: TFile, newPath: string) => {
+    (obsidian.rename as jest.Mock).mockImplementation((file: TFile, newPath: string) => {
       file.name = newPath.split('/').pop() || file.name;
+      return Promise.resolve();
     });
     // CORRECTED CONSTRUCTOR CALL
 

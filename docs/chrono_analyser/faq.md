@@ -11,7 +11,7 @@ A: Click the **Analysis** button in the main calendar view. If you don't see it,
 
 **Q: What is "Category Coloring" and why does it matter?**  
 A: Category Coloring lets you group events by category (e.g., "Work", "Personal"). Chrono Analyser uses these categories for its most powerful analysis mode.  
-➡️ [Learn more about Category Coloring](../../events/categories.md)
+➡️ [Learn more about Category Coloring](../events/categories.md)
 
 ---
 
@@ -45,6 +45,6 @@ A: Try resetting the event cache from the plugin command palette. For very large
 
 - [Chrono Analyser Introduction](introduction.md)
 - [User Use Cases](usecases.md)
-- [Getting Started](../../getting_started.md)
+- [Getting Started](../getting_started.md)
 
 ---

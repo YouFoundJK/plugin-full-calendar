@@ -643,8 +643,7 @@
         "dailyNotes": "Tagesnotizen:",
         "ics": "ICS:",
         "caldav": "CalDAV:",
-        "google": "Google:",
-        "generic": "{{type}} Kalender"
+        "google": "Google:"
       },
       "buttons": {
         "save": "Speichern",

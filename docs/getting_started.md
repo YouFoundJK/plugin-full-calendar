@@ -13,7 +13,7 @@ It's recommended to start with a local calendar type, as these are editable dire
 Remote calendars (ICS/CalDAV) are read-only.
 
 !!! tip
-    Use a combination for Full Note (for recurring and other detailed events) and Daily Note Calender (daily events stored compactly). Also check out [Advanced Categorization]((events/categories.md)) and its **event naming convention**, to unleash the full power of this plugin and supercharge your workflow!
+    Use a combination for Full Note (for recurring and other detailed events) and Daily Note Calender (daily events stored compactly). Also check out [Advanced Categorization](events/categories.md) and its **event naming convention**, to unleash the full power of this plugin and supercharge your workflow!
 
 ![Welcome page](assets/welcome-settings.gif)
 

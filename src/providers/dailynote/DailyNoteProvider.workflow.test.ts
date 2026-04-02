@@ -105,13 +105,12 @@ describe('DailyNoteProvider workflow', () => {
     getAbstractFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
     getFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
     getMetadata: (_file: TFile) => ({ headings: [] }) as CachedMetadata,
-    waitForMetadata: async (_file: TFile) => ({ headings: [] }) as CachedMetadata,
-    read: async (file: TFile) => contentsByPath.get(file.path) ?? '',
-    process: async <T>(file: TFile, func: (text: string) => T): Promise<T> =>
-      func(contentsByPath.get(file.path) ?? ''),
-    create: async (_path: string, _contents: string) => {
-      throw new Error('Not used by DailyNoteProvider');
-    },
+    waitForMetadata: (_file: TFile) => Promise.resolve({ headings: [] } as CachedMetadata),
+    read: (file: TFile) => Promise.resolve(contentsByPath.get(file.path) ?? ''),
+    process: <T>(file: TFile, func: (text: string) => T): Promise<T> =>
+      Promise.resolve(func(contentsByPath.get(file.path) ?? '')),
+    create: (_path: string, _contents: string) =>
+      Promise.reject(new Error('Not used by DailyNoteProvider')),
     rewrite: (async <T>(file: TFile, rewriteFunc: (contents: string) => unknown) => {
       const current = contentsByPath.get(file.path) ?? '';
       const result = await rewriteFunc(current);
@@ -125,12 +124,9 @@ describe('DailyNoteProvider workflow', () => {
       contentsByPath.set(file.path, result as string);
       return undefined;
     }) as ObsidianInterface['rewrite'],
-    rename: async (_file: TFile, _newPath: string) => {
-      throw new Error('Not used by DailyNoteProvider');
-    },
-    delete: async (_file: TFile) => {
-      throw new Error('Not used by DailyNoteProvider');
-    }
+    rename: (_file: TFile, _newPath: string) =>
+      Promise.reject(new Error('Not used by DailyNoteProvider')),
+    delete: (_file: TFile) => Promise.reject(new Error('Not used by DailyNoteProvider'))
   });
 
   beforeEach(() => {
@@ -155,12 +151,12 @@ describe('DailyNoteProvider workflow', () => {
       return file;
     });
 
-    createDailyNoteMock.mockImplementation(async m => {
+    createDailyNoteMock.mockImplementation(m => {
       const path = `Daily/${m.format('YYYY-MM-DD')}.md`;
       const file = makeFile(path);
       dailyNotesByPath.set(path, file);
       contentsByPath.set(path, '');
-      return file;
+      return Promise.resolve(file);
     });
 
     getDailyNoteSettingsMock.mockReturnValue({ folder: 'Daily', format: 'YYYY-MM-DD' });

@@ -12,6 +12,8 @@ theme:
         - navigation.instant
         - navigation.sections
         - navigation.expand
+        - navigation.tabs
+        - navigation.tabs.sticky
     palette:
         - media: "(prefers-color-scheme: light)"
           scheme: default
@@ -33,10 +35,11 @@ markdown_extensions:
     - admonition # Add admonition for notes and warnings
 
 nav:
-    - Introduction: index.md
-    - What's New: whats_new.md
-    - Changelog: changelog.md
-    - Getting Started: getting_started.md
+    - Introduction: 
+          - index.md
+          - Getting Started: getting_started.md
+          - What's New: whats_new.md
+          - Changelog: changelog.md
     - Calendar Types:
           - Full Note Calendar: calendars/local.md
           - Daily Note Calendar: calendars/dailynote.md
