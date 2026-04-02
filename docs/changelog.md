@@ -2,17 +2,48 @@
 
 This page provides a detailed breakdown of every version of the Full Calendar plugin, including new features, improvements, and bugfixes.
 
-## Version 0.12.7.1
+## Version 0.12.8
+
+Thanks to [@oskardotglobal](https://github.com/oskardotglobal) and [@rolfkleef](https://github.com/rolfkleef) for their contributions in this release!
 
 ### New Features
+
+-   **Tasks Time Features** ([#227](https://github.com/YouFoundJK/plugin-full-calendar/issues/227))  
+    _Tasks can now have an optional time block._
+    -   Add drag-drop task time block updates. Dragging to a time updates the start time; dragging to all-day removes it.
+
+-   **CalDAV enhancements** ([#230](https://github.com/YouFoundJK/plugin-full-calendar/issues/230))  
+    _Auto-fetch calendar name and color when importing a collection, and correctly validate it._
+
+-   **Advanced Categorization enhancements** ([#222](https://github.com/YouFoundJK/plugin-full-calendar/issues/222), [#231](https://github.com/YouFoundJK/plugin-full-calendar/issues/231))  
+    _More robust advanced categorization workflows._
+    -   Added "Disable without cleanup" option to advanced categorization modal.
+
+### Improvements & Fixes
+
+-   **Robust timezone handling for recurring/all-day events** ([#194](https://github.com/YouFoundJK/plugin-full-calendar/issues/194), [#223](https://github.com/YouFoundJK/plugin-full-calendar/issues/223), [#231](https://github.com/YouFoundJK/plugin-full-calendar/issues/231))  
+    _Timezone handling has been further hardened._
+    -   Prevent `RRULE TZID` one-day date shift when recurring.
+    -   Prevent timezone shift for all-day date-only events (floating dates).
+
+-   **Provider file sync refactor** ([#224](https://github.com/YouFoundJK/plugin-full-calendar/issues/224))  
+    _Refactored `ProviderRegistry` file delete handling during rename races. Fixed `FullNoteProvider` rename logic to avoid `ENOENT` errors._
+
+-   **Remote Payload Hardening** ([#218](https://github.com/YouFoundJK/plugin-full-calendar/issues/218))  
+    _Handle null-body statuses and fail fast on malformed CalDAV xml payloads to prevent ghost syncing issues._
+
+-   **UI, Workspaces & Localization**  
+    _Desktop and mobile UI responsiveness updates. Workspace calendar filters now show user-defined calendar names making it easier to distinguish when you have multiples of the same source. Updated ES/FR/IT translations._
+
+---
+
+## Version 0.12.7.1
 
 -   **Asynchronous Event Discovery Pipeline**  
     _The core synchronization engine has been rewritten to eliminate UI freezes and dramatically improve load performance._
     -   Re-architected `ProviderRegistry` remote discovery into a true Stage 1 → Stage 2 pipeline.
     -   Stage 2 for each provider now begins immediately after its own Stage 1 completes, removing the previous global Promise barrier.
     -   Enables background pipelining and significantly reduces perceived startup time.
-
-### Improvements & Fixes
 
 -   **Local Provider Concurrency**  
     _Improved I/O throughput and removed unnecessary blocking during startup._
@@ -59,7 +90,7 @@ This page provides a detailed breakdown of every version of the Full Calendar pl
     -   Added a mode toggle for standard Web URLs versus Vault relative files.
     -   Extended provider interfaces to safely support the `app.vault` API.
 
--   **Timezone & DST Hardening** (#194)  
+-   **Timezone & DST Hardening** ([#194](https://github.com/YouFoundJK/plugin-full-calendar/issues/194))  
     _The timezone pipeline has been modularized and significantly hardened for recurring events crossing Daylight Saving Time boundaries._
     -   Removed `luxon` entirely in favor of native and internal logic.
     -   Corrected floating time expansion, EU/US DST transitions, and half-hour/45-min offset zones.
@@ -77,7 +108,7 @@ This page provides a detailed breakdown of every version of the Full Calendar pl
     -   Eliminated thousands of unsafe `any` usages and tightened type safety for caching and Google Auth.
     -   Safeguarded tests with mocked vaults and standard JS generic mocks.
 
--   **General UI Fixes** (#169, #191, #214, #218)  
+-   **General UI Fixes** ([#169](https://github.com/YouFoundJK/plugin-full-calendar/issues/169), [#191](https://github.com/YouFoundJK/plugin-full-calendar/issues/191), [#214](https://github.com/YouFoundJK/plugin-full-calendar/issues/214), [#218](https://github.com/YouFoundJK/plugin-full-calendar/issues/218))  
     _Fixed LiveSync header injections by targeting `contentEl`, improved mobile responsiveness across fullcalendar views, improved edit modal error namespace, and added proper API error handling for HTTP POST timeouts._
 
 ---
@@ -86,31 +117,31 @@ This page provides a detailed breakdown of every version of the Full Calendar pl
 
 Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.com/mivanit) for the incredible contributions in this release!
 
--   **Full CalDAV Two-Way Sync** (#205)  
+-   **Full CalDAV Two-Way Sync** ([#205](https://github.com/YouFoundJK/plugin-full-calendar/issues/205))  
     _CalDAV calendars are no longer read-only! You can now create, edit, and delete events directly in Obsidian, and changes will sync back to your CalDAV server._
 
--   **Mobile Workspace Support** (#203)  
+-   **Mobile Workspace Support** ([#203](https://github.com/YouFoundJK/plugin-full-calendar/issues/203))  
     _Workspaces are now fully accessible on mobile!_
     -   Added workspace button to footer toolbar on mobile/narrow views.
     -   Improved menu handling and truncated labels for better fit.
     -   Renamed button from `WS ▾` to `Workspace ▾` for clarity.
 
--   **Mobile Monthly View** (#201)  
+-   **Mobile Monthly View** ([#201](https://github.com/YouFoundJK/plugin-full-calendar/issues/201))  
     _You can now access the monthly view on mobile devices via the view dropdown or workspace settings._
 
--   **Rich Read-Only Modal** (#205)  
+-   **Rich Read-Only Modal** ([#205](https://github.com/YouFoundJK/plugin-full-calendar/issues/205))  
     _The event details modal for read-only events has been upgraded to show rich information including descriptions, attendees, and more, matching the editing experience._
 
--   **ICS Parsing & Date Validation** (#199, #203)  
+-   **ICS Parsing & Date Validation** ([#199](https://github.com/YouFoundJK/plugin-full-calendar/issues/199), [#203](https://github.com/YouFoundJK/plugin-full-calendar/issues/203))  
     _Major hardening of the ICS parser for better compatibility and stability:_
     -   **Timezones:** Map Windows timezones (e.g., `W. Europe Standard Time`) to IANA identifiers, fixing issues with Outlook/Exchange calendars falling back to UTC.
     -   **Date Handling:** Convert `YYYYMMDD` dates to ISO format, validated skip dates in recurring events, and handled all-day events more robustly.
     -   **Validation:** Added defensive checks to prevent `RangeError: Invalid time value` crashes and improved error logging.
 
--   **Google Calendar Settings** (#204)  
+-   **Google Calendar Settings** ([#204](https://github.com/YouFoundJK/plugin-full-calendar/issues/204))  
     _Fixed an issue where the Google Calendar settings menu for credentials was not displaying correctly._
 
--   **Title Parsing** (#203)  
+-   **Title Parsing** ([#203](https://github.com/YouFoundJK/plugin-full-calendar/issues/203))  
     _Fixed category parsing to prevent false positives (e.g., "anything - Red Hat One") and now shows the full title when no category is defined._
 
 -   **Other Fixes**  
@@ -122,13 +153,13 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ## Version 0.12.5
 
--   **CalDAV validation and parsing** (#193)  
+-   **CalDAV validation and parsing** ([#193](https://github.com/YouFoundJK/plugin-full-calendar/issues/193))  
     _CalDAVProvider now validates calendar collections with PROPFIND, parses calendar-data via DOMParser, adds JSDOM-backed tests, and surfaces clearer errors when a URL is not a calendar collection._
 
--   **Provider initialization and cache refresh** (#173)  
+-   **Provider initialization and cache refresh** ([#173](https://github.com/YouFoundJK/plugin-full-calendar/issues/173))  
     _Providers call initialize() after construction, load events into the cache with completion callbacks, adjust load priorities, and resync event sources without a full calendar rebuild._
 
--   **Google auth and recurring timezone handling** (#191, #190, #94)  
+-   **Google auth and recurring timezone handling** ([#191](https://github.com/YouFoundJK/plugin-full-calendar/issues/191), [#190](https://github.com/YouFoundJK/plugin-full-calendar/issues/190), [#94](https://github.com/YouFoundJK/plugin-full-calendar/issues/94))  
     _Mobile OAuth opens windows synchronously to avoid popup blockers; recurring Google events now honor exdates and BYDAY across timezones, correctly hiding deleted instances and preserving durations across DST._
 
 -   **ChronoAnalyser data integrity and Bases provider**  
@@ -139,7 +170,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ## Version 0.12.4
 
--   **CalDAV and Provider Architecture Refactor** (#cc01102)  
+-   **CalDAV and Provider Architecture Refactor** ([#102](https://github.com/YouFoundJK/plugin-full-calendar/issues/102))  
     _The calendar source/provider system has been refactored for modularity, reliability, and easier extension. CalDAV support is now more robust and easier to configure._
 
 -   **Multi-Language (i18n) Support**  
@@ -156,16 +187,16 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ## Version 0.12.3.1-beta
 
--   **Tasks Provider Rearchitected for Performance and Precision** (#151, #155)  
+-   **Tasks Provider Rearchitected for Performance and Precision** ([#151](https://github.com/YouFoundJK/plugin-full-calendar/issues/151), [#155](https://github.com/YouFoundJK/plugin-full-calendar/issues/155))  
     _The Tasks provider is now powered by the official Tasks plugin's live cache, eliminating manual vault scans and delivering instant updates. Edits are now "surgical," preserving user metadata like links, tags, and comments when scheduling or completing tasks._
 
--   **Robust and Stable Settings UI** (#141)  
+-   **Robust and Stable Settings UI** ([#141](https://github.com/YouFoundJK/plugin-full-calendar/issues/141))  
     _The settings panel has been refactored for stability. The color picker no longer loses focus on changes, and a new `CalendarSettingRow` component ensures a consistent and reliable layout for all calendar sources._
 
--   **Provider-Specific Task Completion** (#143, #144)  
+-   **Provider-Specific Task Completion** ([#143](https://github.com/YouFoundJK/plugin-full-calendar/issues/143), [#144](https://github.com/YouFoundJK/plugin-full-calendar/issues/144))  
     _The `toggleComplete` logic is now abstracted, allowing calendar providers to implement their own custom behavior for completing tasks._
 
--   **ICS Timezone Fallback** (#91)  
+-   **ICS Timezone Fallback** ([#91](https://github.com/YouFoundJK/plugin-full-calendar/issues/91))  
     _Remote ICS calendars with unrecognized timezones will now safely fall back to UTC instead of failing to load._
 
 ---
@@ -173,13 +204,13 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ## Version 0.12.3
 
--   **Deep Tasks Integration with Backlog & Filtering** (#122, #128, #136)  
+-   **Deep Tasks Integration with Backlog & Filtering** ([#122](https://github.com/YouFoundJK/plugin-full-calendar/issues/122), [#128](https://github.com/YouFoundJK/plugin-full-calendar/issues/128), [#136](https://github.com/YouFoundJK/plugin-full-calendar/issues/136))  
     _Full Calendar now has first-class support for the Obsidian Tasks plugin. A new "Tasks" calendar source syncs your tasks directly onto the calendar. Features include a dedicated task backlog, drag-and-drop rescheduling, and in-calendar completion. Create, update, and delete tasks without leaving the calendar view._
 
--   **Advanced Date Navigation** (#106)  
+-   **Advanced Date Navigation** ([#106](https://github.com/YouFoundJK/plugin-full-calendar/issues/106))  
     _Navigate your calendar with precision using the new "Go To" dropdown in the toolbar. It features a reusable `DatePicker` and context-aware navigation. Right-click on the calendar to jump to a specific month, week, or day._
 
--   **Task Management Workflow & Parsing** (#132, #134, #138)  
+-   **Task Management Workflow & Parsing** ([#132](https://github.com/YouFoundJK/plugin-full-calendar/issues/132), [#134](https://github.com/YouFoundJK/plugin-full-calendar/issues/134), [#138](https://github.com/YouFoundJK/plugin-full-calendar/issues/138))  
     _The Tasks integration includes advanced parsing for dated and undated tasks, multi-day event support, and custom status detection. A new setting allows stripping tags from task titles for a cleaner display. The entire parsing logic is covered by a comprehensive test suite for maximum reliability._
 
 -   **Performance & Stability**  
@@ -191,7 +222,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 -   **Notification and Reminder Reliability**  
     _End-time reminders now fire correctly for events that are already in progress, ensuring you never miss the end of an important block of time._
 
--   **Core Component Stability** (#100, #101, #126)  
+-   **Core Component Stability** ([#100](https://github.com/YouFoundJK/plugin-full-calendar/issues/100), [#101](https://github.com/YouFoundJK/plugin-full-calendar/issues/101), [#126](https://github.com/YouFoundJK/plugin-full-calendar/issues/126))  
     _Fixed numerous bugs, including a race condition when removing event sources, an issue preventing the create modal from appearing if no editable calendars exist, and a bug where the Daily Notes calendar would fail without a template. New calendars now appear instantly in settings without a "Provider not found" flash._
 
 ---
@@ -208,10 +239,10 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 -   **Status Bar current/upcoming events**  
     _Lightweight status bar UI subscribes to `TimeEngine` to surface what's happening now and next._
 
--   **Interactive time‑axis zoom** (#96)  
+-   **Interactive time‑axis zoom** ([#96](https://github.com/YouFoundJK/plugin-full-calendar/issues/96))  
     _Ctrl/Cmd + scroll to dynamically zoom the vertical (timeGrid) or horizontal (resourceTimeline) axis for fast focus changes._
 
--   **Advanced recurrence intervals & positional monthly rules** (#97)  
+-   **Advanced recurrence intervals & positional monthly rules** ([#97](https://github.com/YouFoundJK/plugin-full-calendar/issues/97))  
     _Support for interval-based repeats (e.g., every 2 weeks) and positional monthly rules (2nd Tuesday, last Friday) with iCal import/export parity._
 
 -   **Codebase compliance & safety**  
@@ -259,7 +290,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ## Version 0.11.9
 
--   **Calendar Workspaces** (#90)  
+-   **Calendar Workspaces** ([#90](https://github.com/YouFoundJK/plugin-full-calendar/issues/90))  
     _Save and switch between customized calendar setups (sources, filters, and view preferences). Workspaces include a header switcher, a command palette action ("Full Calendar: Switch Workspace"), and an optional default workspace on startup. Saved state covers selected sources (Local, Daily Notes, ICS, CalDAV, Google), category/sub‑category filters, tasks visibility, all‑day toggle, initial view (month/week/day/timeline), week start, and time‑grid display options._
 
 -   **Faster Switching and Rendering**  
@@ -281,10 +312,10 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 -   **Business Hours and Background Events Support**  
     _Highlight working hours in calendar views and display events as background highlights (e.g., vacations or focus blocks). Configurable via settings and event frontmatter._
 
--   **Timeline View Category Shadow Events** (#76)  
+-   **Timeline View Category Shadow Events** ([#76](https://github.com/YouFoundJK/plugin-full-calendar/issues/76))  
     _Adds optional display of category shadow events in Timeline View for better visual context and planning._
 
--   **Real-Time Duplicate Event Validation** (#67)  
+-   **Real-Time Duplicate Event Validation** ([#67](https://github.com/YouFoundJK/plugin-full-calendar/issues/67))  
     _Prevents creation of duplicate events in the calendar interface, improving scheduling accuracy._
 
 -   **Edit Modal Now Supports Subcategory Editing**  
@@ -296,10 +327,10 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 -   **Configuration Migration for Legacy Support**  
     _Legacy settings like `subprojectKeywords_exclude` are migrated automatically, and missing fields (e.g., `persona`) are filled safely._
 
--   **Type Safety and Safer DOM Manipulations** (#69, #71)  
+-   **Type Safety and Safer DOM Manipulations** ([#69](https://github.com/YouFoundJK/plugin-full-calendar/issues/69), [#71](https://github.com/YouFoundJK/plugin-full-calendar/issues/71))  
     _Removed unsafe type assertions across key modules (`DailyNoteCalendar`, `GoogleCalendar`, `interop`) and introduced robust DOM update utilities (`safeCreateEl`, `safeEmpty`)._
 
--   **Recurring Task Completion Preserves Child Timing** (#75)  
+-   **Recurring Task Completion Preserves Child Timing** ([#75](https://github.com/YouFoundJK/plugin-full-calendar/issues/75))  
     _Undoing completed recurring tasks now correctly retains the timing of override events. Adds full test coverage for various edge cases._
 
 -   **All-Day Events Treated as Floating in RRULE**  

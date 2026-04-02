@@ -13,7 +13,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { changelogData } from './changelogData';
 import { Version } from './changelogData';
-import { Setting } from 'obsidian';
+import { Setting, requestUrl } from 'obsidian';
 import './changelog.css';
 
 import { renderFooter } from '../sections/calendars/renderFooter';
@@ -97,6 +97,11 @@ export const Changelog = ({ onBack }: ChangelogProps) => {
   const settingRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
 
+  const [versions, setVersions] = useState<Version[]>(changelogData);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedOlder, setHasLoadedOlder] = useState(false);
+  const [errorLoading, setErrorLoading] = useState(false);
+
   useEffect(() => {
     if (settingRef.current) {
       settingRef.current.empty(); // Clear on re-render
@@ -108,6 +113,28 @@ export const Changelog = ({ onBack }: ChangelogProps) => {
     }
   }, []); // Run only once on mount
 
+  const loadOlderVersions = async () => {
+    setIsLoading(true);
+    setErrorLoading(false);
+    try {
+      const response = await requestUrl(
+        'https://youfoundjk.github.io/plugin-full-calendar/changelogs.json'
+      );
+      if (response.status === 200) {
+        const olderVersions = response.json as Version[];
+        setVersions([...changelogData, ...olderVersions]);
+        setHasLoadedOlder(true);
+      } else {
+        setErrorLoading(true);
+      }
+    } catch (e) {
+      console.error('Failed to load older changelogs', e);
+      setErrorLoading(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="full-calendar-changelog-wrapper">
       <div className="full-calendar-changelog-header">
@@ -115,9 +142,23 @@ export const Changelog = ({ onBack }: ChangelogProps) => {
         {/* Using a Setting for consistent styling with the rest of the tab */}
         <div className="u-flex-grow-1" ref={settingRef}></div>
       </div>
-      {changelogData.map((version, index) => (
+      {versions.map((version, index) => (
         <VersionSection key={version.version} version={version} isInitiallyOpen={index === 0} />
       ))}
+
+      {!hasLoadedOlder && (
+        <div style={{ textAlign: 'center', margin: '20px 0' }}>
+          {errorLoading && (
+            <div style={{ color: 'var(--text-error)', marginBottom: '10px' }}>
+              Failed to load older versions. You may be offline.
+            </div>
+          )}
+          <button onClick={() => void loadOlderVersions()} disabled={isLoading}>
+            {isLoading ? 'Loading...' : 'Load older versions'}
+          </button>
+        </div>
+      )}
+
       <div ref={footerRef}></div>
     </div>
   );

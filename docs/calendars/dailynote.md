@@ -2,7 +2,7 @@
 
 Store events in-line in Daily Notes. Each event is a list item and event metadata is stored as [Dataview inline fields](https://blacksmithgu.github.io/obsidian-dataview/data-annotation/).
 
-[Tasks](../../events/tasks) are supported with [checkboxes](https://help.obsidian.md/How+to/Format+your+notes) so you can easily track your to-dos for the day.
+[Tasks](../events/tasks.md) are supported with [checkboxes](https://help.obsidian.md/How+to/Format+your+notes) so you can easily track your to-dos for the day.
 
 !!! tip "Power Up with Categories"
     Daily Note calendars also support **[Advanced Categories](../events/categories.md)**. You can add a category to your task list items (e.g., `- [ ] Work - Finish report`) to color-code your daily agenda.

@@ -92,7 +92,7 @@ This is your powerful, hands-on tool for exploring your data visually.
 ## Frequently Asked Questions (FAQ)
 
 **Q: Why aren't my Google Calendar / remote events showing up in the analysis?**
-A: This happens when you are in Folder-Based (Legacy) Mode. To include all calendar sources, go to the main **Full Calendar plugin settings** and **enable the** ["Category Coloring" feature](events/categories.md). The analyser will then automatically switch to the more powerful Category-Based mode.
+A: This happens when you are in Folder-Based (Legacy) Mode. To include all calendar sources, go to the main **Full Calendar plugin settings** and **enable the** ["Category Coloring" feature](../events/categories.md). The analyser will then automatically switch to the more powerful Category-Based mode.
 
 **Q: My insights look wrong or are empty. What should I do?**
 A: The quality of your insights depends entirely on your configuration. Click the `⚙️` icon in the Insights panel and carefully review your **Insight Groups**. Ensure that the hierarchies, projects, and keywords you've entered exactly match the data in your events.

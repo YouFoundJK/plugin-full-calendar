@@ -1,6 +1,6 @@
 
 <!-- ![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22obsidian-full-calendar%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json) -->
-[![Version](https://img.shields.io/badge/Version-v_0.12.7-blue)](https://youfoundjk.github.io/plugin-full-calendar/)
+[![Version](https://img.shields.io/badge/Version-v_0.12.8-blue)](https://youfoundjk.github.io/plugin-full-calendar/)
 
 # Full Calendar (Remastered) Plugin
 
@@ -8,9 +8,17 @@
 
 Keep your calendar in your vault! This plugin integrates the [FullCalendar](https://github.com/fullcalendar/fullcalendar) library into your Obsidian Vault so that you can keep your ever-changing daily schedule and special events and plans alongside your tasks and notes, and link freely between all of them. Each event is stored as a separate note with special frontmatter so you can take notes, form connections and add context to any event on your calendar.
 
-Full Calendar can pull events from frontmatter on notes, or from event lists in daily notes. Full Calendar also supports read-only ICS and CalDAV remote calendars.
+Full Calendar supports multiple calendar sources:
 
-You can find the full documentation [here](https://youfoundjk.github.io/plugin-full-calendar/)!
+- [**Full Note**](https://youfoundjk.github.io/plugin-full-calendar/calendars/local/): Events from frontmatter on individual notes
+- [**Daily Note**](https://youfoundjk.github.io/plugin-full-calendar/calendars/dailynote/): Events from event lists in daily notes
+- [**ICS**](https://youfoundjk.github.io/plugin-full-calendar/calendars/ics/): Read-only remote or local ICS files
+- [**CalDAV**](https://youfoundjk.github.io/plugin-full-calendar/calendars/caldav/): Two-way sync with CalDAV servers
+- [**Google Calendar**](https://youfoundjk.github.io/plugin-full-calendar/calendars/gcal/): Two-way sync with Google Calendar
+- [**Bases**](https://youfoundjk.github.io/plugin-full-calendar/calendars/bases/): Integrate with the Obsidian Bases plugin
+- [**Tasks Plugin**](https://youfoundjk.github.io/plugin-full-calendar/calendars/tasks-plugin-integration/): Sync with the Obsidian Tasks plugin
+
+You can find the full documentation [here](https://youfoundjk.github.io/plugin-full-calendar/) or [here](https://github.com/users/YouFoundJK/projects/2) for the development timeline.
 
 ![Sample Calendar](https://raw.githubusercontent.com/YouFoundJK/plugin-full-calendar/main/docs/assets/sample-calendar.png)
 

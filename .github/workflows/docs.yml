@@ -33,6 +33,9 @@ jobs:
       - name: Copy static files 2
         run: cp docs/google5612e1450dc0c1ac.html site/
 
+      - name: Copy changelogs JSON
+        run: cp docs/changelogs.json site/
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:

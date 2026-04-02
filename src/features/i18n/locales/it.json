@@ -623,8 +623,7 @@
         "dailyNotes": "Note giornaliere:",
         "ics": "ICS:",
         "caldav": "CalDAV:",
-        "google": "Google:",
-        "generic": "Calendario {{type}}"
+        "google": "Google:"
       },
       "buttons": {
         "save": "Salva",
