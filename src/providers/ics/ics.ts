@@ -50,6 +50,10 @@ function specifiesEnd(iCalEvent: ical.Event) {
 // MODIFICATION: Remove settings parameter from icsToOFC
 function icsToOFC(input: ical.Event): OFCEvent | null {
   const summary = input.summary || '';
+  const uid = input.uid;
+  const rruleProp = input.component.getFirstProperty('rrule');
+  const rruleVal = rruleProp ? String(rruleProp.getFirstValue()) : null;
+  const rruleStr = rruleVal ? String(rruleVal) : '';
 
   // Simplified: just use the title directly
   const eventData = { title: summary };
@@ -81,7 +85,6 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
     );
   }
 
-  const uid = input.uid;
   const isAllDay = input.startDate.isDate;
 
   // The Luxon DateTime object now holds the correct zone from the ICS file.
@@ -89,10 +92,6 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
   const timezone = isAllDay ? undefined : startDate.zoneName || undefined;
 
   if (input.isRecurring()) {
-    // Cast getFirstValue() return to unknown, then string to string
-    const rruleProp = input.component.getFirstProperty('rrule');
-    const rruleVal = rruleProp ? String(rruleProp.getFirstValue()) : null;
-    const rruleStr = rruleVal ? String(rruleVal) : '';
     const rrule = rrulestr(rruleStr);
     const exdates = input.component
       .getAllProperties('exdate')
@@ -222,20 +221,26 @@ function preprocessICSText(text: string): string {
 
 // MODIFICATION: Remove settings parameter from getEventsFromICS
 export function getEventsFromICS(text: string): OFCEvent[] {
-  // Parsing robustness: check for VCALENDAR header
+  if (!text.trim()) {
+    throw new Error('ICS content is empty.');
+  }
+
+  // Parsing robustness: strictly require VCALENDAR to avoid opaque parser failures.
   if (!text.includes('BEGIN:VCALENDAR')) {
-    console.error(
-      'Full Calendar ICS Parser: Missing BEGIN:VCALENDAR header in ICS file. Parsing may fail or be incomplete.'
-    );
-    // We could return [] here, but ical.js might handle partials, so we just warn.
-    // However, the user specifically asked for "console error if Header are missing"
+    throw new Error('ICS content is missing BEGIN:VCALENDAR header.');
   }
 
   // Pre-process the text to normalize date formats
   // This ensures VALUE=DATE:YYYYMMDD and YYYYMMDDTHHMMSSZ formats are properly handled
   const correctedText = preprocessICSText(text);
 
-  const jCalData = ical.parse(correctedText); // Use the corrected text
+  let jCalData: ReturnType<typeof ical.parse>;
+  try {
+    jCalData = ical.parse(correctedText); // Use the corrected text
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to parse ICS content: ${message}`);
+  }
   const component = new ical.Component(jCalData);
   const vevents = component.getAllSubcomponents('vevent');
 

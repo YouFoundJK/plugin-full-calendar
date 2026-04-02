@@ -18,7 +18,8 @@
  */
 
 import { DateTime } from 'luxon';
-import { toEventInput } from './interop';
+import { EventApi } from '@fullcalendar/core';
+import { toEventInput, fromEventApi } from './interop';
 import { OFCEvent } from '../types';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from '../types/settings';
 
@@ -89,6 +90,38 @@ describe('interop toEventInput tests', () => {
 
       expect(result).not.toBeNull();
       expect(result!.allDay).toBe(true);
+    });
+
+    it('should round-trip all-day date-only without timezone shift', () => {
+      const settings: FullCalendarSettings = {
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'America/New_York'
+      };
+
+      const eventApi = {
+        id: 'all-day-1',
+        title: 'All Day',
+        allDay: true,
+        start: new Date('2026-03-09T00:00:00.000Z'),
+        end: new Date('2026-03-10T00:00:00.000Z'),
+        startStr: '2026-03-09',
+        endStr: '2026-03-10',
+        extendedProps: {
+          cleanTitle: 'All Day',
+          uid: 'uid-123',
+          sourceTimezone: 'America/New_York'
+        }
+      } as unknown as EventApi;
+
+      const result = fromEventApi(eventApi, settings);
+
+      expect(result.type).toBe('single');
+      const single = result as Extract<OFCEvent, { type: 'single' }>;
+
+      expect(single.allDay).toBe(true);
+      expect(single.date).toBe('2026-03-09');
+      expect(single.endDate).toBeNull();
+      expect(single.timezone).toBeUndefined();
     });
   });
 

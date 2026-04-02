@@ -319,7 +319,7 @@ export function toEventInput(
     baseEvent.extendedProps = {
       ...baseEvent.extendedProps,
       isTask: !!frontmatter.isTask,
-      sourceTimezone: sourceZone
+      ...(frontmatter.allDay ? {} : { sourceTimezone: sourceZone })
     };
 
     // Tell FullCalendar it’s all-day when relevant
@@ -395,7 +395,7 @@ export function toEventInput(
     baseEvent.extendedProps = {
       ...baseEvent.extendedProps,
       isTask: !!frontmatter.isTask,
-      sourceTimezone: sourceZone
+      ...(frontmatter.allDay ? {} : { sourceTimezone: sourceZone })
     };
     try {
       // NOTE: Even though rrule is provided, FullCalendar requires explicit timezone
@@ -491,8 +491,7 @@ export function toEventInput(
       baseEvent.extendedProps = {
         ...baseEvent.extendedProps,
         isTask: frontmatter.completed !== undefined && frontmatter.completed !== null,
-        taskCompleted: frontmatter.completed,
-        sourceTimezone: sourceZone
+        taskCompleted: frontmatter.completed
       };
     }
   }
@@ -541,13 +540,32 @@ export function fromEventApi(
   }
 
   const sourceZone =
-    (event.extendedProps.sourceTimezone as string) ||
+    (!event.allDay && (event.extendedProps.sourceTimezone as string)) ||
+    settings.displayTimezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone;
   const isRecurring: boolean = event.extendedProps.daysOfWeek !== undefined;
-  const startDate = getDate(event.start as Date, sourceZone);
+  const startDate = event.allDay
+    ? (event.startStr ? DateTime.fromISO(event.startStr).toISODate() : null) ||
+      DateTime.fromJSDate(event.start as Date).toISODate() ||
+      ''
+    : getDate(event.start as Date, sourceZone);
   // Correctly calculate endDate for multi-day events.
   // FullCalendar's end date is exclusive, so we might need to subtract a day.
-  const endDate = event.end ? getDate(new Date(event.end.getTime() - 1), sourceZone) : startDate;
+  const endDate = event.allDay
+    ? (() => {
+        const exclusiveEnd = event.endStr
+          ? DateTime.fromISO(event.endStr)
+          : event.end
+            ? DateTime.fromJSDate(event.end)
+            : null;
+        if (!exclusiveEnd) return startDate;
+
+        const inclusiveEnd = exclusiveEnd.minus({ days: 1 }).toISODate();
+        return inclusiveEnd ?? startDate;
+      })()
+    : event.end
+      ? getDate(new Date(event.end.getTime() - 1), sourceZone)
+      : startDate;
 
   const extendedProps = (event.extendedProps || {}) as Record<string, unknown>;
   const taskCompleted = extendedProps.taskCompleted as string | boolean | null | undefined;
@@ -556,7 +574,7 @@ export function fromEventApi(
     title: (extendedProps.cleanTitle as string | undefined) || event.title,
     category,
     subCategory, // Add subCategory here
-    timezone: sourceZone, // Preserve the original timezone
+    ...(event.allDay ? {} : { timezone: sourceZone }),
     recurringEventId: extendedProps.recurringEventId as string | undefined,
     ...(event.allDay
       ? { allDay: true }

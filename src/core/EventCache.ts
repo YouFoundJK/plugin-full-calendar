@@ -37,7 +37,7 @@
  * @license See LICENSE.md
  */
 
-import { Notice, TFile } from 'obsidian';
+import { Notice } from 'obsidian';
 import { FullCalendarSettings } from '../types/settings';
 
 import FullCalendarPlugin from '../main';
@@ -128,6 +128,7 @@ export default class EventCache {
       void this.onSettingsChanged();
     };
     emitter.on('full-calendar:view-config-changed', this.viewConfigListener);
+    emitter.on('full-calendar:sources-changed', this.viewConfigListener);
   }
 
   public stopListening(): void {
@@ -136,6 +137,7 @@ export default class EventCache {
         off: (name: string, cb: () => void) => void;
       };
       emitter.off('full-calendar:view-config-changed', this.viewConfigListener);
+      emitter.off('full-calendar:sources-changed', this.viewConfigListener);
       this.viewConfigListener = null;
       this.workspaceEmitter = null;
     }
@@ -1156,7 +1158,7 @@ export default class EventCache {
   }
 
   public syncFile(
-    file: TFile,
+    file: { path: string },
     newEventsWithDetails: { event: OFCEvent; location: EventLocation | null; calendarId: string }[]
   ): Promise<void> {
     if (this.isBulkUpdating) {

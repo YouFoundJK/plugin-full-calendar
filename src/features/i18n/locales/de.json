@@ -304,8 +304,9 @@
         "description": "Aktivieren Sie die kategoriebasierte Farbgebung und schalten Sie Zeitachsenansichten frei. Dies ändert die Titel der Ereignisnotizen und ermöglicht die Zeitachsenvisualisierung nach Kategorie."
       },
       "disable": {
-        "modalTitle": "⚠️ Deaktivieren und bereinigen",
-        "modalDescription": "Durch das Deaktivieren dieser Funktion werden bekannte Kategorie-Präfixe aus Ihren Ereignistiteln entfernt und alle gespeicherten Kategorie-Farbeinstellungen dauerhaft gelöscht.",
+        "modalTitle": "⚠️ Erweiterte Kategorisierung deaktivieren",
+        "modalDescription": "Wählen Sie, wie diese Funktion deaktiviert werden soll. Ohne Bereinigung bleiben Ereignistitel und gespeicherte Kategorie-Farbeinstellungen erhalten; mit Bereinigung werden bekannte Kategorie-Präfixe aus Titeln entfernt und gespeicherte Kategorie-Farben gelöscht.",
+        "buttonDisableWithoutCleanup": "Ohne Bereinigung deaktivieren",
         "buttonDisable": "Deaktivieren und Notizen bereinigen",
         "buttonCancel": "Abbrechen"
       }

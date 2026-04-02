@@ -85,8 +85,10 @@ export async function renderCalendar(
   const resourceTimeline = showResourceViews
     ? await import('@fullcalendar/resource-timeline')
     : null;
+  const MOBILE_BREAKPOINT = 500;
+  const COMPACT_DESKTOP_BREAKPOINT = 910;
 
-  const isMobile = window.innerWidth < 500;
+  const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
   const isNarrow = settings?.forceNarrow || isMobile;
 
   // Apply RRULE monkeypatch on every render to capture the latest settings.timeZone.
@@ -146,36 +148,56 @@ export async function renderCalendar(
       })();
     });
 
-  // Group the standard and timeline views together with a space.
-  // This tells FullCalendar to render them as a single, connected button group.
-  const viewButtonGroup = ['views', showResourceViews ? 'timeline' : null]
-    .filter(Boolean)
-    .join(',');
+  type ToolbarMode = 'narrow' | 'compact-desktop' | 'desktop';
+  type ToolbarLayout = {
+    mode: ToolbarMode;
+    headerToolbar: { left: string; center: string; right: string } | false;
+    footerToolbar: { left: string; right: string } | false;
+  };
 
-  // Add workspace and navigate buttons to the left side of toolbar when not narrow
-  const leftToolbarGroup = !isNarrow
-    ? 'workspace prev,next today,navigate'
-    : 'prev,next today,navigate';
+  const getToolbarLayout = (windowWidth: number): ToolbarLayout => {
+    const narrow = !!settings?.forceNarrow || windowWidth < MOBILE_BREAKPOINT;
 
-  // The comma between 'analysis' and the view group creates the visual separation.
-  const rightToolbarGroup = [!isNarrow ? 'analysis' : null, viewButtonGroup]
-    .filter(Boolean)
-    .join(' ');
+    if (narrow) {
+      return {
+        mode: 'narrow',
+        headerToolbar: false,
+        footerToolbar: {
+          left: 'today prev,next',
+          right: 'views,more'
+        }
+      };
+    }
 
-  const headerToolbar = !isNarrow
-    ? {
-        left: leftToolbarGroup,
+    if (windowWidth < COMPACT_DESKTOP_BREAKPOINT) {
+      return {
+        mode: 'compact-desktop',
+        headerToolbar: {
+          left: 'today prev,next',
+          center: 'title',
+          right: 'analysis more'
+        },
+        footerToolbar: false
+      };
+    }
+
+    const fullDesktopViewGroup = ['views', showResourceViews ? 'timeline' : null]
+      .filter(Boolean)
+      .join(',');
+
+    return {
+      mode: 'desktop',
+      headerToolbar: {
+        left: 'workspace prev,next today,navigate',
         center: 'title',
-        right: rightToolbarGroup
-      }
-    : false; // On narrow views (including mobile), the header is empty.
+        right: `analysis ${fullDesktopViewGroup}`
+      },
+      footerToolbar: false
+    };
+  };
 
-  const footerToolbar = isNarrow
-    ? {
-        left: 'workspace,today,navigate,prev,next',
-        right: rightToolbarGroup // Analysis is already filtered out for narrow views.
-      }
-    : false;
+  const initialToolbarLayout = getToolbarLayout(window.innerWidth);
+  let currentToolbarMode: ToolbarMode = initialToolbarLayout.mode;
 
   type ViewSpec = {
     type: string;
@@ -212,13 +234,11 @@ export async function renderCalendar(
   const customButtonConfig: Record<string, { text: string; click: (ev: MouseEvent) => void }> =
     Object.assign({}, customButtons);
 
-  // Always add the "Views" dropdown
-  customButtonConfig.views = {
-    text: 'View ▾',
-    click: (ev: MouseEvent) => {
-      const menu = new Menu();
+  let dateNavigation: ReturnType<typeof createDateNavigation> | null = null;
 
-      const views = isNarrow
+  const addViewOptionsToMenu = (menu: Menu, mode: ToolbarMode): void => {
+    const viewOptions =
+      mode === 'narrow'
         ? {
             dayGridMonth: 'Month',
             timeGrid3Days: '3 Days',
@@ -232,13 +252,21 @@ export async function renderCalendar(
             listWeek: 'List'
           };
 
-      for (const [viewName, viewLabel] of Object.entries(views) as [string, string][]) {
-        menu.addItem(item =>
-          item.setTitle(viewLabel).onClick(() => {
-            cal.changeView(viewName);
-          })
-        );
-      }
+    for (const [viewName, viewLabel] of Object.entries(viewOptions) as [string, string][]) {
+      menu.addItem(item =>
+        item.setTitle(viewLabel).onClick(() => {
+          cal.changeView(viewName);
+        })
+      );
+    }
+  };
+
+  // Always add the "Views" dropdown
+  customButtonConfig.views = {
+    text: 'View ▾',
+    click: (ev: MouseEvent) => {
+      const menu = new Menu();
+      addViewOptionsToMenu(menu, currentToolbarMode);
       menu.showAtMouseEvent(ev);
     }
   };
@@ -247,7 +275,48 @@ export async function renderCalendar(
   customButtonConfig.navigate = {
     text: '▾',
     click: (ev: MouseEvent) => {
-      // This will be replaced after calendar creation
+      dateNavigation?.showNavigationMenu(ev);
+    }
+  };
+
+  // Keep compact layouts uncluttered by routing secondary actions into a single menu.
+  customButtonConfig.more = {
+    text: 'More ▾',
+    click: (ev: MouseEvent) => {
+      const menu = new Menu();
+
+      menu.addItem(item => {
+        item.setTitle('Workspace').onClick(() => {
+          void customButtons?.workspace?.click(ev);
+        });
+      });
+
+      menu.addItem(item => {
+        item.setTitle('Go to date').onClick(() => {
+          dateNavigation?.showNavigationMenu(ev);
+        });
+      });
+
+      if (currentToolbarMode === 'compact-desktop') {
+        menu.addSeparator();
+        addViewOptionsToMenu(menu, currentToolbarMode);
+      }
+
+      if (showResourceViews) {
+        menu.addSeparator();
+        menu.addItem(item =>
+          item.setTitle('Timeline week').onClick(() => {
+            cal.changeView('resourceTimelineWeek');
+          })
+        );
+        menu.addItem(item =>
+          item.setTitle('Timeline day').onClick(() => {
+            cal.changeView('resourceTimelineDay');
+          })
+        );
+      }
+
+      menu.showAtMouseEvent(ev);
     }
   };
 
@@ -313,8 +382,8 @@ export async function renderCalendar(
     nowIndicator: true,
     scrollTimeReset: false,
     dayMaxEvents: settings?.dayMaxEvents !== undefined ? settings.dayMaxEvents : true, // Use setting override or default to true
-    headerToolbar,
-    footerToolbar,
+    headerToolbar: initialToolbarLayout.headerToolbar,
+    footerToolbar: initialToolbarLayout.footerToolbar,
     // Cast at usage point to satisfy FullCalendar without polluting variable with any
     views,
     ...(showResourceViews && {
@@ -334,6 +403,17 @@ export async function renderCalendar(
         return false; // Disallow drop on parent
       }
       return true; // Allow drop on children (or in non-resource views)
+    },
+
+    windowResize: () => {
+      const nextToolbarLayout = getToolbarLayout(window.innerWidth);
+      if (nextToolbarLayout.mode === currentToolbarMode) {
+        return;
+      }
+
+      currentToolbarMode = nextToolbarLayout.mode;
+      cal.setOption('headerToolbar', nextToolbarLayout.headerToolbar);
+      cal.setOption('footerToolbar', nextToolbarLayout.footerToolbar);
     },
 
     firstDay: settings?.firstDay,
@@ -453,7 +533,7 @@ export async function renderCalendar(
   cal.render();
 
   // Set up date navigation after calendar is created
-  const dateNavigation = createDateNavigation(cal, containerEl);
+  dateNavigation = createDateNavigation(cal, containerEl);
 
   // Update the navigate button click handler
   const navigateButton = containerEl.querySelector('.fc-navigate-button') as HTMLButtonElement;

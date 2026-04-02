@@ -154,7 +154,7 @@ describe('Title Parsing Logic for EditEvent Component', () => {
     expect(parsedTitle).toBe('Meeting');
   });
 
-  it('should use parseTitle when enableCategory is false', () => {
+  it('should keep title literal when enableCategory is false', () => {
     const enableCategory = false;
     const titleInput = 'Important - Meeting';
 
@@ -167,13 +167,12 @@ describe('Title Parsing Logic for EditEvent Component', () => {
       parsedSubCategory = parsed.subCategory;
       parsedTitle = parsed.title;
     } else {
-      const parsed = parseTitle(titleInput);
-      parsedSubCategory = parsed.subCategory;
-      parsedTitle = parsed.title;
+      parsedSubCategory = undefined;
+      parsedTitle = titleInput;
     }
 
-    expect(parsedSubCategory).toBe(undefined); // parseTitle treats this as "Category - Title"
-    expect(parsedTitle).toBe('Meeting');
+    expect(parsedSubCategory).toBe(undefined);
+    expect(parsedTitle).toBe('Important - Meeting');
   });
 
   it('should preserve subcategory when round-tripping through edit modal', () => {

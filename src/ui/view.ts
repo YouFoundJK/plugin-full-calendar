@@ -497,7 +497,8 @@ export class CalendarView extends ItemView {
 
       const container = this.contentEl;
       container.empty();
-      const calendarEl = container.createEl('div');
+      const calendarShellEl = container.createEl('div', { cls: 'ofc-calendar-shell' });
+      const calendarEl = calendarShellEl.createEl('div');
 
       this.registerDomEvent(
         calendarEl,

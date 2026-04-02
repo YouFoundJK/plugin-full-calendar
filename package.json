@@ -1,6 +1,6 @@
 {
     "name": "full-calendar-remastered",
-    "version": "0.12.7.1",
+    "version": "0.12.7.6-beta",
     "description": "Obsidian integration with Full Calendar (fullcalendar.io)",
     "main": "main.js",
     "scripts": {
@@ -68,6 +68,7 @@
         "@fullcalendar/interaction": "^6.1.18",
         "@fullcalendar/list": "^6.1.18",
         "@fullcalendar/luxon3": "^6.1.20",
+        "@fullcalendar/resource": "^6.1.20",
         "@fullcalendar/resource-timeline": "^6.1.18",
         "@fullcalendar/rrule": "^6.1.18",
         "@fullcalendar/timegrid": "^6.1.18",

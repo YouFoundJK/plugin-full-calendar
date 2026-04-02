@@ -495,20 +495,9 @@ export class ProviderRegistry {
     if (!this.cache) return;
     // For a delete, the new state of the file is "no events".
     // The cache will diff this against its old state and remove everything.
-    // Try to get the actual file from vault, or pass a minimal object if not found
-    const abstractFile = this.plugin.app.vault.getAbstractFileByPath(path);
-    if (abstractFile instanceof TFile) {
-      await this.cache.syncFile(abstractFile, []);
-    } else {
-      // File doesn't exist (already deleted), call with a minimal file-like object
-      // Use syncCalendar instead to clear events for this path
-      // Since file is deleted, find and remove all events with this file path
-      const eventsToRemove = this.cache.store.getEventsInFile({ path });
-      for (const event of eventsToRemove) {
-        await this.cache.deleteEvent(event.id, { force: true, silent: true });
-      }
-      this.cache.flushUpdateQueue([], []);
-    }
+    // Use a minimal file-like object; syncFile only requires the path for diffing.
+    // This avoids invoking provider-level delete logic during rename races.
+    await this.cache.syncFile({ path }, []);
   }
 
   // Add these properties for remote revalidation

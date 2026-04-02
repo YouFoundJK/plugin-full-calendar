@@ -36,10 +36,18 @@ type RRuleExpandFn = (
  */
 interface RRuleSetInternal extends RRuleSetLike {
   _dtstart?: Date;
+  between?: (after: Date, before: Date, inc?: boolean) => Date[];
 }
 
 // Store the truly-original rrule expand function so we never wrap our own patch.
 let _originalRRuleExpand: RRuleExpandFn | null = null;
+
+/**
+ * Test helper to reset module-level patch state between test cases.
+ */
+export function resetRRulePatchStateForTests(): void {
+  _originalRRuleExpand = null;
+}
 
 // Minimal shape for the rrule plugin we monkeypatch.
 export interface RRuleDateEnvLike {
@@ -342,19 +350,29 @@ export function patchRRuleTimezoneExpansion(
     const tzid = errd.rruleSet.tzid();
 
     if (tzid && settingsTimeZone) {
-      // Evaluate the raw date representations natively using the original rrule expansion.
-      // Note: these results are *markers* (UTC fields = display-tz wall-clock) but may be
-      // corrupted due to the isTimeZoneSpecified mismatch described above.
-      // We use them only to recover the year/month/day of each recurrence.
-      const result = trueOriginalExpand.call(this, errd, fr, de);
+      const rruleObj = errd.rruleSet as RRuleSetInternal;
 
-      return result.map((d: Date) => {
+      // Critical: bypass FullCalendar's faulty dateEnv.toDate path by expanding directly
+      // from rruleSet. We mimic FullCalendar's +/-1 day framing leeway.
+      const frameStart = new Date(fr.start);
+      const frameEnd = new Date(fr.end);
+      const leewayMs = 24 * 60 * 60 * 1000;
+      const rangeStart = new Date(frameStart.getTime() - leewayMs);
+      const rangeEnd = new Date(frameEnd.getTime() + leewayMs);
+
+      const rawExpandedDates =
+        typeof rruleObj.between === 'function' ? rruleObj.between(rangeStart, rangeEnd) : null;
+
+      if (!rawExpandedDates) {
+        // Defensive fallback for unexpected rruleSet shapes.
+        return trueOriginalExpand.call(this, errd, fr, de);
+      }
+
+      return rawExpandedDates.map((d: Date) => {
         // --- Extract stable time components ---
         // _dtstart.getUTCHours() reliably gives the literal hour from the DTSTART string.
-        // d.getFullYear/Month/Date (browser-local fields) give the correct calendar date
-        // because rrule aligns recurrences to local days and the browser<->event timezone
-        // difference is small enough not to shift the date.
-        const rruleObj = errd.rruleSet as RRuleSetInternal;
+        // Use UTC getters for recurrence dates because rrule.js encodes wall-clock values
+        // in UTC fields. Local getters can leak system timezone and shift the calendar day.
         const baseHour = rruleObj._dtstart ? rruleObj._dtstart.getUTCHours() : d.getUTCHours();
         const baseMinute = rruleObj._dtstart
           ? rruleObj._dtstart.getUTCMinutes()
@@ -368,9 +386,9 @@ export function patchRRuleTimezoneExpansion(
         // UTC+3 in summer (EEST) and UTC+2 in winter (EET).
         const sourceDt = DateTime.fromObject(
           {
-            year: d.getFullYear(),
-            month: d.getMonth() + 1, // luxon months are 1-12
-            day: d.getDate(),
+            year: d.getUTCFullYear(),
+            month: d.getUTCMonth() + 1, // luxon months are 1-12
+            day: d.getUTCDate(),
             hour: baseHour,
             minute: baseMinute,
             second: baseSecond

@@ -41,10 +41,11 @@ This feature can perform a one-time, permanent modification of your event notes.
 
 1.  Go to **Full Calendar Settings → Advanced categorization and Timeline**.
 2.  Toggle **"Enable Advanced Categorization"** on.
-3.  A warning modal will appear explaining the permanent changes. After proceeding, a second modal will ask how you want to bulk-categorize your existing local events:
-    -   **Use Parent Folder (Smart):** For any event that *doesn't* already have a category, its parent folder's name will be used as the category. This is the safest and most common choice.
+3.  A bulk-update modal will ask how you want to categorize your existing local events:
+    -   **Use Parent Folder (Smart):** For events that do *NOT* already look categorized, the parent folder name is used as the category. Titles already in `Category - Title` or `Category - Sub-Category - Title` format are skipped.
     -   **Use Parent Folder (Forced):** The parent folder's name will be prepended to *all* event titles, even if they already have one. Use with caution, as this can create nested categories (e.g., `NewCat - OldCat - Title`).
     -   **Forced Default Update:** You provide a default category, and it will be prepended to *all* event titles.
+4.  If you cancel this modal, no bulk changes are applied.
 
 <!-- TODO: Add GIF of new enable categories flow with both modals -->
 
@@ -61,10 +62,11 @@ Once enabled, a new management section will appear in the settings.
 
 ---
 
-## Disabling & Cleaning Up
+## Disabling Advanced Categories
 
-If you decide to turn this feature off, the plugin will help you clean up your notes.
+When you turn this feature off, you can choose a non-destructive or cleanup path.
 
 1.  Toggle "Enable Advanced Categorization" off in settings.
-2.  A warning modal will explain that this will remove known category prefixes from your event titles and file names. It will also **permanently delete your saved category color settings.**
-3.  If you proceed, the plugin will process all your local calendars to remove the `Category - ` prefix, restoring them to their original state.
+2.  In the disable modal, choose one option:
+    -   **Disable without cleanup:** Only disables the feature flag. No bulk processing is run, event titles are not changed, and saved category color settings are kept.
+    -   **Disable and clean up notes:** Runs bulk cleanup for local calendars (removing known `Category - ` prefixes) and clears saved category color settings.

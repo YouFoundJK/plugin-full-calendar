@@ -16,11 +16,7 @@ import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { CalendarInfo, OFCEvent } from '../../types';
 import { AutocompleteInput } from '../components/forms/AutocompleteInput';
-import {
-  constructTitle,
-  parseTitle,
-  parseSubcategoryTitle
-} from '../../features/category/categoryParser';
+import { constructTitle, parseSubcategoryTitle } from '../../features/category/categoryParser';
 import { t } from '../../features/i18n/i18n';
 
 interface DayChoiceProps {
@@ -282,10 +278,9 @@ export const EditEvent = ({
       parsedSubCategory = parsed.subCategory;
       parsedTitle = parsed.title;
     } else {
-      // When advanced categorization is disabled, parse the full title format
-      const parsed = parseTitle(title);
-      parsedSubCategory = parsed.subCategory;
-      parsedTitle = parsed.title;
+      // When advanced categorization is disabled, keep user input literal.
+      parsedSubCategory = undefined;
+      parsedTitle = title;
     }
 
     const finalEvent = {

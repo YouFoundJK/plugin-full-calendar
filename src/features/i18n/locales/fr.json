@@ -304,8 +304,9 @@
         "description": "Activer la coloration par catégorie et débloquer les vues timeline. Cela modifiera les titres des notes d'événement et permettra la visualisation timeline par catégorie."
       },
       "disable": {
-        "modalTitle": "⚠️ Désactiver et nettoyer",
-        "modalDescription": "Désactiver cette fonctionnalité supprimera les préfixes de catégorie connus de vos titres d'événement et supprimera définitivement tous les paramètres de couleur de catégorie enregistrés.",
+        "modalTitle": "⚠️ Désactiver la catégorisation avancée",
+        "modalDescription": "Choisissez comment désactiver cette fonctionnalité. Sans nettoyage, les titres d'événements et les couleurs de catégorie enregistrées sont conservés ; avec nettoyage, les préfixes de catégorie connus et les couleurs enregistrées sont supprimés.",
+        "buttonDisableWithoutCleanup": "Désactiver sans nettoyage",
         "buttonDisable": "Désactiver et nettoyer les notes",
         "buttonCancel": "Annuler"
       }

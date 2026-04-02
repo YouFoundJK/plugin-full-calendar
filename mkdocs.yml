@@ -65,6 +65,7 @@ nav:
     - Advanced:
           - Dataview Integration: advanced/dataview.md
           - Data Integrity and File Modifications: advanced/data_integrity.md
+          - Devlog: RRULE Timezone Patch: advanced/devlog_rrule_timezone_patch.md
     - Privacy & Terms:
           - Privacy Policy: advanced/privacy-policy.md
           - Terms of Service: advanced/terms-of-service.md

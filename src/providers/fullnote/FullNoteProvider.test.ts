@@ -108,6 +108,7 @@ const makeApp = (app: MockApp): ObsidianInterface => ({
 
 interface MockObsidian {
   create: jest.Mock;
+  delete: jest.Mock;
   rewrite: jest.Mock;
   read: jest.Mock;
   getAbstractFileByPath: jest.Mock;
@@ -252,6 +253,108 @@ describe('FullNoteCalendar Tests', () => {
     expect(content).toContain('category: Work');
   });
 
+  it('create and delete workflow succeeds end-to-end', async () => {
+    const app = MockAppBuilder.make().folder(new MockAppBuilder(dirName)).done();
+    const obsidian = makeApp(app);
+
+    (obsidian.create as jest.Mock).mockImplementation((path: string, data: string) =>
+      app.vault.create(path, data)
+    );
+    (obsidian.delete as jest.Mock).mockImplementation((file: TFile) => {
+      if (file.parent) {
+        file.parent.children = file.parent.children.filter(child => child !== file);
+      }
+      return Promise.resolve();
+    });
+
+    const calendar = new FullNoteProvider(
+      { directory: dirName, id: 'local_1' },
+      makePlugin(),
+      obsidian
+    );
+
+    const inputEvent = parseEvent({
+      title: 'Workflow Event',
+      allDay: true,
+      date: '2022-02-01'
+    });
+
+    const [createdEvent] = await calendar.createEvent(inputEvent);
+    const handle = calendar.getEventHandle(createdEvent);
+
+    expect(handle).not.toBeNull();
+    expect(createdEvent.uid).toBeDefined();
+    expect(handle!.persistentId).toBe(createdEvent.uid);
+
+    await calendar.deleteEvent(handle!);
+
+    expect((obsidian.delete as jest.Mock).mock.calls).toHaveLength(1);
+    expect(app.vault.getFileByPath(createdEvent.uid!)).toBeNull();
+  });
+
+  it('add, rename, move date, and delete workflow stays intact', async () => {
+    const app = MockAppBuilder.make().folder(new MockAppBuilder(dirName)).done();
+    const obsidian = makeApp(app);
+
+    (obsidian.create as jest.Mock).mockImplementation((path: string, data: string) =>
+      app.vault.create(path, data)
+    );
+    (obsidian.rename as jest.Mock).mockImplementation(async (file: TFile, newPath: string) => {
+      file.name = newPath.split('/').pop() || file.name;
+    });
+    (obsidian.delete as jest.Mock).mockImplementation((file: TFile) => {
+      if (file.parent) {
+        file.parent.children = file.parent.children.filter(child => child !== file);
+      }
+      return Promise.resolve();
+    });
+
+    const calendar = new FullNoteProvider(
+      { directory: dirName, id: 'local_1' },
+      makePlugin({ enableAdvancedCategorization: false }),
+      obsidian
+    );
+
+    const initialEvent = parseEvent({
+      title: 'Workflow Base',
+      type: 'single',
+      allDay: true,
+      date: '2026-03-25',
+      endDate: null
+    });
+
+    const [createdEvent] = await calendar.createEvent(initialEvent);
+    expect(createdEvent.uid).toBeDefined();
+
+    const renamedEvent = parseEvent({
+      ...createdEvent,
+      title: 'Workflow Renamed'
+    });
+
+    const renameLocation = await calendar.updateEvent(
+      { persistentId: createdEvent.uid! },
+      createdEvent,
+      renamedEvent
+    );
+    expect(renameLocation?.file.path).toContain('Workflow Renamed');
+
+    const movedEvent = parseEvent({
+      ...renamedEvent,
+      uid: renameLocation?.file.path,
+      date: '2026-03-26'
+    });
+
+    const moveLocation = await calendar.updateEvent(
+      { persistentId: renameLocation!.file.path },
+      renamedEvent,
+      movedEvent
+    );
+    expect(moveLocation?.file.path).toContain('2026-03-26 Workflow Renamed');
+
+    await calendar.deleteEvent({ persistentId: moveLocation!.file.path });
+    expect((obsidian.delete as jest.Mock).mock.calls).toHaveLength(1);
+  });
+
   it('modify an existing event to add a category', async () => {
     const initialEvent = {
       title: 'Test Event',
@@ -261,13 +364,15 @@ describe('FullNoteCalendar Tests', () => {
       endTime: '12:30'
     };
     const filename = '2022-01-01 Test Event.md';
-    const obsidian = makeApp(
-      MockAppBuilder.make()
-        .folder(
-          new MockAppBuilder('events').file(filename, new FileBuilder().frontmatter(initialEvent))
-        )
-        .done()
-    );
+    const app = MockAppBuilder.make()
+      .folder(
+        new MockAppBuilder('events').file(filename, new FileBuilder().frontmatter(initialEvent))
+      )
+      .done();
+    const obsidian = makeApp(app);
+    (obsidian.rename as jest.Mock).mockImplementation(async (file: TFile, newPath: string) => {
+      file.name = newPath.split('/').pop() || file.name;
+    });
     // CORRECTED CONSTRUCTOR CALL
 
     const calendar = new FullNoteProvider(
