@@ -18,7 +18,7 @@ The note's filename is also managed by the plugin to ensure it's easy to find, t
 2.  Select the type **Full Note**.
 3.  Choose an existing folder in your vault where your event notes will be stored.
 
-![Add Full Note Calendar](../assets/add-calendar-source.gif)
+![Add Full Note Calendar](../assets/calendars/add-calendar-source.gif)
 
 ---
 

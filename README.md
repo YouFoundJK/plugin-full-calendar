@@ -20,7 +20,7 @@ Full Calendar supports multiple calendar sources:
 
 You can find the full documentation [here](https://youfoundjk.github.io/plugin-full-calendar/) or [here](https://github.com/users/YouFoundJK/projects/2) for the development timeline.
 
-![Sample Calendar](https://raw.githubusercontent.com/YouFoundJK/plugin-full-calendar/main/docs/assets/sample-calendar.png)
+![Sample Calendar](https://raw.githubusercontent.com/YouFoundJK/plugin-full-calendar/main/docs/assets/guides/sample-calendar.png)
 
 The FullCalendar library is released under the [GPLv3 license](https://fullcalendar.io/license). It's an awesome piece of work, and it would not have been possible to make something like this plugin so easily without it.
 

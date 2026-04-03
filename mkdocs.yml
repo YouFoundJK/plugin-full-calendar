@@ -4,14 +4,16 @@ repo_url: https://github.com/YouFoundJK/plugin-full-calendar
 repo_name: YouFoundJK/plugin-full-calendar
 theme:
     name: material
+    custom_dir: docs/overrides
+    logo: assets/branding/icon-light.png
+    favicon: assets/branding/icon-dark.png
     icon:
         repo: fontawesome/brands/square-github
     font:
         text: Work Sans
     features:
         - navigation.instant
-        - navigation.sections
-        - navigation.expand
+        - navigation.indexes
         - navigation.tabs
         - navigation.tabs.sticky
     palette:
@@ -34,41 +36,91 @@ markdown_extensions:
           permalink: true
     - admonition # Add admonition for notes and warnings
 
+extra_javascript:
+    - assets/javascripts/nav-section-links.js
+    - assets/javascripts/theme-logo.js
+
+extra_css:
+      - assets/stylesheets/site-polish.css
+      - assets/stylesheets/nav-section-links.css
+      - assets/stylesheets/custom-footer.css
+
 nav:
-    - Introduction: 
+    - Home: 
           - index.md
-          - Getting Started: getting_started.md
           - What's New: whats_new.md
           - Changelog: changelog.md
-    - Calendar Types:
-          - Full Note Calendar: calendars/local.md
-          - Daily Note Calendar: calendars/dailynote.md
-          - ICS (Remote and Local): calendars/ics.md
-          - CalDAV: calendars/caldav.md
-          - Google Calendar: calendars/gcal.md
-          - Tasks Plugin Integration: calendars/tasks-plugin-integration.md
-          - Obsidian Bases Calendar: calendars/bases.md
-    - Events & Features:
-          - Event Management: events/manage.md
-          - Recurring Events: events/recurring.md
-          - Tasks: events/tasks.md
-          - Category Coloring: events/categories.md
-          - Timeline View Usage: views/timeline_view.md
-          - Workspaces: views/workspaces.md
-          - Timezone Support: events/timezones.md
-          - Hover & Context Menu: events/hover_context.md
+    - User Docs:
+          - guides/index.md
+          - Onboarding and Daily Use:
+                - guides/onboarding-and-daily-use.md
+                - Getting Started: getting_started.md
+                - Commands and Shortcuts: guides/commands-and-shortcuts.md
+                - Interactions and Gestures: guides/interactions.md
+                - Reminders and Notifications: guides/reminders.md
+                - Quick Workflows: guides/quick-workflows.md
+          - Calendar Types:
+                - calendars/index.md
+                - Full Note Calendar: calendars/local.md
+                - Daily Note Calendar: calendars/dailynote.md
+                - ICS (Remote and Local): calendars/ics.md
+                - CalDAV: calendars/caldav.md
+                - Google Calendar: calendars/gcal.md
+                - Tasks Plugin Integration: calendars/tasks-plugin-integration.md
+                - Obsidian Bases Calendar: calendars/bases.md
+          - Working with Events:
+                - events/index.md
+                - Event Management: events/manage.md
+                - Recurring Events: events/recurring.md
+                - Tasks: events/tasks.md
+                - Category Coloring: events/categories.md
+                - Timezone Support: events/timezones.md
+                - Hover and Context Menu: events/hover_context.md
+          - Views:
+                - views/index.md
+                - Workspaces: views/workspaces.md
+                - Timeline View Usage: views/timeline_view.md
+          - Chrono Analyser: 
+                - chrono_analyser/index.md
+                - Introduction: chrono_analyser/introduction.md
+                - Use Cases: chrono_analyser/usecases.md
+                - FAQ: chrono_analyser/faq.md
+          - Settings and Customization:
+                - settings/index.md
+                - Calendar Sources: settings/sources.md
+                - Display and Behavior: settings/fc_config.md
+          - Troubleshooting: guides/troubleshooting.md
+    - Architecture Docs:
+          - system/index.md
+          - System:
+                - system/overview.md
+                - Events Architecture: events/architecture.md
+                - EventCache Contract: system/eventcache.md
+                - Event Storage and Identifiers: system/event-storage.md
+                - FullCalendar Interop: system/interop.md
+                - Data Flow: system/data-flow.md
+                - Core Systems: system/core-systems.md
+                - Extending the Plugin: system/extending.md
+                - Testing and Validation: system/testing.md
+          - Provider Architecture:
+                - calendars/architecture.md
+                - Implementations and Patches: calendars/provider-implementations.md
+                - New Provider Blueprint: calendars/provider-blueprint.md
+          - Features:
+                - system/features/index.md
+                - Settings Architecture: settings/architecture.md
+                - Timezone Architecture: system/features/timezone-architecture.md
+                - Reminders Architecture: system/features/reminders-architecture.md
+          - Views Architecture:
+                - views/architecture.md
+          - ChronoAnalyser:
+                - chrono_analyser/architecture.md
+                - Analysis Types Implementation: chrono_analyser/analysis-types.md
+                - Insights Engine Implementation: chrono_analyser/insights-architecture.md
+    - Reference:
           - Internationalization: features/i18n.md
-    - ChronoAnalyser: 
-          - Chrono Analyser: chrono_analyser/introduction.md
-          - Use Cases: chrono_analyser/usecases.md
-          - FAQ & Troubleshooting: chrono_analyser/faq.md
-    - Settings:
-          - Calendar Sources: settings/sources.md
-          - Display & Behavior: settings/fc_config.md
-    - Advanced:
           - Dataview Integration: advanced/dataview.md
           - Data Integrity and File Modifications: advanced/data_integrity.md
-          - "Devlog: RRULE Timezone Patch": advanced/devlog_rrule_timezone_patch.md
-    - Privacy & Terms:
+    - Privacy and Terms:
           - Privacy Policy: advanced/privacy-policy.md
           - Terms of Service: advanced/terms-of-service.md

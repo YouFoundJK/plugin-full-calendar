@@ -28,13 +28,13 @@ jobs:
         run: mkdocs build
 
       - name: Copy static files 1
-        run: cp docs/google-auth-callback.html site/
+        run: cp docs/assets/meta/google-auth-callback.html site/
       
       - name: Copy static files 2
-        run: cp docs/google5612e1450dc0c1ac.html site/
+        run: cp docs/assets/meta/google5612e1450dc0c1ac.html site/
 
       - name: Copy changelogs JSON
-        run: cp docs/changelogs.json site/
+        run: cp docs/assets/meta/changelogs.json site/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

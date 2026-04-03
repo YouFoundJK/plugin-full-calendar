@@ -6,7 +6,7 @@ Add any calendar that you have a link to in .ics format to Obsidian. This includ
 
 The plugin will automatically detect if the calendar source is a remote URL or a local vault path. Calendars are re-fetched automatically from their source at most every five minutes. If you would like to revalidate remote calendars directly, you can run the command `Full Calendar: Revalidate remote calendars`.
 
-![](../assets/sync-setup-ics.gif)
+![](../assets/calendars/sync-setup-ics.gif)
 
 Note: `webcal://` links are automatically converted to `https://` when added.
 
