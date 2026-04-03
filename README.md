@@ -1,4 +1,7 @@
 
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 <!-- ![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22obsidian-full-calendar%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json) -->
 [![Version](https://img.shields.io/badge/Version-v_0.12.8-blue)](https://youfoundjk.github.io/plugin-full-calendar/)
 
@@ -35,3 +38,24 @@ Or install via **BRAT**:
 1. Install the [Obsidian42 BRAT](https://github.com/TfTHacker/obsidian42-brat) community plugin.
 2. In BRAT, add this repo URL: `https://github.com/YouFoundJK/plugin-full-calendar`.
 3. Click **Add Plugin** and let Obsidian download it. Restart if prompted.
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/YouFoundJK"><img src="https://avatars.githubusercontent.com/u/72195985?v=4?s=100" width="100px;" alt="Jovi Koikkara"/><br /><sub><b>Jovi Koikkara</b></sub></a><br /><a href="https://github.com/YouFoundJK/plugin-full-calendar/commits?author=YouFoundJK" title="Code">💻</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
