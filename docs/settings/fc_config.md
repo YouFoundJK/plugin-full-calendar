@@ -2,12 +2,12 @@
 
 Configure the appearance and behavior of the FullCalendar view to match your workflow.
 
-![Settings screenshot](../assets/settings.png)
+![Settings screenshot](../assets/settings/settings.png)
 
 ## First Day of Week
 The first day of the week defaults to Sunday, but you can change it to Monday or any other day.
 
-![Change First Day of Week](../assets/change-week-start.gif)
+![Change First Day of Week](../assets/settings/change-week-start.gif)
 
 ## Default Calendar Views
 Choose the initial view that Full Calendar will open to on desktop and mobile devices.

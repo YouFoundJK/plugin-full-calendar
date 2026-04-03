@@ -19,7 +19,7 @@ Unlock powerful task management by integrating the [Obsidian Tasks](https://gith
 
 Once added, Full Calendar will automatically discover all tasks from your vault and display them.
 
-<!-- Image missing: ../assets/tasks-integration.gif -->
+<!-- Image missing: ../assets/calendars/tasks-integration.gif -->
 
 ---
 
@@ -34,7 +34,7 @@ Once a Tasks Calendar is active, a new **Tasks Backlog** panel will be registere
 -   **Drag-and-Drop Scheduling:** Quickly schedule tasks by dragging them from the backlog to a specific date and time.
 -   **Filtering:** Use the filter bar to narrow down tasks by status (`todo`, `done`) or by the file path they belong to.
 
-<!-- Image missing: ../assets/task-backlog.gif -->
+<!-- Image missing: ../assets/calendars/task-backlog.gif -->
 
 ### Full CRUD Support
 

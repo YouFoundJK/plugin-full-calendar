@@ -30,7 +30,7 @@ The plugin will automatically:
 2.  Add an exception to the parent series so the original event for that day disappears.
 3.  Visually, it looks like you just moved one event, but the data is handled cleanly in the background.
 
-![Creating an override by dragging a recurring event](../assets/moving-event.gif)
+![Creating an override by dragging a recurring event](../assets/events/moving-event.gif)
 
 ---
 

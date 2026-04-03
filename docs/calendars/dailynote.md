@@ -24,7 +24,7 @@ If a heading does not exist in a daily note, it will be appended to the end of t
 
 Note that only one daily note calendar can be active at a time.
 
-![](../assets/dailynote.gif)
+![](../assets/calendars/dailynote.gif)
 
 ---
 

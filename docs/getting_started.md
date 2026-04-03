@@ -15,7 +15,7 @@ Remote calendars (ICS/CalDAV) are read-only.
 !!! tip
     Use a combination for Full Note (for recurring and other detailed events) and Daily Note Calender (daily events stored compactly). Also check out [Advanced Categorization](events/categories.md) and its **event naming convention**, to unleash the full power of this plugin and supercharge your workflow!
 
-![Welcome page](assets/welcome-settings.gif)
+![Welcome page](assets/settings/welcome-settings.gif)
 
 ## Opening the Calendar
 
@@ -23,13 +23,13 @@ You can open the main calendar view in two ways:
 1.  Click the **Calendar icon** in the Obsidian ribbon (the left-hand bar).
 2.  Run the command `Full Calendar: Open Calendar` from the command palette (`Ctrl/Cmd + P`).
 
-![Open calendar](assets/open-calendar.gif)
+![Open calendar](assets/guides/open-calendar.gif)
 
 ## Sidebar Calendar
 
 For quick reference, you can open a more compact version of the calendar in the sidebar. Run the command `Full Calendar: Open in sidebar`.
 
-![Sidebar calendar](assets/sidebar.gif)
+![Sidebar calendar](assets/guides/sidebar.gif)
 
 ## Troubleshooting
 

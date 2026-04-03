@@ -1,6 +1,6 @@
 # Chrono Analyser
 
-![Analyser Dashboard with Insights](../assets/chronoAnalyser.gif)
+![Analyser Dashboard with Insights](../assets/chrono-analyser/chrono-analyser.gif)
 
 Chrono Analyser is an intelligent, built-in dashboard that transforms your calendar events into powerful, actionable insights. It goes beyond simple charting to help you understand, analyze, and optimize how you spend your time.
 

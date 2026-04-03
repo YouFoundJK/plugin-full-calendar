@@ -18,4 +18,4 @@ Once an event is a task, a checkbox will appear next to its title on the calenda
 -   **Single Events:** Click the checkbox to mark it complete. The event will be crossed out, and a `completed` timestamp will be added to its frontmatter.
 -   **Recurring Events:** You can now complete recurring tasks on an instance-by-instance basis! Checking the box for a recurring task will mark only that day's instance as complete, leaving future instances untouched.
 
-![Task Events](../assets/task-events.gif)
+![Task Events](../assets/events/task-events.gif)

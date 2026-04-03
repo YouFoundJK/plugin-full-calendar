@@ -11,7 +11,7 @@ This is a great way to quickly see meeting notes, agendas, or other context you'
 !!! note
     You can disable the `Ctrl`/`Cmd` key requirement in the "Page Preview" core plugin settings.
 
-![Hover for Preview](../assets/hover-description.gif)
+![Hover for Preview](../assets/events/hover-description.gif)
 
 ## Right-Click Context Menu
 
@@ -22,4 +22,4 @@ For local, editable events, you can:
 -   **Go to note:** Jump directly to the event's source note, opening it in a **new tab**.
 -   **Delete:** Delete the event without opening the editor.
 
-![Context Menu](../assets/context-menu.gif)
+![Context Menu](../assets/events/context-menu.gif)

@@ -1,0 +1,51 @@
+{
+  "files": ["README.md"],
+  "imageSize": 40,
+  "contributorsPerLine": 12,
+  "commit": false,
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "Happypig375",
+      "name": "Hadrian Tang",
+      "avatar_url": "https://avatars.githubusercontent.com/u/19922066?v=4",
+      "profile": "https://discord.gg/QFp6B74ASr?%20%3C--%20Blobbo%20and%20Chrono",
+      "contributions": ["doc"]
+    },
+    {
+      "login": "kapej42",
+      "name": "Klaas-Pieter (K.P.) Majoor",
+      "avatar_url": "https://avatars.githubusercontent.com/u/26510924?v=4",
+      "profile": "https://github.com/kapej42",
+      "contributions": ["code", "content"]
+    },
+    {
+      "login": "mivanit",
+      "name": "mivanit",
+      "avatar_url": "https://avatars.githubusercontent.com/u/19347900?v=4",
+      "profile": "https://mivanit.github.io/",
+      "contributions": ["code"]
+    },
+    {
+      "login": "rolfkleef",
+      "name": "Rolf Kleef",
+      "avatar_url": "https://avatars.githubusercontent.com/u/223935?v=4",
+      "profile": "https://drostan.org/",
+      "contributions": ["code", "doc", "test"]
+    },
+    {
+      "login": "oskardotglobal",
+      "name": "Oskar Manhart",
+      "avatar_url": "https://avatars.githubusercontent.com/u/52569953?v=4",
+      "profile": "https://github.com/oskardotglobal",
+      "contributions": ["code"]
+    }
+  ],
+  "skipCi": true,
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "projectName": "plugin-full-calendar",
+  "projectOwner": "YouFoundJK"
+}
+
