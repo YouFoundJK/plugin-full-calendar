@@ -1,0 +1,26 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "YouFoundJK",
+      "name": "Jovi Koikkara",
+      "avatar_url": "https://avatars.githubusercontent.com/u/72195985?v=4",
+      "profile": "https://github.com/YouFoundJK",
+      "contributions": [
+        "code"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "skipCi": true,
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "projectName": "plugin-full-calendar",
+  "projectOwner": "YouFoundJK"
+}
