@@ -4,6 +4,29 @@ import { CalendarInfo } from './calendar_settings';
 
 import type { InsightsConfig } from '../chrono_analyser/ui/ui';
 
+export interface ActivityWatchRule {
+  id: string;
+  bucketType: string;
+  matchField?: string;
+  matchPattern: string;
+  useRegex: boolean;
+  category: string;
+  subCategory: string;
+  titleTemplate: string;
+}
+
+export interface ActivityWatchSettings {
+  enabled: boolean;
+  apiUrl: string;
+  lastSyncTime: number;
+  targetCalendarId: string;
+  mergeToleranceMinutes: number;
+  syncStrategy: 'auto' | 'custom';
+  customDateStart: string;
+  customDateEnd: string;
+  rules: ActivityWatchRule[];
+}
+
 export interface BusinessHoursSettings {
   enabled: boolean;
   daysOfWeek: number[]; // 0=Sunday, 1=Monday, etc.
@@ -83,6 +106,8 @@ export interface FullCalendarSettings {
   weekends?: boolean; // Whether to display weekends
   hiddenDays?: number[]; // Array of day numbers to hide (0=Sunday, 1=Monday, etc.)
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
+  activityWatch: ActivityWatchSettings;
+
   currentVersion: string | null;
 }
 
@@ -123,6 +148,18 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   weekends: true, // Show weekends by default
   hiddenDays: [], // Show all days by default
   dayMaxEvents: false, // Use FullCalendar default behavior
+  activityWatch: {
+    enabled: false,
+    apiUrl: 'http://127.0.0.1:5600',
+    lastSyncTime: 0,
+    targetCalendarId: '',
+    mergeToleranceMinutes: 3,
+    syncStrategy: 'auto',
+    customDateStart: '',
+    customDateEnd: '',
+    rules: []
+  },
+
   enableDefaultReminder: true,
   defaultReminderMinutes: 10,
   currentVersion: null

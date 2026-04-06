@@ -257,6 +257,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       renderCalendarManagement,
       renderGoogleSettings,
       renderRemindersSettings,
+      renderActivityWatchSettings,
       renderFooter
     ] = await Promise.all([
       import('./sections/renderGeneral').then(m => m.renderGeneralSettings),
@@ -270,6 +271,9 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       import('../../providers/google/ui/renderGoogle').then(m => m.renderGoogleSettings),
       import('../../features/notifications/ui/renderReminders').then(
         m => m.renderRemindersSettings
+      ),
+      import('../../features/activitywatch/ui/renderActivityWatch').then(
+        m => m.renderActivityWatchSettings
       ),
       import('./sections/calendars/renderFooter').then(m => m.renderFooter)
     ]);
@@ -287,6 +291,9 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       void this.display();
     });
     renderCategorizationSettings(this.containerEl, this.plugin, () => {
+      void this.display();
+    });
+    renderActivityWatchSettings(this.containerEl, this.plugin, () => {
       void this.display();
     });
     renderWhatsNew(this.containerEl, () => {

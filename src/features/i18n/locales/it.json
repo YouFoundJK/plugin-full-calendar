@@ -94,6 +94,26 @@
       "apiUnavailable": "API del plugin Obsidian Tasks non disponibile."
     }
   },
+  "eventCache": {
+    "calendarNotFound": "Impossibile aggiungere l'evento: calendario con ID {{calendarId}} non trovato.",
+    "providerNotFound": "Impossibile aggiungere l'evento: provider per il tipo {{type}} non trovato.",
+    "readOnly": "Impossibile aggiungere un evento a un calendario di sola lettura.",
+    "createFailed": "Creazione dell'evento non riuscita. La modifica è stata annullata.",
+    "deleteFailed": "Eliminazione dell'evento non riuscita. La modifica è stata annullata.",
+    "updateFailed": "Aggiornamento dell'evento non riuscito. La modifica è stata annullata.",
+    "movePartialSuccess": "Evento spostato con successo, ma alcuni elementi secondari potrebbero non essere stati spostati."
+  },
+  "recurEvents": {
+    "promotingChildren": "Promozione di {{count}} evento/i figlio/i.",
+    "deletedAndPromoted": "Evento ricorrente eliminato e figli promossi.",
+    "deletingWithChildren": "Eliminazione dell'evento ricorrente e della/e sua/e {{count}} sostituzione/i secondaria/e...",
+    "deletedAll": "Evento ricorrente e tutti i figli eliminati con successo.",
+    "preservingTiming": "Mantenimento dei tempi dell'evento modificato e ripristino dell'attività.",
+    "revertingControl": "Ripristino del controllo alla sequenza principale degli eventi ricorrenti.",
+    "updatingChildren": "Aggiornamento di {{count}} evento/i figlio/i in modo che corrisponda al nuovo titolo del padre.",
+    "updateError": "Errore durante l'aggiornamento dell'evento ricorrente. Alcuni figli potrebbero non essere stati aggiornati.",
+    "movingChildren": "Spostamento di {{count}} evento/i figlio/i nel nuovo calendario."
+  },
   "ribbon": {
     "openCalendar": "Apri Full Calendar"
   },
@@ -114,6 +134,17 @@
       "clickToCreateEvent": {
         "label": "Clicca su un giorno nella vista mese per creare evento",
         "description": "Disattiva per aprire la vista giorno al clic."
+      }
+    },
+    "reminders": {
+      "title": "Promemoria",
+      "enableDefault": {
+        "label": "Abilita promemoria predefinito",
+        "description": "Aggiungi automaticamente un promemoria ai nuovi eventi."
+      },
+      "defaultTime": {
+        "label": "Ora del promemoria predefinita",
+        "description": "Minuti prima dell'evento da ricordare (predefinito: 10)"
       }
     },
     "appearance": {
@@ -340,15 +371,22 @@
     "warnings": {
       "oneDailyNote": "È consentita solo una nota giornaliera."
     },
-    "reminders": {
-      "title": "Promemoria",
-      "enableDefault": {
-        "label": "Abilita promemoria predefinito",
-        "description": "Aggiungi automaticamente un promemoria ai nuovi eventi."
+    "activityWatch": {
+      "title": "Integrazione ActivityWatch",
+      "enable": {
+        "label": "Abilita sincronizzazione ActivityWatch",
+        "description": "Recupera periodicamente i dati dalla tua istanza locale di ActivityWatch."
       },
-      "defaultTime": {
-        "label": "Ora del promemoria predefinita",
-        "description": "Minuti prima dell'evento da ricordare (predefinito: 10)"
+      "configButton": "⚙️ Configura ActivityWatch",
+      "sync": {
+        "targetNotSet": "Sincronizzazione ActivityWatch: calendario di destinazione non impostato. Configuralo nelle impostazioni.",
+        "targetNotFoundOrReadOnly": "Sincronizzazione ActivityWatch: calendario di destinazione ({{calendarId}}) non trovato o in sola lettura.",
+        "fetchingData": "Sincronizzazione ActivityWatch: recupero dati in corso...",
+        "failedFetchBuckets": "Recupero bucket fallito. Stato: {{status}}",
+        "addedEvents": "Sincronizzazione ActivityWatch: {{count}} eventi aggiunti!",
+        "failedWithError": "Sincronizzazione ActivityWatch fallita: {{message}}",
+        "failed": "Sincronizzazione ActivityWatch fallita.",
+        "enabledPrompt": "ActivityWatch abilitato. Configura il calendario di destinazione cliccando sull'icona dell'ingranaggio."
       }
     }
   },
@@ -375,6 +413,22 @@
       },
       "buttons": {
         "openNote": "Apri Nota"
+      },
+      "errors": {
+        "createNoCalendars": "Impossibile creare l'evento: non sono disponibili calendari scrivibili.",
+        "createError": "Errore durante la creazione dell'evento: {{message}}",
+        "eventNotFound": "Evento non trovato.",
+        "detailsNotFound": "Dettagli dell'evento non trovati.",
+        "parentNotFound": "Impossibile trovare l'evento ricorrente genitore.",
+        "updateError": "Errore durante l'aggiornamento dell'evento: {{message}}",
+        "deleteError": "Errore durante l'eliminazione dell'evento: {{message}}"
+      },
+      "confirmations": {
+        "editParentTitle": "Modificare l'evento genitore?",
+        "editParentMessage": "Questa proprietà viene ereditata dall'evento ricorrente genitore. Desideri aprire il genitore per apportare modifiche?"
+      },
+      "misc": {
+        "unknownCalendar": "Calendario Sconosciuto"
       },
       "fields": {
         "title": {
@@ -409,6 +463,18 @@
           "isTask": "È un Task",
           "completed": "Completato"
         },
+        "notification": {
+          "label": "Notifica:",
+          "mins": "Min",
+          "select": "Seleziona...",
+          "presets": {
+            "30m": "30 min",
+            "1h": "1 ora",
+            "6h": "6 ore",
+            "12h": "12 ore",
+            "24h": "24 ore"
+          }
+        },
         "repeats": {
           "label": "Ripetizioni",
           "options": {
@@ -436,39 +502,11 @@
           },
           "yearlyText": "Ripete ogni anno il {{date}}.",
           "endRepeat": "Termina ripetizione"
-        },
-        "notification": {
-          "label": "Notifica:",
-          "mins": "Min",
-          "select": "Seleziona...",
-          "presets": {
-            "30m": "30 min",
-            "1h": "1 ora",
-            "6h": "6 ore",
-            "12h": "12 ore",
-            "24h": "24 ore"
-          }
         }
       },
       "tooltips": {
         "recurringTaskCompletion": "Il completamento dei task ricorrenti può essere attivato sulle singole istanze nella vista calendario.",
         "dailyNoteRecurring": "Gli eventi ricorrenti non sono supportati nelle Note Giornaliere. Usa invece un calendario 'Nota completa'."
-      },
-      "errors": {
-        "createNoCalendars": "Impossibile creare l'evento: non sono disponibili calendari scrivibili.",
-        "createError": "Errore durante la creazione dell'evento: {{message}}",
-        "eventNotFound": "Evento non trovato.",
-        "detailsNotFound": "Dettagli dell'evento non trovati.",
-        "parentNotFound": "Impossibile trovare l'evento ricorrente genitore.",
-        "updateError": "Errore durante l'aggiornamento dell'evento: {{message}}",
-        "deleteError": "Errore durante l'eliminazione dell'evento: {{message}}"
-      },
-      "confirmations": {
-        "editParentTitle": "Modificare l'evento genitore?",
-        "editParentMessage": "Questa proprietà viene ereditata dall'evento ricorrente genitore. Desideri aprire il genitore per apportare modifiche?"
-      },
-      "misc": {
-        "unknownCalendar": "Calendario Sconosciuto"
       }
     },
     "deleteRecurring": {
@@ -651,6 +689,50 @@
         "button": "Imposta predefinito",
         "errorEmpty": "Inserisci un nome categoria."
       }
+    },
+    "activityWatchSetup": {
+      "title": "Configurazione ActivityWatch",
+      "saved": "Configurazione ActivityWatch salvata",
+      "apiUrl": {
+        "label": "URL API",
+        "description": "URL della tua API locale di ActivityWatch"
+      },
+      "targetCalendar": {
+        "label": "Calendario di destinazione",
+        "description": "Quale calendario deve ricevere gli eventi sincronizzati?",
+        "unselected": "-- Seleziona un calendario --"
+      },
+      "mergeTolerance": {
+        "label": "Tolleranza di fusione (minuti)",
+        "description": "Gli eventi della stessa categoria che sono più vicini di questa soglia saranno combinati."
+      },
+      "strategy": {
+        "title": "Strategia di sincronizzazione",
+        "description": "Scegli come vengono recuperati gli eventi durante la prossima operazione di sincronizzazione.",
+        "auto": "Sincronizza dall'ultimo controllo",
+        "custom": "Intervallo di date personalizzato",
+        "datePlaceholder": "Seleziona data di inizio e fine"
+      },
+      "rules": {
+        "title": "Regole di categorizzazione",
+        "description": "Le regole mappano i dati grezzi di ActivityWatch alle categorie di Full Calendar.",
+        "add": "Aggiungi regola",
+        "delete": "Elimina",
+        "ruleNumber": "Regola #{{number}}",
+        "matchFormat": "Pattern di corrispondenza",
+        "useRegex": "Usa Regex",
+        "category": "Categoria",
+        "subCategory": "Sottocategoria",
+        "titleTemplate": "Template titolo (usa {app} o {url})",
+        "bucketPlaceholder": "ID bucket o 'window'/'web'",
+        "bucketTitle": "Ad es. aw-watcher-vscode",
+        "matchFieldPlaceholder": "Campo di corrispondenza (ad es. project, url)",
+        "matchFieldTitle": "Lascia vuoto per il rilevamento automatico"
+      },
+      "buttons": {
+        "save": "Salva",
+        "cancel": "Annulla"
+      }
     }
   },
   "google": {
@@ -699,17 +781,6 @@
     "loading": "Caricamento..."
   },
   "ui": {
-    "buttons": {
-      "addCalendar": "Aggiungi calendario"
-    },
-    "navigation": {
-      "thisMonth": "Questo mese",
-      "thisWeek": "Questa settimana",
-      "customDate": "Data personalizzata...",
-      "viewMonth": "Vista mese",
-      "viewWeek": "Vista settimana",
-      "viewDay": "Vista giorno"
-    },
     "view": {
       "errors": {
         "cacheNotLoaded": "Cache degli eventi di Full Calendar non caricata.",
@@ -739,6 +810,17 @@
         "delete": "Eliminare",
         "noActions": "Nessuna azione disponibile sugli eventi remoti"
       }
+    },
+    "buttons": {
+      "addCalendar": "Aggiungi calendario"
+    },
+    "navigation": {
+      "thisMonth": "Questo mese",
+      "thisWeek": "Questa settimana",
+      "customDate": "Data personalizzata...",
+      "viewMonth": "Vista mese",
+      "viewWeek": "Vista settimana",
+      "viewDay": "Vista giorno"
     }
   },
   "notifications": {
@@ -749,25 +831,5 @@
     "inMinutes": "(Tra {{mins}} minuti)",
     "failed": "Full Calendar: Impossibile creare la notifica desktop.",
     "errorBody": "Full Calendar: Impossibile mostrare la notifica desktop. Controlla la console per errori."
-  },
-  "eventCache": {
-    "calendarNotFound": "Impossibile aggiungere l'evento: calendario con ID {{calendarId}} non trovato.",
-    "providerNotFound": "Impossibile aggiungere l'evento: provider per il tipo {{type}} non trovato.",
-    "readOnly": "Impossibile aggiungere un evento a un calendario di sola lettura.",
-    "createFailed": "Creazione dell'evento non riuscita. La modifica è stata annullata.",
-    "deleteFailed": "Eliminazione dell'evento non riuscita. La modifica è stata annullata.",
-    "updateFailed": "Aggiornamento dell'evento non riuscito. La modifica è stata annullata.",
-    "movePartialSuccess": "Evento spostato con successo, ma alcuni elementi secondari potrebbero non essere stati spostati."
-  },
-  "recurEvents": {
-    "promotingChildren": "Promozione di {{count}} evento/i figlio/i.",
-    "deletedAndPromoted": "Evento ricorrente eliminato e figli promossi.",
-    "deletingWithChildren": "Eliminazione dell'evento ricorrente e della/e sua/e {{count}} sostituzione/i secondaria/e...",
-    "deletedAll": "Evento ricorrente e tutti i figli eliminati con successo.",
-    "preservingTiming": "Mantenimento dei tempi dell'evento modificato e ripristino dell'attività.",
-    "revertingControl": "Ripristino del controllo alla sequenza principale degli eventi ricorrenti.",
-    "updatingChildren": "Aggiornamento di {{count}} evento/i figlio/i in modo che corrisponda al nuovo titolo del padre.",
-    "updateError": "Errore durante l'aggiornamento dell'evento ricorrente. Alcuni figli potrebbero non essere stati aggiornati.",
-    "movingChildren": "Spostamento di {{count}} evento/i figlio/i nel nuovo calendario."
   }
 }

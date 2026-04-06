@@ -136,6 +136,17 @@
         "description": "Deaktivieren, um stattdessen die Tagesansicht zu öffnen."
       }
     },
+    "reminders": {
+      "title": "Erinnerungen",
+      "enableDefault": {
+        "label": "Standarderinnerung aktivieren",
+        "description": "Fügen Sie neuen Ereignissen automatisch eine Erinnerung hinzu."
+      },
+      "defaultTime": {
+        "label": "Standarderinnerungszeit",
+        "description": "Minuten vor dem Ereignis zur Erinnerung (Standard: 10)"
+      }
+    },
     "appearance": {
       "title": "Aussehen",
       "firstDay": {
@@ -360,15 +371,22 @@
     "warnings": {
       "oneDailyNote": "Nur eine tägliche Notiz ist erlaubt."
     },
-    "reminders": {
-      "title": "Erinnerungen",
-      "enableDefault": {
-        "label": "Standarderinnerung aktivieren",
-        "description": "Fügen Sie neuen Ereignissen automatisch eine Erinnerung hinzu."
+    "activityWatch": {
+      "title": "ActivityWatch-Integration",
+      "enable": {
+        "label": "ActivityWatch-Synchronisierung aktivieren",
+        "description": "Regelmäßig Daten von Ihrer lokalen ActivityWatch-Instanz abrufen."
       },
-      "defaultTime": {
-        "label": "Standarderinnerungszeit",
-        "description": "Minuten vor dem Ereignis zur Erinnerung (Standard: 10)"
+      "configButton": "⚙️ ActivityWatch konfigurieren",
+      "sync": {
+        "targetNotSet": "ActivityWatch-Sync: Zielkalender nicht festgelegt. Bitte in den Einstellungen konfigurieren.",
+        "targetNotFoundOrReadOnly": "ActivityWatch-Sync: Zielkalender ({{calendarId}}) nicht gefunden oder schreibgeschützt.",
+        "fetchingData": "ActivityWatch-Sync: Daten werden abgerufen...",
+        "failedFetchBuckets": "Buckets konnten nicht abgerufen werden. Status: {{status}}",
+        "addedEvents": "ActivityWatch-Sync: {{count}} Ereignisse hinzugefügt!",
+        "failedWithError": "ActivityWatch-Sync fehlgeschlagen: {{message}}",
+        "failed": "ActivityWatch-Sync fehlgeschlagen.",
+        "enabledPrompt": "ActivityWatch aktiviert. Bitte konfigurieren Sie den Zielkalender, indem Sie auf das Zahnrad-Symbol klicken."
       }
     }
   },
@@ -395,6 +413,22 @@
       },
       "buttons": {
         "openNote": "Notiz öffnen"
+      },
+      "errors": {
+        "createNoCalendars": "Ereignis kann nicht erstellt werden: Es sind keine beschreibbaren Kalender verfügbar.",
+        "createError": "Fehler beim Erstellen des Ereignisses: {{message}}",
+        "eventNotFound": "Ereignis nicht gefunden.",
+        "detailsNotFound": "Ereignisdetails nicht gefunden.",
+        "parentNotFound": "Das übergeordnete wiederkehrende Ereignis konnte nicht gefunden werden.",
+        "updateError": "Fehler beim Aktualisieren des Ereignisses: {{message}}",
+        "deleteError": "Fehler beim Löschen des Ereignisses: {{message}}"
+      },
+      "confirmations": {
+        "editParentTitle": "Übergeordnetes Ereignis bearbeiten?",
+        "editParentMessage": "Diese Eigenschaft wird vom übergeordneten wiederkehrenden Ereignis geerbt. Möchten Sie das übergeordnete Element öffnen, um Änderungen vorzunehmen?"
+      },
+      "misc": {
+        "unknownCalendar": "Unbekannter Kalender"
       },
       "fields": {
         "title": {
@@ -429,6 +463,18 @@
           "isTask": "Ist eine Aufgabe",
           "completed": "Abgeschlossen"
         },
+        "notification": {
+          "label": "Benachrichtigen:",
+          "mins": "Min.",
+          "select": "Auswählen...",
+          "presets": {
+            "30m": "30 Min.",
+            "1h": "1 Stunde",
+            "6h": "6 Stunden",
+            "12h": "12 Stunden",
+            "24h": "24 Stunden"
+          }
+        },
         "repeats": {
           "label": "Wiederholt sich",
           "options": {
@@ -456,39 +502,11 @@
           },
           "yearlyText": "Wiederholt sich jedes Jahr am {{date}}.",
           "endRepeat": "Wiederholung beenden"
-        },
-        "notification": {
-          "label": "Benachrichtigen:",
-          "mins": "Min.",
-          "select": "Auswählen...",
-          "presets": {
-            "30m": "30 Min.",
-            "1h": "1 Stunde",
-            "6h": "6 Stunden",
-            "12h": "12 Stunden",
-            "24h": "24 Stunden"
-          }
         }
       },
       "tooltips": {
         "recurringTaskCompletion": "Die Fertigstellung für wiederkehrende Aufgaben kann für einzelne Instanzen in der Kalenderansicht umgeschaltet werden.",
         "dailyNoteRecurring": "Wiederkehrende Ereignisse werden in Tagesnotizen nicht unterstützt. Bitte verwenden Sie stattdessen einen 'Vollständige Notiz'-Kalender."
-      },
-      "errors": {
-        "createNoCalendars": "Ereignis kann nicht erstellt werden: Es sind keine beschreibbaren Kalender verfügbar.",
-        "createError": "Fehler beim Erstellen des Ereignisses: {{message}}",
-        "eventNotFound": "Ereignis nicht gefunden.",
-        "detailsNotFound": "Ereignisdetails nicht gefunden.",
-        "parentNotFound": "Das übergeordnete wiederkehrende Ereignis konnte nicht gefunden werden.",
-        "updateError": "Fehler beim Aktualisieren des Ereignisses: {{message}}",
-        "deleteError": "Fehler beim Löschen des Ereignisses: {{message}}"
-      },
-      "confirmations": {
-        "editParentTitle": "Übergeordnetes Ereignis bearbeiten?",
-        "editParentMessage": "Diese Eigenschaft wird vom übergeordneten wiederkehrenden Ereignis geerbt. Möchten Sie das übergeordnete Element öffnen, um Änderungen vorzunehmen?"
-      },
-      "misc": {
-        "unknownCalendar": "Unbekannter Kalender"
       }
     },
     "deleteRecurring": {
@@ -671,6 +689,50 @@
         "button": "Standard setzen",
         "errorEmpty": "Bitte geben Sie einen Kategorienamen ein."
       }
+    },
+    "activityWatchSetup": {
+      "title": "ActivityWatch-Konfiguration",
+      "saved": "ActivityWatch-Konfiguration gespeichert",
+      "apiUrl": {
+        "label": "API-URL",
+        "description": "URL Ihrer lokalen ActivityWatch-API"
+      },
+      "targetCalendar": {
+        "label": "Zielkalender",
+        "description": "Welcher Kalender soll die synchronisierten Ereignisse erhalten?",
+        "unselected": "-- Kalender auswählen --"
+      },
+      "mergeTolerance": {
+        "label": "Zusammenführungstoleranz (Minuten)",
+        "description": "Ereignisse der gleichen Kategorie, die näher beieinander liegen als dieser Schwellenwert, werden kombiniert."
+      },
+      "strategy": {
+        "title": "Synchronisierungsstrategie",
+        "description": "Wählen Sie aus, wie Ereignisse beim nächsten Synchronisierungsvorgang abgerufen werden sollen.",
+        "auto": "Seit der letzten Prüfung synchronisieren",
+        "custom": "Benutzerdefinierter Datumsbereich",
+        "datePlaceholder": "Start- und Enddatum auswählen"
+      },
+      "rules": {
+        "title": "Kategorisierungsregeln",
+        "description": "Regeln ordnen rohe ActivityWatch-Daten Full Calendar-Kategorien zu.",
+        "add": "Regel hinzufügen",
+        "delete": "Löschen",
+        "ruleNumber": "Regel #{{number}}",
+        "matchFormat": "Matching-Muster",
+        "useRegex": "Regex verwenden",
+        "category": "Kategorie",
+        "subCategory": "Unterkategorie",
+        "titleTemplate": "Titel-Vorlage ({app} oder {url} verwenden)",
+        "bucketPlaceholder": "Bucket-ID oder 'window'/'web'",
+        "bucketTitle": "Z. B. aw-watcher-vscode",
+        "matchFieldPlaceholder": "Abgleich-Feld (z. B. project, url)",
+        "matchFieldTitle": "Leer lassen für automatische Erkennung"
+      },
+      "buttons": {
+        "save": "Speichern",
+        "cancel": "Abbrechen"
+      }
     }
   },
   "google": {
@@ -719,17 +781,6 @@
     "loading": "Lädt..."
   },
   "ui": {
-    "buttons": {
-      "addCalendar": "Kalender hinzufügen"
-    },
-    "navigation": {
-      "thisMonth": "Diesen Monat",
-      "thisWeek": "Diese Woche",
-      "customDate": "Benutzerdefiniertes Datum...",
-      "viewMonth": "Monat anzeigen",
-      "viewWeek": "Woche anzeigen",
-      "viewDay": "Tag anzeigen"
-    },
     "view": {
       "errors": {
         "cacheNotLoaded": "Der Ereignis-Cache von Full Calendar wurde nicht geladen.",
@@ -759,6 +810,17 @@
         "delete": "Löschen",
         "noActions": "Keine Aktionen für Remote-Ereignisse verfügbar"
       }
+    },
+    "buttons": {
+      "addCalendar": "Kalender hinzufügen"
+    },
+    "navigation": {
+      "thisMonth": "Diesen Monat",
+      "thisWeek": "Diese Woche",
+      "customDate": "Benutzerdefiniertes Datum...",
+      "viewMonth": "Monat anzeigen",
+      "viewWeek": "Woche anzeigen",
+      "viewDay": "Tag anzeigen"
     }
   },
   "notifications": {

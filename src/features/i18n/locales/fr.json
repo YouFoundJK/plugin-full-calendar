@@ -136,6 +136,17 @@
         "description": "Désactivez pour ouvrir la vue jour au lieu de créer un événement."
       }
     },
+    "reminders": {
+      "title": "Rappels",
+      "enableDefault": {
+        "label": "Activer le rappel par défaut",
+        "description": "Ajoutez automatiquement un rappel aux nouveaux événements."
+      },
+      "defaultTime": {
+        "label": "Heure de rappel par défaut",
+        "description": "Minutes avant l'événement pour rappeler (par défaut : 10)"
+      }
+    },
     "appearance": {
       "title": "Apparence",
       "firstDay": {
@@ -360,15 +371,22 @@
     "warnings": {
       "oneDailyNote": "Une seule note quotidienne est autorisée."
     },
-    "reminders": {
-      "title": "Rappels",
-      "enableDefault": {
-        "label": "Activer le rappel par défaut",
-        "description": "Ajoutez automatiquement un rappel aux nouveaux événements."
+    "activityWatch": {
+      "title": "Intégration ActivityWatch",
+      "enable": {
+        "label": "Activer la synchronisation ActivityWatch",
+        "description": "Récupérer périodiquement les données de votre instance locale ActivityWatch."
       },
-      "defaultTime": {
-        "label": "Heure de rappel par défaut",
-        "description": "Minutes avant l'événement pour rappeler (par défaut : 10)"
+      "configButton": "⚙️ Configurer ActivityWatch",
+      "sync": {
+        "targetNotSet": "Sync ActivityWatch : calendrier cible non défini. Veuillez le configurer dans les paramètres.",
+        "targetNotFoundOrReadOnly": "Sync ActivityWatch : calendrier cible ({{calendarId}}) introuvable ou en lecture seule.",
+        "fetchingData": "Sync ActivityWatch : récupération des données...",
+        "failedFetchBuckets": "Échec de la récupération des buckets. Statut : {{status}}",
+        "addedEvents": "Sync ActivityWatch : {{count}} événements ajoutés !",
+        "failedWithError": "Échec de la synchronisation ActivityWatch : {{message}}",
+        "failed": "Échec de la synchronisation ActivityWatch.",
+        "enabledPrompt": "ActivityWatch activé. Veuillez configurer le calendrier cible en cliquant sur l'icône d'engrenage."
       }
     }
   },
@@ -395,6 +413,22 @@
       },
       "buttons": {
         "openNote": "Ouvrir la note"
+      },
+      "errors": {
+        "createNoCalendars": "Impossible de créer l'événement : aucun calendrier en écriture n'est disponible.",
+        "createError": "Erreur lors de la création de l'événement : {{message}}",
+        "eventNotFound": "Événement introuvable.",
+        "detailsNotFound": "Détails de l'événement introuvables.",
+        "parentNotFound": "Impossible de trouver l'événement récurrent parent.",
+        "updateError": "Erreur lors de la mise à jour de l'événement : {{message}}",
+        "deleteError": "Erreur lors de la suppression de l'événement : {{message}}"
+      },
+      "confirmations": {
+        "editParentTitle": "Modifier l'événement parent ?",
+        "editParentMessage": "Cette propriété est héritée de l'événement récurrent parent. Souhaitez-vous ouvrir le parent pour effectuer des modifications ?"
+      },
+      "misc": {
+        "unknownCalendar": "Calendrier Inconnu"
       },
       "fields": {
         "title": {
@@ -429,6 +463,18 @@
           "isTask": "Est une tâche",
           "completed": "Terminée"
         },
+        "notification": {
+          "label": "Notifier :",
+          "mins": "Min",
+          "select": "Sélectionner...",
+          "presets": {
+            "30m": "30 min",
+            "1h": "1 heure",
+            "6h": "6 heures",
+            "12h": "12 heures",
+            "24h": "24 heures"
+          }
+        },
         "repeats": {
           "label": "Répétitions",
           "options": {
@@ -456,39 +502,11 @@
           },
           "yearlyText": "Répète chaque année le {{date}}.",
           "endRepeat": "Fin de la répétition"
-        },
-        "notification": {
-          "label": "Notifier :",
-          "mins": "Min",
-          "select": "Sélectionner...",
-          "presets": {
-            "30m": "30 min",
-            "1h": "1 heure",
-            "6h": "6 heures",
-            "12h": "12 heures",
-            "24h": "24 heures"
-          }
         }
       },
       "tooltips": {
         "recurringTaskCompletion": "La complétion des tâches récurrentes peut être activée sur chaque instance dans la vue calendrier.",
         "dailyNoteRecurring": "Les événements récurrents ne sont pas pris en charge dans les notes quotidiennes. Veuillez utiliser un calendrier 'Note complète' à la place."
-      },
-      "errors": {
-        "createNoCalendars": "Impossible de créer l'événement : aucun calendrier en écriture n'est disponible.",
-        "createError": "Erreur lors de la création de l'événement : {{message}}",
-        "eventNotFound": "Événement introuvable.",
-        "detailsNotFound": "Détails de l'événement introuvables.",
-        "parentNotFound": "Impossible de trouver l'événement récurrent parent.",
-        "updateError": "Erreur lors de la mise à jour de l'événement : {{message}}",
-        "deleteError": "Erreur lors de la suppression de l'événement : {{message}}"
-      },
-      "confirmations": {
-        "editParentTitle": "Modifier l'événement parent ?",
-        "editParentMessage": "Cette propriété est héritée de l'événement récurrent parent. Souhaitez-vous ouvrir le parent pour effectuer des modifications ?"
-      },
-      "misc": {
-        "unknownCalendar": "Calendrier Inconnu"
       }
     },
     "deleteRecurring": {
@@ -671,6 +689,50 @@
         "button": "Définir par défaut",
         "errorEmpty": "Veuillez entrer un nom de catégorie."
       }
+    },
+    "activityWatchSetup": {
+      "title": "Configuration ActivityWatch",
+      "saved": "Configuration ActivityWatch enregistrée",
+      "apiUrl": {
+        "label": "URL de l'API",
+        "description": "URL de votre API ActivityWatch locale"
+      },
+      "targetCalendar": {
+        "label": "Calendrier cible",
+        "description": "Quel calendrier doit recevoir les événements synchronisés ?",
+        "unselected": "-- Sélectionner un calendrier --"
+      },
+      "mergeTolerance": {
+        "label": "Tolérance de fusion (minutes)",
+        "description": "Les événements de la même catégorie qui sont plus proches que ce seuil seront combinés."
+      },
+      "strategy": {
+        "title": "Stratégie de synchronisation",
+        "description": "Choisissez comment les événements sont récupérés lors de la prochaine opération de synchronisation.",
+        "auto": "Synchroniser depuis la dernière vérification",
+        "custom": "Plage de dates personnalisée",
+        "datePlaceholder": "Sélectionner la date de début et de fin"
+      },
+      "rules": {
+        "title": "Règles de catégorisation",
+        "description": "Les règles font correspondre les données brutes d'ActivityWatch aux catégories de Full Calendar.",
+        "add": "Ajouter une règle",
+        "delete": "Supprimer",
+        "ruleNumber": "Règle #{{number}}",
+        "matchFormat": "Modèle de correspondance",
+        "useRegex": "Utiliser Regex",
+        "category": "Catégorie",
+        "subCategory": "Sous-catégorie",
+        "titleTemplate": "Modèle de titre (utiliser {app} ou {url})",
+        "bucketPlaceholder": "ID du bucket ou 'window'/'web'",
+        "bucketTitle": "Ex: aw-watcher-vscode",
+        "matchFieldPlaceholder": "Champ de correspondance (ex: project, url)",
+        "matchFieldTitle": "Laisser vide pour détection automatique"
+      },
+      "buttons": {
+        "save": "Enregistrer",
+        "cancel": "Annuler"
+      }
     }
   },
   "google": {
@@ -719,17 +781,6 @@
     "loading": "Chargement..."
   },
   "ui": {
-    "buttons": {
-      "addCalendar": "Ajouter un calendrier"
-    },
-    "navigation": {
-      "thisMonth": "Ce mois-ci",
-      "thisWeek": "Cette semaine",
-      "customDate": "Date personnalisée...",
-      "viewMonth": "Voir le mois",
-      "viewWeek": "Voir la semaine",
-      "viewDay": "Voir le jour"
-    },
     "view": {
       "errors": {
         "cacheNotLoaded": "Le cache des événements de Full Calendar n'est pas chargé.",
@@ -759,6 +810,17 @@
         "delete": "Supprimer",
         "noActions": "Aucune action disponible sur les événements distants"
       }
+    },
+    "buttons": {
+      "addCalendar": "Ajouter un calendrier"
+    },
+    "navigation": {
+      "thisMonth": "Ce mois-ci",
+      "thisWeek": "Cette semaine",
+      "customDate": "Date personnalisée...",
+      "viewMonth": "Voir le mois",
+      "viewWeek": "Voir la semaine",
+      "viewDay": "Voir le jour"
     }
   },
   "notifications": {

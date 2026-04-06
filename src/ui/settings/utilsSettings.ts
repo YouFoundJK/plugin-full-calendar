@@ -5,7 +5,7 @@
  */
 
 import { Notice } from 'obsidian';
-import { FullCalendarSettings, GoogleAccount } from '../../types/settings'; // Add GoogleAccount import
+import { FullCalendarSettings, GoogleAccount, DEFAULT_SETTINGS } from '../../types/settings'; // Add GoogleAccount import
 import { CalendarInfo, generateCalendarId } from '../../types/calendar_settings';
 import { t } from '../../features/i18n/i18n';
 
@@ -71,6 +71,8 @@ export function migrateAndSanitizeSettings(settings: unknown): {
     weekends: raw.weekends ?? true,
     hiddenDays: raw.hiddenDays ?? [],
     dayMaxEvents: raw.dayMaxEvents ?? false,
+    activityWatch:
+      (raw as Partial<FullCalendarSettings>).activityWatch ?? DEFAULT_SETTINGS.activityWatch,
     currentVersion: raw.currentVersion ?? null
   } as FullCalendarSettings & { calendarSources: (CalendarInfo | GoogleSourceWithAuth)[] } & {
     googleAuth?: LegacyGoogleAuth;

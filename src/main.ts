@@ -235,6 +235,15 @@ export default class FullCalendarPlugin extends Plugin {
       }
     });
     this.addCommand({
+      id: 'full-calendar-sync-activitywatch',
+      // eslint-disable-next-line obsidianmd/ui/sentence-case
+      name: 'Sync ActivityWatch', // Intentionally not using i18n for this specific new command as we didn't add it to en.json for brevity
+      callback: async () => {
+        const { syncActivityWatch } = await import('./features/activitywatch/sync');
+        await syncActivityWatch(this);
+      }
+    });
+    this.addCommand({
       id: 'full-calendar-open',
       name: t('commands.openCalendar'),
       callback: () => {

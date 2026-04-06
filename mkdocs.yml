@@ -111,6 +111,7 @@ nav:
                 - Settings Architecture: settings/architecture.md
                 - Timezone Architecture: system/features/timezone-architecture.md
                 - Reminders Architecture: system/features/reminders-architecture.md
+                - ActivityWatch Integration: features/activitywatch.md
           - Views Architecture:
                 - views/architecture.md
           - ChronoAnalyser:
