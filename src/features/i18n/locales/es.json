@@ -693,45 +693,39 @@
     "activityWatchSetup": {
       "title": "Configuración de ActivityWatch",
       "saved": "Configuración de ActivityWatch guardada",
-      "apiUrl": {
-        "label": "URL de la API",
-        "description": "URL de su API local de ActivityWatch"
-      },
-      "targetCalendar": {
-        "label": "Calendario de destino",
-        "description": "¿Qué calendario debería recibir los eventos sincronizados?",
-        "unselected": "-- Seleccione un calendario --"
-      },
-      "mergeTolerance": {
-        "label": "Tolerancia de fusión (minutos)",
-        "description": "Los eventos de la misma categoría que estén más cerca que este umbral se combinarán."
-      },
       "strategy": {
         "title": "Estrategia de Sincronización",
-        "description": "Elija cómo se obtendrán los eventos en la próxima operación de sincronización.",
         "auto": "Sincronizar desde la última comprobación",
         "custom": "Rango de fechas personalizado",
         "datePlaceholder": "Seleccionar fecha de inicio y fin"
       },
-      "rules": {
-        "title": "Reglas de categorización",
-        "description": "Las reglas asignan datos brutos de ActivityWatch a las categorías de Full Calendar.",
-        "add": "Añadir regla",
-        "delete": "Eliminar",
-        "ruleNumber": "Regla #{{number}}",
-        "matchFormat": "Patrón de coincidencia",
-        "useRegex": "Usar Regex",
-        "category": "Categoría",
-        "subCategory": "Subcategoría",
-        "titleTemplate": "Plantilla de título (use {app} o {url})",
-        "bucketPlaceholder": "ID de cubo o 'window'/'web'",
-        "bucketTitle": "Ej. aw-watcher-vscode",
-        "matchFieldPlaceholder": "Campo de coincidencia (ej. project, url)",
-        "matchFieldTitle": "Dejar vacío para autodetección"
-      },
       "buttons": {
         "save": "Guardar",
         "cancel": "Cancelar"
+      },
+      "apiUrl": "API URL",
+      "targetCalendar": "Target Calendar",
+      "unselected": "Unselected",
+      "profiles": {
+        "title": "Context Profiles (Best-Fit FSM)",
+        "config": "Profile Configuration",
+        "btnDelete": "Delete",
+        "name": "Profile Name",
+        "category": "Category (Color tag)",
+        "activationThreshold": "Activation Threshold (Mins)",
+        "softBreakLimit": "Soft Break Limit (Mins)",
+        "titleTemplate": "Title Template",
+        "titleTemplatePlaceholder": "e.g. Work - {app}",
+        "activators": "Activators (Matches trigger or sustain the session)",
+        "breakers": "Breakers (Instantly kills the session)",
+        "btnAddProfile": "+ Add Context Profile"
+      },
+      "rules": {
+        "bucketPlaceholder": "Bucket (e.g. window)",
+        "fieldPlaceholder": "Field (e.g. app)",
+        "matchPatternPlaceholder": "Match Pattern",
+        "regex": "Regex",
+        "btnAdd": "+ Add Rule"
       }
     }
   },

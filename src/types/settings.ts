@@ -4,15 +4,23 @@ import { CalendarInfo } from './calendar_settings';
 
 import type { InsightsConfig } from '../chrono_analyser/ui/ui';
 
-export interface ActivityWatchRule {
+export interface TriggerRule {
   id: string;
   bucketType: string;
   matchField?: string;
   matchPattern: string;
   useRegex: boolean;
-  category: string;
-  subCategory: string;
+}
+
+export interface ContextProfile {
+  id: string;
+  name: string;
+  activationThresholdMins: number;
+  softBreakLimitMins: number;
+  activationRules: TriggerRule[];
+  hardBreakRules: TriggerRule[];
   titleTemplate: string;
+  color: string;
 }
 
 export interface ActivityWatchSettings {
@@ -20,11 +28,10 @@ export interface ActivityWatchSettings {
   apiUrl: string;
   lastSyncTime: number;
   targetCalendarId: string;
-  mergeToleranceMinutes: number;
   syncStrategy: 'auto' | 'custom';
   customDateStart: string;
   customDateEnd: string;
-  rules: ActivityWatchRule[];
+  profiles: ContextProfile[];
 }
 
 export interface BusinessHoursSettings {
@@ -153,11 +160,10 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     apiUrl: 'http://127.0.0.1:5600',
     lastSyncTime: 0,
     targetCalendarId: '',
-    mergeToleranceMinutes: 3,
     syncStrategy: 'auto',
     customDateStart: '',
     customDateEnd: '',
-    rules: []
+    profiles: []
   },
 
   enableDefaultReminder: true,

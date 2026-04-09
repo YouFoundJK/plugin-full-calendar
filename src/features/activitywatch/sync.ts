@@ -4,6 +4,7 @@ import { t } from '../i18n/i18n';
 import { AWBucket, AWEvent } from './api';
 import { OFCEvent } from '../../types';
 import { moment as obsidianMoment } from 'obsidian';
+import { executeFSM, FlattenedEvent } from './fsm';
 
 const moment = obsidianMoment as unknown as typeof import('moment');
 
@@ -18,10 +19,7 @@ export async function syncActivityWatch(
 ): Promise<void> {
   const settings = plugin.settings.activityWatch;
 
-  if (!settings.enabled) {
-    return;
-  }
-
+  if (!settings.enabled) return;
   if (!settings.targetCalendarId) {
     new Notice(t('settings.activityWatch.sync.targetNotSet'));
     return;
@@ -53,41 +51,31 @@ export async function syncActivityWatch(
     try {
       buckets = bucketsResponse.json as Record<string, AWBucket>;
     } catch {
-      // Fallback for some obsidian versions
       buckets = JSON.parse(bucketsResponse.text) as Record<string, AWBucket>;
     }
 
-    const allBucketValues = Object.values(buckets);
     const bucketIdsToFetch = new Set<string>();
-
-    for (const rule of settings.rules) {
-      for (const b of allBucketValues) {
-        // Retain aliases for backward compatibility with 'window' and 'web'
-        if (rule.bucketType === 'window' && b.type === 'currentwindow') {
-          bucketIdsToFetch.add(b.id);
-        } else if (rule.bucketType === 'web' && b.type === 'web.tab.current') {
-          bucketIdsToFetch.add(b.id);
-        } else if (b.type === rule.bucketType || b.id.includes(rule.bucketType)) {
-          bucketIdsToFetch.add(b.id);
-        }
+    for (const b of Object.values(buckets)) {
+      if (
+        b.type === 'currentwindow' ||
+        b.type === 'web.tab.current' ||
+        b.type === 'afk' ||
+        b.id.includes('window') ||
+        b.id.includes('web') ||
+        b.id.includes('afk')
+      ) {
+        bucketIdsToFetch.add(b.id);
       }
     }
 
-    // Calculate start time: settings.lastSyncTime or 24 hours ago if 0
-    let startTime = new Date(settings.lastSyncTime);
-    if (settings.lastSyncTime === 0) {
-      startTime = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    }
-
+    let startTime = new Date(
+      settings.lastSyncTime > 0 ? settings.lastSyncTime : Date.now() - 24 * 60 * 60 * 1000
+    );
     let endTime = new Date();
 
     if (settings.syncStrategy === 'custom') {
-      if (settings.customDateStart) {
-        startTime = new Date(settings.customDateStart);
-      }
-      if (settings.customDateEnd) {
-        endTime = new Date(settings.customDateEnd);
-      }
+      if (settings.customDateStart) startTime = new Date(settings.customDateStart);
+      if (settings.customDateEnd) endTime = new Date(settings.customDateEnd);
     }
 
     const startTimeISO = startTime.toISOString();
@@ -97,143 +85,84 @@ export async function syncActivityWatch(
       const resp = await requestUrl(
         `${settings.apiUrl}/api/0/buckets/${bucketId}/events?start=${startTimeISO}&end=${endTimeISO}`
       );
-      return resp.json as AWEvent[]; // returns AWEvent[]
+      return resp.json as AWEvent[];
     };
 
-    const allEvents: { event: AWEvent; sourceBucket: AWBucket }[] = [];
-
+    const flatEvents: FlattenedEvent[] = [];
     for (const bId of bucketIdsToFetch) {
-      const bucketObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);
-      if (!bucketObj) continue;
+      const bObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);
+      if (!bObj) continue;
+
+      const isWeb = bObj.type === 'web.tab.current' || bObj.id.includes('web');
+      const isAfk = bObj.type === 'afk' || bObj.id.includes('afk');
+
+      let fidelity = 1;
+      if (isWeb) fidelity = 2;
+      if (isAfk) fidelity = 3;
 
       const events = await fetchEvents(bId);
-      allEvents.push(...events.map(e => ({ event: e, sourceBucket: bucketObj })));
-    }
-
-    // Sort chronologically
-    allEvents.sort(
-      (a, b) => new Date(a.event.timestamp).getTime() - new Date(b.event.timestamp).getTime()
-    );
-
-    // 1. Categorization Phase
-    interface MappedEvent {
-      startMs: number;
-      endMs: number;
-      category: string;
-      subCategory: string;
-      title: string;
-    }
-
-    const mappedEvents: MappedEvent[] = [];
-
-    for (const wrappedEvent of allEvents) {
-      const ev = wrappedEvent.event;
-      const bucket = wrappedEvent.sourceBucket;
-
-      // Find matching rule
-      for (const rule of settings.rules) {
-        let bucketMatches = false;
-        if (rule.bucketType === 'window' && bucket.type === 'currentwindow') bucketMatches = true;
-        else if (rule.bucketType === 'web' && bucket.type === 'web.tab.current')
-          bucketMatches = true;
-        else if (bucket.type === rule.bucketType || bucket.id.includes(rule.bucketType))
-          bucketMatches = true;
-
-        if (!bucketMatches) continue;
-
-        let compareString = '';
-        if (rule.matchField && ev.data[rule.matchField]) {
-          const fieldData = ev.data[rule.matchField];
-          compareString = typeof fieldData === 'string' ? fieldData : JSON.stringify(fieldData);
-        } else {
-          // Auto fallback trying the most common fields
-          const baseData =
-            ev.data.app || ev.data.url || ev.data.project || ev.data.file || ev.data.title || '';
-          compareString = typeof baseData === 'string' ? baseData : JSON.stringify(baseData);
+      for (const e of events) {
+        if (isAfk && e.data?.status === 'not-afk') {
+          continue;
         }
 
-        if (!compareString) continue;
-
-        let isMatch = false;
-
-        if (rule.useRegex) {
-          try {
-            const regex = new RegExp(rule.matchPattern, 'i');
-            isMatch = regex.test(compareString);
-          } catch {
-            console.warn('ActivityWatch sync: invalid regex pattern', rule.matchPattern);
-          }
-        } else {
-          isMatch = compareString.toLowerCase().includes(rule.matchPattern.toLowerCase());
-        }
-
-        if (isMatch) {
-          // Apply template using generic property swaps via Object.keys iteration
-          let title = rule.titleTemplate;
-          for (const key of Object.keys(ev.data)) {
-            const val = ev.data[key];
-            const strVal = typeof val === 'string' ? val : val ? JSON.stringify(val) : '';
-            title = title.replaceAll(`{${key}}`, strVal);
-          }
-          title = title.trim();
-
-          mappedEvents.push({
-            startMs: new Date(ev.timestamp).getTime(),
-            endMs: new Date(ev.timestamp).getTime() + ev.duration * 1000,
-            category: rule.category,
-            subCategory: rule.subCategory || '',
-            title: title || compareString
-          });
-          break; // Stop at first rule match
-        }
+        flatEvents.push({
+          startMs: new Date(e.timestamp).getTime(),
+          endMs: new Date(e.timestamp).getTime() + e.duration * 1000,
+          fidelity,
+          bucketType: bObj.type,
+          data: e.data || {}
+        });
       }
     }
 
-    // 2. Merging Phase
-    const mergedEvents: MappedEvent[] = [];
-    const toleranceMs = settings.mergeToleranceMinutes * 60 * 1000;
+    const profiles = settings.profiles || [];
+    const finalBlocks = executeFSM(flatEvents, profiles);
 
-    for (const current of mappedEvents) {
-      if (mergedEvents.length === 0) {
-        mergedEvents.push({ ...current });
-        continue;
-      }
-
-      const prev = mergedEvents[mergedEvents.length - 1];
-
-      // Merge condition: same category/subcat/title AND time gap <= tolerance
-      const isSameType =
-        prev.category === current.category &&
-        prev.subCategory === current.subCategory &&
-        prev.title === current.title;
-      const gapMs = current.startMs - prev.endMs;
-
-      if (isSameType && gapMs <= toleranceMs) {
-        // Merge them
-        prev.endMs = Math.max(prev.endMs, current.endMs);
-      } else {
-        // Drop events shorter than 1 minute if they are completely isolated,
-        // to avoid calendar clutter from random 10-second alt-tabs.
-        if (current.endMs - current.startMs >= 60000 || settings.mergeToleranceMinutes === 0) {
-          mergedEvents.push({ ...current });
-        }
-      }
-    }
-
-    // 3. Cache Injection Phase
     let addedCount = 0;
-    for (const merged of mergedEvents) {
-      // Skip events lasting less than 1 minute after merging
-      if (merged.endMs - merged.startMs < 60000) continue;
+    for (const block of finalBlocks) {
+      const startMoment = moment(block.startMs);
+      const endMoment = moment(block.endMs);
 
-      const startMoment = moment(merged.startMs);
-      const endMoment = moment(merged.endMs);
+      let outputTitle = block.profile.titleTemplate || '{app}';
+
+      const dataDurationMap = new Map<
+        string,
+        { duration: number; data: Record<string, unknown> }
+      >();
+      for (const s of block.splintersInside) {
+        const dur = Math.min(s.endMs, block.endMs) - Math.max(s.startMs, block.startMs);
+        const key = JSON.stringify(s.data);
+        const existing = dataDurationMap.get(key) || { duration: 0, data: s.data };
+        existing.duration += dur;
+        dataDurationMap.set(key, existing);
+      }
+
+      let majorData: Record<string, unknown> = {};
+      let maxDur = -1;
+      for (const val of dataDurationMap.values()) {
+        if (val.duration > maxDur) {
+          maxDur = val.duration;
+          majorData = val.data;
+        }
+      }
+
+      for (const key of Object.keys(majorData)) {
+        const v = majorData[key];
+        const strVal = typeof v === 'string' ? v : v ? JSON.stringify(v) : '';
+        outputTitle = outputTitle.replaceAll(`{${key}}`, strVal);
+      }
+
+      outputTitle = outputTitle.replace(/\{[^}]+\}/g, '').trim();
+      if (!outputTitle || outputTitle === '-' || outputTitle === '|') {
+        outputTitle = block.profile.name;
+      }
 
       const ofcEvent: OFCEvent = {
         type: 'single',
-        title: merged.title,
-        category: merged.category,
-        subCategory: merged.subCategory,
+        title: outputTitle,
+        category: block.profile.color,
+        subCategory: block.profile.name,
         date: startMoment.format('YYYY-MM-DD'),
         endDate: null,
         allDay: false,
@@ -244,8 +173,6 @@ export async function syncActivityWatch(
 
       await plugin.cache.addEvent(settings.targetCalendarId, ofcEvent);
       addedCount++;
-
-      // Prevent concurrent write races to Obsidian's file metadata cache
       await new Promise(r => setTimeout(r, 150));
     }
 

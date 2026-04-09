@@ -66,8 +66,9 @@ nav:
                 - ICS (Remote and Local): calendars/ics.md
                 - CalDAV: calendars/caldav.md
                 - Google Calendar: calendars/gcal.md
-                - Tasks Plugin Integration: calendars/tasks-plugin-integration.md
                 - Obsidian Bases Calendar: calendars/bases.md
+                - Tasks Plugin Integration: calendars/tasks-plugin-integration.md
+                - ActivityWatch Integration: features/activitywatch.md
           - Working with Events:
                 - events/index.md
                 - Event Management: events/manage.md
@@ -111,7 +112,6 @@ nav:
                 - Settings Architecture: settings/architecture.md
                 - Timezone Architecture: system/features/timezone-architecture.md
                 - Reminders Architecture: system/features/reminders-architecture.md
-                - ActivityWatch Integration: features/activitywatch.md
           - Views Architecture:
                 - views/architecture.md
           - ChronoAnalyser:

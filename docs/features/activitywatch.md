@@ -1,46 +1,165 @@
-# ActivityWatch Integration
+# ActivityWatch Integration: Best-Fit Engine
 
-Full Calendar Remastered features an out-of-the-box integration with [ActivityWatch](https://activitywatch.net/), an automatic open-source time tracking software. This allows you to effortlessly pull your device usage data, web browsing history, and specific editor telemetry natively into your Obsidian calendar, providing an accurate, automated timeline of how you spent your day.
+Full Calendar integrates deeply with [ActivityWatch](https://activitywatch.net/), enabling you to transform granular, noisy computer usage timelines into beautiful, semantic intent-based calendar blocks natively inside Obsidian.
 
-## Initial Setup
+The engine uses a deeply mathematical **Best-Fit Finite State Machine (FSM)**. Instead of mapping one event to one block, it evaluates your timeline using "Context Profiles" to generate optimal sessions that reflect what you were *actually* doing, automatically filtering out minor distractions.
 
-To begin, ensure you have ActivityWatch installed and running locally on your machine (the `aw-server` usually binds to `localhost:5600`).
+---
 
-1. Open Full Calendar Settings.
-2. Under the **ActivityWatch** section, toggle the integration on.
-3. Click the gear icon next to the toggle to open the configuration modal.
-4. Set the **Target Calendar**. The plugin will inject all matching ActivityWatch events directly into this calendar source (e.g., your Daily Note Provider is heavily recommended for journaling).
+## 1. Context Profiles
 
-## Sync Strategies
+Instead of simple mapping rules, you create **Context Profiles**. Each profile represents an "Intent" (e.g., "Study", "Gaming", "Coding").
 
-The integration offers two ways to fetch data:
+### Settings
 
-- **Sync from Last Checked (Auto)**: Automatically runs incrementally. When you run the sync command, it queries the ActivityWatch API for any events created since the very last time data was successfully synced, acting as an append-only sequence.
-- **Custom Date Range**: Use the provided date picker to specify exact Start and End dates to pull data from, ignoring the historical `lastChecked` timestamp. Useful for recovering missed data or back-populating old days.
+| Setting | Description |
+|---|---|
+| **Profile Name** | Identifier for this profile. Becomes the sub-category label on the calendar block. |
+| **Category (Color)** | The color tag applied to the block in Full Calendar (maps to your existing Category Colors). |
+| **Activation Threshold (Mins)** | The minimum accumulated matching time required before a session "locks in." If you match for 8 minutes and stop, but your threshold is 10, it will not appear on the calendar. |
+| **Soft Break Limit (Mins)** | The hysteresis buffer. Dictates how long you can be *mismatching* (e.g. checking Twitter, a bathroom break, or going AFK) before the session is formally terminated. Return to a matching app before this limit expires and the session continues seamlessly. |
+| **Title Template** | The template string for the calendar block title (see [Section 4](#4-dynamic-title-templating)). |
 
-## Categorization Rules & JSON Matching
+---
 
-By default, ActivityWatch telemetry contains thousands of raw technical events. To transform these raw payloads into structured, color-coded calendar blocks, you define regex categorization **Rules**. ActivityWatch records events in different "Buckets" based on the system watcher that produced them (e.g., `aw-watcher-web-chrome`, `aw-watcher-window`, `aw-watcher-vscode`).
+## 2. Granular Rules (Activators & Breakers)
 
-Each rule targets a specific Bucket, tests its payload against a regex expression, and translates matched events into an Obsidian Category and Title format.
+You define exactly what triggers a Profile using fine-grained nested rules.
 
-### Anatomy of a Rule
+*   **Activators**: If any rule matches the current ActivityWatch event, the timeline slice counts as a **match**. It starts the warmup or sustains an active session.
+*   **Breakers (Hard Break)**: If any rule matches, it **immediately terminates** the active session, completely bypassing the soft break limit.
 
-- **Bucket ID or 'window'/'web'**: Enter the exact ID of the target ActivityWatch Bucket, or a substring (like `vscode`). For ease of use, entering exactly `window` or `web` automatically targets the default `currentwindow` and `web.tab.current` buckets.
-- **Match Field**: Payloads organically differ by watcher. A web browser watcher might use `url` or `title`, while `aw-watcher-vscode` stores file paths in `file` or `project`.
-  - Enter the exact JSON key you want to apply regex against (e.g., `url`).
-  - **Leave this blank** to allow the plugin to automatically scan the most common keys (`app`, `url`, `project`, `file`, `title`) for a match.
-- **Match Format**: Specify a substring or Regex Pattern to evaluate against the Match Field. For example, if Match Field is `url`, configuring Match Format `youtube\.com` will identify video-watching sessions. Check **Use Regex** if the format string acts as a regular expression.
-- **Category & Sub-Category**: Standard mapping parameters corresponding exactly to your calendar categories.
-- **Title Template**: Reconstructs the final title written to Obsidian.
-  - You can inject **Dynamic properties** from the raw ActivityWatch JSON payload directly into your title by surrounding the key with curly braces. For example, `Browsing {url}` or `Working on {file} in {app}`. The plugin will natively swap the properties before insertion.
+### Constructing a Rule
 
-## Merging Tolerance
+When adding a rule, you specify a **Bucket**, **Field**, and **Pattern**. The UI provides native autocomplete dropdowns for standard ActivityWatch buckets:
 
-Often, time-tracking events rapidly fluctuate (e.g., quickly swapping back and forth between two tabs). To prevent infinite calendar clutter consisting of 30-second blocks, you can configure **Merge Tolerance**. 
+| Shorthand | Maps To | Description |
+|---|---|---|
+| `window` | `aw-watcher-window` | Tracks the active window title and application name |
+| `web` | `aw-watcher-web` | Tracks browser tabs via the AW browser extension |
+| `afk` | `aw-watcher-afk` | Tracks idle/active status based on mouse and keyboard activity |
 
-This groups adjacent events into a single, contiguous calendar block if they are identical in Category, Sub-Category, and Title, and occur within the specified minute gap threshold. Small, isolated events lasting less than 60 seconds are also pruned to further preserve the aesthetic of your calendar timeline.
+You can also type any custom bucket name for third-party watchers.
 
-## Running the Sync
+#### Fields
 
-To execute the sync algorithm, run the Obsidian command `Full Calendar: Sync ActivityWatch data` through the Command Palette. All valid matches from the telemetry will be grouped according to your threshold and saved natively into your target calendar!
+Once a bucket is selected, you must select the JSON key from the watcher payload. Common fields include:
+
+| Bucket | Available Fields |
+|---|---|
+| **window** | `app`, `title` |
+| **web** | `url`, `title`, `audible` |
+| **afk** | `status` |
+
+#### Pattern Matching
+
+You then apply either a **literal string search** or enable **Regex** for more powerful matching:
+
+*   **Literal**: Case-insensitive substring match. Pattern `obsidian` will match `Obsidian.exe - My Vault`.
+*   **Regex**: Full regex with the `i` (case-insensitive) flag applied automatically. Pattern `Code|Antigravity` will match both `Code.exe` and `Antigravity.exe`.
+
+!!! tip "All matching is case-insensitive"
+    You don't need to worry about casing. `YouTube`, `youtube`, and `YOUTUBE` are all equivalent in both regex and literal modes. Bucket types and field names are also resolved case-insensitively.
+
+---
+
+## 3. How The Engine Works
+
+The engine processes your ActivityWatch data through a 3-phase pipeline.
+
+### Phase 0: Sweep-Line Splintering
+
+Raw ActivityWatch events from multiple buckets (window, web, AFK) frequently overlap in time. The engine first flattens these into a single, non-overlapping timeline using a **sweep-line algorithm**.
+
+When events overlap, the highest-fidelity source wins:
+
+| Priority | Source | Rationale |
+|---|---|---|
+| **Highest (3)** | `aw-watcher-afk` | Ground truth — if you're AFK, that overrides whatever window was open |
+| **Medium (2)** | `aw-watcher-web` | More specific than window — shows the actual tab URL, not just "Chrome" |
+| **Base (1)** | `aw-watcher-window` | Least specific — just the application and window title |
+
+!!! note "AFK Integration"
+    The engine automatically pulls AFK watcher data. Only **true AFK periods** (status = "afk") are injected into the timeline. "Not-AFK" events are filtered out so they don't overwrite useful window/web data.
+
+Adjacent splinters with identical data are merged to reduce noise.
+
+### Phase 1: Hypothesis Generation (The FSM)
+
+For each Context Profile, the engine walks through the splintered timeline using a **3-state Finite State Machine**:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Warmup : Match event
+    Warmup --> Active : targetTime >= threshold
+    Warmup --> Idle : bufferTime > softBreak
+    Warmup --> Idle : Hard break
+    Active --> Active : Match (resets buffer)
+    Active --> Active : Mismatch (within softBreak)
+    Active --> Idle : bufferTime > softBreak → commit
+    Active --> Idle : Hard break → commit
+```
+
+**States:**
+
+| State | Description |
+|---|---|
+| **Idle** | No session in progress. Waiting for a matching event. |
+| **Warmup** | A match has started but hasn't yet accumulated enough time to meet the activation threshold. |
+| **Active** | The session has met the threshold and is "locked in." It will be committed to the calendar when the session ends. |
+
+**Key behaviors:**
+
+*   **Gap Detection**: Chronological gaps between events (where ActivityWatch simply has no data) are counted as buffer time. If the accumulated gap + mismatch time exceeds the soft break limit, the session ends.
+*   **AFK = Mismatch**: AFK events are treated as regular mismatches, NOT hard breaks. A 6-minute toilet break within a 10-minute soft break limit keeps your session alive. This is the entire purpose of the soft break mechanism.
+*   **Session Trimming**: When a session is committed, it ends at the timestamp of the **last matching event**, not at trailing mismatches. If you code until 23:08 then browse aimlessly for 5 minutes, the session is booked as ending at 23:08.
+
+### Phase 2: Greedy Best-Fit Allocation
+
+Because multiple profiles can match the same time window (e.g., using Obsidian might match both "Coding" and "PhD Study"), the engine resolves conflicts predictably:
+
+1.  **Fitness Scoring**: Each candidate session gets a `fitness_score` equal to the total milliseconds that matched an activator rule during that block.
+2.  **Greedy Allocation**: Candidates are sorted globally by fitness score (descending). The highest-fitness block claims its time first.
+3.  **Geometric Subtraction**: Lower-fitness blocks that overlap with already-booked blocks are geometrically trimmed. If the overlap is total, the weaker block is dropped.
+4.  **Sub-Chunking**: If trimming leaves a surviving fragment that still meets the `activationThresholdMins`, it is preserved as an independent calendar block.
+
+!!! example "Conflict Resolution Example"
+    You have two profiles: **Coding** (Obsidian + VSCode + Browser) and **PhD** (Obsidian + Zotero + Browser). Your workflow: Obsidian (5 min) → Browser (10 min) → Zotero (12 min) → AFK.
+
+    - **Coding** fitness: 5 + 10 = 15 minutes of matching
+    - **PhD** fitness: 5 + 10 + 12 = 27 minutes of matching
+
+    PhD wins. It claims 0→27m. Coding's 0→15m candidate is fully swallowed and dropped. Result: a single "PhD" block from 0:00 to 0:27.
+
+---
+
+## 4. Dynamic Title Templating
+
+You do not need to manually name your calendar blocks. Inject the actual metadata from the underlying ActivityWatch event directly into the block title using `{brackets}`.
+
+**Template**: `Coding - {app}`
+
+If the session spanned multiple window events (e.g. 20 minutes of VSCode and 5 minutes of Chrome), the engine calculates the **majority payload** — the data that was active for the longest total duration — and uses it for template substitution.
+
+Result: `Coding - Code.exe` (or whatever `app` name VSCode reports).
+
+Available template variables depend on the watcher data. Common ones:
+
+| Variable | Source | Example |
+|---|---|---|
+| `{app}` | Window watcher | `Obsidian.exe`, `Code.exe` |
+| `{title}` | Window watcher | `main.ts - plugin-full-calendar` |
+| `{url}` | Web watcher | `https://github.com/...` |
+
+---
+
+## 5. Sync Strategy
+
+| Strategy | Description |
+|---|---|
+| **Sync from Last Checked** | Automatically pulls all new data since the last sync. Good for ongoing use. |
+| **Custom Date Range** | Manually specify a start and end date. Useful for backfilling past data or testing. |
+
+!!! warning "Custom Date Range"
+    Ensure the start and end dates are different. Setting both to the same date results in a zero-width time window and no events will be fetched.
