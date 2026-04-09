@@ -13,6 +13,10 @@ interface Props {
 
 export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose }) => {
   const settings = plugin.settings.activityWatch;
+  const normalizedProfiles = (settings.profiles || []).map(profile => ({
+    ...profile,
+    supportingEvidenceRules: profile.supportingEvidenceRules || []
+  }));
 
   // Sync settings
   const [apiUrl, setApiUrl] = useState(settings.apiUrl);
@@ -27,7 +31,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
   });
 
   // FSM Profile settings
-  const [profiles, setProfiles] = useState<ContextProfile[]>(settings.profiles || []);
+  const [profiles, setProfiles] = useState<ContextProfile[]>(normalizedProfiles);
 
   React.useEffect(() => {
     if (syncStrategy === 'custom' && dateInputRef.current) {
@@ -62,6 +66,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
         activationThresholdMins: 5,
         softBreakLimitMins: 3,
         activationRules: [],
+        supportingEvidenceRules: [],
         hardBreakRules: [],
         titleTemplate: '{app} - {title}',
         color: 'Work'
@@ -100,7 +105,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
   // Helper for rendering rule sub-lists
   const renderRuleList = (
     profile: ContextProfile,
-    listType: 'activationRules' | 'hardBreakRules'
+    listType: 'activationRules' | 'supportingEvidenceRules' | 'hardBreakRules'
   ) => {
     // Optional chaining because migrated profiles might crash if these arrays are missing
     const rules = profile[listType] || [];
@@ -371,12 +376,17 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
             </label>
 
             <div>
-              <strong>{t('modals.activityWatchSetup.profiles.activators')}</strong>
+              <strong>{t('modals.activityWatchSetup.profiles.primaryEvidenceRules')}</strong>
               {renderRuleList(profile, 'activationRules')}
             </div>
 
             <div style={{ marginTop: '10px' }}>
-              <strong>{t('modals.activityWatchSetup.profiles.breakers')}</strong>
+              <strong>{t('modals.activityWatchSetup.profiles.supportingEvidenceRules')}</strong>
+              {renderRuleList(profile, 'supportingEvidenceRules')}
+            </div>
+
+            <div style={{ marginTop: '10px' }}>
+              <strong>{t('modals.activityWatchSetup.profiles.hardBreakRules')}</strong>
               {renderRuleList(profile, 'hardBreakRules')}
             </div>
           </div>

@@ -130,7 +130,12 @@ export async function syncActivityWatch(
         string,
         { duration: number; data: Record<string, unknown> }
       >();
-      for (const s of block.splintersInside) {
+      const titleEvidenceSplinters =
+        block.primaryEvidenceSplinters.length > 0
+          ? block.primaryEvidenceSplinters
+          : block.splintersInside;
+
+      for (const s of titleEvidenceSplinters) {
         const dur = Math.min(s.endMs, block.endMs) - Math.max(s.startMs, block.startMs);
         const key = JSON.stringify(s.data);
         const existing = dataDurationMap.get(key) || { duration: 0, data: s.data };

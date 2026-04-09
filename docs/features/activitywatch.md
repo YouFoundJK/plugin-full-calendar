@@ -22,12 +22,15 @@ Instead of simple mapping rules, you create **Context Profiles**. Each profile r
 
 ---
 
-## 2. Granular Rules (Activators & Breakers)
+## 2. Granular Rules (Primary, Supporting, Hard Break)
 
-You define exactly what triggers a Profile using fine-grained nested rules.
+You define exactly what drives a Profile using fine-grained nested rules.
 
-*   **Activators**: If any rule matches the current ActivityWatch event, the timeline slice counts as a **match**. It starts the warmup or sustains an active session.
-*   **Breakers (Hard Break)**: If any rule matches, it **immediately terminates** the active session, completely bypassing the soft break limit.
+*   **Primary Evidence Rules**: Strong evidence. If any rule matches, the timeline slice is a **primary match**. Primary matches can start warmup, contribute to activation threshold, and sustain active sessions.
+*   **Supporting Evidence Rules**: Continuity evidence. If any rule matches, the timeline slice is a **supporting match**. Supporting matches can sustain warmup/active sessions but cannot start from idle, and do not contribute to activation threshold.
+*   **Hard Break Rules**: If any rule matches, it **immediately terminates** the warmup/active session, completely bypassing the soft break limit.
+
+Priority is always: **Hard Break > Primary Match > Supporting Match > Mismatch**.
 
 ### Constructing a Rule
 
@@ -91,11 +94,16 @@ For each Context Profile, the engine walks through the splintered timeline using
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
-    Idle --> Warmup : Match event
-    Warmup --> Active : targetTime >= threshold
+    Idle --> Warmup : Primary match
+    Idle --> Idle : Supporting / Mismatch / Hard break
+    Warmup --> Active : primaryTargetTime >= threshold
+    Warmup --> Warmup : Primary match (target++)
+    Warmup --> Warmup : Supporting match (buffer reset)
+    Warmup --> Warmup : Mismatch (within softBreak)
     Warmup --> Idle : bufferTime > softBreak
     Warmup --> Idle : Hard break
-    Active --> Active : Match (resets buffer)
+    Active --> Active : Primary match (buffer reset)
+    Active --> Active : Supporting match (buffer reset)
     Active --> Active : Mismatch (within softBreak)
     Active --> Idle : bufferTime > softBreak → commit
     Active --> Idle : Hard break → commit
@@ -105,21 +113,22 @@ stateDiagram-v2
 
 | State | Description |
 |---|---|
-| **Idle** | No session in progress. Waiting for a matching event. |
+| **Idle** | No session in progress. Waiting for a **primary** matching event. |
 | **Warmup** | A match has started but hasn't yet accumulated enough time to meet the activation threshold. |
 | **Active** | The session has met the threshold and is "locked in." It will be committed to the calendar when the session ends. |
 
 **Key behaviors:**
 
 *   **Gap Detection**: Chronological gaps between events (where ActivityWatch simply has no data) are counted as buffer time. If the accumulated gap + mismatch time exceeds the soft break limit, the session ends.
-*   **AFK = Mismatch**: AFK events are treated as regular mismatches, NOT hard breaks. A 6-minute toilet break within a 10-minute soft break limit keeps your session alive. This is the entire purpose of the soft break mechanism.
-*   **Session Trimming**: When a session is committed, it ends at the timestamp of the **last matching event**, not at trailing mismatches. If you code until 23:08 then browse aimlessly for 5 minutes, the session is booked as ending at 23:08.
+*   **Primary vs Supporting Accounting**: Only primary matches increase activation threshold time. Supporting matches keep continuity but do not help activate a session.
+*   **AFK Is Profile-Defined**: AFK can be treated as supporting evidence (recommended for passive tasks like video watching), or left as mismatch. AFK is only a hard break if you explicitly configure it as one.
+*   **Session Trimming**: When a session is committed, it ends at the timestamp of the **last evidence event** (primary or supporting), not at trailing mismatches. If you code until 23:08, remain AFK as supporting evidence to 23:15, then mismatch, the session is booked through 23:15.
 
 ### Phase 2: Greedy Best-Fit Allocation
 
 Because multiple profiles can match the same time window (e.g., using Obsidian might match both "Coding" and "PhD Study"), the engine resolves conflicts predictably:
 
-1.  **Fitness Scoring**: Each candidate session gets a `fitness_score` equal to the total milliseconds that matched an activator rule during that block.
+1.  **Fitness Scoring**: Each candidate session gets a `fitness_score` equal to the total milliseconds that matched **primary evidence** during that block.
 2.  **Greedy Allocation**: Candidates are sorted globally by fitness score (descending). The highest-fitness block claims its time first.
 3.  **Geometric Subtraction**: Lower-fitness blocks that overlap with already-booked blocks are geometrically trimmed. If the overlap is total, the weaker block is dropped.
 4.  **Sub-Chunking**: If trimming leaves a surviving fragment that still meets the `activationThresholdMins`, it is preserved as an independent calendar block.
@@ -140,7 +149,7 @@ You do not need to manually name your calendar blocks. Inject the actual metadat
 
 **Template**: `Coding - {app}`
 
-If the session spanned multiple window events (e.g. 20 minutes of VSCode and 5 minutes of Chrome), the engine calculates the **majority payload** — the data that was active for the longest total duration — and uses it for template substitution.
+If the session spanned multiple events, the engine calculates the **majority payload** from primary-evidence splinters first, then falls back to all splinters if needed. The data active for the longest total duration is used for template substitution.
 
 Result: `Coding - Code.exe` (or whatever `app` name VSCode reports).
 

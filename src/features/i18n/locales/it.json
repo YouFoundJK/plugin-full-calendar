@@ -716,8 +716,9 @@
         "softBreakLimit": "Soft Break Limit (Mins)",
         "titleTemplate": "Title Template",
         "titleTemplatePlaceholder": "e.g. Work - {app}",
-        "activators": "Activators (Matches trigger or sustain the session)",
-        "breakers": "Breakers (Instantly kills the session)",
+        "primaryEvidenceRules": "Primary Evidence Rules (Can start and sustain sessions)",
+        "supportingEvidenceRules": "Supporting Evidence Rules (Can sustain, but cannot start)",
+        "hardBreakRules": "Hard Break Rules (Instantly end the session)",
         "btnAddProfile": "+ Add Context Profile"
       },
       "rules": {

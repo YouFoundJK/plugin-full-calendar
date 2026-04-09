@@ -26,6 +26,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
         },
         { id: '3', bucketType: 'web', matchField: 'url', matchPattern: 'browser', useRegex: false }
       ],
+      supportingEvidenceRules: [],
       hardBreakRules: [],
       titleTemplate: 'Type 1 Output'
     };
@@ -54,6 +55,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
         },
         { id: '6', bucketType: 'web', matchField: 'url', matchPattern: 'browser', useRegex: false }
       ],
+      supportingEvidenceRules: [],
       hardBreakRules: [],
       titleTemplate: 'Type 2 Output'
     };
@@ -134,6 +136,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
           useRegex: false
         }
       ],
+      supportingEvidenceRules: [],
       hardBreakRules: [],
       titleTemplate: '{APP}'
     };
@@ -169,6 +172,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
           useRegex: true
         }
       ],
+      supportingEvidenceRules: [],
       hardBreakRules: [],
       titleTemplate: 'YouTube session'
     };
@@ -185,5 +189,114 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
 
     const finalBlocks = executeFSM(events, [profile] as Parameters<typeof executeFSM>[1]);
     expect(finalBlocks.length).toBe(1);
+  });
+
+  it('Should not start a session from supporting evidence alone', () => {
+    const profile = {
+      id: 'support-only',
+      name: 'YouTube',
+      color: 'media',
+      activationThresholdMins: 5,
+      softBreakLimitMins: 3,
+      activationRules: [
+        {
+          id: 'p1',
+          bucketType: 'window',
+          matchField: 'title',
+          matchPattern: 'youtube',
+          useRegex: true
+        }
+      ],
+      supportingEvidenceRules: [
+        {
+          id: 's1',
+          bucketType: 'afk',
+          matchField: 'status',
+          matchPattern: 'afk',
+          useRegex: false
+        }
+      ],
+      hardBreakRules: [],
+      titleTemplate: 'YouTube'
+    };
+
+    const events: FlattenedEvent[] = [
+      {
+        startMs: 0,
+        endMs: 10 * 60 * 1000,
+        fidelity: 1,
+        bucketType: 'afk',
+        data: { status: 'afk' }
+      }
+    ];
+
+    const finalBlocks = executeFSM(events, [profile] as Parameters<typeof executeFSM>[1]);
+    expect(finalBlocks.length).toBe(0);
+  });
+
+  it('Should sustain an active session with supporting evidence', () => {
+    const profile = {
+      id: 'support-sustain',
+      name: 'YouTube',
+      color: 'media',
+      activationThresholdMins: 5,
+      softBreakLimitMins: 3,
+      activationRules: [
+        {
+          id: 'p2',
+          bucketType: 'window',
+          matchField: 'title',
+          matchPattern: 'youtube',
+          useRegex: true
+        }
+      ],
+      supportingEvidenceRules: [
+        {
+          id: 's2',
+          bucketType: 'afk',
+          matchField: 'status',
+          matchPattern: 'afk',
+          useRegex: false
+        }
+      ],
+      hardBreakRules: [],
+      titleTemplate: 'YouTube - {title}'
+    };
+
+    const events: FlattenedEvent[] = [
+      {
+        startMs: 0,
+        endMs: 5 * 60 * 1000,
+        fidelity: 1,
+        bucketType: 'window',
+        data: { title: 'Watching YouTube' }
+      },
+      {
+        startMs: 5 * 60 * 1000,
+        endMs: 9 * 60 * 1000,
+        fidelity: 1,
+        bucketType: 'afk',
+        data: { status: 'afk' }
+      },
+      {
+        startMs: 9 * 60 * 1000,
+        endMs: 10 * 60 * 1000,
+        fidelity: 1,
+        bucketType: 'window',
+        data: { app: 'SomeOtherApp' }
+      },
+      {
+        startMs: 10 * 60 * 1000,
+        endMs: 12 * 60 * 1000,
+        fidelity: 1,
+        bucketType: 'window',
+        data: { title: 'Still YouTube' }
+      }
+    ];
+
+    const finalBlocks = executeFSM(events, [profile] as Parameters<typeof executeFSM>[1]);
+    expect(finalBlocks.length).toBe(1);
+    expect(finalBlocks[0].startMs).toBe(0);
+    expect(finalBlocks[0].endMs).toBe(12 * 60 * 1000);
   });
 });

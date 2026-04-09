@@ -33,6 +33,7 @@ export interface CandidateSession {
   profile: ContextProfile;
   fitness_score: number;
   splintersInside: SplitEvent[];
+  primaryEvidenceSplinters: SplitEvent[];
 }
 
 export interface FinalBlock {
@@ -40,6 +41,7 @@ export interface FinalBlock {
   endMs: number;
   profile: ContextProfile;
   splintersInside: SplitEvent[];
+  primaryEvidenceSplinters: SplitEvent[];
 }
 
 // ── Phase 0: Sweep-Line Splintering ──────────────────────────────────────
@@ -171,11 +173,10 @@ export function evaluateRule(rule: TriggerRule, event: SplitEvent): boolean {
 //
 // Key design decisions:
 //   - Chronological gaps between splinters are added to bufferTime
-//   - AFK events are treated as mismatches, absorbed by the soft break limit
-//     (e.g. a 6-min toilet break within a 10-min soft break keeps the session alive)
+//   - Supporting evidence can sustain warmup/active sessions but cannot start from idle
 //   - The committed session ends at the last match, not at trailing mismatches
 //   - bufferTime is accumulated across gaps AND mismatch events,
-//     and only resets on a genuine match event
+//     and only resets on primary/supporting evidence
 //
 export function generateHypotheses(
   splinteredTimeline: SplitEvent[],
@@ -193,8 +194,9 @@ export function generateHypotheses(
     let targetTime = 0;
     let bufferTime = 0;
     let fitnessScore = 0;
-    let lastMatchEndMs = 0;
+    let lastEvidenceEndMs = 0;
     let splintersInside: SplitEvent[] = [];
+    let primaryEvidenceSplinters: SplitEvent[] = [];
 
     const thresholdMs = profile.activationThresholdMins * 60 * 1000;
     const softBreakMs = profile.softBreakLimitMins * 60 * 1000;
@@ -206,19 +208,23 @@ export function generateHypotheses(
       targetTime = 0;
       bufferTime = 0;
       fitnessScore = 0;
-      lastMatchEndMs = 0;
+      lastEvidenceEndMs = 0;
       splintersInside = [];
+      primaryEvidenceSplinters = [];
     };
 
     const commitCandidate = () => {
-      if (sessionStart >= 0 && lastMatchEndMs > sessionStart) {
+      if (sessionStart >= 0 && lastEvidenceEndMs > sessionStart) {
         allCandidates.push({
           startMs: sessionStart,
-          endMs: lastMatchEndMs,
+          endMs: lastEvidenceEndMs,
           profile,
           fitness_score: fitnessScore,
           splintersInside: [...splintersInside].filter(
-            s => s.startMs >= sessionStart && s.endMs <= lastMatchEndMs
+            s => s.startMs >= sessionStart && s.endMs <= lastEvidenceEndMs
+          ),
+          primaryEvidenceSplinters: [...primaryEvidenceSplinters].filter(
+            s => s.startMs >= sessionStart && s.endMs <= lastEvidenceEndMs
           )
         });
       }
@@ -241,7 +247,7 @@ export function generateHypotheses(
       }
 
       // ── Classify the event ──
-      let tokenType: 'match' | 'mismatch' | 'hard_break' = 'mismatch';
+      let tokenType: 'primary_match' | 'supporting_match' | 'mismatch' | 'hard_break' = 'mismatch';
 
       // Check hard break rules first
       let isHardBreak = false;
@@ -254,34 +260,43 @@ export function generateHypotheses(
       if (isHardBreak) {
         tokenType = 'hard_break';
       } else {
-        // Check activation rules
+        // Check primary evidence rules first
         for (const rule of profile.activationRules || []) {
           if (evaluateRule(rule, event)) {
-            tokenType = 'match';
+            tokenType = 'primary_match';
             break;
           }
         }
-        // If nothing matched, tokenType stays 'mismatch' — this includes
-        // AFK events, which get absorbed by the soft break limit as intended.
+
+        // Supporting evidence only matters if no primary rule matched.
+        if (tokenType === 'mismatch') {
+          for (const rule of profile.supportingEvidenceRules || []) {
+            if (evaluateRule(rule, event)) {
+              tokenType = 'supporting_match';
+              break;
+            }
+          }
+        }
       }
 
       // ── State machine transitions ──
       if (state === 'idle') {
-        if (tokenType === 'match') {
+        if (tokenType === 'primary_match') {
           state = 'warmup';
           sessionStart = event.startMs;
           sessionEnd = event.endMs;
-          lastMatchEndMs = event.endMs;
+          lastEvidenceEndMs = event.endMs;
           targetTime = duration;
           bufferTime = 0;
           fitnessScore = duration;
           splintersInside = [event];
+          primaryEvidenceSplinters = [event];
           if (targetTime >= thresholdMs) state = 'active';
         }
-        // mismatch/hard_break while idle → stay idle
+        // supporting_match/mismatch/hard_break while idle → stay idle
       } else if (state === 'warmup') {
         if (tokenType === 'hard_break') {
-          // AFK or explicit break kills a warmup silently (not enough time to commit)
+          // Explicit break kills a warmup silently (not enough time to commit)
           resetState();
         } else if (tokenType === 'mismatch') {
           bufferTime += duration;
@@ -290,14 +305,21 @@ export function generateHypotheses(
           if (bufferTime > softBreakMs) {
             resetState();
           }
+        } else if (tokenType === 'supporting_match') {
+          // Supporting evidence sustains continuity without helping activation.
+          bufferTime = 0;
+          sessionEnd = event.endMs;
+          lastEvidenceEndMs = event.endMs;
+          splintersInside.push(event);
         } else {
-          // match
+          // primary_match
           targetTime += duration;
           bufferTime = 0;
           sessionEnd = event.endMs;
-          lastMatchEndMs = event.endMs;
+          lastEvidenceEndMs = event.endMs;
           fitnessScore += duration;
           splintersInside.push(event);
+          primaryEvidenceSplinters.push(event);
           if (targetTime >= thresholdMs) state = 'active';
         }
       } else {
@@ -313,13 +335,19 @@ export function generateHypotheses(
             commitCandidate();
             resetState();
           }
-        } else {
-          // match
+        } else if (tokenType === 'supporting_match') {
           bufferTime = 0;
           sessionEnd = event.endMs;
-          lastMatchEndMs = event.endMs;
+          lastEvidenceEndMs = event.endMs;
+          splintersInside.push(event);
+        } else {
+          // primary_match
+          bufferTime = 0;
+          sessionEnd = event.endMs;
+          lastEvidenceEndMs = event.endMs;
           fitnessScore += duration;
           splintersInside.push(event);
+          primaryEvidenceSplinters.push(event);
         }
       }
     }
@@ -374,7 +402,10 @@ export function greedyBestFitAllocation(candidates: CandidateSession[]): FinalBl
           startMs: frag.startMs,
           endMs: frag.endMs,
           profile: cand.profile,
-          splintersInside: subSplinters
+          splintersInside: subSplinters,
+          primaryEvidenceSplinters: cand.primaryEvidenceSplinters.filter(
+            s => s.endMs > frag.startMs && s.startMs < frag.endMs
+          )
         });
       }
     }
