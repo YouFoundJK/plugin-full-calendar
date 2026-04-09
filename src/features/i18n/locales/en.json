@@ -700,7 +700,11 @@
         "title": "Sync Strategy",
         "auto": "Sync from Last Checked",
         "custom": "Custom Date Range",
-        "datePlaceholder": "Select Start and End Date"
+        "datePlaceholder": "Select Start and End Date",
+        "lastSynced": "Last synced",
+        "neverSynced": "Never synced",
+        "autoSyncEnabled": "Enable automatic sync",
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)"
       },
       "profiles": {
         "title": "Context Profiles (Best-Fit FSM)",

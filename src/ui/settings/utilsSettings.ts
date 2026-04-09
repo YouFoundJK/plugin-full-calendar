@@ -71,8 +71,10 @@ export function migrateAndSanitizeSettings(settings: unknown): {
     weekends: raw.weekends ?? true,
     hiddenDays: raw.hiddenDays ?? [],
     dayMaxEvents: raw.dayMaxEvents ?? false,
-    activityWatch:
-      (raw as Partial<FullCalendarSettings>).activityWatch ?? DEFAULT_SETTINGS.activityWatch,
+    activityWatch: {
+      ...DEFAULT_SETTINGS.activityWatch,
+      ...((raw as Partial<FullCalendarSettings>).activityWatch || {})
+    },
     currentVersion: raw.currentVersion ?? null
   } as FullCalendarSettings & { calendarSources: (CalendarInfo | GoogleSourceWithAuth)[] } & {
     googleAuth?: LegacyGoogleAuth;

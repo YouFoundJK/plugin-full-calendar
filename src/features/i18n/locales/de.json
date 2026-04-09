@@ -697,7 +697,11 @@
         "title": "Synchronisierungsstrategie",
         "auto": "Seit der letzten Prüfung synchronisieren",
         "custom": "Benutzerdefinierter Datumsbereich",
-        "datePlaceholder": "Start- und Enddatum auswählen"
+        "datePlaceholder": "Start- und Enddatum auswählen",
+        "lastSynced": "Last synced",
+        "neverSynced": "Never synced",
+        "autoSyncEnabled": "Enable automatic sync",
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)"
       },
       "buttons": {
         "save": "Speichern",

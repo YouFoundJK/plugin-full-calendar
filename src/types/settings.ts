@@ -29,6 +29,8 @@ export interface ActivityWatchSettings {
   enabled: boolean;
   apiUrl: string;
   lastSyncTime: number;
+  autoSyncEnabled: boolean;
+  autoSyncIntervalMins: number;
   targetCalendarId: string;
   syncStrategy: 'auto' | 'custom';
   customDateStart: string;
@@ -161,6 +163,8 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     enabled: false,
     apiUrl: 'http://127.0.0.1:5600',
     lastSyncTime: 0,
+    autoSyncEnabled: false,
+    autoSyncIntervalMins: 10,
     targetCalendarId: '',
     syncStrategy: 'auto',
     customDateStart: '',

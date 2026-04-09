@@ -697,7 +697,11 @@
         "title": "Estrategia de Sincronización",
         "auto": "Sincronizar desde la última comprobación",
         "custom": "Rango de fechas personalizado",
-        "datePlaceholder": "Seleccionar fecha de inicio y fin"
+        "datePlaceholder": "Seleccionar fecha de inicio y fin",
+        "lastSynced": "Last synced",
+        "neverSynced": "Never synced",
+        "autoSyncEnabled": "Enable automatic sync",
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)"
       },
       "buttons": {
         "save": "Guardar",

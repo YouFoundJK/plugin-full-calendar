@@ -167,8 +167,36 @@ Available template variables depend on the watcher data. Common ones:
 
 | Strategy | Description |
 |---|---|
-| **Sync from Last Checked** | Automatically pulls all new data since the last sync. Good for ongoing use. |
+| **Sync from Last Checked** | Automatically pulls all new data since the last sync. Also performs a continuity check to extend an already-synced ongoing event instead of duplicating it when the same strict title is still active. |
 | **Custom Date Range** | Manually specify a start and end date. Useful for backfilling past data or testing. |
 
 !!! warning "Custom Date Range"
     Ensure the start and end dates are different. Setting both to the same date results in a zero-width time window and no events will be fetched.
+
+### Last Sync Visibility
+
+When using **Sync from Last Checked**, the configuration UI now shows the latest synced timestamp directly below that strategy option.
+
+### Auto Sync
+
+You can enable automatic ActivityWatch syncing from the configuration modal.
+
+| Setting | Description |
+|---|---|
+| **Enable automatic sync** | Runs ActivityWatch sync on a timer without manually triggering the command. |
+| **Auto-sync interval (minutes)** | Interval between sync runs. Default is **10** minutes. |
+
+Auto-sync runs only for the **Sync from Last Checked** strategy.
+
+## 6. Global Kill Switch Behavior
+
+The top-level setting **Enable ActivityWatch Sync** is the global kill switch.
+
+When this toggle is OFF:
+
+* ActivityWatch sync logic is inactive.
+* Automatic sync timers are not scheduled.
+* The ActivityWatch command is not available from the command palette.
+* Saved ActivityWatch settings and profile data remain stored, but are not touched or used.
+
+When toggled back ON, the saved configuration becomes active again.

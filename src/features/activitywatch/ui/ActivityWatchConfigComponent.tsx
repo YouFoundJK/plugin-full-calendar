@@ -22,6 +22,10 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
   const [apiUrl, setApiUrl] = useState(settings.apiUrl);
   const [targetCalendarId, setTargetCalendarId] = useState(settings.targetCalendarId);
   const [syncStrategy, setSyncStrategy] = useState<'auto' | 'custom'>(settings.syncStrategy);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(settings.autoSyncEnabled);
+  const [autoSyncIntervalMins, setAutoSyncIntervalMins] = useState(
+    Math.max(1, settings.autoSyncIntervalMins || 10)
+  );
   const dateInputRef = React.useRef<HTMLInputElement>(null);
   const [dateRange, setDateRange] = useState<Date[]>(() => {
     if (settings.customDateStart && settings.customDateEnd) {
@@ -48,6 +52,8 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
     plugin.settings.activityWatch.apiUrl = apiUrl;
     plugin.settings.activityWatch.targetCalendarId = targetCalendarId;
     plugin.settings.activityWatch.syncStrategy = syncStrategy;
+    plugin.settings.activityWatch.autoSyncEnabled = autoSyncEnabled;
+    plugin.settings.activityWatch.autoSyncIntervalMins = Math.max(1, autoSyncIntervalMins || 10);
     plugin.settings.activityWatch.customDateStart = dateRange[0] ? dateRange[0].toISOString() : '';
     plugin.settings.activityWatch.customDateEnd = dateRange[1] ? dateRange[1].toISOString() : '';
     plugin.settings.activityWatch.profiles = profiles;
@@ -101,6 +107,10 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
       };
     })
     .filter(p => p.canCreate);
+
+  const lastSyncText = settings.lastSyncTime
+    ? new Date(settings.lastSyncTime).toLocaleString()
+    : t('modals.activityWatchSetup.strategy.neverSynced');
 
   // Helper for rendering rule sub-lists
   const renderRuleList = (
@@ -242,6 +252,17 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
             {t('modals.activityWatchSetup.strategy.custom')}
           </label>
         </div>
+        {syncStrategy === 'auto' && (
+          <div
+            style={{
+              fontSize: '0.9em',
+              color: 'var(--text-muted)',
+              marginBottom: '10px'
+            }}
+          >
+            {t('modals.activityWatchSetup.strategy.lastSynced')}: {lastSyncText}
+          </div>
+        )}
         {syncStrategy === 'custom' && (
           <div>
             <input
@@ -252,6 +273,39 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
             />
           </div>
         )}
+
+        <div
+          style={{
+            marginTop: '12px',
+            paddingTop: '12px',
+            borderTop: '1px solid var(--background-modifier-border)'
+          }}
+        >
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <input
+              type="checkbox"
+              checked={autoSyncEnabled}
+              onChange={e => setAutoSyncEnabled(e.target.checked)}
+            />
+            {t('modals.activityWatchSetup.strategy.autoSyncEnabled')}
+          </label>
+
+          <label
+            style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '260px' }}
+          >
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.9em' }}>
+              {t('modals.activityWatchSetup.strategy.autoSyncIntervalMins')}
+            </span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={autoSyncIntervalMins}
+              onChange={e => setAutoSyncIntervalMins(Math.max(1, parseInt(e.target.value) || 1))}
+              disabled={!autoSyncEnabled}
+            />
+          </label>
+        </div>
       </div>
 
       <div className="setting-item">
