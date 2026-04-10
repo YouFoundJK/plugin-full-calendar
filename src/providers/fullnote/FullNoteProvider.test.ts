@@ -253,6 +253,47 @@ describe('FullNoteCalendar Tests', () => {
     expect(content).toContain('category: Work');
   });
 
+  it('waits for metadata before skipping a local note during startup scan', async () => {
+    const file = { path: 'events/2022-01-01 Startup Event.md', basename: 'Startup Event' } as TFile;
+    const metadata = {
+      frontmatter: {
+        title: 'Startup Event',
+        allDay: true,
+        date: '2022-01-01'
+      }
+    };
+
+    const obsidian: ObsidianInterface = {
+      getAbstractFileByPath: jest.fn(),
+      getFileByPath: jest.fn(),
+      getMetadata: jest.fn().mockReturnValue(null),
+      waitForMetadata: jest.fn().mockResolvedValue(metadata),
+      read: jest.fn(),
+      create: jest.fn(),
+      rewrite: jest.fn(),
+      rename: jest.fn(),
+      delete: jest.fn(),
+      process: jest.fn()
+    };
+
+    const calendar = new FullNoteProvider(
+      { directory: dirName, id: 'local_1' },
+      makePlugin(),
+      obsidian
+    );
+    const events = await calendar.getEventsInFile(file);
+
+    expect(obsidian.waitForMetadata).toHaveBeenCalledWith(file);
+    expect(events).toHaveLength(1);
+    expect(events[0][0]).toEqual(
+      expect.objectContaining({
+        title: 'Startup Event',
+        date: '2022-01-01',
+        uid: 'events/2022-01-01 Startup Event.md'
+      })
+    );
+  });
+
   it('create and delete workflow succeeds end-to-end', async () => {
     const app = MockAppBuilder.make().folder(new MockAppBuilder(dirName)).done();
     const obsidian = makeApp(app);

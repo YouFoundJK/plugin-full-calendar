@@ -257,4 +257,82 @@ describe('DailyNoteProvider workflow', () => {
       'Daily lifecycle renamed'
     );
   });
+
+  it('waits for metadata before parsing a daily note during startup scan', async () => {
+    const file = makeFile('Daily/2026-03-29.md');
+    dailyNotesByPath.set(file.path, file);
+    contentsByPath.set(
+      file.path,
+      ['# Calendar', '- [ ] Startup sync event [startTime:: 09:00]'].join('\n')
+    );
+    const sections = [
+      {
+        position: {
+          end: { line: 1, col: 47, offset: 58 }
+        }
+      }
+    ] as NonNullable<CachedMetadata['sections']>;
+    const sectionsWithLast = sections as NonNullable<CachedMetadata['sections']> & {
+      last: () => NonNullable<CachedMetadata['sections']>[number];
+    };
+    sectionsWithLast.last = () => sections[sections.length - 1];
+
+    const startupMetadata = {
+      headings: [
+        {
+          heading: 'Calendar',
+          level: 1,
+          position: {
+            start: { line: 0, col: 0, offset: 0 },
+            end: { line: 0, col: 10, offset: 10 }
+          }
+        }
+      ],
+      listItems: [
+        {
+          position: {
+            start: { line: 1, col: 0, offset: 11 },
+            end: { line: 1, col: 47, offset: 58 }
+          }
+        }
+      ],
+      sections: sectionsWithLast
+    } as CachedMetadata;
+
+    let hasMetadata = false;
+    const app: ObsidianInterface = {
+      getAbstractFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
+      getFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
+      getMetadata: (_file: TFile) => (hasMetadata ? startupMetadata : null),
+      waitForMetadata: async (_file: TFile) => {
+        hasMetadata = true;
+        return startupMetadata;
+      },
+      read: (target: TFile) => Promise.resolve(contentsByPath.get(target.path) ?? ''),
+      process: <T>(target: TFile, func: (text: string) => T): Promise<T> =>
+        Promise.resolve(func(contentsByPath.get(target.path) ?? '')),
+      create: (_path: string, _contents: string) =>
+        Promise.reject(new Error('Not used by DailyNoteProvider')),
+      rewrite: (async () => undefined) as ObsidianInterface['rewrite'],
+      rename: (_file: TFile, _newPath: string) =>
+        Promise.reject(new Error('Not used by DailyNoteProvider')),
+      delete: (_file: TFile) => Promise.reject(new Error('Not used by DailyNoteProvider'))
+    };
+
+    const provider = new DailyNoteProvider(
+      { id: 'dailynote_1', heading: 'Calendar' },
+      makePlugin(),
+      app
+    );
+
+    const events = await provider.getEventsInFile(file);
+
+    expect(events).toHaveLength(1);
+    expect(events[0][0]).toEqual(
+      expect.objectContaining({
+        title: 'Startup sync event',
+        date: '2026-03-29'
+      })
+    );
+  });
 });

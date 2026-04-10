@@ -1,4 +1,4 @@
-import { moment as obsidianMoment, TFile } from 'obsidian';
+import { CachedMetadata, moment as obsidianMoment, TFile } from 'obsidian';
 import * as React from 'react';
 import {
   appHasDailyNotesPluginLoaded,
@@ -28,8 +28,33 @@ import { DailyNoteProviderConfig } from './typesDaily';
 import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
 
 const moment = obsidianMoment as unknown as typeof import('moment');
+const METADATA_WAIT_TIMEOUT_MS = 1500;
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
+
+const waitForMetadataWithTimeout = async (
+  app: ObsidianInterface,
+  file: TFile,
+  timeoutMs = METADATA_WAIT_TIMEOUT_MS
+): Promise<CachedMetadata | null> => {
+  const existing = app.getMetadata(file);
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    return await Promise.race([
+      app.waitForMetadata(file),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
+    ]);
+  } catch (error) {
+    console.warn(
+      `Full Calendar: Failed while waiting for metadata for daily note file "${file.path}".`,
+      error
+    );
+    return null;
+  }
+};
 
 // Settings row component for Daily Note Provider
 const DailyNoteHeadingSetting: React.FC<{
@@ -159,8 +184,10 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
   public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
     const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
-    const cache = this.app.getMetadata(file);
-    if (!cache) return [];
+    const cache = await waitForMetadataWithTimeout(this.app, file);
+    if (!cache) {
+      return [];
+    }
     const listItems = getListsUnderHeading(this.source.heading, cache);
     const inlineEvents = await this.app.process(file, text =>
       getAllInlineEventsFromFile(text, listItems, { date })

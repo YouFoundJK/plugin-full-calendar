@@ -171,6 +171,24 @@ export class CalendarView extends ItemView {
   }
   // END HELPER METHOD
 
+  private refreshEventSourcesFromCache(): void {
+    if (!this.viewEnhancer || !this.fullCalendarView) {
+      return;
+    }
+
+    this.viewEnhancer.updateSettings(this.plugin.settings);
+    const allCachedSources = this.plugin.cache.getAllEvents();
+    const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
+
+    this.fullCalendarView.removeAllEventSources();
+    sources.forEach(source => this.fullCalendarView!.addEventSource(source));
+
+    const viewType = this.fullCalendarView.view?.type;
+    if (viewType && viewType.includes('resourceTimeline')) {
+      this.addShadowEventsToView();
+    }
+  }
+
   // REPLACE the old handleWheelZoom method with this new version
   private handleWheelZoom(event: WheelEvent): void {
     if (!this.fullCalendarView || !(event.ctrlKey || event.metaKey)) {
@@ -1049,6 +1067,11 @@ export class CalendarView extends ItemView {
           this.addShadowEventsToView();
         }
       });
+
+      // Some providers can finish their initial background load while the first
+      // calendar render is still being constructed. Refresh once after the
+      // subscription is attached so those updates are not missed.
+      this.refreshEventSourcesFromCache();
     })();
   }
 
