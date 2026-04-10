@@ -193,9 +193,11 @@ export const EditEvent = ({
     initialEvent?.type === 'recurring' ? initialEvent.repeatOn?.weekday || 0 : 0
   );
   // END ADDITION
-  const [display, setDisplay] = useState<
-    'auto' | 'block' | 'list-item' | 'background' | 'inverse-background' | 'none'
-  >(initialEvent?.display || 'auto');
+  const initialDisplay =
+    initialEvent?.display === 'inverse-background' ? 'auto' : (initialEvent?.display ?? 'auto');
+  const [display, setDisplay] = useState<'auto' | 'block' | 'list-item' | 'background' | 'none'>(
+    initialDisplay
+  );
 
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -377,9 +379,6 @@ export const EditEvent = ({
                 <option value="auto">{t('modals.editEvent.fields.display.options.auto')}</option>
                 <option value="background">
                   {t('modals.editEvent.fields.display.options.background')}
-                </option>
-                <option value="inverse-background">
-                  {t('modals.editEvent.fields.display.options.inverseBackground')}
                 </option>
                 <option value="none">{t('modals.editEvent.fields.display.options.none')}</option>
               </select>

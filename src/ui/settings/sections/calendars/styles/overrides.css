@@ -67,6 +67,10 @@
     text-decoration-line: none;
 }
 
+.fc .fc-bg-event {
+    pointer-events: auto;
+}
+
 .fc-button-active {
     color: var(--text-on-accent) !important;
 }

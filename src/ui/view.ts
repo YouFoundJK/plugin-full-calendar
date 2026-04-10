@@ -841,6 +841,25 @@ export class CalendarView extends ItemView {
           }
 
           if (this.plugin.cache.isEventEditable(e.id)) {
+            if (e.display === 'background') {
+              menu.addItem(item =>
+                item
+                  .setTitle(
+                    `${t('modals.editEvent.fields.display.label')}: ${t(
+                      'modals.editEvent.fields.display.options.auto'
+                    )}`
+                  )
+                  .setIcon('paintbrush')
+                  .onClick(async () => {
+                    await this.plugin.cache.processEvent(e.id, current => ({
+                      ...current,
+                      display: undefined
+                    }));
+                  })
+              );
+              menu.addSeparator();
+            }
+
             const tasks = await import('../types/tasks');
             if (!tasks.isTask(event)) {
               menu.addItem(item =>

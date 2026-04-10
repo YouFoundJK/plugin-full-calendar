@@ -444,7 +444,6 @@
           "options": {
             "auto": "Normales Ereignis",
             "background": "Hintergrundereignis",
-            "inverseBackground": "Invertierter Hintergrund",
             "none": "Versteckt"
           }
         },

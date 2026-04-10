@@ -444,7 +444,6 @@
           "options": {
             "auto": "Evento normal",
             "background": "Evento de fondo",
-            "inverseBackground": "Fondo inverso",
             "none": "Oculto"
           }
         },
