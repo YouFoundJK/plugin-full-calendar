@@ -1,8 +1,11 @@
 
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
-[![Version](https://img.shields.io/badge/Version-v_0.12.8.1-blue)](https://youfoundjk.github.io/plugin-full-calendar/)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
+<div align="center">
+  <img src="https://img.shields.io/github/downloads/YouFoundJK/plugin-full-calendar/total?label=Downloads" alt="Downloads" />
+  <a href="#contributors-"><img src="https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square" alt="All Contributors" /></a>
+  <a href="https://youfoundjk.github.io/plugin-full-calendar/"><img src="https://img.shields.io/badge/Version-v_0.12.8.1-blue" alt="Version" /></a>
+</div>
+
+
 <!-- ![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22obsidian-full-calendar%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json) -->
 
 # Full Calendar (Remastered) Plugin
