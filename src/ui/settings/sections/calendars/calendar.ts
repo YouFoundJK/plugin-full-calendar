@@ -62,6 +62,7 @@ interface ExtraRenderProps {
   weekends?: boolean;
   hiddenDays?: number[];
   dayMaxEvents?: number | boolean;
+  highlightCurrentOrNextEvent?: boolean;
 }
 
 export async function renderCalendar(
@@ -355,6 +356,83 @@ export async function renderCalendar(
     ? (resourceTimeline as { default: PluginDef }).default
     : null;
 
+  let currentUpcomingEventIds = new Set<string>();
+
+  const toggleEventHighlightById = (eventId: string, add: boolean) => {
+    const escapedId = CSS.escape(eventId);
+    const elements = containerEl.querySelectorAll<HTMLElement>(`[data-event-id="${escapedId}"]`);
+    elements.forEach(el => {
+      el.toggleClass('ofc-event-current-or-next', add);
+
+      // Month/Week/Timeline views often clip event glow at harness level,
+      // so toggle a class on the nearest harness wrapper too.
+      const harness = el.closest<HTMLElement>(
+        '.fc-timegrid-event-harness, .fc-daygrid-event-harness, .fc-timeline-event-harness'
+      );
+      harness?.toggleClass('ofc-event-current-or-next-harness', add);
+    });
+  };
+
+  const findCurrentOrNextEventIds = (events: EventApi[]): Set<string> => {
+    const result = new Set<string>();
+    if (!settings?.highlightCurrentOrNextEvent) {
+      return result;
+    }
+
+    const nowMs = Date.now();
+    let currentCandidate: EventApi | null = null;
+    let currentCandidateEnd = Number.POSITIVE_INFINITY;
+    let nextCandidate: EventApi | null = null;
+    let nextCandidateStart = Number.POSITIVE_INFINITY;
+
+    for (const event of events) {
+      if (event.extendedProps?.isShadow || !event.start || event.allDay) {
+        continue;
+      }
+
+      const startMs = event.start.getTime();
+      const rawEndMs = event.end?.getTime() ?? startMs;
+      // Treat zero-duration events as a 1ms window so equality checks stay deterministic.
+      const endMs = rawEndMs <= startMs ? startMs + 1 : rawEndMs;
+
+      if (startMs <= nowMs && nowMs < endMs) {
+        if (endMs < currentCandidateEnd) {
+          currentCandidate = event;
+          currentCandidateEnd = endMs;
+        }
+        continue;
+      }
+
+      if (startMs > nowMs && startMs < nextCandidateStart) {
+        nextCandidate = event;
+        nextCandidateStart = startMs;
+      }
+    }
+
+    const activeEvent = currentCandidate ?? nextCandidate;
+    if (activeEvent?.id) {
+      result.add(activeEvent.id);
+    }
+    return result;
+  };
+
+  const updateCurrentOrNextEventHighlight = () => {
+    const nextUpcomingEventIds = findCurrentOrNextEventIds(cal.getEvents());
+
+    for (const oldId of currentUpcomingEventIds) {
+      if (!nextUpcomingEventIds.has(oldId)) {
+        toggleEventHighlightById(oldId, false);
+      }
+    }
+
+    // Always reapply in case FullCalendar remounted DOM nodes.
+    for (const newId of nextUpcomingEventIds) {
+      toggleEventHighlightById(newId, true);
+    }
+
+    currentUpcomingEventIds = nextUpcomingEventIds;
+  };
+
   const cal = new CalendarCtor(containerEl, {
     // Only include schedulerLicenseKey when resource-timeline plugin is loaded
     ...(showResourceViews && resourceTimelinePlugin
@@ -470,6 +548,13 @@ export async function renderCalendar(
         return;
       }
 
+      el.setAttribute('data-event-id', event.id);
+      el.toggleClass('ofc-event-current-or-next', currentUpcomingEventIds.has(event.id));
+      const eventColor = event.backgroundColor || event.borderColor || '';
+      if (eventColor) {
+        el.style.setProperty('--event-color', eventColor);
+      }
+
       el.addEventListener('contextmenu', e => {
         e.preventDefault();
         if (openContextMenuForEvent) {
@@ -513,7 +598,14 @@ export async function renderCalendar(
       }
     },
 
-    viewDidMount: onViewChange,
+    viewDidMount: () => {
+      onViewChange?.();
+      updateCurrentOrNextEventHighlight();
+    },
+
+    eventsSet: () => {
+      updateCurrentOrNextEventHighlight();
+    },
 
     // Enable drag-and-drop from external sources (e.g., Tasks Backlog)
     droppable: drop && true,
@@ -531,6 +623,22 @@ export async function renderCalendar(
   });
 
   cal.render();
+
+  updateCurrentOrNextEventHighlight();
+  const activeHighlightInterval = window.setInterval(updateCurrentOrNextEventHighlight, 60_000);
+  const onVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      updateCurrentOrNextEventHighlight();
+    }
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
+  const originalDestroy = cal.destroy.bind(cal);
+  cal.destroy = () => {
+    window.clearInterval(activeHighlightInterval);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    originalDestroy();
+  };
 
   // Set up date navigation after calendar is created
   dateNavigation = createDateNavigation(cal, containerEl);

@@ -64,6 +64,8 @@ export function migrateAndSanitizeSettings(settings: unknown): {
     workspaces: raw.workspaces || [],
     activeWorkspace: raw.activeWorkspace ?? null,
     showEventInStatusBar: (raw as Partial<FullCalendarSettings>).showEventInStatusBar ?? false,
+    highlightCurrentOrNextEvent:
+      (raw as Partial<FullCalendarSettings>).highlightCurrentOrNextEvent ?? true,
 
     // New granular view configuration properties with sensible defaults
     slotMinTime: raw.slotMinTime ?? '00:00',

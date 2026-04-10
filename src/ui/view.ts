@@ -612,6 +612,7 @@ export class CalendarView extends ItemView {
         weekends: calendarConfig.weekends,
         hiddenDays: calendarConfig.hiddenDays,
         dayMaxEvents: calendarConfig.dayMaxEvents,
+        highlightCurrentOrNextEvent: this.plugin.settings.highlightCurrentOrNextEvent,
         customButtons: {
           workspace: {
             text: this.getWorkspaceSwitcherText(),

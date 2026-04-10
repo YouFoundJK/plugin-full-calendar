@@ -257,4 +257,18 @@ export function renderAppearanceSettings(
         await plugin.saveSettings();
       });
     });
+
+  new Setting(containerEl)
+    .setName('Highlight current or next event')
+    .setDesc(
+      'Highlights the current timed event, or the immediate next timed event if none is active.'
+    )
+    .addToggle(toggle => {
+      toggle.setValue(plugin.settings.highlightCurrentOrNextEvent ?? true);
+      toggle.onChange(async val => {
+        plugin.settings.highlightCurrentOrNextEvent = val;
+        await plugin.saveSettings();
+        rerender();
+      });
+    });
 }
