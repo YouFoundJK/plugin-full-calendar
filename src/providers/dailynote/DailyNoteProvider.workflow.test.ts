@@ -304,16 +304,16 @@ describe('DailyNoteProvider workflow', () => {
       getAbstractFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
       getFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
       getMetadata: (_file: TFile) => (hasMetadata ? startupMetadata : null),
-      waitForMetadata: async (_file: TFile) => {
+      waitForMetadata: (_file: TFile) => {
         hasMetadata = true;
-        return startupMetadata;
+        return Promise.resolve(startupMetadata);
       },
       read: (target: TFile) => Promise.resolve(contentsByPath.get(target.path) ?? ''),
       process: <T>(target: TFile, func: (text: string) => T): Promise<T> =>
         Promise.resolve(func(contentsByPath.get(target.path) ?? '')),
       create: (_path: string, _contents: string) =>
         Promise.reject(new Error('Not used by DailyNoteProvider')),
-      rewrite: (async () => undefined) as ObsidianInterface['rewrite'],
+      rewrite: (() => Promise.resolve(undefined)) as ObsidianInterface['rewrite'],
       rename: (_file: TFile, _newPath: string) =>
         Promise.reject(new Error('Not used by DailyNoteProvider')),
       delete: (_file: TFile) => Promise.reject(new Error('Not used by DailyNoteProvider'))

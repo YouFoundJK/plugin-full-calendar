@@ -254,7 +254,24 @@ describe('FullNoteCalendar Tests', () => {
   });
 
   it('waits for metadata before skipping a local note during startup scan', async () => {
-    const file = { path: 'events/2022-01-01 Startup Event.md', basename: 'Startup Event' } as TFile;
+    const startupFilePath = 'events/2022-01-01 Startup Event.md';
+    const app = MockAppBuilder.make()
+      .folder(
+        new MockAppBuilder(dirName).file(
+          '2022-01-01 Startup Event.md',
+          new FileBuilder().frontmatter({
+            title: 'Startup Event',
+            allDay: true,
+            date: '2022-01-01'
+          })
+        )
+      )
+      .done();
+    const file = app.vault.getFileByPath(startupFilePath);
+    if (!(file instanceof TFile)) {
+      throw new Error(`Expected TFile at path ${startupFilePath}`);
+    }
+
     const metadata = {
       frontmatter: {
         title: 'Startup Event',
@@ -263,11 +280,14 @@ describe('FullNoteCalendar Tests', () => {
       }
     };
 
+    const waitForMetadataMock = jest
+      .fn<Promise<typeof metadata>, [TFile]>()
+      .mockResolvedValue(metadata);
     const obsidian: ObsidianInterface = {
       getAbstractFileByPath: jest.fn(),
       getFileByPath: jest.fn(),
       getMetadata: jest.fn().mockReturnValue(null),
-      waitForMetadata: jest.fn().mockResolvedValue(metadata),
+      waitForMetadata: waitForMetadataMock,
       read: jest.fn(),
       create: jest.fn(),
       rewrite: jest.fn(),
@@ -283,7 +303,7 @@ describe('FullNoteCalendar Tests', () => {
     );
     const events = await calendar.getEventsInFile(file);
 
-    expect(obsidian.waitForMetadata).toHaveBeenCalledWith(file);
+    expect(waitForMetadataMock).toHaveBeenCalledWith(file);
     expect(events).toHaveLength(1);
     expect(events[0][0]).toEqual(
       expect.objectContaining({

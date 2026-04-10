@@ -221,3 +221,87 @@
     padding-top: var(--size-4-4);
     border-top: 1px solid var(--background-modifier-border);
 }
+
+.full-calendar-settings-shell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-5);
+}
+
+.full-calendar-settings-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.full-calendar-settings-header h2,
+.full-calendar-settings-category-intro h3 {
+    margin: 0;
+}
+
+.full-calendar-settings-header p,
+.full-calendar-settings-category-intro p {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.full-calendar-settings-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+}
+
+.full-calendar-settings-tab {
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: var(--font-ui-small);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.15s ease;
+}
+
+.full-calendar-settings-tab:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+    transform: translateY(-1px);
+}
+
+.full-calendar-settings-tab.is-active {
+    background: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.full-calendar-settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-4);
+}
+
+.full-calendar-settings-category-intro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+    padding-bottom: var(--size-4-2);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.full-calendar-settings-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.full-calendar-initial-setup-notice {
+    padding: var(--size-4-4);
+    margin-bottom: var(--size-4-4);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background: var(--background-secondary);
+}
