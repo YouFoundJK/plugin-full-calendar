@@ -125,20 +125,25 @@ export class DateNavigation {
     const viewOptions = [
       {
         view: context.isNarrow ? 'timeGrid3Days' : 'dayGridMonth',
-        label: t('ui.navigation.viewMonth')
+        label: t('ui.navigation.viewMonth'),
+        icon: 'calendar'
       },
       {
         view: context.isNarrow ? 'timeGrid3Days' : 'timeGridWeek',
-        label: t('ui.navigation.viewWeek')
+        label: t('ui.navigation.viewWeek'),
+        icon: 'calendar-range'
       },
-      { view: 'timeGridDay', label: t('ui.navigation.viewDay') }
+      { view: 'timeGridDay', label: t('ui.navigation.viewDay'), icon: 'sun' }
     ];
 
-    viewOptions.forEach(({ view, label }) => {
+    viewOptions.forEach(({ view, label, icon }) => {
       menu.addItem(item => {
-        item.setTitle(label).onClick(() => {
-          this.navigateToDate(clickedDate, view);
-        });
+        item
+          .setTitle(label)
+          .setIcon(icon)
+          .onClick(() => {
+            this.navigateToDate(clickedDate, view);
+          });
       });
     });
 
@@ -172,20 +177,25 @@ export class DateNavigation {
     const viewOptions = [
       {
         view: context.isNarrow ? 'timeGrid3Days' : 'dayGridMonth',
-        label: t('ui.navigation.viewMonth')
+        label: t('ui.navigation.viewMonth'),
+        icon: 'calendar'
       },
       {
         view: context.isNarrow ? 'timeGrid3Days' : 'timeGridWeek',
-        label: t('ui.navigation.viewWeek')
+        label: t('ui.navigation.viewWeek'),
+        icon: 'calendar-range'
       },
-      { view: 'timeGridDay', label: t('ui.navigation.viewDay') }
+      { view: 'timeGridDay', label: t('ui.navigation.viewDay'), icon: 'sun' }
     ];
 
-    viewOptions.forEach(({ view, label }) => {
+    viewOptions.forEach(({ view, label, icon }) => {
       menu.addItem(item => {
-        item.setTitle(label).onClick(() => {
-          this.navigateToDate(contextDate, view);
-        });
+        item
+          .setTitle(label)
+          .setIcon(icon)
+          .onClick(() => {
+            this.navigateToDate(contextDate, view);
+          });
       });
     });
 

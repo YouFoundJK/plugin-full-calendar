@@ -844,48 +844,60 @@ export class CalendarView extends ItemView {
             const tasks = await import('../types/tasks');
             if (!tasks.isTask(event)) {
               menu.addItem(item =>
-                item.setTitle(t('ui.view.contextMenu.turnIntoTask')).onClick(async () => {
-                  await this.plugin.cache.processEvent(e.id, e => tasks.toggleTask(e, false));
-                })
+                item
+                  .setTitle(t('ui.view.contextMenu.turnIntoTask'))
+                  .setIcon('check')
+                  .onClick(async () => {
+                    await this.plugin.cache.processEvent(e.id, e => tasks.toggleTask(e, false));
+                  })
               );
             } else {
               menu.addItem(item =>
-                item.setTitle(t('ui.view.contextMenu.removeCheckbox')).onClick(async () => {
-                  await this.plugin.cache.processEvent(e.id, tasks.unmakeTask);
-                })
+                item
+                  .setTitle(t('ui.view.contextMenu.removeCheckbox'))
+                  .setIcon('x')
+                  .onClick(async () => {
+                    await this.plugin.cache.processEvent(e.id, tasks.unmakeTask);
+                  })
               );
             }
             menu.addSeparator();
             menu.addItem(item =>
-              item.setTitle(t('ui.view.contextMenu.goToNote')).onClick(() => {
-                if (!this.plugin.cache) {
-                  return;
-                }
-                void import('../utils/eventActions').then(({ openFileForEvent }) =>
-                  openFileForEvent(this.plugin.cache, this.app, e.id)
-                );
-              })
+              item
+                .setTitle(t('ui.view.contextMenu.goToNote'))
+                .setIcon('file-text')
+                .onClick(() => {
+                  if (!this.plugin.cache) {
+                    return;
+                  }
+                  void import('../utils/eventActions').then(({ openFileForEvent }) =>
+                    openFileForEvent(this.plugin.cache, this.app, e.id)
+                  );
+                })
             );
             menu.addItem(item =>
-              item.setTitle(t('ui.view.contextMenu.delete')).onClick(async () => {
-                if (!this.plugin.cache) {
-                  return;
-                }
-                const event = this.plugin.cache.getEventById(e.id);
-                // If this is a recurring event, offer to delete only this instance
-                if (event && (event.type === 'recurring' || event.type === 'rrule') && e.start) {
-                  const instanceDate =
-                    e.start instanceof Date ? e.start.toISOString().slice(0, 10) : undefined;
-                  await this.plugin.cache.deleteEvent(e.id, { instanceDate });
-                } else {
-                  await this.plugin.cache.deleteEvent(e.id);
-                }
-                new Notice(t('ui.view.success.deletedEvent', { title: e.title }));
-              })
+              item
+                .setTitle(t('ui.view.contextMenu.delete'))
+                .setIcon('trash-2')
+                .onClick(async () => {
+                  if (!this.plugin.cache) {
+                    return;
+                  }
+                  const event = this.plugin.cache.getEventById(e.id);
+                  // If this is a recurring event, offer to delete only this instance
+                  if (event && (event.type === 'recurring' || event.type === 'rrule') && e.start) {
+                    const instanceDate =
+                      e.start instanceof Date ? e.start.toISOString().slice(0, 10) : undefined;
+                    await this.plugin.cache.deleteEvent(e.id, { instanceDate });
+                  } else {
+                    await this.plugin.cache.deleteEvent(e.id);
+                  }
+                  new Notice(t('ui.view.success.deletedEvent', { title: e.title }));
+                })
             );
           } else {
             menu.addItem(item => {
-              item.setTitle(t('ui.view.contextMenu.noActions')).setDisabled(true);
+              item.setTitle(t('ui.view.contextMenu.noActions')).setIcon('info').setDisabled(true);
             });
           }
 
