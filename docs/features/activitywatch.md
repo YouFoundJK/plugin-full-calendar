@@ -200,3 +200,9 @@ When this toggle is OFF:
 * Saved ActivityWatch settings and profile data remain stored, but are not touched or used.
 
 When toggled back ON, the saved configuration becomes active again.
+
+
+# FAQ
+
+#### Watcher in chrome not automatically recording
+- This is a bug within the aw-chrome extension - [aw-watcher-web/199](https://github.com/ActivityWatch/aw-watcher-web/issues/199) and a easiest fix is via building your own from the pull request and using it in your Chrome based browser via the Developer mode.

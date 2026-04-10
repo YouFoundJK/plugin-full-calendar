@@ -7,8 +7,8 @@ import { moment as obsidianMoment } from 'obsidian';
 import { executeFSM, FinalBlock, FlattenedEvent } from './fsm';
 
 const moment = obsidianMoment as unknown as typeof import('moment');
-const CONTINUITY_LOOKBACK_MS = 60 * 60 * 1000;
 const CONTINUITY_BUFFER_MS = 60 * 1000;
+const LOOKBACK_SAFETY_BUFFER_MINS = 5;
 
 type DerivedAWBlock = {
   startMs: number;
@@ -19,7 +19,7 @@ type DerivedAWBlock = {
 };
 
 type PriorCalendarEvent = {
-  sessionId: string;
+  sessionId: string | null;
   event: OFCEvent;
   startMs: number;
   endMs: number;
@@ -150,49 +150,76 @@ async function deriveActivityWatchBlocks(
   }));
 }
 
-async function findLastCalendarEventBeforeSync(
+function computeLookbackDurationMs(
+  profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>
+): number {
+  const maxActivationThresholdMins = profiles.reduce(
+    (max, profile) => Math.max(max, profile.activationThresholdMins || 0),
+    0
+  );
+  const maxSoftBreakLimitMins = profiles.reduce(
+    (max, profile) => Math.max(max, profile.softBreakLimitMins || 0),
+    0
+  );
+
+  return (
+    (maxActivationThresholdMins + maxSoftBreakLimitMins + LOOKBACK_SAFETY_BUFFER_MINS) * 60 * 1000
+  );
+}
+
+function isSameProfileBlock(existing: PriorCalendarEvent, block: DerivedAWBlock): boolean {
+  return (
+    existing.event.subCategory === block.profileName &&
+    existing.event.category === block.profileColor
+  );
+}
+
+function normalizeContinuityTitle(title: string | null | undefined): string {
+  return (title || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function isSameContinuityBlock(existing: PriorCalendarEvent, block: DerivedAWBlock): boolean {
+  return (
+    isSameProfileBlock(existing, block) &&
+    normalizeContinuityTitle(existing.event.title) === normalizeContinuityTitle(block.title)
+  );
+}
+
+async function getCalendarEventsInRange(
   plugin: FullCalendarPlugin,
   targetCalendarId: string,
-  lastSyncTimeMs: number
-): Promise<PriorCalendarEvent | null> {
-  if (lastSyncTimeMs <= 0) return null;
+  rangeStart: Date,
+  rangeEnd: Date
+): Promise<PriorCalendarEvent[]> {
+  if (rangeEnd.getTime() <= rangeStart.getTime()) return [];
 
   const calendarInstance = plugin.providerRegistry.getInstance(targetCalendarId);
-  if (!calendarInstance) return null;
-
-  const rangeStart = new Date(lastSyncTimeMs - CONTINUITY_LOOKBACK_MS);
-  const rangeEnd = new Date(lastSyncTimeMs);
+  if (!calendarInstance) return [];
 
   const providerEvents = await calendarInstance.getEvents({ start: rangeStart, end: rangeEnd });
-  const candidates = providerEvents
-    .map(([event]) => {
-      const range = parseTimedSingleEventRange(event);
-      if (!range) return null;
-      return { event, ...range };
-    })
-    .filter((val): val is { event: OFCEvent; startMs: number; endMs: number } => val !== null)
-    .filter(candidate => candidate.startMs <= lastSyncTimeMs + CONTINUITY_BUFFER_MS)
-    .sort((a, b) => b.endMs - a.endMs || b.startMs - a.startMs);
+  const candidates: PriorCalendarEvent[] = [];
 
-  for (const candidate of candidates) {
-    const globalIdentifier = plugin.providerRegistry.getGlobalIdentifier(
-      candidate.event,
-      targetCalendarId
-    );
-    if (!globalIdentifier) continue;
+  for (const [event] of providerEvents) {
+    const eventRange = parseTimedSingleEventRange(event);
+    if (!eventRange) continue;
 
-    const sessionId = await plugin.providerRegistry.getSessionId(globalIdentifier);
-    if (!sessionId) continue;
+    if (eventRange.endMs < rangeStart.getTime() - CONTINUITY_BUFFER_MS) continue;
+    if (eventRange.startMs > rangeEnd.getTime() + CONTINUITY_BUFFER_MS) continue;
 
-    return {
+    const globalIdentifier = plugin.providerRegistry.getGlobalIdentifier(event, targetCalendarId);
+    const sessionId = globalIdentifier
+      ? await plugin.providerRegistry.getSessionId(globalIdentifier)
+      : null;
+
+    candidates.push({
       sessionId,
-      event: candidate.event,
-      startMs: candidate.startMs,
-      endMs: candidate.endMs
-    };
+      event,
+      startMs: eventRange.startMs,
+      endMs: eventRange.endMs
+    });
   }
 
-  return null;
+  return candidates.sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
 }
 
 async function extendEventEndIfNeeded(
@@ -221,6 +248,152 @@ async function extendEventEndIfNeeded(
   };
 
   return plugin.cache.updateEventWithId(eventId, updatedEvent);
+}
+
+function findSwallowingExistingEvent(
+  existingEvents: PriorCalendarEvent[],
+  block: DerivedAWBlock
+): PriorCalendarEvent | null {
+  return (
+    existingEvents.find(
+      existing =>
+        isSameContinuityBlock(existing, block) &&
+        existing.startMs <= block.startMs + CONTINUITY_BUFFER_MS &&
+        existing.endMs >= block.endMs - CONTINUITY_BUFFER_MS
+    ) || null
+  );
+}
+
+function findExtendableExistingEvent(
+  existingEvents: PriorCalendarEvent[],
+  block: DerivedAWBlock
+): PriorCalendarEvent | null {
+  const extendableCandidates = existingEvents.filter(
+    existing =>
+      isSameContinuityBlock(existing, block) &&
+      existing.endMs >= block.startMs - CONTINUITY_BUFFER_MS &&
+      existing.startMs <= block.endMs + CONTINUITY_BUFFER_MS &&
+      block.endMs > existing.endMs + CONTINUITY_BUFFER_MS
+  );
+
+  if (extendableCandidates.length === 0) {
+    return null;
+  }
+
+  return extendableCandidates.reduce((latest, candidate) =>
+    candidate.endMs > latest.endMs ? candidate : latest
+  );
+}
+
+function recoverSessionIdFromStore(
+  plugin: FullCalendarPlugin,
+  targetCalendarId: string,
+  block: DerivedAWBlock
+): string | null {
+  const matches = plugin.cache.store
+    .getAllEvents()
+    .filter(stored => {
+      if (stored.calendarId !== targetCalendarId) return false;
+
+      const range = parseTimedSingleEventRange(stored.event);
+      if (!range) return false;
+
+      const sameProfile =
+        stored.event.subCategory === block.profileName &&
+        stored.event.category === block.profileColor;
+      const sameTitle =
+        normalizeContinuityTitle(stored.event.title) === normalizeContinuityTitle(block.title);
+      const overlaps =
+        range.endMs >= block.startMs - CONTINUITY_BUFFER_MS &&
+        range.startMs <= block.endMs + CONTINUITY_BUFFER_MS;
+
+      return sameProfile && sameTitle && overlaps;
+    })
+    .sort((a, b) => {
+      const aRange = parseTimedSingleEventRange(a.event);
+      const bRange = parseTimedSingleEventRange(b.event);
+      return (bRange?.endMs || 0) - (aRange?.endMs || 0);
+    });
+
+  return matches[0]?.id || null;
+}
+
+function materializeBlockAsEvent(block: DerivedAWBlock): OFCEvent {
+  const startMoment = moment(block.startMs);
+  const endMoment = moment(block.endMs);
+
+  return {
+    type: 'single',
+    title: block.title,
+    category: block.profileColor,
+    subCategory: block.profileName,
+    date: startMoment.format('YYYY-MM-DD'),
+    endDate: null,
+    allDay: false,
+    startTime: startMoment.format('HH:mm'),
+    endTime: endMoment.format('HH:mm'),
+    display: 'auto'
+  };
+}
+
+async function createOrUpdateBlock(
+  plugin: FullCalendarPlugin,
+  targetCalendarId: string,
+  block: DerivedAWBlock,
+  existingOverlapEvents: PriorCalendarEvent[],
+  canExtendExistingEvents: boolean
+): Promise<'ignored' | 'extended' | 'created'> {
+  const swallowing = findSwallowingExistingEvent(existingOverlapEvents, block);
+  if (swallowing) {
+    return 'ignored';
+  }
+
+  if (canExtendExistingEvents) {
+    const extendable = findExtendableExistingEvent(existingOverlapEvents, block);
+    if (extendable) {
+      let sessionId = extendable.sessionId;
+
+      if (!sessionId) {
+        sessionId = recoverSessionIdFromStore(plugin, targetCalendarId, block);
+      }
+
+      if (sessionId) {
+        const didExtend = await extendEventEndIfNeeded(plugin, sessionId, block.endMs);
+        if (didExtend) {
+          extendable.sessionId = sessionId;
+          extendable.endMs = block.endMs;
+          extendable.event = materializeBlockAsEvent(block);
+          return 'extended';
+        }
+      }
+    } else {
+      const recoveredSessionId = recoverSessionIdFromStore(plugin, targetCalendarId, block);
+
+      if (recoveredSessionId) {
+        const didExtend = await extendEventEndIfNeeded(plugin, recoveredSessionId, block.endMs);
+        if (didExtend) {
+          return 'extended';
+        }
+      }
+    }
+  }
+
+  const ofcEvent = materializeBlockAsEvent(block);
+  const created = await plugin.cache.addEvent(targetCalendarId, ofcEvent);
+
+  if (created) {
+    const recoveredCreatedSessionId = recoverSessionIdFromStore(plugin, targetCalendarId, block);
+    existingOverlapEvents.push({
+      sessionId: recoveredCreatedSessionId,
+      event: ofcEvent,
+      startMs: block.startMs,
+      endMs: block.endMs
+    });
+
+    return 'created';
+  }
+
+  return 'ignored';
 }
 
 export async function syncActivityWatch(
@@ -298,70 +471,9 @@ export async function syncActivityWatch(
     const profiles = settings.profiles || [];
     const isCustomStrategy = settings.syncStrategy === 'custom';
 
-    let extendedContinuity: {
-      title: string;
-      anchorEndMs: number;
-      extendedEndMs: number;
-    } | null = null;
-
-    if (
-      !isCustomStrategy &&
-      settings.lastSyncTime > 0 &&
-      calendarInstance.getCapabilities().canEdit
-    ) {
-      const priorEvent = await findLastCalendarEventBeforeSync(
-        plugin,
-        settings.targetCalendarId,
-        settings.lastSyncTime
-      );
-
-      if (priorEvent) {
-        const verificationBlocks = await deriveActivityWatchBlocks(
-          settings.apiUrl,
-          buckets,
-          bucketIdsToFetch,
-          profiles,
-          new Date(priorEvent.startMs - CONTINUITY_BUFFER_MS),
-          new Date(priorEvent.endMs + CONTINUITY_BUFFER_MS)
-        );
-
-        const hasExactTitleInVerification = verificationBlocks.some(
-          block => block.title === priorEvent.event.title
-        );
-
-        if (hasExactTitleInVerification) {
-          const continuityBlocks = await deriveActivityWatchBlocks(
-            settings.apiUrl,
-            buckets,
-            bucketIdsToFetch,
-            profiles,
-            new Date(priorEvent.startMs),
-            endTime
-          );
-
-          const continuousBlock = continuityBlocks.find(
-            block =>
-              block.title === priorEvent.event.title &&
-              block.startMs <= priorEvent.endMs + CONTINUITY_BUFFER_MS &&
-              block.endMs >= priorEvent.endMs - CONTINUITY_BUFFER_MS
-          );
-
-          if (continuousBlock) {
-            const didExtend = await extendEventEndIfNeeded(
-              plugin,
-              priorEvent.sessionId,
-              continuousBlock.endMs
-            );
-            if (didExtend) {
-              extendedContinuity = {
-                title: continuousBlock.title,
-                anchorEndMs: priorEvent.endMs,
-                extendedEndMs: continuousBlock.endMs
-              };
-            }
-          }
-        }
-      }
+    if (!isCustomStrategy && settings.lastSyncTime > 0 && !options?.overrideStart) {
+      const lookbackMs = computeLookbackDurationMs(profiles);
+      startTime = new Date(Math.max(0, settings.lastSyncTime - lookbackMs));
     }
 
     const finalBlocks = await deriveActivityWatchBlocks(
@@ -373,35 +485,33 @@ export async function syncActivityWatch(
       endTime
     );
 
+    let existingOverlapEvents: PriorCalendarEvent[] = [];
+    if (!isCustomStrategy && settings.lastSyncTime > 0) {
+      plugin.providerRegistry.buildMap(plugin.cache.store);
+      const overlapEnd = new Date(settings.lastSyncTime);
+      existingOverlapEvents = await getCalendarEventsInRange(
+        plugin,
+        settings.targetCalendarId,
+        startTime,
+        overlapEnd
+      );
+    }
+
+    const canExtendExistingEvents = calendarInstance.getCapabilities().canEdit;
+
     let addedCount = 0;
-    for (const block of finalBlocks) {
-      if (
-        extendedContinuity &&
-        block.title === extendedContinuity.title &&
-        block.startMs <= extendedContinuity.extendedEndMs + CONTINUITY_BUFFER_MS &&
-        block.endMs >= extendedContinuity.anchorEndMs - CONTINUITY_BUFFER_MS
-      ) {
-        continue;
+    const sortedFinalBlocks = [...finalBlocks].sort((a, b) => a.startMs - b.startMs);
+    for (const block of sortedFinalBlocks) {
+      const action = await createOrUpdateBlock(
+        plugin,
+        settings.targetCalendarId,
+        block,
+        existingOverlapEvents,
+        canExtendExistingEvents
+      );
+      if (action === 'created') {
+        addedCount++;
       }
-
-      const startMoment = moment(block.startMs);
-      const endMoment = moment(block.endMs);
-
-      const ofcEvent: OFCEvent = {
-        type: 'single',
-        title: block.title,
-        category: block.profileColor,
-        subCategory: block.profileName,
-        date: startMoment.format('YYYY-MM-DD'),
-        endDate: null,
-        allDay: false,
-        startTime: startMoment.format('HH:mm'),
-        endTime: endMoment.format('HH:mm'),
-        display: 'auto'
-      };
-
-      await plugin.cache.addEvent(settings.targetCalendarId, ofcEvent);
-      addedCount++;
       await new Promise(r => setTimeout(r, 150));
     }
 
