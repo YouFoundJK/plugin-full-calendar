@@ -138,6 +138,8 @@ const makeCache = (events: OFCEvent[]) => {
       buildMap: jest.fn(),
       addMapping: jest.fn(),
       removeMapping: jest.fn(),
+      computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+        `${calendarId}::${event.uid || event.title}`,
       getSource: () => calendarInfo,
       getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false })
     }
@@ -258,7 +260,9 @@ describe('event cache with readonly calendar', () => {
         generateId: withCounter(x => x, 'test-id'),
         buildMap: jest.fn(),
         addMapping: jest.fn(),
-        removeMapping: jest.fn()
+        removeMapping: jest.fn(),
+        computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+          `${calendarId}::${event.uid || event.title}`
       }
     } as unknown as FullCalendarPlugin;
     const cache = new EventCache(mockPlugin);
@@ -421,7 +425,9 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
           return `${calendarId}::${storedEvents[0][1].file.path}`;
         }
         return `${calendarId}::/path/to/${event.title}.md`;
-      }
+      },
+      computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+        `${calendarId}::${event.uid || event.title}`
     }
   } as unknown as FullCalendarPlugin;
   const cache = new EventCache(mockPlugin);
@@ -912,7 +918,9 @@ describe('editable calendars', () => {
           },
           buildMap: jest.fn(),
           addMapping: jest.fn(),
-          removeMapping: jest.fn()
+          removeMapping: jest.fn(),
+          computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+            `${calendarId}::${event.uid || event.title}`
         }
       } as unknown as FullCalendarPlugin;
 
@@ -1044,6 +1052,8 @@ describe('editable calendars', () => {
           buildMap: jest.fn(),
           addMapping: jest.fn(),
           removeMapping: jest.fn(),
+          computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+            `${calendarId}::${event.uid || event.title}`,
           getSource: (id: string) => calendarSources.find(s => s.id === id)
         }
       } as unknown as FullCalendarPlugin;

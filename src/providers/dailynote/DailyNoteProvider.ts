@@ -22,7 +22,7 @@ import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
 import { constructTitle } from '../../features/category/categoryParser';
 
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { DailyNoteProviderConfig } from './typesDaily';
 import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
@@ -100,7 +100,9 @@ const DailyNoteConfigWrapper: React.FC<DailyNoteConfigProps> = props => {
   });
 };
 
-export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConfig> {
+export class DailyNoteProvider
+  implements CalendarProvider<DailyNoteProviderConfig>, SyncKeyProvider
+{
   // Static metadata for registry
   static readonly type = 'dailynote';
   static readonly displayName = 'Daily Note';
@@ -146,6 +148,20 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       return { persistentId, location: { path: file.path } };
     }
     return null;
+  }
+
+  /**
+   * Pure-string sync key — identical to the persistentId from getEventHandle,
+   * but WITHOUT the expensive moment() + getAllDailyNotes() vault scan.
+   * This makes bulk sync diffing O(N) instead of O(N×V).
+   */
+  computeSyncKey(event: OFCEvent): string {
+    if (event.type === 'single' && event.date) {
+      const fullTitle = constructTitle(event.category, event.subCategory, event.title);
+      return `${event.date}::${fullTitle}`;
+    }
+    // Fallback for non-standard event types (should not occur in practice)
+    return `${event.type || 'unknown'}::${event.title || ''}::${JSON.stringify(event)}`;
   }
 
   public isFileRelevant(file: TFile): boolean {

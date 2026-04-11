@@ -3,7 +3,7 @@ import { OFCEvent, EventLocation } from '../../types';
 import { getEventsFromICS } from './ics';
 import * as React from 'react';
 
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { ICSProviderConfig } from './typesICS';
 import { ICSConfigComponent } from './ui/ICSConfigComponent';
@@ -54,7 +54,7 @@ const ICSConfigWrapper: React.FC<ICSConfigProps> = props => {
   });
 };
 
-export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
+export class ICSProvider implements CalendarProvider<ICSProviderConfig>, SyncKeyProvider {
   // Static metadata for registry
   static readonly type = 'ical';
   static readonly displayName = 'ICS Calendar';
@@ -95,6 +95,10 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig> {
       return { persistentId: event.uid };
     }
     return null;
+  }
+
+  computeSyncKey(event: OFCEvent): string {
+    return event.uid || JSON.stringify(event);
   }
 
   async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {

@@ -17,7 +17,7 @@ import { TFile, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent, TasksConfigComponentProps } from './TasksConfigComponent';
@@ -181,7 +181,7 @@ interface TasksCacheData {
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
-export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig> {
+export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig>, SyncKeyProvider {
   // Static metadata for registry
   static readonly type = 'tasks';
   static readonly displayName = 'Obsidian Tasks';
@@ -856,6 +856,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       return { persistentId: event.uid };
     }
     return null;
+  }
+
+  computeSyncKey(event: OFCEvent): string {
+    return event.uid || JSON.stringify(event);
   }
 
   public isFileRelevant(file: TFile): boolean {

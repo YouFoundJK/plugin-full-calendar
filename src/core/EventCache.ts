@@ -393,7 +393,7 @@ export default class EventCache {
       });
 
       // Update ID mapping with the new authoritative data.
-      this.plugin.providerRegistry.removeMapping(optimisticEvent, calendarId);
+      this.plugin.providerRegistry.removeMapping(optimisticId);
       this.plugin.providerRegistry.addMapping(authoritativeEvent, calendarId, optimisticId);
 
       // Flush this "correction" to the UI. The event is already visible,
@@ -410,7 +410,7 @@ export default class EventCache {
       });
 
       // Roll back store and mappings
-      this.plugin.providerRegistry.removeMapping(optimisticEvent, calendarId);
+      this.plugin.providerRegistry.removeMapping(optimisticId);
       this._store.delete(optimisticId);
 
       // Roll back UI
@@ -461,7 +461,7 @@ export default class EventCache {
     const handle = provider.getEventHandle(event);
 
     // Step 3: Optimistic state mutation
-    this.plugin.providerRegistry.removeMapping(event, originalDetails.calendarId);
+    this.plugin.providerRegistry.removeMapping(eventId);
     this._store.delete(eventId);
 
     // Step 4: Immediate UI update
@@ -590,7 +590,7 @@ export default class EventCache {
     try {
       // Step 3: Optimistic state mutation
       // Remove the old event and its mappings
-      this.plugin.providerRegistry.removeMapping(oldEvent, calendarId);
+      this.plugin.providerRegistry.removeMapping(eventId);
       this.store.delete(eventId);
 
       // Add the new event and its mappings, using the same session ID
@@ -664,7 +664,7 @@ export default class EventCache {
         });
 
         // Roll back store and mappings to original state
-        this.plugin.providerRegistry.removeMapping(newEventWithId, calendarId);
+        this.plugin.providerRegistry.removeMapping(eventId);
         this.store.delete(eventId);
 
         const locationForStore = originalDetails.location
@@ -1039,17 +1039,30 @@ export default class EventCache {
       calendarId
     }));
 
-    // Simple diff to avoid unnecessary updates.
-    // OPTIMIZATION: If lengths differ (e.g. Stage 2 dumping history over Stage 1), skip stringify!
-    if (oldEventsInCalendar.length === newEnhancedEvents.length) {
-      const oldEventData = oldEventsInCalendar.map(e => e.event);
-      const newEventData = newEnhancedEvents.map(e => e.event);
-      if (JSON.stringify(oldEventData) === JSON.stringify(newEventData)) {
-        return;
+    // 3. Build keyed maps for old and new events using cheap sync keys (O(N), no I/O).
+    const oldByKey = new Map<string, { event: OFCEvent; id: string; calendarId: string }>();
+    for (const oldEvent of oldEventsInCalendar) {
+      const key = this.plugin.providerRegistry.computeSyncKeyForEvent(oldEvent.event, calendarId);
+      if (key) {
+        oldByKey.set(key, oldEvent);
       }
     }
 
-    // 3. Prepare removal and addition lists.
+    const newByKey = new Map<
+      string,
+      { event: OFCEvent; location: EventLocation | null; calendarId: string }
+    >();
+    for (const newEvent of newEnhancedEvents) {
+      const key = this.plugin.providerRegistry.computeSyncKeyForEvent(
+        newEvent.event,
+        newEvent.calendarId
+      );
+      if (key) {
+        newByKey.set(key, newEvent);
+      }
+    }
+
+    // 4. Compute the delta via three-way set comparison.
     const idsToRemove: string[] = [];
     const eventsToAdd: {
       event: OFCEvent;
@@ -1057,25 +1070,74 @@ export default class EventCache {
       location: EventLocation | null;
       calendarId: string;
     }[] = [];
+    let hasChanges = false;
 
-    for (const oldEvent of oldEventsInCalendar) {
-      idsToRemove.push(oldEvent.id);
-      this.plugin.providerRegistry.removeMapping(oldEvent.event, oldEvent.calendarId);
+    // 4a. Removed events: old keys not present in new set.
+    for (const [key, oldEvent] of oldByKey) {
+      if (!newByKey.has(key)) {
+        idsToRemove.push(oldEvent.id);
+        this.plugin.providerRegistry.removeMapping(oldEvent.id);
+        this.store.delete(oldEvent.id);
+        hasChanges = true;
+      }
     }
 
-    for (const { event, location, calendarId } of newEnhancedEvents) {
-      const newSessionId = this.plugin.providerRegistry.generateId();
-      this.plugin.providerRegistry.addMapping(event, calendarId, newSessionId);
-      eventsToAdd.push({ event, location, calendarId, id: newSessionId });
+    // 4b. Added events: new keys not present in old set.
+    for (const [key, newEvent] of newByKey) {
+      if (!oldByKey.has(key)) {
+        const newSessionId = this.plugin.providerRegistry.generateId();
+        this.plugin.providerRegistry.addMapping(newEvent.event, newEvent.calendarId, newSessionId);
+        this.store.add({
+          calendarId: newEvent.calendarId,
+          location: newEvent.location,
+          id: newSessionId,
+          event: newEvent.event
+        });
+        eventsToAdd.push({
+          event: newEvent.event,
+          location: newEvent.location,
+          calendarId: newEvent.calendarId,
+          id: newSessionId
+        });
+        hasChanges = true;
+      }
     }
 
-    // 4. Atomically update the store.
-    this.store.deleteEventsInCalendar(calendarId);
-    for (const { event, id, location, calendarId } of eventsToAdd) {
-      this.store.add({ calendarId, location, id, event });
+    // 4c. Unchanged keys: reuse session IDs. Check for data changes within same identity.
+    for (const [key, oldEvent] of oldByKey) {
+      const newEvent = newByKey.get(key);
+      if (newEvent) {
+        if (JSON.stringify(oldEvent.event) !== JSON.stringify(newEvent.event)) {
+          // Data changed but identity is the same — update in-place, reuse session ID.
+          this.store.delete(oldEvent.id);
+          this.store.add({
+            calendarId: newEvent.calendarId,
+            location: newEvent.location,
+            id: oldEvent.id,
+            event: newEvent.event
+          });
+          // Re-map in case the global identifier changed (e.g. title changed).
+          this.plugin.providerRegistry.removeMapping(oldEvent.id);
+          this.plugin.providerRegistry.addMapping(newEvent.event, newEvent.calendarId, oldEvent.id);
+          // Queue UI update for this event (remove old rendering, add new).
+          idsToRemove.push(oldEvent.id);
+          eventsToAdd.push({
+            event: newEvent.event,
+            location: newEvent.location,
+            calendarId: newEvent.calendarId,
+            id: oldEvent.id
+          });
+          hasChanges = true;
+        }
+        // If data is identical: no-op. Session ID, store entry, and mapping are all reused.
+      }
     }
 
-    // 5. Notify the UI.
+    if (!hasChanges) {
+      return;
+    }
+
+    // 5. Notify the UI with only the delta.
     const cacheEntriesToAdd = eventsToAdd.map(({ event, id, calendarId }) => ({
       event,
       id,
@@ -1113,7 +1175,7 @@ export default class EventCache {
       for (const sessionId of deletions) {
         const event = this.store.getEventById(sessionId);
         if (event) {
-          this.plugin.providerRegistry.removeMapping(event, calendarId);
+          this.plugin.providerRegistry.removeMapping(sessionId);
           this.store.delete(sessionId);
           this.updateQueue.toRemove.add(sessionId);
         }
@@ -1131,7 +1193,7 @@ export default class EventCache {
       for (const { sessionId, event, location } of updateArr) {
         const oldEvent = this.store.getEventById(sessionId);
         if (oldEvent) {
-          this.plugin.providerRegistry.removeMapping(oldEvent, calendarId);
+          this.plugin.providerRegistry.removeMapping(sessionId);
         }
         this.store.delete(sessionId);
         this.store.add({ calendarId, location, id: sessionId, event });
@@ -1175,16 +1237,33 @@ export default class EventCache {
       calendarId
     }));
 
-    // For a simple diff, we can just compare the stringified versions of the event arrays.
-    const oldEventData = oldEventsInFile.map(e => e.event);
-    const newEventData = newEnhancedEvents.map(e => e.event);
-
-    if (JSON.stringify(oldEventData) === JSON.stringify(newEventData)) {
-      // No changes detected, nothing to do.
-      return Promise.resolve();
+    // 3. Build keyed maps for old and new events using cheap sync keys.
+    const oldByKey = new Map<string, { event: OFCEvent; id: string; calendarId: string }>();
+    for (const oldEvent of oldEventsInFile) {
+      const key = this.plugin.providerRegistry.computeSyncKeyForEvent(
+        oldEvent.event,
+        oldEvent.calendarId
+      );
+      if (key) {
+        oldByKey.set(key, oldEvent);
+      }
     }
 
-    // 3. If there are changes, perform the update.
+    const newByKey = new Map<
+      string,
+      { event: OFCEvent; location: EventLocation | null; calendarId: string }
+    >();
+    for (const newEvent of newEnhancedEvents) {
+      const key = this.plugin.providerRegistry.computeSyncKeyForEvent(
+        newEvent.event,
+        newEvent.calendarId
+      );
+      if (key) {
+        newByKey.set(key, newEvent);
+      }
+    }
+
+    // 4. Compute the delta via three-way set comparison.
     const idsToRemove: string[] = [];
     const eventsToAdd: {
       event: OFCEvent;
@@ -1192,27 +1271,70 @@ export default class EventCache {
       location: EventLocation | null;
       calendarId: string;
     }[] = [];
+    let hasChanges = false;
 
-    // Mark all old events for removal.
-    for (const oldEvent of oldEventsInFile) {
-      idsToRemove.push(oldEvent.id);
-      this.plugin.providerRegistry.removeMapping(oldEvent.event, oldEvent.calendarId);
+    // 4a. Removed events.
+    for (const [key, oldEvent] of oldByKey) {
+      if (!newByKey.has(key)) {
+        idsToRemove.push(oldEvent.id);
+        this.plugin.providerRegistry.removeMapping(oldEvent.id);
+        this.store.delete(oldEvent.id);
+        hasChanges = true;
+      }
     }
 
-    // Prepare all new events for addition.
-    for (const { event, location, calendarId } of newEnhancedEvents) {
-      const newSessionId = this.plugin.providerRegistry.generateId();
-      this.plugin.providerRegistry.addMapping(event, calendarId, newSessionId);
-      eventsToAdd.push({ event, location, calendarId, id: newSessionId });
+    // 4b. Added events.
+    for (const [key, newEvent] of newByKey) {
+      if (!oldByKey.has(key)) {
+        const newSessionId = this.plugin.providerRegistry.generateId();
+        this.plugin.providerRegistry.addMapping(newEvent.event, newEvent.calendarId, newSessionId);
+        this.store.add({
+          calendarId: newEvent.calendarId,
+          location: newEvent.location,
+          id: newSessionId,
+          event: newEvent.event
+        });
+        eventsToAdd.push({
+          event: newEvent.event,
+          location: newEvent.location,
+          calendarId: newEvent.calendarId,
+          id: newSessionId
+        });
+        hasChanges = true;
+      }
     }
 
-    // 4. Atomically update the store.
-    this.store.deleteEventsAtPath(file.path);
-    for (const { event, id, location, calendarId } of eventsToAdd) {
-      this.store.add({ calendarId, location, id, event });
+    // 4c. Unchanged keys: reuse session IDs, check for data changes.
+    for (const [key, oldEvent] of oldByKey) {
+      const newEvent = newByKey.get(key);
+      if (newEvent) {
+        if (JSON.stringify(oldEvent.event) !== JSON.stringify(newEvent.event)) {
+          this.store.delete(oldEvent.id);
+          this.store.add({
+            calendarId: newEvent.calendarId,
+            location: newEvent.location,
+            id: oldEvent.id,
+            event: newEvent.event
+          });
+          this.plugin.providerRegistry.removeMapping(oldEvent.id);
+          this.plugin.providerRegistry.addMapping(newEvent.event, newEvent.calendarId, oldEvent.id);
+          idsToRemove.push(oldEvent.id);
+          eventsToAdd.push({
+            event: newEvent.event,
+            location: newEvent.location,
+            calendarId: newEvent.calendarId,
+            id: oldEvent.id
+          });
+          hasChanges = true;
+        }
+      }
     }
 
-    // 5. Notify the UI.
+    if (!hasChanges) {
+      return Promise.resolve();
+    }
+
+    // 5. Notify the UI with only the delta.
     const cacheEntriesToAdd = eventsToAdd.map(({ event, id, calendarId }) => ({
       event,
       id,

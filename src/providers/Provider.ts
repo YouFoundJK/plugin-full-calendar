@@ -77,3 +77,28 @@ export interface CalendarProvider<TConfig> {
     source: Partial<import('../types').CalendarInfo>;
   }>;
 }
+
+/**
+ * Optional interface for providers that can produce a cheap, deterministic
+ * sync key for events. Used by EventCache.syncCalendar() and syncFile()
+ * to perform efficient keyed-identity diffing instead of nuke-and-rebuild.
+ *
+ * This is a separate interface following the Interface Segregation Principle:
+ * providers that don't implement it will fall back to a default key derivation.
+ *
+ * IMPORTANT: The sync key MUST be deterministic — the same event data must
+ * always produce the same key string. It must also be unique within a calendar
+ * (no two different events in the same calendar should produce the same key).
+ */
+export interface SyncKeyProvider {
+  /**
+   * Computes a lightweight, deterministic key that uniquely identifies an event
+   * within this calendar. This MUST be a pure function with no I/O — no vault
+   * scans, no network calls, no file reads. String operations only.
+   *
+   * The key is used for set-diffing during sync: events with the same key in
+   * old and new sets are considered "the same event" and their session IDs
+   * are reused, avoiding unnecessary UI churn and mapping work.
+   */
+  computeSyncKey(event: OFCEvent): string;
+}

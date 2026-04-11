@@ -1,5 +1,9 @@
 import { TFile, Notice } from 'obsidian';
-import { CalendarProvider, CalendarProviderCapabilities } from '../providers/Provider';
+import {
+  CalendarProvider,
+  CalendarProviderCapabilities,
+  SyncKeyProvider
+} from '../providers/Provider';
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
@@ -42,6 +46,7 @@ export class ProviderRegistry {
   private cache: EventCache | null = null;
   private pkCounter = 0;
   private identifierToSessionIdMap: Map<string, string> = new Map();
+  private sessionIdToIdentifierMap: Map<string, string> = new Map();
   private identifierMapPromise: Promise<void> | null = null;
 
   // Tasks backlog manager for lifecycle management
@@ -231,6 +236,31 @@ export class ProviderRegistry {
     return `${calendarId}::${handle.persistentId}`;
   }
 
+  /**
+   * Computes a lightweight sync key for diffing during bulk sync operations.
+   * Delegates to the provider's computeSyncKey() if it implements SyncKeyProvider,
+   * otherwise falls back to getGlobalIdentifier() (which may be expensive for
+   * providers like DailyNote).
+   *
+   * The key is scoped to the calendarId to ensure global uniqueness.
+   */
+  public computeSyncKeyForEvent(event: OFCEvent, calendarId: string): string | null {
+    const instance = this.instances.get(calendarId);
+    if (!instance) return null;
+
+    // Type guard: check if the provider implements SyncKeyProvider
+    if (
+      'computeSyncKey' in instance &&
+      typeof (instance as SyncKeyProvider).computeSyncKey === 'function'
+    ) {
+      const key = (instance as SyncKeyProvider).computeSyncKey(event);
+      return `${calendarId}::${key}`;
+    }
+
+    // Fallback: use the existing (potentially expensive) global identifier
+    return this.getGlobalIdentifier(event, calendarId);
+  }
+
   public buildMap(store: {
     getAllEvents(): { event: OFCEvent; calendarId: string; id: string }[];
   }): void {
@@ -238,6 +268,7 @@ export class ProviderRegistry {
     if (!this.cache) return;
     this.identifierMapPromise = (() => {
       this.identifierToSessionIdMap.clear();
+      this.sessionIdToIdentifierMap.clear();
       for (const storedEvent of store.getAllEvents()) {
         const globalIdentifier = this.getGlobalIdentifier(
           storedEvent.event,
@@ -245,6 +276,7 @@ export class ProviderRegistry {
         );
         if (globalIdentifier) {
           this.identifierToSessionIdMap.set(globalIdentifier, storedEvent.id);
+          this.sessionIdToIdentifierMap.set(storedEvent.id, globalIdentifier);
         }
       }
       return Promise.resolve();
@@ -254,14 +286,29 @@ export class ProviderRegistry {
   public addMapping(event: OFCEvent, calendarId: string, sessionId: string): void {
     const globalIdentifier = this.getGlobalIdentifier(event, calendarId);
     if (globalIdentifier) {
+      // If this sessionId already has a mapping (e.g. re-mapping after
+      // optimistic → authoritative correction), clean up the old forward entry
+      // before inserting the new one.
+      const existingGlobalId = this.sessionIdToIdentifierMap.get(sessionId);
+      if (existingGlobalId && existingGlobalId !== globalIdentifier) {
+        this.identifierToSessionIdMap.delete(existingGlobalId);
+      }
       this.identifierToSessionIdMap.set(globalIdentifier, sessionId);
+      this.sessionIdToIdentifierMap.set(sessionId, globalIdentifier);
     }
   }
 
-  public removeMapping(event: OFCEvent, calendarId: string): void {
-    const globalIdentifier = this.getGlobalIdentifier(event, calendarId);
+  /**
+   * Removes the identifier mapping for a given session ID.
+   * Uses a reverse-index lookup (O(1)) instead of calling getEventHandle,
+   * which is critical for providers like DailyNote where getEventHandle
+   * performs expensive vault scans.
+   */
+  public removeMapping(sessionId: string): void {
+    const globalIdentifier = this.sessionIdToIdentifierMap.get(sessionId);
     if (globalIdentifier) {
       this.identifierToSessionIdMap.delete(globalIdentifier);
+      this.sessionIdToIdentifierMap.delete(sessionId);
     }
   }
 

@@ -7,7 +7,7 @@ import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
 import { constructTitle } from '../../features/category/categoryParser';
 import { newFrontmatter, modifyFrontmatterString, replaceFrontmatter } from './frontmatter';
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { FullNoteProviderConfig } from './typesLocal';
 import { ObsidianInterface } from '../../ObsidianAdapter';
@@ -173,7 +173,7 @@ function findUniquePath(app: ObsidianInterface, directory: string, baseFilename:
 // Provider Implementation
 // =================================================================================================
 
-export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig> {
+export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig>, SyncKeyProvider {
   // Static metadata for registry
   static readonly type = 'local';
   static readonly displayName = 'Local Notes';
@@ -214,6 +214,12 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     const filename = filenameForEvent(event, this.plugin.settings);
     const path = normalizePath(`${this.source.directory}/${filename}`);
     return { persistentId: path };
+  }
+
+  computeSyncKey(event: OFCEvent): string {
+    if (event.uid) return event.uid;
+    const filename = filenameForEvent(event, this.plugin.settings);
+    return normalizePath(`${this.source.directory}/${filename}`);
   }
 
   public isFileRelevant(file: TFile): boolean {

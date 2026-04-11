@@ -1,6 +1,6 @@
 import { TFile, parseYaml, getAllTags } from 'obsidian';
 import * as React from 'react';
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
 import { OFCEvent, EventLocation, CalendarInfo, validateEvent } from '../../types';
 import { FCReactComponent, EventHandle } from '../typesProvider';
 import FullCalendarPlugin from '../../main';
@@ -26,7 +26,7 @@ interface BaseFile {
   properties?: unknown;
 }
 
-export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
+export class BasesProvider implements CalendarProvider<BasesProviderConfig>, SyncKeyProvider {
   static type = 'bases';
   static displayName = 'Obsidian Bases';
   static getConfigurationComponent(): FCReactComponent<BasesConfigComponentProps> {
@@ -224,6 +224,10 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig> {
       return { persistentId: event.uid };
     }
     return null;
+  }
+
+  computeSyncKey(event: OFCEvent): string {
+    return event.uid || JSON.stringify(event);
   }
 
   createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
