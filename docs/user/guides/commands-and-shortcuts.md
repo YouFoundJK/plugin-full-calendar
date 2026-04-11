@@ -19,6 +19,8 @@ Conditional command:
 
 ## Shortcuts and Fast Actions
 
+- Left/Right arrow keys: navigate to previous or next time range when the calendar is focused.
+- Arrow keys in text fields stay native (cursor movement) and do not trigger calendar navigation.
 - Ctrl/Cmd + click on an event: open the event's source note.
 - Ctrl/Cmd + mouse wheel: zoom time grid in supported calendar views.
 - Right-click on an event: open event context menu.

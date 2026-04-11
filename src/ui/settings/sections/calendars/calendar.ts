@@ -88,6 +88,8 @@ export async function renderCalendar(
     : null;
   const MOBILE_BREAKPOINT = 500;
   const COMPACT_DESKTOP_BREAKPOINT = 910;
+  const SWIPE_MIN_DISTANCE = 60;
+  const SWIPE_DIRECTION_RATIO = 1.2;
 
   const getResponsiveWidth = (): number => {
     const measuredWidth = containerEl.getBoundingClientRect().width || containerEl.clientWidth;
@@ -169,7 +171,7 @@ export async function renderCalendar(
         mode: 'narrow',
         headerToolbar: false,
         footerToolbar: {
-          left: 'today prev,next',
+          left: 'prev,today,next',
           right: 'views,more'
         }
       };
@@ -179,7 +181,7 @@ export async function renderCalendar(
       return {
         mode: 'compact-desktop',
         headerToolbar: {
-          left: 'today prev,next',
+          left: 'prev,today,next',
           center: 'title',
           right: 'analysis more'
         },
@@ -194,7 +196,7 @@ export async function renderCalendar(
     return {
       mode: 'desktop',
       headerToolbar: {
-        left: 'workspace prev,next today,navigate',
+        left: 'workspace prev,today,navigate,next',
         center: 'title',
         right: `analysis ${fullDesktopViewGroup}`
       },
@@ -362,6 +364,16 @@ export async function renderCalendar(
     : null;
 
   let currentUpcomingEventIds = new Set<string>();
+
+  const isEditableTarget = (target: EventTarget | null): boolean => {
+    if (!(target instanceof Element)) {
+      return false;
+    }
+
+    return !!target.closest(
+      'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"], .cm-content, .cm-editor, .markdown-source-view, .markdown-preview-view'
+    );
+  };
 
   const toggleEventHighlightById = (eventId: string, add: boolean) => {
     const escapedId = CSS.escape(eventId);
@@ -643,6 +655,94 @@ export async function renderCalendar(
 
   cal.render();
 
+  if (!containerEl.hasAttribute('tabindex')) {
+    containerEl.setAttribute('tabindex', '0');
+  }
+
+  const onPointerDownFocus = (event: PointerEvent) => {
+    if (isEditableTarget(event.target)) {
+      return;
+    }
+
+    containerEl.focus({ preventScroll: true });
+  };
+
+  const onKeyDownNavigate = (event: KeyboardEvent) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+      return;
+    }
+
+    if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.key === 'ArrowLeft') {
+      cal.prev();
+      return;
+    }
+
+    cal.next();
+  };
+
+  let touchStartX: number | null = null;
+  let touchStartY: number | null = null;
+  let swipeEnabled = false;
+
+  const onTouchStartNavigate = (event: TouchEvent) => {
+    if (event.touches.length !== 1 || isEditableTarget(event.target)) {
+      swipeEnabled = false;
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    swipeEnabled = true;
+  };
+
+  const onTouchEndNavigate = (event: TouchEvent) => {
+    if (!swipeEnabled || touchStartX === null || touchStartY === null || !event.changedTouches[0]) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+
+    touchStartX = null;
+    touchStartY = null;
+    swipeEnabled = false;
+
+    if (Math.abs(deltaX) < SWIPE_MIN_DISTANCE) {
+      return;
+    }
+
+    if (Math.abs(deltaX) < Math.abs(deltaY) * SWIPE_DIRECTION_RATIO) {
+      return;
+    }
+
+    if (deltaX < 0) {
+      cal.next();
+      return;
+    }
+
+    cal.prev();
+  };
+
+  containerEl.addEventListener('pointerdown', onPointerDownFocus);
+  containerEl.addEventListener('keydown', onKeyDownNavigate);
+  containerEl.addEventListener('touchstart', onTouchStartNavigate, { passive: true });
+  containerEl.addEventListener('touchend', onTouchEndNavigate, { passive: true });
+
   updateCurrentOrNextEventHighlight();
   const activeHighlightInterval = window.setInterval(updateCurrentOrNextEventHighlight, 60_000);
   const onVisibilityChange = () => {
@@ -655,6 +755,10 @@ export async function renderCalendar(
   const originalDestroy = cal.destroy.bind(cal);
   cal.destroy = () => {
     resizeObserver.disconnect();
+    containerEl.removeEventListener('pointerdown', onPointerDownFocus);
+    containerEl.removeEventListener('keydown', onKeyDownNavigate);
+    containerEl.removeEventListener('touchstart', onTouchStartNavigate);
+    containerEl.removeEventListener('touchend', onTouchEndNavigate);
     window.clearInterval(activeHighlightInterval);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     originalDestroy();

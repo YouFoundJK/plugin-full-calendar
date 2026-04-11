@@ -9,9 +9,12 @@ This page documents direct interactions in the calendar UI.
 - Resize event edge: change event duration.
 - Right-click event: open context actions.
 - Right-click date or view area: open date navigation actions.
+- Swipe left or right on the calendar grid (touch): move to next or previous range.
 
 ## Keyboard Modifiers
 
+- Left/Right arrow keys: previous or next range when the calendar view is focused.
+- Arrow keys are ignored for calendar navigation while typing in inputs/editors.
 - Ctrl/Cmd + click event: open note directly.
 - Ctrl/Cmd + hover event: trigger note preview (requires Obsidian Page Preview support).
 - Ctrl/Cmd + mouse wheel: zoom the time axis for supported views.
