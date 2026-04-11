@@ -118,6 +118,28 @@
     "openCalendar": "Open Full Calendar"
   },
   "settings": {
+    "categories": {
+      "general": {
+        "label": "General",
+        "description": "General behavior, reminders, and recent updates."
+      },
+      "appearance": {
+        "label": "Appearance",
+        "description": "Customize calendar appearance, time formats, and visibility."
+      },
+      "calendars": {
+        "label": "Calendars",
+        "description": "Manage calendar sources and provider-specific configuration."
+      },
+      "organization": {
+        "label": "Organization",
+        "description": "Organize views with workspaces and event categorization."
+      },
+      "integrations": {
+        "label": "Integrations",
+        "description": "Connect external services like Google and ActivityWatch."
+      }
+    },
     "general": {
       "desktopInitialView": {
         "label": "Desktop initial view",
@@ -362,8 +384,17 @@
       "saturday": "Saturday"
     },
     "changelog": {
+      "title": "Changelog",
       "whatsNew": "What's new",
-      "viewFull": "View full changelog"
+      "viewFull": "View full changelog",
+      "versionWithNumber": "Version {{version}}",
+      "whatsNewPageLink": "What's New page",
+      "changelogPageLink": "Changelog",
+      "loadOlder": {
+        "button": "Load older versions",
+        "loading": "Loading...",
+        "errorOffline": "Failed to load older versions. You may be offline."
+      }
     },
     "utils": {
       "timelineDisabled": "Timeline view is disabled. Resetting default desktop view to \"Week\"."
@@ -758,7 +789,7 @@
         "description": "Your Google OAuth 2.0 Client Secret"
       }
     },
-    "noAccounts": "No Google accounts connected. Add a calendar source to connect an account.",
+    "noAccounts": "No Google accounts connected. Add Google calendar In Calendars section to connect an account.",
     "accountDescription": "Connected account. ID: {{id}}",
     "buttons": {
       "disconnect": "Disconnect",

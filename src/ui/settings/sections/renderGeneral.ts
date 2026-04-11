@@ -7,6 +7,7 @@
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../../features/i18n/i18n';
+import { createDescWithDocs } from '../docsLinks';
 
 const INITIAL_VIEW_OPTIONS = {
   DESKTOP: {
@@ -36,7 +37,12 @@ export function renderGeneralSettings(
 
   new Setting(containerEl)
     .setName(t('settings.general.desktopInitialView.label'))
-    .setDesc(t('settings.general.desktopInitialView.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.general.desktopInitialView.description'), [
+        { text: 'Display and behavior', path: 'user/settings/fc_config' },
+        { text: 'Views guide', path: 'user/views/' }
+      ])
+    )
     .addDropdown(dropdown => {
       Object.entries(desktopViewOptions).forEach(([value, labelKey]) => {
         dropdown.addOption(value, t(labelKey));
@@ -50,7 +56,12 @@ export function renderGeneralSettings(
 
   new Setting(containerEl)
     .setName(t('settings.general.mobileInitialView.label'))
-    .setDesc(t('settings.general.mobileInitialView.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.general.mobileInitialView.description'), [
+        { text: 'Display and behavior', path: 'user/settings/fc_config' },
+        { text: 'Views guide', path: 'user/views/' }
+      ])
+    )
     .addDropdown(dropdown => {
       Object.entries(INITIAL_VIEW_OPTIONS.MOBILE).forEach(([value, labelKey]) => {
         dropdown.addOption(value, t(labelKey));
@@ -64,7 +75,11 @@ export function renderGeneralSettings(
 
   new Setting(containerEl)
     .setName(t('settings.general.displayTimezone.label'))
-    .setDesc(t('settings.general.displayTimezone.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.general.displayTimezone.description'), [
+        { text: 'Timezone support', path: 'user/events/timezones' }
+      ])
+    )
     .addDropdown(dropdown => {
       const timezones = Intl.supportedValuesOf('timeZone'); // ['Europe/Bucharest', 'Europe/Zagreb'];
       timezones.forEach(tz => {
@@ -81,7 +96,12 @@ export function renderGeneralSettings(
 
   new Setting(containerEl)
     .setName(t('settings.general.clickToCreateEvent.label'))
-    .setDesc(t('settings.general.clickToCreateEvent.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.general.clickToCreateEvent.description'), [
+        { text: 'Interactions and gestures', path: 'user/guides/interactions' },
+        { text: 'Event management', path: 'user/events/manage' }
+      ])
+    )
     .addToggle(toggle => {
       toggle.setValue(plugin.settings.clickToCreateEventFromMonthView);
       toggle.onChange(async val => {

@@ -2,6 +2,7 @@ import { Setting, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../i18n/i18n';
 import { ActivityWatchSettingsModal } from './ActivityWatchSettingsModal';
+import { createDescWithDocs } from '../../../ui/settings/docsLinks';
 
 export function renderActivityWatchSettings(
   containerEl: HTMLElement,
@@ -11,7 +12,15 @@ export function renderActivityWatchSettings(
   const settings = plugin.settings;
   const awSettings = settings.activityWatch;
 
-  containerEl.createEl('h3', { text: t('settings.activityWatch.title') });
+  new Setting(containerEl)
+    .setName(t('settings.activityWatch.title'))
+    .setHeading()
+    .setDesc(
+      createDescWithDocs(t('settings.activityWatch.enable.description'), [
+        { text: 'ActivityWatch integration', path: 'user/features/activitywatch' },
+        { text: 'Troubleshooting', path: 'user/guides/troubleshooting' }
+      ])
+    );
 
   new Setting(containerEl)
     .setName(t('settings.activityWatch.enable.label'))

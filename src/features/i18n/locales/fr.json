@@ -118,6 +118,28 @@
     "openCalendar": "Ouvrir Full Calendar"
   },
   "settings": {
+    "categories": {
+      "general": {
+        "label": "Général",
+        "description": "Comportement général, rappels et mises à jour récentes."
+      },
+      "appearance": {
+        "label": "Apparence",
+        "description": "Personnalisez l'apparence du calendrier, les formats d'heure et la visibilité."
+      },
+      "calendars": {
+        "label": "Calendriers",
+        "description": "Gérez les sources de calendrier et la configuration spécifique aux fournisseurs."
+      },
+      "organization": {
+        "label": "Organisation",
+        "description": "Organisez les vues avec des espaces de travail et la catégorisation des événements."
+      },
+      "integrations": {
+        "label": "Intégrations",
+        "description": "Connectez des services externes comme Google et ActivityWatch."
+      }
+    },
     "general": {
       "desktopInitialView": {
         "label": "Vue initiale sur desktop",
@@ -362,8 +384,17 @@
       "saturday": "Samedi"
     },
     "changelog": {
+      "title": "Journal des modifications",
       "whatsNew": "Quoi de neuf",
-      "viewFull": "Voir le journal des modifications complet"
+      "viewFull": "Voir le journal des modifications complet",
+      "versionWithNumber": "Version {{version}}",
+      "whatsNewPageLink": "Page des nouveautés",
+      "changelogPageLink": "Journal des modifications",
+      "loadOlder": {
+        "button": "Charger les versions plus anciennes",
+        "loading": "Chargement...",
+        "errorOffline": "Impossible de charger les versions plus anciennes. Vous êtes peut-être hors ligne."
+      }
     },
     "utils": {
       "timelineDisabled": "La vue chronologique est désactivée. Réinitialisation de la vue de bureau par défaut à \"Semaine\"."

@@ -118,6 +118,28 @@
     "openCalendar": "Full Calendar öffnen"
   },
   "settings": {
+    "categories": {
+      "general": {
+        "label": "Allgemein",
+        "description": "Allgemeines Verhalten, Erinnerungen und aktuelle Aktualisierungen."
+      },
+      "appearance": {
+        "label": "Aussehen",
+        "description": "Passen Sie Kalenderdarstellung, Zeitformate und Sichtbarkeit an."
+      },
+      "calendars": {
+        "label": "Kalender",
+        "description": "Verwalten Sie Kalenderquellen und anbieterspezifische Konfigurationen."
+      },
+      "organization": {
+        "label": "Organisation",
+        "description": "Organisieren Sie Ansichten mit Workspaces und Ereigniskategorisierung."
+      },
+      "integrations": {
+        "label": "Integrationen",
+        "description": "Verbinden Sie externe Dienste wie Google und ActivityWatch."
+      }
+    },
     "general": {
       "desktopInitialView": {
         "label": "Desktop-Startansicht",
@@ -362,8 +384,17 @@
       "saturday": "Samstag"
     },
     "changelog": {
+      "title": "Änderungsprotokoll",
       "whatsNew": "Was ist neu",
-      "viewFull": "Vollständiges Änderungsprotokoll anzeigen"
+      "viewFull": "Vollständiges Änderungsprotokoll anzeigen",
+      "versionWithNumber": "Version {{version}}",
+      "whatsNewPageLink": "Was ist neu-Seite",
+      "changelogPageLink": "Änderungsprotokoll",
+      "loadOlder": {
+        "button": "Ältere Versionen laden",
+        "loading": "Wird geladen...",
+        "errorOffline": "Ältere Versionen konnten nicht geladen werden. Möglicherweise sind Sie offline."
+      }
     },
     "utils": {
       "timelineDisabled": "Timeline-Ansicht ist deaktiviert. Standard-Desktop-Ansicht wird auf \"Woche\" zurückgesetzt."

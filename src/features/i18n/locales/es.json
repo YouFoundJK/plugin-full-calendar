@@ -118,6 +118,28 @@
     "openCalendar": "Abrir Full Calendar"
   },
   "settings": {
+    "categories": {
+      "general": {
+        "label": "General",
+        "description": "Comportamiento general, recordatorios y actualizaciones recientes."
+      },
+      "appearance": {
+        "label": "Apariencia",
+        "description": "Personaliza la apariencia del calendario, formatos de hora y visibilidad."
+      },
+      "calendars": {
+        "label": "Calendarios",
+        "description": "Gestiona fuentes de calendario y configuraciones específicas del proveedor."
+      },
+      "organization": {
+        "label": "Organización",
+        "description": "Organiza vistas con espacios de trabajo y categorización de eventos."
+      },
+      "integrations": {
+        "label": "Integraciones",
+        "description": "Conecta servicios externos como Google y ActivityWatch."
+      }
+    },
     "general": {
       "desktopInitialView": {
         "label": "Vista inicial de escritorio",
@@ -362,8 +384,17 @@
       "saturday": "Sábado"
     },
     "changelog": {
+      "title": "Registro de cambios",
       "whatsNew": "Qué hay de nuevo",
-      "viewFull": "Ver registro de cambios completo"
+      "viewFull": "Ver registro de cambios completo",
+      "versionWithNumber": "Versión {{version}}",
+      "whatsNewPageLink": "Página de novedades",
+      "changelogPageLink": "Registro de cambios",
+      "loadOlder": {
+        "button": "Cargar versiones anteriores",
+        "loading": "Cargando...",
+        "errorOffline": "No se pudieron cargar versiones anteriores. Es posible que estés sin conexión."
+      }
     },
     "utils": {
       "timelineDisabled": "La vista de línea de tiempo está deshabilitada. Restableciendo la vista de escritorio predeterminada a \"Semana\"."

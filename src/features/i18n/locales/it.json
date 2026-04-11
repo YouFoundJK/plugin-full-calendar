@@ -118,6 +118,28 @@
     "openCalendar": "Apri Full Calendar"
   },
   "settings": {
+    "categories": {
+      "general": {
+        "label": "Generale",
+        "description": "Comportamento generale, promemoria e aggiornamenti recenti."
+      },
+      "appearance": {
+        "label": "Aspetto",
+        "description": "Personalizza l'aspetto del calendario, i formati orari e la visibilità."
+      },
+      "calendars": {
+        "label": "Calendari",
+        "description": "Gestisci le sorgenti calendario e la configurazione specifica del provider."
+      },
+      "organization": {
+        "label": "Organizzazione",
+        "description": "Organizza le viste con aree di lavoro e categorizzazione degli eventi."
+      },
+      "integrations": {
+        "label": "Integrazioni",
+        "description": "Collega servizi esterni come Google e ActivityWatch."
+      }
+    },
     "general": {
       "desktopInitialView": {
         "label": "Vista iniziale desktop",
@@ -362,8 +384,17 @@
       "saturday": "Sabato"
     },
     "changelog": {
+      "title": "Registro modifiche",
       "whatsNew": "Novità",
-      "viewFull": "Vedi il log delle modifiche completo"
+      "viewFull": "Vedi il log delle modifiche completo",
+      "versionWithNumber": "Versione {{version}}",
+      "whatsNewPageLink": "Pagina Novità",
+      "changelogPageLink": "Registro modifiche",
+      "loadOlder": {
+        "button": "Carica versioni precedenti",
+        "loading": "Caricamento...",
+        "errorOffline": "Impossibile caricare le versioni precedenti. Potresti essere offline."
+      }
     },
     "utils": {
       "timelineDisabled": "La vista timeline è disabilitata. Ripristino della vista desktop predefinita a \"Settimana\"."

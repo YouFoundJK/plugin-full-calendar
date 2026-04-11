@@ -11,24 +11,23 @@ import FullCalendarPlugin from '../../../main';
 import { CategorySettingsManager } from './CategorySetting';
 import { bulkUpdateCategories, bulkRemoveCategories } from '../bulkCategorization';
 import { t } from '../../i18n/i18n';
+import { createDescWithDocs } from '../../../ui/settings/docsLinks';
 
 export function renderCategorizationSettings(
   containerEl: HTMLElement,
   plugin: FullCalendarPlugin,
   rerender: () => void
 ): void {
-  const fragment = document.createDocumentFragment();
-  fragment.appendText(`${t('settings.categorization.learnMore')} `);
-  fragment.createEl('a', {
-    text: t('settings.categorization.learnMoreLink'),
-    href: 'https://youfoundjk.github.io/plugin-full-calendar/events/categories'
-  });
-  fragment.appendText('.');
-
   new Setting(containerEl)
     .setName(t('settings.categorization.title'))
     .setHeading()
-    .setDesc(fragment);
+    .setDesc(
+      createDescWithDocs(t('settings.categorization.learnMore'), [
+        { text: t('settings.categorization.learnMoreLink'), path: 'user/events/categories' },
+        { text: 'Event management', path: 'user/events/manage' },
+        { text: 'Tasks and categories', path: 'user/events/tasks' }
+      ])
+    );
 
   new Setting(containerEl)
     .setName(t('settings.categorization.enable.label'))

@@ -7,17 +7,30 @@
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../i18n/i18n';
+import { createDescWithDocs, createDocsLinksFragment } from '../../../ui/settings/docsLinks';
 
 export function renderRemindersSettings(
   containerEl: HTMLElement,
   plugin: FullCalendarPlugin,
   rerender: () => void
 ): void {
-  new Setting(containerEl).setName(t('settings.reminders.title')).setHeading();
+  new Setting(containerEl)
+    .setName(t('settings.reminders.title'))
+    .setHeading()
+    .setDesc(
+      createDocsLinksFragment([
+        { text: 'Reminders and notifications', path: 'user/guides/reminders' },
+        { text: 'Troubleshooting', path: 'user/guides/troubleshooting' }
+      ])
+    );
 
   new Setting(containerEl)
     .setName(t('settings.reminders.enableDefault.label'))
-    .setDesc(t('settings.reminders.enableDefault.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.reminders.enableDefault.description'), [
+        { text: 'Reminders and notifications', path: 'user/guides/reminders' }
+      ])
+    )
     .addToggle(toggle => {
       toggle.setValue(plugin.settings.enableDefaultReminder);
       toggle.onChange(async val => {

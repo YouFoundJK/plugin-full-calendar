@@ -8,6 +8,7 @@ import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { GoogleAuthManager } from '../auth/GoogleAuthManager';
 import { t } from '../../../features/i18n/i18n';
+import { createDescWithDocs, createDocsLinksFragment } from '../../../ui/settings/docsLinks';
 
 export function renderGoogleSettings(
   containerEl: HTMLElement,
@@ -16,12 +17,25 @@ export function renderGoogleSettings(
 ): void {
   const authManager = new GoogleAuthManager(plugin);
 
-  new Setting(containerEl).setName(t('google.title')).setHeading();
+  new Setting(containerEl)
+    .setName(t('google.title'))
+    .setHeading()
+    .setDesc(
+      createDocsLinksFragment([
+        { text: 'Google calendar setup', path: 'user/calendars/gcal' },
+        { text: 'Calendar sources settings', path: 'user/settings/sources' },
+        { text: 'Troubleshooting', path: 'user/guides/troubleshooting' }
+      ])
+    );
 
   // Custom credentials toggle
   new Setting(containerEl)
     .setName(t('google.customCredentials.enable.label'))
-    .setDesc(t('google.customCredentials.enable.description'))
+    .setDesc(
+      createDescWithDocs(t('google.customCredentials.enable.description'), [
+        { text: 'Google calendar setup', path: 'user/calendars/gcal' }
+      ])
+    )
     .addToggle(toggle => {
       toggle.setValue(plugin.settings.useCustomGoogleClient).onChange(async value => {
         plugin.settings.useCustomGoogleClient = value;

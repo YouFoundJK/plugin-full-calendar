@@ -38,45 +38,64 @@ import { makeDefaultPartialCalendarSource } from '../../types/calendar_settings'
 
 import { generateCalendarId } from '../../types/calendar_settings';
 import { t } from '../../features/i18n/i18n';
+import { createDocsLinksFragment } from './docsLinks';
 
 // Import the new React components
 import './changelogs/changelog.css';
 
-type SettingsCategoryId = 'overview' | 'appearance' | 'calendars' | 'organization' | 'integrations';
+type SettingsCategoryId = 'general' | 'appearance' | 'calendars' | 'organization' | 'integrations';
 
 interface SettingsCategory {
   id: SettingsCategoryId;
-  label: string;
-  description: string;
 }
 
 const SETTINGS_CATEGORIES: SettingsCategory[] = [
   {
-    id: 'overview',
-    label: 'Overview',
-    description: 'General behavior, reminders, and recent updates.'
+    id: 'general'
   },
   {
-    id: 'appearance',
-    label: 'Appearance',
-    description: 'Customize calendar appearance, time formats, and visibility.'
+    id: 'appearance'
   },
   {
-    id: 'calendars',
-    label: 'Calendars',
-    description: 'Manage calendar sources and provider-specific configuration.'
+    id: 'calendars'
   },
   {
-    id: 'organization',
-    label: 'Organization',
-    description: 'Organize views with workspaces and event categorization.'
+    id: 'organization'
   },
   {
-    id: 'integrations',
-    label: 'Integrations',
-    description: 'Connect external services like Google and ActivityWatch.'
+    id: 'integrations'
   }
 ];
+
+function getCategoryLabel(id: SettingsCategoryId): string {
+  switch (id) {
+    case 'general':
+      return t('settings.categories.general.label');
+    case 'appearance':
+      return t('settings.categories.appearance.label');
+    case 'calendars':
+      return t('settings.categories.calendars.label');
+    case 'organization':
+      return t('settings.categories.organization.label');
+    case 'integrations':
+      return t('settings.categories.integrations.label');
+  }
+}
+
+function getCategoryDescription(id: SettingsCategoryId): string {
+  switch (id) {
+    case 'general':
+      return t('settings.categories.general.description');
+    case 'appearance':
+      return t('settings.categories.appearance.description');
+    case 'calendars':
+      return t('settings.categories.calendars.description');
+    case 'organization':
+      return t('settings.categories.organization.description');
+    case 'integrations':
+      return t('settings.categories.integrations.description');
+  }
+}
 
 export function addCalendarButton(
   plugin: FullCalendarPlugin,
@@ -244,7 +263,7 @@ export function addCalendarButton(
 export class FullCalendarSettingTab extends PluginSettingTab {
   plugin: FullCalendarPlugin;
   private showFullChangelog = false;
-  private activeCategory: SettingsCategoryId = 'overview';
+  private activeCategory: SettingsCategoryId = 'general';
   private searchQuery = '';
   private searchExpanded = false;
   private searchDebounceId: number | null = null;
@@ -307,7 +326,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       const isActive = category.id === this.activeCategory;
       const button = tabsEl.createEl('button', {
         cls: `full-calendar-settings-tab${isActive ? ' is-active' : ''}`,
-        text: category.label
+        text: getCategoryLabel(category.id)
       });
       button.type = 'button';
       button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
@@ -434,9 +453,8 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         category => category.id === this.activeCategory
       );
       const introEl = containerEl.createDiv('full-calendar-settings-category-intro');
-      new Setting(introEl).setName(activeCategory?.label ?? 'Settings').setHeading();
-      if (activeCategory?.description) {
-        introEl.createEl('p', { text: activeCategory.description });
+      if (activeCategory) {
+        introEl.createEl('p', { text: getCategoryDescription(activeCategory.id) });
       }
       const panelEl = containerEl.createDiv('full-calendar-settings-panel');
       await this._renderActiveCategory(panelEl, this.activeCategory);
@@ -447,10 +465,8 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     for (const category of SETTINGS_CATEGORIES) {
       const sectionEl = containerEl.createDiv('full-calendar-settings-search-section');
       const introEl = sectionEl.createDiv('full-calendar-settings-category-intro');
-      new Setting(introEl).setName(category.label).setHeading();
-      if (category.description) {
-        introEl.createEl('p', { text: category.description });
-      }
+      new Setting(introEl).setName(getCategoryLabel(category.id)).setHeading();
+      introEl.createEl('p', { text: getCategoryDescription(category.id) });
 
       const panelEl = sectionEl.createDiv('full-calendar-settings-panel');
       await this._renderActiveCategory(panelEl, category.id);
@@ -546,7 +562,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     categoryId: SettingsCategoryId
   ): Promise<void> {
     switch (categoryId) {
-      case 'overview': {
+      case 'general': {
         const [{ renderGeneralSettings }, { renderRemindersSettings }, { renderWhatsNew }] =
           await Promise.all([
             import('./sections/renderGeneral'),
@@ -577,18 +593,14 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         break;
       }
       case 'calendars': {
-        const [{ renderCalendarManagement }, { renderGoogleSettings }] = await Promise.all([
-          import('./sections/renderCalendars'),
-          import('../../providers/google/ui/renderGoogle')
+        const [{ renderCalendarManagement }] = await Promise.all([
+          import('./sections/renderCalendars')
         ]);
         renderCalendarManagement(
           containerEl,
           this.plugin,
           this.calendarSettingsRef as unknown as React.RefObject<CalendarSettingsRef>
         );
-        renderGoogleSettings(containerEl, this.plugin, () => {
-          void this.display();
-        });
         break;
       }
       case 'organization': {
@@ -606,11 +618,15 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         break;
       }
       case 'integrations': {
-        const [{ renderActivityWatchSettings }] = await Promise.all([
-          import('../../features/activitywatch/ui/renderActivityWatch')
+        const [{ renderActivityWatchSettings }, { renderGoogleSettings }] = await Promise.all([
+          import('../../features/activitywatch/ui/renderActivityWatch'),
+          import('../../providers/google/ui/renderGoogle')
         ]);
 
         renderActivityWatchSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        renderGoogleSettings(containerEl, this.plugin, () => {
           void this.display();
         });
         break;
@@ -625,6 +641,14 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       notice.createEl('p', {
         text: t('settings.quickStart.description')
       });
+      const docsPara = notice.createEl('p');
+      docsPara.append(
+        createDocsLinksFragment([
+          { text: 'Onboarding and daily use', path: 'user/guides/onboarding-and-daily-use' },
+          { text: 'Calendar types', path: 'user/calendars/index' },
+          { text: 'Troubleshooting', path: 'user/guides/troubleshooting' }
+        ])
+      );
     }
   }
 }

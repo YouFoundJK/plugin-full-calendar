@@ -41,7 +41,7 @@ export function renderWhatsNew(containerEl: HTMLElement, onShowChangelog: () => 
   new Setting(headerEl)
     .setName(t('settings.changelog.whatsNew'))
     .setHeading()
-    .setDesc(`Version ${latestVersion.version}`);
+    .setDesc(t('settings.changelog.versionWithNumber', { version: latestVersion.version }));
   new Setting(headerEl).addExtraButton(button => {
     button
       .setIcon('ellipsis')
