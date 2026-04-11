@@ -126,7 +126,7 @@ stateDiagram-v2
 
 ### Phase 2: Greedy Best-Fit Allocation
 
-Because multiple profiles can match the same time window (e.g., using Obsidian might match both "Coding" and "PhD Study"), the engine resolves conflicts predictably:
+Because multiple profiles can match the same time window (e.g., using Obsidian might match both "Coding" and "Study"), the engine resolves conflicts predictably:
 
 1.  **Fitness Scoring**: Each candidate session gets a `fitness_score` equal to the total milliseconds that matched **primary evidence** during that block.
 2.  **Greedy Allocation**: Candidates are sorted globally by fitness score (descending). The highest-fitness block claims its time first.
@@ -134,12 +134,12 @@ Because multiple profiles can match the same time window (e.g., using Obsidian m
 4.  **Sub-Chunking**: If trimming leaves a surviving fragment that still meets the `activationThresholdMins`, it is preserved as an independent calendar block.
 
 !!! example "Conflict Resolution Example"
-    You have two profiles: **Coding** (Obsidian + VSCode + Browser) and **PhD** (Obsidian + Zotero + Browser). Your workflow: Obsidian (5 min) → Browser (10 min) → Zotero (12 min) → AFK.
+    You have two profiles: **Coding** (Obsidian + VSCode + Browser) and **Study** (Obsidian + Zotero + Browser). Your workflow: Obsidian (5 min) → Browser (10 min) → Zotero (12 min) → AFK.
 
     - **Coding** fitness: 5 + 10 = 15 minutes of matching
-    - **PhD** fitness: 5 + 10 + 12 = 27 minutes of matching
+    - **Study** fitness: 5 + 10 + 12 = 27 minutes of matching
 
-    PhD wins. It claims 0→27m. Coding's 0→15m candidate is fully swallowed and dropped. Result: a single "PhD" block from 0:00 to 0:27.
+    Study wins. It claims 0→27m. Coding's 0→15m candidate is fully swallowed and dropped. Result: a single "Study" block from 0:00 to 0:27.
 
 ---
 

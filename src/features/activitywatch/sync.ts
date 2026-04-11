@@ -4,11 +4,13 @@ import { t } from '../i18n/i18n';
 import { AWBucket, AWEvent } from './api';
 import { OFCEvent } from '../../types';
 import { moment as obsidianMoment } from 'obsidian';
-import { executeFSM, FinalBlock, FlattenedEvent } from './fsm';
+import { executeFSM, FinalBlock, FlattenedEvent, SeedState } from './fsm';
 
 const moment = obsidianMoment as unknown as typeof import('moment');
 const CONTINUITY_BUFFER_MS = 60 * 1000;
 const LOOKBACK_SAFETY_BUFFER_MINS = 5;
+const MIN_SYNC_LOOKBACK_MINS = 30;
+const MAX_SYNC_LOOKBACK_MINS = 6 * 60;
 
 type DerivedAWBlock = {
   startMs: number;
@@ -98,7 +100,8 @@ async function deriveActivityWatchBlocks(
   bucketIdsToFetch: Set<string>,
   profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>,
   startTime: Date,
-  endTime: Date
+  endTime: Date,
+  seedStates: SeedState[] = []
 ): Promise<DerivedAWBlock[]> {
   if (endTime.getTime() <= startTime.getTime()) {
     return [];
@@ -142,7 +145,7 @@ async function deriveActivityWatchBlocks(
     }
   }
 
-  const finalBlocks = executeFSM(flatEvents, profiles);
+  const finalBlocks = executeFSM(flatEvents, profiles, seedStates);
   return finalBlocks.map(block => ({
     startMs: block.startMs,
     endMs: block.endMs,
@@ -167,6 +170,108 @@ function computeLookbackDurationMs(
   return (
     (maxActivationThresholdMins + maxSoftBreakLimitMins + LOOKBACK_SAFETY_BUFFER_MINS) * 60 * 1000
   );
+}
+
+function findBoundaryOverlappingActivityWatchEvent(
+  plugin: FullCalendarPlugin,
+  targetCalendarId: string,
+  knownProfileSignatures: Set<ProfileSignature>,
+  syncBoundaryMs: number
+): PriorCalendarEvent | null {
+  const candidates = plugin.cache.store
+    .getAllEvents()
+    .filter(stored => {
+      if (stored.calendarId !== targetCalendarId) return false;
+
+      const range = parseTimedSingleEventRange(stored.event);
+      if (!range) return false;
+      const overlapsBoundary =
+        range.startMs <= syncBoundaryMs + CONTINUITY_BUFFER_MS &&
+        range.endMs >= syncBoundaryMs - CONTINUITY_BUFFER_MS;
+      if (!overlapsBoundary) return false;
+
+      const prior: PriorCalendarEvent = {
+        sessionId: stored.id,
+        event: stored.event,
+        startMs: range.startMs,
+        endMs: range.endMs
+      };
+
+      if (!isKnownActivityWatchProfileEvent(prior, knownProfileSignatures)) return false;
+      if (!normalizeContinuityTitle(stored.event.title)) return false;
+
+      return true;
+    })
+    .sort((a, b) => {
+      const aRange = parseTimedSingleEventRange(a.event);
+      const bRange = parseTimedSingleEventRange(b.event);
+      return (bRange?.endMs || 0) - (aRange?.endMs || 0);
+    });
+
+  if (!candidates[0]) return null;
+
+  const latest = candidates[0];
+  const latestRange = parseTimedSingleEventRange(latest.event);
+  if (!latestRange) return null;
+
+  return {
+    sessionId: latest.id,
+    event: latest.event,
+    startMs: latestRange.startMs,
+    endMs: latestRange.endMs
+  };
+}
+
+function computeBoundedLookbackDurationMs(
+  profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>,
+  matchedProfile?: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>[number]
+): number {
+  const baseLookbackMs = matchedProfile
+    ? (matchedProfile.activationThresholdMins +
+        matchedProfile.softBreakLimitMins +
+        LOOKBACK_SAFETY_BUFFER_MINS) *
+      60 *
+      1000
+    : computeLookbackDurationMs(profiles);
+  const minLookbackMs = MIN_SYNC_LOOKBACK_MINS * 60 * 1000;
+  const maxLookbackMs = MAX_SYNC_LOOKBACK_MINS * 60 * 1000;
+  return Math.min(maxLookbackMs, Math.max(baseLookbackMs, minLookbackMs));
+}
+
+function buildSeedStateFromBoundaryEvent(
+  profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>,
+  boundaryEvent: PriorCalendarEvent,
+  boundaryMs: number
+): {
+  seedState: SeedState;
+  matchedProfile: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>[number];
+} | null {
+  const matchedProfile = profiles.find(
+    profile =>
+      getProfileSignature(profile.name, profile.color) ===
+      getProfileSignature(boundaryEvent.event.subCategory || '', boundaryEvent.event.category || '')
+  );
+
+  if (!matchedProfile) return null;
+  if ((matchedProfile.supportingEvidenceRules || []).length === 0) return null;
+
+  const eventTitle = normalizeContinuityTitle(boundaryEvent.event.title);
+  if (!eventTitle) return null;
+
+  const thresholdMs = matchedProfile.activationThresholdMins * 60 * 1000;
+
+  return {
+    seedState: {
+      profileName: matchedProfile.name,
+      profileColor: matchedProfile.color,
+      state: 'active',
+      sessionStartMs: boundaryEvent.startMs,
+      lastEvidenceEndMs: boundaryMs,
+      targetTimeMs: thresholdMs,
+      fitnessScoreMs: 0
+    },
+    matchedProfile
+  };
 }
 
 function isSameProfileBlock(existing: PriorCalendarEvent, block: DerivedAWBlock): boolean {
@@ -570,9 +675,30 @@ export async function syncActivityWatch(
       profiles.map(profile => getProfileSignature(profile.name, profile.color))
     );
     const isCustomStrategy = settings.syncStrategy === 'custom';
+    const boundaryMs = settings.lastSyncTime;
+
+    let seedStates: SeedState[] = [];
+    let boundaryMatchedProfile:
+      | NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>[number]
+      | undefined;
+    if (!isCustomStrategy && settings.lastSyncTime > 0) {
+      const boundaryEvent = findBoundaryOverlappingActivityWatchEvent(
+        plugin,
+        settings.targetCalendarId,
+        knownProfileSignatures,
+        boundaryMs
+      );
+      if (boundaryEvent) {
+        const seeded = buildSeedStateFromBoundaryEvent(profiles, boundaryEvent, boundaryMs);
+        if (seeded) {
+          seedStates = [seeded.seedState];
+          boundaryMatchedProfile = seeded.matchedProfile;
+        }
+      }
+    }
 
     if (!isCustomStrategy && settings.lastSyncTime > 0 && !options?.overrideStart) {
-      const lookbackMs = computeLookbackDurationMs(profiles);
+      const lookbackMs = computeBoundedLookbackDurationMs(profiles, boundaryMatchedProfile);
       startTime = new Date(Math.max(0, settings.lastSyncTime - lookbackMs));
     }
 
@@ -582,7 +708,8 @@ export async function syncActivityWatch(
       bucketIdsToFetch,
       profiles,
       startTime,
-      endTime
+      endTime,
+      seedStates
     );
 
     let existingOverlapEvents: PriorCalendarEvent[] = [];

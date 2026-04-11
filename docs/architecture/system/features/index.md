@@ -25,3 +25,4 @@ Feature modules may transform, filter, and react, but they must not replace core
 
 - [Timezone Architecture](timezone-architecture.md)
 - [Reminders Architecture](reminders-architecture.md)
+- [ActivityWatch Architecture](../../activitywatch/index.md)

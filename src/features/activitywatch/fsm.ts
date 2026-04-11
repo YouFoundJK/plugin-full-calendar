@@ -44,6 +44,16 @@ export interface FinalBlock {
   primaryEvidenceSplinters: SplitEvent[];
 }
 
+export interface SeedState {
+  profileName: string;
+  profileColor: string;
+  state: 'warmup' | 'active';
+  sessionStartMs: number;
+  lastEvidenceEndMs: number;
+  targetTimeMs: number;
+  fitnessScoreMs: number;
+}
+
 // ── Phase 0: Sweep-Line Splintering ──────────────────────────────────────
 //
 // Takes raw, overlapping FlattenedEvents from multiple AW buckets and
@@ -180,12 +190,16 @@ export function evaluateRule(rule: TriggerRule, event: SplitEvent): boolean {
 //
 export function generateHypotheses(
   splinteredTimeline: SplitEvent[],
-  profiles: ContextProfile[]
+  profiles: ContextProfile[],
+  seedStates: SeedState[] = []
 ): CandidateSession[] {
   const allCandidates: CandidateSession[] = [];
 
   // Ensure chronological order
   const sorted = [...splinteredTimeline].sort((a, b) => a.startMs - b.startMs);
+  const seedByProfile = new Map<string, SeedState>(
+    seedStates.map(seed => [`${seed.profileName}::${seed.profileColor}`, seed])
+  );
 
   for (const profile of profiles) {
     let state: 'idle' | 'warmup' | 'active' = 'idle';
@@ -200,6 +214,19 @@ export function generateHypotheses(
 
     const thresholdMs = profile.activationThresholdMins * 60 * 1000;
     const softBreakMs = profile.softBreakLimitMins * 60 * 1000;
+
+    const profileSeed = seedByProfile.get(`${profile.name}::${profile.color}`);
+    if (profileSeed) {
+      state = profileSeed.state;
+      sessionStart = profileSeed.sessionStartMs;
+      sessionEnd = profileSeed.lastEvidenceEndMs;
+      targetTime = Math.max(profileSeed.targetTimeMs, thresholdMs);
+      bufferTime = 0;
+      fitnessScore = Math.max(0, profileSeed.fitnessScoreMs);
+      lastEvidenceEndMs = profileSeed.lastEvidenceEndMs;
+      splintersInside = [];
+      primaryEvidenceSplinters = [];
+    }
 
     const resetState = () => {
       state = 'idle';
@@ -415,8 +442,12 @@ export function greedyBestFitAllocation(candidates: CandidateSession[]): FinalBl
 
 // ── Public Entry Point ───────────────────────────────────────────────────
 
-export function executeFSM(flatEvents: FlattenedEvent[], profiles: ContextProfile[]): FinalBlock[] {
+export function executeFSM(
+  flatEvents: FlattenedEvent[],
+  profiles: ContextProfile[],
+  seedStates: SeedState[] = []
+): FinalBlock[] {
   const splinteredTimeline = splinterEvents(flatEvents);
-  const candidates = generateHypotheses(splinteredTimeline, profiles);
+  const candidates = generateHypotheses(splinteredTimeline, profiles, seedStates);
   return greedyBestFitAllocation(candidates);
 }
