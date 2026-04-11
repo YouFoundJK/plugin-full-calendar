@@ -65,6 +65,9 @@ interface ExtraRenderProps {
   hiddenDays?: number[];
   dayMaxEvents?: number | boolean;
   highlightCurrentOrNextEvent?: boolean;
+  onSearchQueryChange?: (query: string) => void;
+  initialSearchQuery?: string;
+  onEventsSet?: () => void;
 }
 
 type TimeGridDayHeaderFormat =
@@ -131,7 +134,10 @@ export async function renderCalendar(
     resources,
     onViewChange,
     businessHours,
-    drop
+    drop,
+    onSearchQueryChange,
+    initialSearchQuery,
+    onEventsSet
   } = settings || {};
 
   // Wrap eventClick to ignore shadow events
@@ -181,7 +187,7 @@ export async function renderCalendar(
         mode: 'narrow',
         headerToolbar: false,
         footerToolbar: {
-          left: 'prev,today,next',
+          left: 'prev,today,next search',
           right: 'views,more'
         }
       };
@@ -191,7 +197,7 @@ export async function renderCalendar(
       return {
         mode: 'compact-desktop',
         headerToolbar: {
-          left: 'prev,today,next',
+          left: 'prev,today,next search',
           center: 'title',
           right: 'analysis more'
         },
@@ -206,7 +212,7 @@ export async function renderCalendar(
     return {
       mode: 'desktop',
       headerToolbar: {
-        left: 'workspace prev,today,navigate,next',
+        left: 'workspace prev,today,navigate,next search',
         center: 'title',
         right: `analysis ${fullDesktopViewGroup}`
       },
@@ -322,6 +328,20 @@ export async function renderCalendar(
       const menu = new Menu();
       addViewOptionsToMenu(menu, currentToolbarMode);
       menu.showAtMouseEvent(ev);
+    }
+  };
+
+  customButtonConfig.search = {
+    text: '⌕',
+    click: () => {
+      const input = containerEl.querySelector<HTMLInputElement>('.ofc-toolbar-search-input');
+      const wrap = containerEl.querySelector<HTMLElement>('.ofc-toolbar-search-input-wrap');
+      if (!input || !wrap) {
+        return;
+      }
+      wrap.setCssProps({ width: '180px' });
+      input.focus();
+      input.select();
     }
   };
 
@@ -665,10 +685,12 @@ export async function renderCalendar(
     viewDidMount: () => {
       onViewChange?.();
       updateCurrentOrNextEventHighlight();
+      requestAnimationFrame(() => ensureToolbarSearchControl());
     },
 
     eventsSet: () => {
       updateCurrentOrNextEventHighlight();
+      onEventsSet?.();
     },
 
     // Enable drag-and-drop from external sources (e.g., Tasks Backlog)
@@ -694,13 +716,121 @@ export async function renderCalendar(
       currentToolbarMode = nextToolbarLayout.mode;
       cal.setOption('headerToolbar', nextToolbarLayout.headerToolbar);
       cal.setOption('footerToolbar', nextToolbarLayout.footerToolbar);
+      requestAnimationFrame(() => ensureToolbarSearchControl());
     }
 
     cal.updateSize();
   });
   resizeObserver.observe(containerEl);
 
+  let searchQuery = initialSearchQuery || '';
+  let searchExpanded = !!searchQuery;
+  let searchDebounceId: number | null = null;
+
+  const scheduleSearchQueryUpdate = () => {
+    if (searchDebounceId !== null) {
+      window.clearTimeout(searchDebounceId);
+    }
+    searchDebounceId = window.setTimeout(() => {
+      onSearchQueryChange?.(searchQuery);
+    }, 80);
+  };
+
+  const ensureToolbarSearchControl = () => {
+    const searchButtonEl = containerEl.querySelector<HTMLButtonElement>('.fc-search-button');
+    if (!searchButtonEl || searchButtonEl.dataset.ofcSearchBound === 'true') {
+      return;
+    }
+
+    searchButtonEl.dataset.ofcSearchBound = 'true';
+    searchButtonEl.type = 'button';
+    searchButtonEl.ariaLabel = 'Search events';
+    searchButtonEl.toggleClass('clickable-icon', true);
+    searchButtonEl.parentElement?.toggleClass('ofc-toolbar-search-host', true);
+
+    const inputWrapEl = document.createElement('div');
+    inputWrapEl.className = 'ofc-toolbar-search-input-wrap';
+    inputWrapEl.setCssProps({
+      width: searchExpanded || searchQuery ? '180px' : '0px'
+    });
+
+    const searchInputEl = document.createElement('input');
+    searchInputEl.className = 'ofc-toolbar-search-input';
+    searchInputEl.type = 'text';
+    searchInputEl.placeholder = 'Search events...';
+    searchInputEl.value = searchQuery;
+    searchInputEl.ariaLabel = 'Search events';
+
+    const clearButtonEl = document.createElement('button');
+    clearButtonEl.className = 'clickable-icon ofc-toolbar-search-clear';
+    clearButtonEl.type = 'button';
+    clearButtonEl.ariaLabel = 'Clear search';
+    clearButtonEl.textContent = '×';
+    clearButtonEl.setCssProps({ display: searchQuery ? 'inline-flex' : 'none' });
+
+    inputWrapEl.appendChild(searchInputEl);
+    inputWrapEl.appendChild(clearButtonEl);
+    searchButtonEl.insertAdjacentElement('afterend', inputWrapEl);
+
+    const syncState = () => {
+      inputWrapEl.setCssProps({ width: searchExpanded || searchQuery ? '180px' : '0px' });
+      clearButtonEl.setCssProps({ display: searchQuery ? 'inline-flex' : 'none' });
+      searchButtonEl.toggleClass('is-active', searchExpanded || !!searchQuery);
+      searchButtonEl.setCssProps({
+        display: searchExpanded || !!searchQuery ? 'none' : 'inline-flex'
+      });
+      inputWrapEl.toggleClass('is-active-query', !!searchQuery);
+    };
+
+    searchButtonEl.addEventListener('click', () => {
+      searchExpanded = true;
+      syncState();
+      searchInputEl.focus();
+      searchInputEl.select();
+    });
+
+    searchInputEl.addEventListener('input', () => {
+      searchQuery = searchInputEl.value;
+      syncState();
+      scheduleSearchQueryUpdate();
+    });
+
+    searchInputEl.addEventListener('blur', () => {
+      if (searchQuery) {
+        return;
+      }
+      searchExpanded = false;
+      syncState();
+    });
+
+    searchInputEl.addEventListener('keydown', evt => {
+      if (evt.key === 'Escape') {
+        if (searchQuery) {
+          searchQuery = '';
+          searchInputEl.value = '';
+          scheduleSearchQueryUpdate();
+        } else {
+          searchExpanded = false;
+        }
+        syncState();
+        searchInputEl.blur();
+      }
+    });
+
+    clearButtonEl.addEventListener('mousedown', evt => {
+      evt.preventDefault();
+      searchQuery = '';
+      searchInputEl.value = '';
+      scheduleSearchQueryUpdate();
+      syncState();
+      searchInputEl.focus();
+    });
+
+    syncState();
+  };
+
   cal.render();
+  ensureToolbarSearchControl();
 
   if (!containerEl.hasAttribute('tabindex')) {
     containerEl.setAttribute('tabindex', '0');

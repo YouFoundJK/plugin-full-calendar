@@ -11,6 +11,21 @@ This page documents direct interactions in the calendar UI.
 - Right-click date or view area: open date navigation actions.
 - Swipe left or right on the calendar grid (touch): move to next or previous range.
 
+## Event Search (Toolbar)
+
+- Use the search icon in the top toolbar (next to date navigation) to find events quickly.
+- When inactive, only the icon is shown; clicking it expands the search input inline.
+- Search filters events in-place across the current view and hides non-matching events.
+- Press `Esc` to clear/collapse quickly, or use the clear button.
+- When a search is active, the input shows a red glow so the filter state is obvious.
+
+### Matching behavior
+
+- Search is intentionally strict to reduce false positives.
+- Exact/contiguous matches are prioritized.
+- Small typos can still match for longer terms.
+- Multi-word queries require each term to match.
+
 ## Keyboard Modifiers
 
 - Left/Right arrow keys: previous or next range when the calendar view is focused.

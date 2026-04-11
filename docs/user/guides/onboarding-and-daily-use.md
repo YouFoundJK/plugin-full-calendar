@@ -11,6 +11,7 @@
 | First-run setup, open calendar | [Getting Started](../../getting_started.md) | [Calendar Types](../calendars/index.md) |
 | Create an event fast | [Getting Started](../../getting_started.md) | [Working with Events](../events/index.md) |
 | Find commands/shortcuts | [Commands and Shortcuts](commands-and-shortcuts.md) | [Interactions and Gestures](interactions.md) |
+| Find events fast in a busy calendar | [Interactions and Gestures](interactions.md#event-search-toolbar) | [Working with Events](../events/index.md) |
 | Set up reminders | [Reminders and Notifications](reminders.md) | [Quick Workflows](quick-workflows.md) |
 | Use ready workflows | [Quick Workflows](quick-workflows.md) | [Settings and Customization](../settings/index.md) |
 

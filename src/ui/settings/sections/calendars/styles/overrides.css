@@ -81,6 +81,67 @@
     padding: var(--size-4-1) var(--size-4-3) !important;
 }
 
+.fc .fc-toolbar.fc-header-toolbar {
+    flex-wrap: nowrap;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-toolbar-chunk {
+    min-width: 0;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-toolbar-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fc .ofc-toolbar-search-host {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+}
+
+.fc .ofc-toolbar-search-input-wrap {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    position: relative;
+    overflow: hidden;
+    transition: width 140ms ease;
+    width: 0px;
+    min-width: 0;
+}
+
+.fc .ofc-toolbar-search-input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 6px 26px 6px 10px;
+    background-color: var(--background-primary);
+}
+
+.fc .ofc-toolbar-search-input-wrap.is-active-query .ofc-toolbar-search-input {
+    border-color: var(--text-error);
+    box-shadow: 0 0 0 2px color-mix(in srgb, white 85%, transparent),
+        0 0 16px 5px color-mix(in srgb, var(--text-error) 66%, transparent),
+        0 0 32px 12px color-mix(in srgb, var(--text-error) 52%, transparent);
+}
+
+.fc .ofc-toolbar-search-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    line-height: 1;
+    padding: 0;
+}
+
 .ofc-has-checkbox {
     display: flex !important;
 }

@@ -404,6 +404,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         display: this.searchExpanded || !!this.searchQuery ? 'none' : 'inline-flex'
       });
       searchButtonEl.toggleClass('is-active', this.searchExpanded || !!this.searchQuery);
+      inputWrapEl.toggleClass('is-active-query', !!this.searchQuery);
     };
 
     searchButtonEl.addEventListener('click', () => {

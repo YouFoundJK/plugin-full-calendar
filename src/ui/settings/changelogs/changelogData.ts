@@ -14,7 +14,7 @@ export interface Version {
 // Add new versions to the TOP of this array.
 export const changelogData: Version[] = [
   {
-    version: '0.12.8.2',
+    version: '0.12.8.4',
     changes: [
       {
         type: 'new',
