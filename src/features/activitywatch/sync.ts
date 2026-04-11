@@ -25,6 +25,8 @@ type PriorCalendarEvent = {
   endMs: number;
 };
 
+type ProfileSignature = string;
+
 export interface SyncOptions {
   overrideStart?: Date;
   overrideEnd?: Date;
@@ -174,6 +176,13 @@ function isSameProfileBlock(existing: PriorCalendarEvent, block: DerivedAWBlock)
   );
 }
 
+function getProfileSignature(
+  profileName: string | null | undefined,
+  profileColor: string | null | undefined
+): ProfileSignature {
+  return `${profileName || ''}::${profileColor || ''}`;
+}
+
 function normalizeContinuityTitle(title: string | null | undefined): string {
   return (title || '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
@@ -182,6 +191,15 @@ function isSameContinuityBlock(existing: PriorCalendarEvent, block: DerivedAWBlo
   return (
     isSameProfileBlock(existing, block) &&
     normalizeContinuityTitle(existing.event.title) === normalizeContinuityTitle(block.title)
+  );
+}
+
+function isKnownActivityWatchProfileEvent(
+  existing: PriorCalendarEvent,
+  knownProfileSignatures: Set<ProfileSignature>
+): boolean {
+  return knownProfileSignatures.has(
+    getProfileSignature(existing.event.subCategory || '', existing.event.category || '')
   );
 }
 
@@ -285,6 +303,20 @@ function findExtendableExistingEvent(
   );
 }
 
+function findReplaceableExistingEvents(
+  existingEvents: PriorCalendarEvent[],
+  block: DerivedAWBlock,
+  knownProfileSignatures: Set<ProfileSignature>
+): PriorCalendarEvent[] {
+  return existingEvents.filter(
+    existing =>
+      isKnownActivityWatchProfileEvent(existing, knownProfileSignatures) &&
+      !isSameContinuityBlock(existing, block) &&
+      existing.endMs >= block.startMs - CONTINUITY_BUFFER_MS &&
+      existing.startMs <= block.endMs + CONTINUITY_BUFFER_MS
+  );
+}
+
 function recoverSessionIdFromStore(
   plugin: FullCalendarPlugin,
   targetCalendarId: string,
@@ -318,6 +350,40 @@ function recoverSessionIdFromStore(
   return matches[0]?.id || null;
 }
 
+function recoverSessionIdForPriorEvent(
+  plugin: FullCalendarPlugin,
+  targetCalendarId: string,
+  existing: PriorCalendarEvent
+): string | null {
+  const matches = plugin.cache.store
+    .getAllEvents()
+    .filter(stored => {
+      if (stored.calendarId !== targetCalendarId) return false;
+
+      const range = parseTimedSingleEventRange(stored.event);
+      if (!range) return false;
+
+      const sameProfile =
+        stored.event.subCategory === existing.event.subCategory &&
+        stored.event.category === existing.event.category;
+      const sameTitle =
+        normalizeContinuityTitle(stored.event.title) ===
+        normalizeContinuityTitle(existing.event.title);
+      const nearSameRange =
+        Math.abs(range.startMs - existing.startMs) <= CONTINUITY_BUFFER_MS &&
+        Math.abs(range.endMs - existing.endMs) <= CONTINUITY_BUFFER_MS;
+
+      return sameProfile && sameTitle && nearSameRange;
+    })
+    .sort((a, b) => {
+      const aRange = parseTimedSingleEventRange(a.event);
+      const bRange = parseTimedSingleEventRange(b.event);
+      return (bRange?.endMs || 0) - (aRange?.endMs || 0);
+    });
+
+  return matches[0]?.id || null;
+}
+
 function materializeBlockAsEvent(block: DerivedAWBlock): OFCEvent {
   const startMoment = moment(block.startMs);
   const endMoment = moment(block.endMs);
@@ -341,7 +407,9 @@ async function createOrUpdateBlock(
   targetCalendarId: string,
   block: DerivedAWBlock,
   existingOverlapEvents: PriorCalendarEvent[],
-  canExtendExistingEvents: boolean
+  canExtendExistingEvents: boolean,
+  canReplaceExistingEvents: boolean,
+  knownProfileSignatures: Set<ProfileSignature>
 ): Promise<'ignored' | 'extended' | 'created'> {
   const swallowing = findSwallowingExistingEvent(existingOverlapEvents, block);
   if (swallowing) {
@@ -374,6 +442,35 @@ async function createOrUpdateBlock(
         if (didExtend) {
           return 'extended';
         }
+      }
+    }
+  }
+
+  if (canReplaceExistingEvents) {
+    const replaceableEvents = findReplaceableExistingEvents(
+      existingOverlapEvents,
+      block,
+      knownProfileSignatures
+    );
+
+    for (const existing of replaceableEvents) {
+      let sessionId = existing.sessionId;
+      if (!sessionId) {
+        sessionId = recoverSessionIdForPriorEvent(plugin, targetCalendarId, existing);
+      }
+
+      if (!sessionId) continue;
+
+      try {
+        await plugin.cache.deleteEvent(sessionId, { force: true });
+        existing.sessionId = sessionId;
+
+        const idx = existingOverlapEvents.indexOf(existing);
+        if (idx >= 0) {
+          existingOverlapEvents.splice(idx, 1);
+        }
+      } catch (err) {
+        console.warn('ActivityWatch sync: failed to replace stale continuity event.', err);
       }
     }
   }
@@ -469,6 +566,9 @@ export async function syncActivityWatch(
     if (options?.overrideEnd) endTime = options.overrideEnd;
 
     const profiles = settings.profiles || [];
+    const knownProfileSignatures = new Set<ProfileSignature>(
+      profiles.map(profile => getProfileSignature(profile.name, profile.color))
+    );
     const isCustomStrategy = settings.syncStrategy === 'custom';
 
     if (!isCustomStrategy && settings.lastSyncTime > 0 && !options?.overrideStart) {
@@ -497,7 +597,9 @@ export async function syncActivityWatch(
       );
     }
 
-    const canExtendExistingEvents = calendarInstance.getCapabilities().canEdit;
+    const capabilities = calendarInstance.getCapabilities();
+    const canExtendExistingEvents = capabilities.canEdit;
+    const canReplaceExistingEvents = capabilities.canDelete;
 
     let addedCount = 0;
     const sortedFinalBlocks = [...finalBlocks].sort((a, b) => a.startMs - b.startMs);
@@ -507,7 +609,9 @@ export async function syncActivityWatch(
         settings.targetCalendarId,
         block,
         existingOverlapEvents,
-        canExtendExistingEvents
+        canExtendExistingEvents,
+        canReplaceExistingEvents,
+        knownProfileSignatures
       );
       if (action === 'created') {
         addedCount++;
