@@ -212,6 +212,22 @@
         "slotMaxTime": {
           "label": "Heure la plus tardive à afficher",
           "description": "Définir l'heure la plus tardive visible dans les vues en grille (format : HH:mm)"
+          },
+          "allDaySlot": {
+            "label": "Afficher la ligne toute la journée (semaine/jour)",
+            "description": "Activer ou désactiver la ligne toute la journée en haut des vues semaine et jour."
+          },
+          "timeGridDayHeaderFormat": {
+            "label": "Format de date de l'en-tête semaine/jour",
+            "description": "Choisissez comment les étiquettes de jour sont affichées dans les vues semaine et jour.",
+            "options": {
+              "ddmmDay": "JJ/MM jour",
+              "mmddDay": "MM/JJ jour",
+              "dayDdmm": "jour JJ/MM",
+              "dayMmdd": "jour MM/JJ",
+              "ddmmyyyyDay": "JJ/MM/AAAA jour",
+              "mmddyyyyDay": "MM/JJ/AAAA jour"
+            }
         }
       },
       "dayVisibility": {

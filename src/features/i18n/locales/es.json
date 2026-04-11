@@ -212,6 +212,22 @@
         "slotMaxTime": {
           "label": "Hora más tardía a mostrar",
           "description": "Establece la hora más tardía visible en las vistas de cuadrícula de tiempo (formato: HH:mm)"
+        },
+        "allDaySlot": {
+          "label": "Mostrar fila de todo el día (vistas semana/día)",
+          "description": "Alterna la fila de todo el día en la parte superior de las vistas de cuadrícula de tiempo de semana y día."
+        },
+        "timeGridDayHeaderFormat": {
+          "label": "Formato de fecha del encabezado (semana/día)",
+          "description": "Elige cómo se muestran las etiquetas de los días en las vistas de semana y día.",
+          "options": {
+            "ddmmDay": "DD/MM día",
+            "mmddDay": "MM/DD día",
+            "dayDdmm": "día DD/MM",
+            "dayMmdd": "día MM/DD",
+            "ddmmyyyyDay": "DD/MM/AAAA día",
+            "mmddyyyyDay": "MM/DD/AAAA día"
+          }
         }
       },
       "dayVisibility": {

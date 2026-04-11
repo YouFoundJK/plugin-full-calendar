@@ -212,6 +212,22 @@
         "slotMaxTime": {
           "label": "Späteste angezeigte Zeit",
           "description": "Setzen Sie die späteste Zeit in Zeitrasteransichten (Format: HH:mm)"
+          },
+          "allDaySlot": {
+            "label": "Ganztagszeile anzeigen (Woche/Tag)",
+            "description": "Aktivieren oder deaktivieren Sie die Ganztagszeile oben in den Wochen- und Tagesansichten."
+          },
+          "timeGridDayHeaderFormat": {
+            "label": "Datumsformat für Wochen-/Tagesüberschrift",
+            "description": "Wählen Sie, wie die Tagesbezeichnungen in Wochen- und Tagesansichten angezeigt werden.",
+            "options": {
+              "ddmmDay": "TT/MM Tag",
+              "mmddDay": "MM/TT Tag",
+              "dayDdmm": "Tag TT/MM",
+              "dayMmdd": "Tag MM/TT",
+              "ddmmyyyyDay": "TT/MM/JJJJ Tag",
+              "mmddyyyyDay": "MM/TT/JJJJ Tag"
+            }
         }
       },
       "dayVisibility": {

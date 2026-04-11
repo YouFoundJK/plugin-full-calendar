@@ -212,6 +212,22 @@
         "slotMaxTime": {
           "label": "Latest time to display",
           "description": "Set the latest time visible in time grid views (format: HH:mm)"
+        },
+        "allDaySlot": {
+          "label": "Show all-day row (week/day views)",
+          "description": "Toggle the all-day row at the top of week and day time-grid views."
+        },
+        "timeGridDayHeaderFormat": {
+          "label": "Week/day header date format",
+          "description": "Choose how day labels are displayed in week and day views.",
+          "options": {
+            "ddmmDay": "DD/MM day",
+            "mmddDay": "MM/DD day",
+            "dayDdmm": "day DD/MM",
+            "dayMmdd": "day MM/DD",
+            "ddmmyyyyDay": "DD/MM/YYYY day",
+            "mmddyyyyDay": "MM/DD/YYYY day"
+          }
         }
       },
       "dayVisibility": {

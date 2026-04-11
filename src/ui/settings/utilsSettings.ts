@@ -70,6 +70,8 @@ export function migrateAndSanitizeSettings(settings: unknown): {
     // New granular view configuration properties with sensible defaults
     slotMinTime: raw.slotMinTime ?? '00:00',
     slotMaxTime: raw.slotMaxTime ?? '24:00',
+    allDaySlot: raw.allDaySlot ?? true,
+    timeGridDayHeaderFormat: raw.timeGridDayHeaderFormat ?? 'day-mmdd',
     weekends: raw.weekends ?? true,
     hiddenDays: raw.hiddenDays ?? [],
     dayMaxEvents: raw.dayMaxEvents ?? false,

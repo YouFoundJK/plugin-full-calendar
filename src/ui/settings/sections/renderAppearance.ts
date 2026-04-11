@@ -172,6 +172,55 @@ export function renderAppearanceSettings(
     });
 
   new Setting(containerEl)
+    .setName(t('settings.appearance.viewTimeRange.allDaySlot.label'))
+    .setDesc(t('settings.appearance.viewTimeRange.allDaySlot.description'))
+    .addToggle(toggle => {
+      toggle.setValue(plugin.settings.allDaySlot ?? true);
+      toggle.onChange(async val => {
+        plugin.settings.allDaySlot = val;
+        await plugin.saveSettings();
+        rerender();
+      });
+    });
+
+  new Setting(containerEl)
+    .setName(t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.label'))
+    .setDesc(t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.description'))
+    .addDropdown(dropdown => {
+      dropdown.addOption(
+        'ddmm-day',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.ddmmDay')
+      );
+      dropdown.addOption(
+        'mmdd-day',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.mmddDay')
+      );
+      dropdown.addOption(
+        'day-ddmm',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.dayDdmm')
+      );
+      dropdown.addOption(
+        'day-mmdd',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.dayMmdd')
+      );
+      dropdown.addOption(
+        'ddmmyyyy-day',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.ddmmyyyyDay')
+      );
+      dropdown.addOption(
+        'mmddyyyy-day',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.mmddyyyyDay')
+      );
+
+      dropdown.setValue(plugin.settings.timeGridDayHeaderFormat || 'day-mmdd');
+      dropdown.onChange(async value => {
+        plugin.settings.timeGridDayHeaderFormat = value;
+        await plugin.saveSettings();
+        rerender();
+      });
+    });
+
+  new Setting(containerEl)
     .setName(t('settings.appearance.dayVisibility.title'))
     .setHeading()
     .setDesc(

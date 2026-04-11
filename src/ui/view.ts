@@ -609,6 +609,8 @@ export class CalendarView extends ItemView {
         timeFormat24h: calendarConfig.timeFormat24h,
         slotMinTime: calendarConfig.slotMinTime,
         slotMaxTime: calendarConfig.slotMaxTime,
+        allDaySlot: calendarConfig.allDaySlot,
+        timeGridDayHeaderFormat: calendarConfig.timeGridDayHeaderFormat,
         weekends: calendarConfig.weekends,
         hiddenDays: calendarConfig.hiddenDays,
         dayMaxEvents: calendarConfig.dayMaxEvents,

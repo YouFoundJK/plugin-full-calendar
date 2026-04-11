@@ -212,7 +212,23 @@
         "slotMaxTime": {
           "label": "Orario massimo da visualizzare",
           "description": "Imposta l'orario massimo visibile nelle viste a griglia (formato: HH:mm)"
-        }
+          },
+          "allDaySlot": {
+            "label": "Mostra riga tutto il giorno (settimana/giorno)",
+            "description": "Attiva o disattiva la riga tutto il giorno in alto nelle viste settimana e giorno."
+          },
+          "timeGridDayHeaderFormat": {
+            "label": "Formato data intestazione settimana/giorno",
+            "description": "Scegli come visualizzare le etichette dei giorni nelle viste settimana e giorno.",
+            "options": {
+              "ddmmDay": "GG/MM giorno",
+              "mmddDay": "MM/GG giorno",
+              "dayDdmm": "giorno GG/MM",
+              "dayMmdd": "giorno MM/GG",
+              "ddmmyyyyDay": "GG/MM/AAAA giorno",
+              "mmddyyyyDay": "MM/GG/AAAA giorno"
+            }
+          }
       },
       "dayVisibility": {
         "title": "Visibilità giorni",

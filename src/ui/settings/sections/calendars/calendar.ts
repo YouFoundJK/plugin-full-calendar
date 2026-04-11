@@ -59,11 +59,21 @@ interface ExtraRenderProps {
   // New granular view configuration properties
   slotMinTime?: string;
   slotMaxTime?: string;
+  allDaySlot?: boolean;
+  timeGridDayHeaderFormat?: string;
   weekends?: boolean;
   hiddenDays?: number[];
   dayMaxEvents?: number | boolean;
   highlightCurrentOrNextEvent?: boolean;
 }
+
+type TimeGridDayHeaderFormat =
+  | 'ddmm-day'
+  | 'mmdd-day'
+  | 'day-ddmm'
+  | 'day-mmdd'
+  | 'ddmmyyyy-day'
+  | 'mmddyyyy-day';
 
 export async function renderCalendar(
   containerEl: HTMLElement,
@@ -207,22 +217,58 @@ export async function renderCalendar(
   const initialToolbarLayout = getToolbarLayout(getResponsiveWidth());
   let currentToolbarMode: ToolbarMode = initialToolbarLayout.mode;
 
+  const formatTimeGridDayHeader = (date: Date): string => {
+    const format =
+      (settings?.timeGridDayHeaderFormat as TimeGridDayHeaderFormat | undefined) || 'day-mmdd';
+    const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(date);
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const dd = String(day).padStart(2, '0');
+    const mm = String(month).padStart(2, '0');
+    const yyyy = String(date.getFullYear());
+
+    switch (format) {
+      case 'ddmm-day':
+        return `${day}/${month} ${weekday}`;
+      case 'mmdd-day':
+        return `${month}/${day} ${weekday}`;
+      case 'day-ddmm':
+        return `${weekday} ${day}/${month}`;
+      case 'ddmmyyyy-day':
+        return `${dd}/${mm}/${yyyy} ${weekday}`;
+      case 'mmddyyyy-day':
+        return `${mm}/${dd}/${yyyy} ${weekday}`;
+      case 'day-mmdd':
+      default:
+        return `${weekday} ${month}/${day}`;
+    }
+  };
+
   type ViewSpec = {
     type: string;
     duration?: { days?: number; weeks?: number };
     buttonText: string;
     slotMinWidth?: number;
+    dayHeaderContent?: (arg: { date: Date }) => string;
   };
   const views: Record<string, ViewSpec> = {
+    timeGridWeek: {
+      type: 'timeGrid',
+      duration: { weeks: 1 },
+      buttonText: 'week',
+      dayHeaderContent: arg => formatTimeGridDayHeader(arg.date)
+    },
     timeGridDay: {
       type: 'timeGrid',
       duration: { days: 1 },
-      buttonText: isNarrow ? '1' : 'day'
+      buttonText: isNarrow ? '1' : 'day',
+      dayHeaderContent: arg => formatTimeGridDayHeader(arg.date)
     },
     timeGrid3Days: {
       type: 'timeGrid',
       duration: { days: 3 },
-      buttonText: '3'
+      buttonText: '3',
+      dayHeaderContent: arg => formatTimeGridDayHeader(arg.date)
     }
   };
   if (showResourceViews) {
@@ -515,6 +561,7 @@ export async function renderCalendar(
     // New granular view configuration settings
     ...(settings?.slotMinTime !== undefined && { slotMinTime: settings.slotMinTime }),
     ...(settings?.slotMaxTime !== undefined && { slotMaxTime: settings.slotMaxTime }),
+    ...(settings?.allDaySlot !== undefined && { allDaySlot: settings.allDaySlot }),
     ...(settings?.weekends !== undefined && { weekends: settings.weekends }),
     ...(settings?.hiddenDays !== undefined && { hiddenDays: settings.hiddenDays }),
     ...(settings?.timeFormat24h && {

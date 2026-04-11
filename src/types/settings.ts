@@ -70,6 +70,8 @@ export interface WorkspaceSettings {
   // New granular view configuration overrides
   slotMinTime?: string; // Format: 'HH:mm' - earliest time to display
   slotMaxTime?: string; // Format: 'HH:mm' - latest time to display
+  allDaySlot?: boolean; // Whether to show all-day slot in week/day time-grid views
+  timeGridDayHeaderFormat?: string; // Format for week/day column headers in time-grid views
   weekends?: boolean; // Whether to display weekends
   hiddenDays?: number[]; // Array of day numbers to hide (0=Sunday, 1=Monday, etc.)
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
@@ -115,6 +117,8 @@ export interface FullCalendarSettings {
   // New granular view configuration options
   slotMinTime?: string; // Format: 'HH:mm' - earliest time to display
   slotMaxTime?: string; // Format: 'HH:mm' - latest time to display
+  allDaySlot?: boolean; // Whether to show all-day slot in week/day time-grid views
+  timeGridDayHeaderFormat?: string; // Format for week/day column headers in time-grid views
   weekends?: boolean; // Whether to display weekends
   hiddenDays?: number[]; // Array of day numbers to hide (0=Sunday, 1=Monday, etc.)
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
@@ -158,6 +162,8 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   // New granular view configuration defaults
   slotMinTime: '00:00', // Show all hours by default
   slotMaxTime: '24:00', // Show all hours by default
+  allDaySlot: true, // Show all-day row in week/day views by default
+  timeGridDayHeaderFormat: 'day-mmdd', // Default: Wed 4/9
   weekends: true, // Show weekends by default
   hiddenDays: [], // Show all days by default
   dayMaxEvents: false, // Use FullCalendar default behavior
