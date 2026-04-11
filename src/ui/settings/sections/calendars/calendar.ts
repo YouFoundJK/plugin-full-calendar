@@ -89,7 +89,12 @@ export async function renderCalendar(
   const MOBILE_BREAKPOINT = 500;
   const COMPACT_DESKTOP_BREAKPOINT = 910;
 
-  const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
+  const getResponsiveWidth = (): number => {
+    const measuredWidth = containerEl.getBoundingClientRect().width || containerEl.clientWidth;
+    return measuredWidth > 0 ? measuredWidth : window.innerWidth;
+  };
+
+  const isMobile = getResponsiveWidth() < MOBILE_BREAKPOINT;
   const isNarrow = settings?.forceNarrow || isMobile;
 
   // Apply RRULE monkeypatch on every render to capture the latest settings.timeZone.
@@ -197,7 +202,7 @@ export async function renderCalendar(
     };
   };
 
-  const initialToolbarLayout = getToolbarLayout(window.innerWidth);
+  const initialToolbarLayout = getToolbarLayout(getResponsiveWidth());
   let currentToolbarMode: ToolbarMode = initialToolbarLayout.mode;
 
   type ViewSpec = {
@@ -484,7 +489,7 @@ export async function renderCalendar(
     },
 
     windowResize: () => {
-      const nextToolbarLayout = getToolbarLayout(window.innerWidth);
+      const nextToolbarLayout = getToolbarLayout(getResponsiveWidth());
       if (nextToolbarLayout.mode === currentToolbarMode) {
         return;
       }
@@ -622,6 +627,20 @@ export async function renderCalendar(
     longPressDelay: 250
   });
 
+  // Keep toolbar mode and sizing in sync with pane/container changes
+  // (e.g. Obsidian sidebars opening/closing) that do not emit window resize.
+  const resizeObserver = new ResizeObserver(() => {
+    const nextToolbarLayout = getToolbarLayout(getResponsiveWidth());
+    if (nextToolbarLayout.mode !== currentToolbarMode) {
+      currentToolbarMode = nextToolbarLayout.mode;
+      cal.setOption('headerToolbar', nextToolbarLayout.headerToolbar);
+      cal.setOption('footerToolbar', nextToolbarLayout.footerToolbar);
+    }
+
+    cal.updateSize();
+  });
+  resizeObserver.observe(containerEl);
+
   cal.render();
 
   updateCurrentOrNextEventHighlight();
@@ -635,6 +654,7 @@ export async function renderCalendar(
 
   const originalDestroy = cal.destroy.bind(cal);
   cal.destroy = () => {
+    resizeObserver.disconnect();
     window.clearInterval(activeHighlightInterval);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     originalDestroy();
