@@ -51,77 +51,81 @@ nav:
           - What's New: whats_new.md
           - Changelog: changelog.md
     - User Docs:
-          - guides/index.md
+          - user/guides/index.md
           - Onboarding and Daily Use:
-                - guides/onboarding-and-daily-use.md
+                - user/guides/onboarding-and-daily-use.md
                 - Getting Started: getting_started.md
-                - Commands and Shortcuts: guides/commands-and-shortcuts.md
-                - Interactions and Gestures: guides/interactions.md
-                - Reminders and Notifications: guides/reminders.md
-                - Quick Workflows: guides/quick-workflows.md
+                - Commands and Shortcuts: user/guides/commands-and-shortcuts.md
+                - Interactions and Gestures: user/guides/interactions.md
+                - Reminders and Notifications: user/guides/reminders.md
+                - Quick Workflows: user/guides/quick-workflows.md
           - Calendar Types:
-                - calendars/index.md
-                - Full Note Calendar: calendars/local.md
-                - Daily Note Calendar: calendars/dailynote.md
-                - ICS (Remote and Local): calendars/ics.md
-                - CalDAV: calendars/caldav.md
-                - Google Calendar: calendars/gcal.md
-                - Obsidian Bases Calendar: calendars/bases.md
-                - Tasks Plugin Integration: calendars/tasks-plugin-integration.md
-                - ActivityWatch Integration: features/activitywatch.md
+                - user/calendars/index.md
+                - Full Note Calendar: user/calendars/local.md
+                - Daily Note Calendar: user/calendars/dailynote.md
+                - ICS (Remote and Local): user/calendars/ics.md
+                - CalDAV: user/calendars/caldav.md
+                - Google Calendar: user/calendars/gcal.md
+                - Obsidian Bases Calendar: user/calendars/bases.md
+                - Tasks Plugin Integration: user/calendars/tasks-plugin-integration.md
+                - ActivityWatch Integration: user/features/activitywatch.md
           - Working with Events:
-                - events/index.md
-                - Event Management: events/manage.md
-                - Recurring Events: events/recurring.md
-                - Tasks: events/tasks.md
-                - Category Coloring: events/categories.md
-                - Timezone Support: events/timezones.md
-                - Hover and Context Menu: events/hover_context.md
+                - user/events/index.md
+                - Event Management: user/events/manage.md
+                - Recurring Events: user/events/recurring.md
+                - Tasks: user/events/tasks.md
+                - Category Coloring: user/events/categories.md
+                - Timezone Support: user/events/timezones.md
+                - Hover and Context Menu: user/events/hover_context.md
           - Views:
-                - views/index.md
-                - Workspaces: views/workspaces.md
-                - Timeline View Usage: views/timeline_view.md
+                - user/views/index.md
+                - Workspaces: user/views/workspaces.md
+                - Timeline View Usage: user/views/timeline_view.md
           - Chrono Analyser: 
-                - chrono_analyser/index.md
-                - Introduction: chrono_analyser/introduction.md
-                - Use Cases: chrono_analyser/usecases.md
-                - FAQ: chrono_analyser/faq.md
+                - user/chrono_analyser/index.md
+                - Introduction: user/chrono_analyser/introduction.md
+                - Use Cases: user/chrono_analyser/usecases.md
+                - FAQ: user/chrono_analyser/faq.md
           - Settings and Customization:
-                - settings/index.md
-                - Calendar Sources: settings/sources.md
-                - Display and Behavior: settings/fc_config.md
-          - Troubleshooting: guides/troubleshooting.md
+                - user/settings/index.md
+                - Calendar Sources: user/settings/sources.md
+                - Display and Behavior: user/settings/fc_config.md
+          - Troubleshooting: user/guides/troubleshooting.md
     - Architecture Docs:
-          - system/index.md
+          - architecture/system/index.md
           - System:
-                - system/overview.md
-                - Events Architecture: events/architecture.md
-                - EventCache Contract: system/eventcache.md
-                - Event Storage and Identifiers: system/event-storage.md
-                - FullCalendar Interop: system/interop.md
-                - Data Flow: system/data-flow.md
-                - Core Systems: system/core-systems.md
-                - Extending the Plugin: system/extending.md
-                - Testing and Validation: system/testing.md
+                - architecture/system/overview.md
+                - Events Architecture: architecture/events/architecture.md
+                - EventCache Contract: architecture/system/eventcache.md
+                - Event Storage and Identifiers: architecture/system/event-storage.md
+                - FullCalendar Interop: architecture/system/interop.md
+                - Data Flow: architecture/system/data-flow.md
+                - Core Systems: architecture/system/core-systems.md
+                - Extending the Plugin: architecture/system/extending.md
+                - Testing and Validation: architecture/system/testing.md
           - Provider Architecture:
-                - calendars/architecture.md
-                - Implementations and Patches: calendars/provider-implementations.md
-                - New Provider Blueprint: calendars/provider-blueprint.md
+                - architecture/calendars/architecture.md
+                - Implementations and Patches: architecture/calendars/provider-implementations.md
+                - New Provider Blueprint: architecture/calendars/provider-blueprint.md
           - Features:
-                - system/features/index.md
-                - Settings Architecture: settings/architecture.md
-                - Timezone Architecture: system/features/timezone-architecture.md
-                - Reminders Architecture: system/features/reminders-architecture.md
+                - architecture/system/features/index.md
+                - Settings Architecture: architecture/settings/architecture.md
+                - Timezone Architecture: architecture/system/features/timezone-architecture.md
+                - Reminders Architecture: architecture/system/features/reminders-architecture.md
           - Views Architecture:
-                - views/architecture.md
+                - architecture/views/architecture.md
           - ChronoAnalyser:
-                - chrono_analyser/architecture.md
-                - Analysis Types Implementation: chrono_analyser/analysis-types.md
-                - Insights Engine Implementation: chrono_analyser/insights-architecture.md
+                - architecture/chrono_analyser/architecture.md
+                - Analysis Types Implementation: architecture/chrono_analyser/analysis-types.md
+                - Insights Engine Implementation: architecture/chrono_analyser/insights-architecture.md
+          - Dev Logs:
+                - architecture/dev-logs/index.md
+                - Calendar Load Profiling Audit: architecture/dev-logs/devlog_calendar_load_profiling_2026-04-11.md
+                - RRULE Timezone Date-Shift Fix: architecture/dev-logs/devlog_rrule_timezone_patch.md
     - Reference:
-          - Internationalization: features/i18n.md
-          - Dataview Integration: advanced/dataview.md
-          - Data Integrity and File Modifications: advanced/data_integrity.md
+          - Internationalization: user/features/i18n.md
+          - Dataview Integration: user/reference/dataview.md
+          - Data Integrity and File Modifications: user/reference/data_integrity.md
     - Privacy and Terms:
-          - Privacy Policy: advanced/privacy-policy.md
-          - Terms of Service: advanced/terms-of-service.md
+          - Privacy Policy: user/legal/privacy-policy.md
+          - Terms of Service: user/legal/terms-of-service.md

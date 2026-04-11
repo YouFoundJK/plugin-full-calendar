@@ -180,7 +180,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
     _Provider registry logic has been improved for better calendar source management and error handling. Adding new calendar types is now simpler and safer._
 
 -   **Documentation and Translation Files**  
-    _Updated documentation and added instructions for contributing new translations. See [i18n documentation](features/i18n.md)._ 
+    _Updated documentation and added instructions for contributing new translations. See [i18n documentation](user/features/i18n.md)._ 
 
 ---
 
