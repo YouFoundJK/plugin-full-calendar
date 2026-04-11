@@ -58,7 +58,8 @@ export interface SeedState {
 //
 // Takes raw, overlapping FlattenedEvents from multiple AW buckets and
 // produces a non-overlapping timeline of SplitEvents. When events overlap,
-// the highest-fidelity event wins (e.g. AFK > web > window). Adjacent
+// the highest-fidelity event wins (e.g. AFK > window > web, except browser
+// windows can elevate overlapping web events). Adjacent
 // splinters with identical data get merged to reduce noise.
 //
 export function splinterEvents(events: FlattenedEvent[]): SplitEvent[] {

@@ -11,6 +11,16 @@
 4. Final blocks are converted into Full Calendar events.
 5. Continuity pass updates existing events by ignore/extend/replace semantics.
 
+## Watcher overlap precedence
+
+When multiple ActivityWatch buckets overlap for the same time slice, normalization assigns fidelity with this policy:
+
+1. AFK always highest priority.
+2. Window is the default winner over web.
+3. Web is allowed to outrank window only when the overlapping window app is a known browser (for example Firefox, Chrome, Edge, Brave).
+
+This protects the timeline from noisy/stale web watcher bursts while still preserving tab-level detail during real browser usage.
+
 ## Rule semantics
 
 Rule precedence for each splinter is strict:

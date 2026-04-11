@@ -29,6 +29,14 @@ type PriorCalendarEvent = {
 
 type ProfileSignature = string;
 
+type TimeRange = {
+  startMs: number;
+  endMs: number;
+};
+
+const COMMON_BROWSER_APP_PATTERN =
+  /(firefox|chrome|chromium|edge|brave|opera|vivaldi|arc|safari|librewolf|waterfox|floorp|zen|whale|tor)/i;
+
 export interface SyncOptions {
   overrideStart?: Date;
   overrideEnd?: Date;
@@ -117,6 +125,47 @@ async function deriveActivityWatchBlocks(
     return resp.json as AWEvent[];
   };
 
+  const getEventRange = (event: AWEvent): TimeRange => {
+    const startMs = new Date(event.timestamp).getTime();
+    return {
+      startMs,
+      endMs: startMs + event.duration * 1000
+    };
+  };
+
+  const isBrowserWindowEvent = (event: AWEvent): boolean => {
+    const app = typeof event.data?.app === 'string' ? event.data.app : '';
+    return COMMON_BROWSER_APP_PATTERN.test(app);
+  };
+
+  const rangesOverlap = (left: TimeRange, right: TimeRange): boolean =>
+    left.startMs < right.endMs && right.startMs < left.endMs;
+
+  const fetchedEventsByBucket = new Map<string, AWEvent[]>();
+  for (const bId of bucketIdsToFetch) {
+    const bObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);
+    if (!bObj) continue;
+
+    fetchedEventsByBucket.set(bId, await fetchEvents(bId));
+  }
+
+  const browserWindowRanges: TimeRange[] = [];
+  for (const bId of bucketIdsToFetch) {
+    const bObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);
+    if (!bObj) continue;
+
+    const isWindow = bObj.type === 'currentwindow' || bObj.id.includes('window');
+    if (!isWindow) continue;
+
+    const events = fetchedEventsByBucket.get(bId) || [];
+    for (const e of events) {
+      if (!isBrowserWindowEvent(e)) continue;
+      const range = getEventRange(e);
+      if (range.endMs <= range.startMs) continue;
+      browserWindowRanges.push(range);
+    }
+  }
+
   const flatEvents: FlattenedEvent[] = [];
   for (const bId of bucketIdsToFetch) {
     const bObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);
@@ -124,20 +173,31 @@ async function deriveActivityWatchBlocks(
 
     const isWeb = bObj.type === 'web.tab.current' || bObj.id.includes('web');
     const isAfk = bObj.type === 'afk' || bObj.id.includes('afk');
-
-    let fidelity = 1;
-    if (isWeb) fidelity = 2;
-    if (isAfk) fidelity = 3;
-
-    const events = await fetchEvents(bId);
+    const isWindow = bObj.type === 'currentwindow' || bObj.id.includes('window');
+    const events = fetchedEventsByBucket.get(bId) || [];
     for (const e of events) {
       if (isAfk && e.data?.status === 'not-afk') {
         continue;
       }
 
+      const range = getEventRange(e);
+      if (range.endMs <= range.startMs) continue;
+
+      // Priority policy: AFK always wins. Window beats web by default.
+      // Web can outrank window only while a browser app window is active.
+      let fidelity = 1;
+      if (isWindow) fidelity = 2;
+      if (isWeb) {
+        const overlapsBrowserWindow = browserWindowRanges.some(browserRange =>
+          rangesOverlap(range, browserRange)
+        );
+        fidelity = overlapsBrowserWindow ? 2.5 : 1;
+      }
+      if (isAfk) fidelity = 3;
+
       flatEvents.push({
-        startMs: new Date(e.timestamp).getTime(),
-        endMs: new Date(e.timestamp).getTime() + e.duration * 1000,
+        startMs: range.startMs,
+        endMs: range.endMs,
         fidelity,
         bucketType: bObj.type,
         data: e.data || {}

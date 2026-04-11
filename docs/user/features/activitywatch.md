@@ -79,8 +79,9 @@ When events overlap, the highest-fidelity source wins:
 | Priority | Source | Rationale |
 |---|---|---|
 | **Highest (3)** | `aw-watcher-afk` | Ground truth — if you're AFK, that overrides whatever window was open |
-| **Medium (2)** | `aw-watcher-web` | More specific than window — shows the actual tab URL, not just "Chrome" |
-| **Base (1)** | `aw-watcher-window` | Least specific — just the application and window title |
+| **Medium (2)** | `aw-watcher-window` | Default foreground truth — preferred over web watcher noise |
+| **Conditional (2.5)** | `aw-watcher-web` | Used only when overlapping window app is a browser (Chrome/Firefox/Edge/etc.), so tab URL refines browser activity |
+| **Base (1)** | `aw-watcher-web` | If no overlapping browser-window signal exists, web data does not override window data |
 
 !!! note "AFK Integration"
     The engine automatically pulls AFK watcher data. Only **true AFK periods** (status = "afk") are injected into the timeline. "Not-AFK" events are filtered out so they don't overwrite useful window/web data.
