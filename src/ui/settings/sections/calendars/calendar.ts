@@ -738,7 +738,30 @@ export async function renderCalendar(
 
   const ensureToolbarSearchControl = () => {
     const searchButtonEl = containerEl.querySelector<HTMLButtonElement>('.fc-search-button');
-    if (!searchButtonEl || searchButtonEl.dataset.ofcSearchBound === 'true') {
+    if (!searchButtonEl) {
+      return;
+    }
+
+    const allWrapEls = Array.from(
+      containerEl.querySelectorAll<HTMLElement>('.ofc-toolbar-search-input-wrap')
+    );
+    const anchoredWrapEl = searchButtonEl.nextElementSibling;
+    const keepWrapEl =
+      anchoredWrapEl instanceof HTMLElement &&
+      anchoredWrapEl.classList.contains('ofc-toolbar-search-input-wrap')
+        ? anchoredWrapEl
+        : null;
+
+    for (const wrapEl of allWrapEls) {
+      if (keepWrapEl && wrapEl === keepWrapEl) {
+        continue;
+      }
+      wrapEl.remove();
+    }
+
+    if (searchButtonEl.dataset.ofcSearchBound === 'true' && keepWrapEl) {
+      keepWrapEl.setCssProps({ width: searchExpanded || searchQuery ? '180px' : '0px' });
+      keepWrapEl.toggleClass('is-active-query', !!searchQuery);
       return;
     }
 
@@ -748,37 +771,47 @@ export async function renderCalendar(
     searchButtonEl.toggleClass('clickable-icon', true);
     searchButtonEl.parentElement?.toggleClass('ofc-toolbar-search-host', true);
 
-    const inputWrapEl = document.createElement('div');
-    inputWrapEl.className = 'ofc-toolbar-search-input-wrap';
-    inputWrapEl.setCssProps({
-      width: searchExpanded || searchQuery ? '180px' : '0px'
-    });
+    const inputWrapEl =
+      keepWrapEl ||
+      (() => {
+        const wrapEl = document.createElement('div');
+        wrapEl.className = 'ofc-toolbar-search-input-wrap';
+        wrapEl.setCssProps({
+          width: searchExpanded || searchQuery ? '180px' : '0px'
+        });
 
-    const searchInputEl = document.createElement('input');
-    searchInputEl.className = 'ofc-toolbar-search-input';
-    searchInputEl.type = 'text';
-    searchInputEl.placeholder = 'Search events...';
+        const inputEl = document.createElement('input');
+        inputEl.className = 'ofc-toolbar-search-input';
+        inputEl.type = 'text';
+        inputEl.placeholder = 'Search events...';
+        inputEl.value = searchQuery;
+        inputEl.ariaLabel = 'Search events';
+
+        const clearEl = document.createElement('button');
+        clearEl.className = 'clickable-icon ofc-toolbar-search-clear';
+        clearEl.type = 'button';
+        clearEl.ariaLabel = 'Clear search';
+        clearEl.textContent = '×';
+        clearEl.setCssProps({ display: searchQuery ? 'inline-flex' : 'none' });
+
+        wrapEl.appendChild(inputEl);
+        wrapEl.appendChild(clearEl);
+        searchButtonEl.insertAdjacentElement('afterend', wrapEl);
+        return wrapEl;
+      })();
+
+    const searchInputEl = inputWrapEl.querySelector<HTMLInputElement>('.ofc-toolbar-search-input');
+    const clearButtonEl = inputWrapEl.querySelector<HTMLButtonElement>('.ofc-toolbar-search-clear');
+    if (!searchInputEl || !clearButtonEl) {
+      return;
+    }
+
     searchInputEl.value = searchQuery;
-    searchInputEl.ariaLabel = 'Search events';
-
-    const clearButtonEl = document.createElement('button');
-    clearButtonEl.className = 'clickable-icon ofc-toolbar-search-clear';
-    clearButtonEl.type = 'button';
-    clearButtonEl.ariaLabel = 'Clear search';
-    clearButtonEl.textContent = '×';
-    clearButtonEl.setCssProps({ display: searchQuery ? 'inline-flex' : 'none' });
-
-    inputWrapEl.appendChild(searchInputEl);
-    inputWrapEl.appendChild(clearButtonEl);
-    searchButtonEl.insertAdjacentElement('afterend', inputWrapEl);
 
     const syncState = () => {
       inputWrapEl.setCssProps({ width: searchExpanded || searchQuery ? '180px' : '0px' });
       clearButtonEl.setCssProps({ display: searchQuery ? 'inline-flex' : 'none' });
       searchButtonEl.toggleClass('is-active', searchExpanded || !!searchQuery);
-      searchButtonEl.setCssProps({
-        display: searchExpanded || !!searchQuery ? 'none' : 'inline-flex'
-      });
       inputWrapEl.toggleClass('is-active-query', !!searchQuery);
     };
 
