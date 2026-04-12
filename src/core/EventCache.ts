@@ -641,17 +641,23 @@ export default class EventCache {
           preparedNewEvent
         );
 
+        const authoritativeUpdatedEvent = this.enhancer.enhance(preparedNewEvent);
+
+        // Replace optimistic event with provider-authoritative event and refresh mapping.
+        this.plugin.providerRegistry.removeMapping(eventId);
+        this.store.delete(eventId);
+
+        const finalLocation = updatedLocation || locationForStore;
+        this.store.add({
+          calendarId: calendarId,
+          location: finalLocation,
+          id: eventId,
+          event: authoritativeUpdatedEvent
+        });
+        this.plugin.providerRegistry.addMapping(authoritativeUpdatedEvent, calendarId, eventId);
+
         // SUCCESS: The I/O succeeded. Correct the location in the store if it changed.
         // This ensures our cache is perfectly in sync with the source of truth.
-        if (updatedLocation && updatedLocation.file.path !== originalDetails.location?.path) {
-          this.store.delete(eventId);
-          this.store.add({
-            calendarId: calendarId,
-            location: updatedLocation,
-            id: eventId,
-            event: newEventWithId
-          });
-        }
 
         this.timeEngine.scheduleCacheRebuild();
 

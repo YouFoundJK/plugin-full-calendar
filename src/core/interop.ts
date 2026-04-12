@@ -105,6 +105,10 @@ const combineDateTimeStrings = (date: string, time: string): string | null => {
 };
 
 const DAYS = 'UMTWRFS';
+const DUPLICATE_TITLE_SUFFIX_PATTERN = '-_-_-';
+
+const stripDuplicateTitleSuffix = (title: string): string =>
+  title.replace(new RegExp(`${DUPLICATE_TITLE_SUFFIX_PATTERN}\\d+$`), '');
 
 export function dateEndpointsToFrontmatter(
   start: Date,
@@ -146,9 +150,10 @@ export function toEventInput(
   settings: FullCalendarSettings
 ): EventInput | null {
   // MODIFICATION: Return type is now EventInput | null
+  const cleanTitle = stripDuplicateTitleSuffix(frontmatter.title);
   const displayTitle = frontmatter.subCategory
-    ? `${frontmatter.subCategory} - ${frontmatter.title}`
-    : frontmatter.title;
+    ? `${frontmatter.subCategory} - ${cleanTitle}`
+    : cleanTitle;
 
   const baseEvent: EventInput = {
     id,
@@ -159,7 +164,7 @@ export function toEventInput(
       recurringEventId: frontmatter.recurringEventId,
       category: frontmatter.category,
       subCategory: frontmatter.subCategory,
-      cleanTitle: frontmatter.title,
+      cleanTitle,
       isShadow: false // Flag to identify the real event
     },
     // Support for background events and other display types

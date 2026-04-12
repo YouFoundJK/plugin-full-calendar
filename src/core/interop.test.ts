@@ -77,6 +77,24 @@ describe('interop toEventInput tests', () => {
       expect(result!.allDay).toBe(false);
     });
 
+    it('should hide duplicate suffix token in user-facing title', () => {
+      const event = {
+        type: 'single',
+        title: 'Sleep Event-_-_-2',
+        date: '2026-04-07',
+        startTime: '00:45',
+        endTime: '08:00',
+        allDay: false,
+        endDate: null
+      } as OFCEvent;
+
+      const result = toEventInput('dup-id', event, baseSettings);
+
+      expect(result).not.toBeNull();
+      expect(result!.title).toBe('Sleep Event');
+      expect((result!.extendedProps as Record<string, unknown>).cleanTitle).toBe('Sleep Event');
+    });
+
     it('should handle all-day single events', () => {
       const event = {
         type: 'single',

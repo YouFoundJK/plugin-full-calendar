@@ -335,4 +335,131 @@ describe('DailyNoteProvider workflow', () => {
       })
     );
   });
+
+  it('keeps duplicate same-title events by suffixing stored title uniquely', async () => {
+    const app = createMockApp();
+
+    const provider = new DailyNoteProvider(
+      { id: 'dailynote_1', heading: 'Calendar' },
+      makePlugin(),
+      app
+    );
+
+    const firstEvent: OFCEvent = {
+      title: 'Wellness - Sleep - Night',
+      type: 'single',
+      allDay: false,
+      date: '2026-04-07',
+      startTime: '23:30',
+      endTime: '07:30',
+      endDate: '2026-04-08',
+      timezone: 'Europe/Budapest'
+    };
+
+    const secondEvent: OFCEvent = {
+      title: 'Wellness - Sleep - Night',
+      type: 'single',
+      allDay: false,
+      date: '2026-04-07',
+      startTime: '00:45',
+      endTime: '08:00',
+      endDate: null,
+      timezone: 'Europe/Budapest'
+    };
+
+    const [createdFirst] = await provider.createEvent(firstEvent);
+    const [createdSecond] = await provider.createEvent(secondEvent);
+
+    const id1 = provider.getEventHandle(createdFirst)?.persistentId;
+    const id2 = provider.getEventHandle(createdSecond)?.persistentId;
+
+    expect(id1).toBeTruthy();
+    expect(id2).toBeTruthy();
+    expect(id1).not.toEqual(id2);
+    expect(id2).toContain('-_-_-1');
+
+    const content = contentsByPath.get('Daily/2026-04-07.md') || '';
+    const eventLines = content
+      .split('\n')
+      .filter(line => line.trim().startsWith('-') && line.includes('[startTime::'));
+
+    expect(eventLines).toHaveLength(2);
+  });
+
+  it('loads legacy unsuffixed duplicate lines as distinct events', async () => {
+    const file = makeFile('Daily/2026-04-07.md');
+    dailyNotesByPath.set(file.path, file);
+    contentsByPath.set(
+      file.path,
+      [
+        '## Calendar',
+        '-  Wellness - Sleep - Night [startTime:: 23:30]  [endTime:: 07:30]  [endDate:: 2026-04-08]  [timezone:: Europe/Budapest]',
+        '-  Wellness - Sleep - Night [startTime:: 00:45]  [endTime:: 08:00]  [timezone:: Europe/Budapest]'
+      ].join('\n')
+    );
+
+    const sections = [
+      {
+        position: {
+          end: { line: 2, col: 120, offset: 300 }
+        }
+      }
+    ] as NonNullable<CachedMetadata['sections']>;
+    const sectionsWithLast = sections as NonNullable<CachedMetadata['sections']> & {
+      last: () => NonNullable<CachedMetadata['sections']>[number];
+    };
+    sectionsWithLast.last = () => sections[sections.length - 1];
+
+    const metadata = {
+      headings: [
+        {
+          heading: 'Calendar',
+          level: 2,
+          position: {
+            start: { line: 0, col: 0, offset: 0 },
+            end: { line: 0, col: 11, offset: 11 }
+          }
+        }
+      ],
+      listItems: [
+        {
+          position: {
+            start: { line: 1, col: 0, offset: 12 },
+            end: { line: 1, col: 120, offset: 150 }
+          }
+        },
+        {
+          position: {
+            start: { line: 2, col: 0, offset: 151 },
+            end: { line: 2, col: 120, offset: 260 }
+          }
+        }
+      ],
+      sections: sectionsWithLast
+    } as CachedMetadata;
+
+    const app: ObsidianInterface = {
+      ...createMockApp(),
+      getMetadata: (_file: TFile) => metadata,
+      waitForMetadata: (_file: TFile) => Promise.resolve(metadata)
+    };
+
+    const provider = new DailyNoteProvider(
+      { id: 'dailynote_1', heading: 'Calendar' },
+      makePlugin(),
+      app
+    );
+
+    const events = await provider.getEventsInFile(file);
+    expect(events).toHaveLength(2);
+
+    const [first, second] = events.map(([event]) => event);
+    const firstId = provider.getEventHandle(first)?.persistentId;
+    const secondId = provider.getEventHandle(second)?.persistentId;
+
+    expect(firstId).toBeTruthy();
+    expect(secondId).toBeTruthy();
+    expect(firstId).not.toEqual(secondId);
+    expect(secondId).toContain('-_-_-1');
+  });
 });
