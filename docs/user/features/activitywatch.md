@@ -74,14 +74,21 @@ The engine processes your ActivityWatch data through a 3-phase pipeline.
 
 Raw ActivityWatch events from multiple buckets (window, web, AFK) frequently overlap in time. The engine first flattens these into a single, non-overlapping timeline using a **sweep-line algorithm**.
 
-When events overlap, the highest-fidelity source wins:
+When events overlap, normalization now runs in two steps:
+
+1. A unified base timeline is created from **window + AFK** buckets.
+2. Web watcher data is then used as **metadata enrichment** inside browser-window slices.
+
+This means browser tab details (like `url`/`title`) can refine titles while the time ownership still comes from the window/AFK timeline.
+
+Priority for base timeline ownership is:
 
 | Priority | Source | Rationale |
 |---|---|---|
 | **Highest (3)** | `aw-watcher-afk` | Ground truth — if you're AFK, that overrides whatever window was open |
-| **Medium (2)** | `aw-watcher-window` | Default foreground truth — preferred over web watcher noise |
-| **Conditional (2.5)** | `aw-watcher-web` | Used only when overlapping window app is a browser (Chrome/Firefox/Edge/etc.), so tab URL refines browser activity |
-| **Base (1)** | `aw-watcher-web` | If no overlapping browser-window signal exists, web data does not override window data |
+| **Medium (2)** | `aw-watcher-window` | Default foreground truth for time ownership |
+
+Web watcher entries no longer independently own timeline slices in this phase; they enrich matching browser-window slices only.
 
 !!! note "AFK Integration"
     The engine automatically pulls AFK watcher data. Only **true AFK periods** (status = "afk") are injected into the timeline. "Not-AFK" events are filtered out so they don't overwrite useful window/web data.
@@ -168,7 +175,7 @@ Available template variables depend on the watcher data. Common ones:
 
 | Strategy | Description |
 |---|---|
-| **Sync from Last Checked** | Automatically pulls all new data since the last sync. Also performs a continuity check to extend an already-synced ongoing event instead of duplicating it when the same strict title is still active. |
+| **Sync from Last Checked** | Automatically pulls all new data since the last sync. Also performs continuity ownership checks and can rebuild from the original continuity start when safe. |
 | **Custom Date Range** | Manually specify a start and end date. Useful for backfilling past data or testing. |
 
 !!! warning "Custom Date Range"
@@ -177,6 +184,20 @@ Available template variables depend on the watcher data. Common ones:
 ### Last Sync Visibility
 
 When using **Sync from Last Checked**, the configuration UI now shows the latest synced timestamp directly below that strategy option.
+
+### Continuity Rewrite Safety Rules
+
+For auto sync, continuity rewrite runs only when all checks pass:
+
+1. The latest event in the bounded sync-boundary window belongs to a known ActivityWatch profile in the configured target calendar.
+2. Reconstructing ActivityWatch blocks for that event's exact prior range yields a matching normalized title.
+3. ActivityWatch still has source evidence near the prior event start (1-minute tolerance).
+
+If continuity is validated, sync anchors from the original continuity start (with a small buffer), rebuilds blocks through now, and creates replacement events first.
+
+Only after replacement coverage safely spans the original prior range does the plugin delete the prior continuity event. If coverage is incomplete, source evidence is missing, or delete capability is unavailable, old data is kept and only new events are added.
+
+This behavior is intentionally safety-first to avoid accidental data loss.
 
 ### Auto Sync
 

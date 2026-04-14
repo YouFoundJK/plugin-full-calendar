@@ -4,7 +4,7 @@ import { t } from '../i18n/i18n';
 import { AWBucket, AWEvent } from './api';
 import { OFCEvent } from '../../types';
 import { moment as obsidianMoment } from 'obsidian';
-import { executeFSM, FinalBlock, FlattenedEvent, SeedState } from './fsm';
+import { executeFSM, FinalBlock, FlattenedEvent, SeedState, splinterEvents } from './fsm';
 
 const moment = obsidianMoment as unknown as typeof import('moment');
 const CONTINUITY_BUFFER_MS = 60 * 1000;
@@ -29,9 +29,26 @@ type PriorCalendarEvent = {
 
 type ProfileSignature = string;
 
+type ContinuityCandidate = {
+  priorEvent: PriorCalendarEvent;
+};
+
 type TimeRange = {
   startMs: number;
   endMs: number;
+};
+
+type BucketKinds = {
+  isWeb: boolean;
+  isAfk: boolean;
+  isWindow: boolean;
+};
+
+type BucketEvent = {
+  range: TimeRange;
+  data: AWEvent['data'];
+  bucketType: string;
+  kinds: BucketKinds;
 };
 
 const COMMON_BROWSER_APP_PATTERN =
@@ -141,69 +158,166 @@ async function deriveActivityWatchBlocks(
   const rangesOverlap = (left: TimeRange, right: TimeRange): boolean =>
     left.startMs < right.endMs && right.startMs < left.endMs;
 
-  const fetchedEventsByBucket = new Map<string, AWEvent[]>();
+  const bucketEventsById = new Map<string, BucketEvent[]>();
   for (const bId of bucketIdsToFetch) {
     const bObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);
     if (!bObj) continue;
 
-    fetchedEventsByBucket.set(bId, await fetchEvents(bId));
-  }
+    const events = await fetchEvents(bId);
 
-  const browserWindowRanges: TimeRange[] = [];
-  for (const bId of bucketIdsToFetch) {
-    const bObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);
-    if (!bObj) continue;
+    const kinds: BucketKinds = {
+      isWeb: bObj.type === 'web.tab.current' || bObj.id.includes('web'),
+      isAfk: bObj.type === 'afk' || bObj.id.includes('afk'),
+      isWindow: bObj.type === 'currentwindow' || bObj.id.includes('window')
+    };
 
-    const isWindow = bObj.type === 'currentwindow' || bObj.id.includes('window');
-    if (!isWindow) continue;
-
-    const events = fetchedEventsByBucket.get(bId) || [];
-    for (const e of events) {
-      if (!isBrowserWindowEvent(e)) continue;
-      const range = getEventRange(e);
-      if (range.endMs <= range.startMs) continue;
-      browserWindowRanges.push(range);
-    }
-  }
-
-  const flatEvents: FlattenedEvent[] = [];
-  for (const bId of bucketIdsToFetch) {
-    const bObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);
-    if (!bObj) continue;
-
-    const isWeb = bObj.type === 'web.tab.current' || bObj.id.includes('web');
-    const isAfk = bObj.type === 'afk' || bObj.id.includes('afk');
-    const isWindow = bObj.type === 'currentwindow' || bObj.id.includes('window');
-    const events = fetchedEventsByBucket.get(bId) || [];
-    for (const e of events) {
-      if (isAfk && e.data?.status === 'not-afk') {
+    const normalizedEvents: BucketEvent[] = [];
+    for (const event of events) {
+      if (kinds.isAfk && event.data?.status === 'not-afk') {
         continue;
       }
 
-      const range = getEventRange(e);
+      const range = getEventRange(event);
       if (range.endMs <= range.startMs) continue;
 
-      // Priority policy: AFK always wins. Window beats web by default.
-      // Web can outrank window only while a browser app window is active.
-      let fidelity = 1;
-      if (isWindow) fidelity = 2;
-      if (isWeb) {
-        const overlapsBrowserWindow = browserWindowRanges.some(browserRange =>
-          rangesOverlap(range, browserRange)
-        );
-        fidelity = overlapsBrowserWindow ? 2.5 : 1;
-      }
-      if (isAfk) fidelity = 3;
-
-      flatEvents.push({
-        startMs: range.startMs,
-        endMs: range.endMs,
-        fidelity,
+      normalizedEvents.push({
+        range,
+        data: event.data || {},
         bucketType: bObj.type,
-        data: e.data || {}
+        kinds
+      });
+    }
+
+    bucketEventsById.set(bId, normalizedEvents);
+  }
+
+  const mainFlatEvents: FlattenedEvent[] = [];
+  const webBucketEvents: BucketEvent[] = [];
+
+  for (const bId of bucketIdsToFetch) {
+    const events = bucketEventsById.get(bId) || [];
+    for (const event of events) {
+      if (event.kinds.isWeb) {
+        webBucketEvents.push(event);
+        continue;
+      }
+
+      if (!event.kinds.isWindow && !event.kinds.isAfk) continue;
+      const fidelity = event.kinds.isAfk ? 3 : 2;
+      mainFlatEvents.push({
+        startMs: event.range.startMs,
+        endMs: event.range.endMs,
+        fidelity,
+        bucketType: event.bucketType,
+        data: event.data
       });
     }
   }
+
+  const unifiedMainSplinters = splinterEvents(mainFlatEvents);
+
+  const browserWindowRanges: TimeRange[] = unifiedMainSplinters
+    .filter(s => s.bucketType.toLowerCase().includes('window'))
+    .filter(s =>
+      isBrowserWindowEvent({
+        id: -1,
+        timestamp: new Date(s.startMs).toISOString(),
+        duration: (s.endMs - s.startMs) / 1000,
+        data: s.data
+      })
+    )
+    .map(s => ({ startMs: s.startMs, endMs: s.endMs }));
+
+  const clipToRanges = (range: TimeRange, parents: TimeRange[]): TimeRange[] => {
+    const clipped: TimeRange[] = [];
+    for (const parent of parents) {
+      if (!rangesOverlap(range, parent)) continue;
+      const startMs = Math.max(range.startMs, parent.startMs);
+      const endMs = Math.min(range.endMs, parent.endMs);
+      if (endMs > startMs) clipped.push({ startMs, endMs });
+    }
+    return clipped;
+  };
+
+  const selectDominantNestedForSlice = (
+    slice: TimeRange,
+    nestedEvents: BucketEvent[]
+  ): BucketEvent | null => {
+    let winner: BucketEvent | null = null;
+    let maxOverlapMs = 0;
+    for (const nestedEvent of nestedEvents) {
+      if (!rangesOverlap(slice, nestedEvent.range)) continue;
+      const overlapMs =
+        Math.min(slice.endMs, nestedEvent.range.endMs) -
+        Math.max(slice.startMs, nestedEvent.range.startMs);
+      if (overlapMs <= 0) continue;
+
+      if (!winner || overlapMs > maxOverlapMs) {
+        winner = nestedEvent;
+        maxOverlapMs = overlapMs;
+      }
+    }
+    return winner;
+  };
+
+  let flatEvents: FlattenedEvent[] = [];
+  const webEventsInsideBrowserWindows = webBucketEvents.flatMap(webEvent =>
+    clipToRanges(webEvent.range, browserWindowRanges).map(range => ({
+      ...webEvent,
+      range
+    }))
+  );
+
+  // Nested web-in-window behavior is intentionally hardcoded as metadata-only.
+  // Web events can enrich browser-window slices with title/url, but never alter time ownership.
+  flatEvents = unifiedMainSplinters.map(slice => {
+    const isWindowSlice = slice.bucketType.toLowerCase().includes('window');
+    const isBrowserWindowSlice =
+      isWindowSlice &&
+      isBrowserWindowEvent({
+        id: -1,
+        timestamp: new Date(slice.startMs).toISOString(),
+        duration: (slice.endMs - slice.startMs) / 1000,
+        data: slice.data
+      });
+
+    if (!isBrowserWindowSlice) {
+      return {
+        startMs: slice.startMs,
+        endMs: slice.endMs,
+        fidelity: 10,
+        bucketType: slice.bucketType,
+        data: slice.data
+      };
+    }
+
+    const nestedWinner = selectDominantNestedForSlice(
+      { startMs: slice.startMs, endMs: slice.endMs },
+      webEventsInsideBrowserWindows
+    );
+
+    if (!nestedWinner) {
+      return {
+        startMs: slice.startMs,
+        endMs: slice.endMs,
+        fidelity: 10,
+        bucketType: slice.bucketType,
+        data: slice.data
+      };
+    }
+
+    const mergedBucketType = `${slice.bucketType}+${nestedWinner.bucketType}`;
+    return {
+      startMs: slice.startMs,
+      endMs: slice.endMs,
+      fidelity: 10,
+      bucketType: mergedBucketType,
+      data: {
+        ...slice.data,
+        ...nestedWinner.data
+      }
+    };
+  });
 
   const finalBlocks = executeFSM(flatEvents, profiles, seedStates);
   return finalBlocks.map(block => ({
@@ -279,6 +393,156 @@ function findBoundaryOverlappingActivityWatchEvent(
     event: latest.event,
     startMs: latestRange.startMs,
     endMs: latestRange.endMs
+  };
+}
+
+function pickLatestEvent(events: PriorCalendarEvent[]): PriorCalendarEvent | null {
+  if (events.length === 0) return null;
+  return events.reduce((latest, candidate) => {
+    if (candidate.endMs !== latest.endMs) {
+      return candidate.endMs > latest.endMs ? candidate : latest;
+    }
+    return candidate.startMs > latest.startMs ? candidate : latest;
+  });
+}
+
+function computeOverlapMs(left: TimeRange, right: TimeRange): number {
+  return Math.max(0, Math.min(left.endMs, right.endMs) - Math.max(left.startMs, right.startMs));
+}
+
+function pickBestReconstructedBlockForPriorEvent(
+  blocks: DerivedAWBlock[],
+  priorEvent: PriorCalendarEvent
+): DerivedAWBlock | null {
+  if (blocks.length === 0) return null;
+
+  const priorRange = { startMs: priorEvent.startMs, endMs: priorEvent.endMs };
+
+  const exactProfileMatches = blocks.filter(
+    block =>
+      block.profileName === priorEvent.event.subCategory &&
+      block.profileColor === priorEvent.event.category
+  );
+  const candidates = exactProfileMatches.length > 0 ? exactProfileMatches : blocks;
+
+  return candidates.reduce((best, candidate) => {
+    const bestOverlap = computeOverlapMs(priorRange, { startMs: best.startMs, endMs: best.endMs });
+    const candidateOverlap = computeOverlapMs(priorRange, {
+      startMs: candidate.startMs,
+      endMs: candidate.endMs
+    });
+
+    if (candidateOverlap !== bestOverlap) {
+      return candidateOverlap > bestOverlap ? candidate : best;
+    }
+
+    const bestDistance = Math.abs(best.startMs - priorEvent.startMs);
+    const candidateDistance = Math.abs(candidate.startMs - priorEvent.startMs);
+    return candidateDistance < bestDistance ? candidate : best;
+  });
+}
+
+async function hasAwEvidenceAroundAnchorTime(
+  apiUrl: string,
+  buckets: Record<string, AWBucket>,
+  bucketIdsToFetch: Set<string>,
+  anchorMs: number,
+  bufferMs: number
+): Promise<boolean> {
+  const start = new Date(Math.max(0, anchorMs - bufferMs)).toISOString();
+  const end = new Date(anchorMs + bufferMs).toISOString();
+
+  for (const bucketId of bucketIdsToFetch) {
+    const bucket = buckets[bucketId] || Object.values(buckets).find(b => b.id === bucketId);
+    if (!bucket) continue;
+
+    const isAwBucketKind =
+      bucket.type === 'currentwindow' ||
+      bucket.type === 'web.tab.current' ||
+      bucket.type === 'afk' ||
+      bucket.id.includes('window') ||
+      bucket.id.includes('web') ||
+      bucket.id.includes('afk');
+    if (!isAwBucketKind) continue;
+
+    try {
+      const resp = await requestUrl(
+        `${apiUrl}/api/0/buckets/${bucket.id}/events?start=${start}&end=${end}`
+      );
+      const events = resp.json as AWEvent[];
+
+      for (const event of events) {
+        if (bucket.type === 'afk' && event.data?.status === 'not-afk') continue;
+
+        const startMs = new Date(event.timestamp).getTime();
+        const endMs = startMs + event.duration * 1000;
+        if (endMs <= startMs) continue;
+
+        if (endMs >= anchorMs - bufferMs && startMs <= anchorMs + bufferMs) {
+          return true;
+        }
+      }
+    } catch {
+      // Safety-first: if evidence probing fails, continuity rewrite should not run.
+      return false;
+    }
+  }
+
+  return false;
+}
+
+async function findContinuityCandidate(
+  plugin: FullCalendarPlugin,
+  settings: FullCalendarPlugin['settings']['activityWatch'],
+  buckets: Record<string, AWBucket>,
+  bucketIdsToFetch: Set<string>,
+  profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>,
+  knownProfileSignatures: Set<ProfileSignature>
+): Promise<ContinuityCandidate | null> {
+  if (settings.syncStrategy === 'custom' || settings.lastSyncTime <= 0) return null;
+
+  const lookbackMs = computeBoundedLookbackDurationMs(profiles);
+  const boundaryStart = new Date(Math.max(0, settings.lastSyncTime - lookbackMs));
+  const boundaryEnd = new Date(settings.lastSyncTime + CONTINUITY_BUFFER_MS);
+
+  const candidates = await getCalendarEventsInRange(
+    plugin,
+    settings.targetCalendarId,
+    boundaryStart,
+    boundaryEnd
+  );
+  const latest = pickLatestEvent(candidates);
+  if (!latest) return null;
+
+  if (!isKnownActivityWatchProfileEvent(latest, knownProfileSignatures)) return null;
+  if (!normalizeContinuityTitle(latest.event.title)) return null;
+
+  const reconstructedBlocks = await deriveActivityWatchBlocks(
+    settings.apiUrl,
+    buckets,
+    bucketIdsToFetch,
+    profiles,
+    new Date(latest.startMs),
+    new Date(latest.endMs)
+  );
+  const matchedBlock = pickBestReconstructedBlockForPriorEvent(reconstructedBlocks, latest);
+  if (!matchedBlock) return null;
+
+  const sameTitle =
+    normalizeContinuityTitle(matchedBlock.title) === normalizeContinuityTitle(latest.event.title);
+  if (!sameTitle) return null;
+
+  const hasSourceEvidence = await hasAwEvidenceAroundAnchorTime(
+    settings.apiUrl,
+    buckets,
+    bucketIdsToFetch,
+    latest.startMs,
+    CONTINUITY_BUFFER_MS
+  );
+  if (!hasSourceEvidence) return null;
+
+  return {
+    priorEvent: latest
   };
 }
 
@@ -567,6 +831,91 @@ function materializeBlockAsEvent(block: DerivedAWBlock): OFCEvent {
   };
 }
 
+function coversPriorEventRange(
+  blocks: DerivedAWBlock[],
+  priorEvent: PriorCalendarEvent,
+  bufferMs: number
+): boolean {
+  if (blocks.length === 0) return false;
+
+  const clipped = blocks
+    .map(block => ({
+      startMs: Math.max(block.startMs, priorEvent.startMs),
+      endMs: Math.min(block.endMs, priorEvent.endMs)
+    }))
+    .filter(range => range.endMs > range.startMs)
+    .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
+
+  if (clipped.length === 0) return false;
+
+  let coveredMs = 0;
+  let currentStart = clipped[0].startMs;
+  let currentEnd = clipped[0].endMs;
+
+  for (let i = 1; i < clipped.length; i++) {
+    const next = clipped[i];
+    if (next.startMs <= currentEnd) {
+      currentEnd = Math.max(currentEnd, next.endMs);
+    } else {
+      coveredMs += currentEnd - currentStart;
+      currentStart = next.startMs;
+      currentEnd = next.endMs;
+    }
+  }
+  coveredMs += currentEnd - currentStart;
+
+  const expectedMs = priorEvent.endMs - priorEvent.startMs;
+  if (expectedMs <= 0) return false;
+
+  return coveredMs >= Math.max(0, expectedMs - bufferMs);
+}
+
+async function createContinuityBlocksAndReplacePriorEvent(
+  plugin: FullCalendarPlugin,
+  targetCalendarId: string,
+  blocks: DerivedAWBlock[],
+  priorEvent: PriorCalendarEvent,
+  canDeleteExistingEvent: boolean
+): Promise<number> {
+  const sortedBlocks = [...blocks].sort((a, b) => a.startMs - b.startMs);
+  const createdBlocks: DerivedAWBlock[] = [];
+
+  for (const block of sortedBlocks) {
+    const created = await plugin.cache.addEvent(targetCalendarId, materializeBlockAsEvent(block));
+    if (created) {
+      createdBlocks.push(block);
+    }
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  if (!canDeleteExistingEvent) {
+    return createdBlocks.length;
+  }
+
+  const hasSafeCoverage = coversPriorEventRange(createdBlocks, priorEvent, CONTINUITY_BUFFER_MS);
+  if (!hasSafeCoverage) {
+    return createdBlocks.length;
+  }
+
+  let sessionId = priorEvent.sessionId;
+  if (!sessionId) {
+    sessionId = recoverSessionIdForPriorEvent(plugin, targetCalendarId, priorEvent);
+  }
+
+  if (sessionId) {
+    try {
+      await plugin.cache.deleteEvent(sessionId, { force: true });
+    } catch (err) {
+      console.warn(
+        'ActivityWatch sync: failed to delete prior continuity event after replacement.',
+        err
+      );
+    }
+  }
+
+  return createdBlocks.length;
+}
+
 async function createOrUpdateBlock(
   plugin: FullCalendarPlugin,
   targetCalendarId: string,
@@ -734,6 +1083,16 @@ export async function syncActivityWatch(
     const knownProfileSignatures = new Set<ProfileSignature>(
       profiles.map(profile => getProfileSignature(profile.name, profile.color))
     );
+
+    const continuityCandidate = await findContinuityCandidate(
+      plugin,
+      settings,
+      buckets,
+      bucketIdsToFetch,
+      profiles,
+      knownProfileSignatures
+    );
+
     const isCustomStrategy = settings.syncStrategy === 'custom';
     const boundaryMs = settings.lastSyncTime;
 
@@ -762,6 +1121,13 @@ export async function syncActivityWatch(
       startTime = new Date(Math.max(0, settings.lastSyncTime - lookbackMs));
     }
 
+    if (continuityCandidate && !options?.overrideStart) {
+      startTime = new Date(
+        Math.max(0, continuityCandidate.priorEvent.startMs - CONTINUITY_BUFFER_MS)
+      );
+      seedStates = [];
+    }
+
     const finalBlocks = await deriveActivityWatchBlocks(
       settings.apiUrl,
       buckets,
@@ -787,23 +1153,34 @@ export async function syncActivityWatch(
     const capabilities = calendarInstance.getCapabilities();
     const canExtendExistingEvents = capabilities.canEdit;
     const canReplaceExistingEvents = capabilities.canDelete;
+    const canDeleteExistingEvent = capabilities.canDelete;
 
     let addedCount = 0;
-    const sortedFinalBlocks = [...finalBlocks].sort((a, b) => a.startMs - b.startMs);
-    for (const block of sortedFinalBlocks) {
-      const action = await createOrUpdateBlock(
+    if (continuityCandidate && !options?.overrideStart) {
+      addedCount += await createContinuityBlocksAndReplacePriorEvent(
         plugin,
         settings.targetCalendarId,
-        block,
-        existingOverlapEvents,
-        canExtendExistingEvents,
-        canReplaceExistingEvents,
-        knownProfileSignatures
+        finalBlocks,
+        continuityCandidate.priorEvent,
+        canDeleteExistingEvent
       );
-      if (action === 'created') {
-        addedCount++;
+    } else {
+      const sortedFinalBlocks = [...finalBlocks].sort((a, b) => a.startMs - b.startMs);
+      for (const block of sortedFinalBlocks) {
+        const action = await createOrUpdateBlock(
+          plugin,
+          settings.targetCalendarId,
+          block,
+          existingOverlapEvents,
+          canExtendExistingEvents,
+          canReplaceExistingEvents,
+          knownProfileSignatures
+        );
+        if (action === 'created') {
+          addedCount++;
+        }
+        await new Promise(r => setTimeout(r, 150));
       }
-      await new Promise(r => setTimeout(r, 150));
     }
 
     if (settings.syncStrategy !== 'custom') {
@@ -827,3 +1204,9 @@ export async function syncActivityWatch(
     }
   }
 }
+
+export const __testing = {
+  pickLatestEvent,
+  pickBestReconstructedBlockForPriorEvent,
+  coversPriorEventRange
+};

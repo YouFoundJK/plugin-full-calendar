@@ -71,7 +71,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
         name: 'New Profile',
         activationThresholdMins: 5,
         softBreakLimitMins: 3,
-        activationRules: [],
+        primaryEvidenceRules: [],
         supportingEvidenceRules: [],
         hardBreakRules: [],
         titleTemplate: '{app} - {title}',
@@ -115,7 +115,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
   // Helper for rendering rule sub-lists
   const renderRuleList = (
     profile: ContextProfile,
-    listType: 'activationRules' | 'supportingEvidenceRules' | 'hardBreakRules'
+    listType: 'primaryEvidenceRules' | 'supportingEvidenceRules' | 'hardBreakRules'
   ) => {
     // Optional chaining because migrated profiles might crash if these arrays are missing
     const rules = profile[listType] || [];
@@ -431,7 +431,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
 
             <div>
               <strong>{t('modals.activityWatchSetup.profiles.primaryEvidenceRules')}</strong>
-              {renderRuleList(profile, 'activationRules')}
+              {renderRuleList(profile, 'primaryEvidenceRules')}
             </div>
 
             <div style={{ marginTop: '10px' }}>

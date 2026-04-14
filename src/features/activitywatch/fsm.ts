@@ -289,7 +289,7 @@ export function generateHypotheses(
         tokenType = 'hard_break';
       } else {
         // Check primary evidence rules first
-        for (const rule of profile.activationRules || []) {
+        for (const rule of profile.primaryEvidenceRules || []) {
           if (evaluateRule(rule, event)) {
             tokenType = 'primary_match';
             break;

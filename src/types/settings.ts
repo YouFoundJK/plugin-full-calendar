@@ -17,8 +17,7 @@ export interface ContextProfile {
   name: string;
   activationThresholdMins: number;
   softBreakLimitMins: number;
-  // Primary evidence rules persisted under the existing key for backward compatibility.
-  activationRules: TriggerRule[];
+  primaryEvidenceRules: TriggerRule[];
   supportingEvidenceRules?: TriggerRule[];
   hardBreakRules: TriggerRule[];
   titleTemplate: string;

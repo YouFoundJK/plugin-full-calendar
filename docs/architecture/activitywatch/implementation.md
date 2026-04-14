@@ -9,17 +9,26 @@
    - Phase 1: profile hypothesis generation
    - Phase 2: greedy best-fit overlap resolution
 4. Final blocks are converted into Full Calendar events.
-5. Continuity pass updates existing events by ignore/extend/replace semantics.
+5. Sync applies one of two mutation paths:
+  - Continuity rewrite path (create-first, delete-later)
+  - Standard overlap path (ignore/extend/replace/create)
 
 ## Watcher overlap precedence
 
-When multiple ActivityWatch buckets overlap for the same time slice, normalization assigns fidelity with this policy:
+Normalization now has a two-stage policy.
+
+Stage A: timeline ownership
+
+When multiple ActivityWatch buckets overlap for the same time slice, base timeline ownership uses:
 
 1. AFK always highest priority.
-2. Window is the default winner over web.
-3. Web is allowed to outrank window only when the overlapping window app is a known browser (for example Firefox, Chrome, Edge, Brave).
+2. Window as the default foreground source.
 
-This protects the timeline from noisy/stale web watcher bursts while still preserving tab-level detail during real browser usage.
+Stage B: browser metadata enrichment
+
+Web bucket events are clipped to browser-window ranges and can enrich slice metadata (`title`, `url`) without changing slice time ownership.
+
+This keeps timing robust against web watcher noise while preserving tab context for title rendering.
 
 ## Rule semantics
 
@@ -78,6 +87,26 @@ This bounds runtime and avoids unbounded growth from very long sessions.
 
 ## Continuity update policy in calendar
 
+### Continuity rewrite path (preferred when validated)
+
+The continuity rewrite path runs only when all conditions are true:
+
+1. Sync mode is auto (non-custom) and `lastSyncTime > 0`.
+2. The latest event in a bounded boundary window is a known ActivityWatch-owned profile event.
+3. Reconstructing AW blocks for that exact prior event range yields a normalized title match.
+4. ActivityWatch still has source evidence at the prior event start (1-minute tolerance).
+
+If validated:
+
+1. Sync start is re-anchored to prior event start minus continuity buffer.
+2. Final blocks are rebuilt from anchor to sync end.
+3. New blocks are created first.
+4. Prior event is deleted only if created replacement blocks safely cover prior range.
+
+If validation fails, source evidence is missing, or delete capability is unavailable, rewrite delete is skipped (add-only safety behavior).
+
+### Standard overlap path (fallback)
+
 For each derived block in chronological order:
 
 1. Ignore if already swallowed by an equivalent existing block.
@@ -85,7 +114,7 @@ For each derived block in chronological order:
 3. Replace stale overlapping ActivityWatch profile blocks when newly derived profile differs.
 4. Create block when no existing block can be reused.
 
-This ensures late context can correct earlier coarse inferences.
+This fallback remains active when continuity rewrite is not validated.
 
 ## Performance note
 

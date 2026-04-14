@@ -10,7 +10,7 @@
 | API access | Fetch bucket metadata and event slices from ActivityWatch server | `src/features/activitywatch/api.ts`, `src/features/activitywatch/sync.ts` |
 | Timeline derivation | Flatten overlapping watcher streams into a single splinter timeline | `src/features/activitywatch/fsm.ts` |
 | Intent inference | Per-profile FSM hypothesis generation and conflict allocation | `src/features/activitywatch/fsm.ts` |
-| Calendar mutation | Extend, replace, or create Obsidian Full Calendar events | `src/features/activitywatch/sync.ts` |
+| Calendar mutation | Continuity rewrite (create-first/delete-later) or fallback overlap mutation | `src/features/activitywatch/sync.ts` |
 | UI/settings | Profile/rule editing and sync controls | `src/features/activitywatch/ui/ActivityWatchConfigComponent.tsx`, `src/features/activitywatch/ui/ActivityWatchSettingsModal.tsx` |
 
 ## Core contracts

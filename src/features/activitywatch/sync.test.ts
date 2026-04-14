@@ -9,7 +9,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       color: 'Type 1 Color',
       activationThresholdMins: 15,
       softBreakLimitMins: 5,
-      activationRules: [
+      primaryEvidenceRules: [
         {
           id: '1',
           bucketType: 'window',
@@ -38,7 +38,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       color: 'Type 2 Color',
       activationThresholdMins: 15, // needs at least 15m to activate
       softBreakLimitMins: 5,
-      activationRules: [
+      primaryEvidenceRules: [
         {
           id: '4',
           bucketType: 'window',
@@ -127,7 +127,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       color: 'blue',
       activationThresholdMins: 0,
       softBreakLimitMins: 0,
-      activationRules: [
+      primaryEvidenceRules: [
         {
           id: 'ci1',
           bucketType: 'WINDOW', // Upper case
@@ -163,7 +163,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       color: 'red',
       activationThresholdMins: 0,
       softBreakLimitMins: 0,
-      activationRules: [
+      primaryEvidenceRules: [
         {
           id: 'ci2',
           bucketType: 'any',
@@ -198,7 +198,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       color: 'media',
       activationThresholdMins: 5,
       softBreakLimitMins: 3,
-      activationRules: [
+      primaryEvidenceRules: [
         {
           id: 'p1',
           bucketType: 'window',
@@ -241,7 +241,7 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       color: 'media',
       activationThresholdMins: 5,
       softBreakLimitMins: 3,
-      activationRules: [
+      primaryEvidenceRules: [
         {
           id: 'p2',
           bucketType: 'window',
