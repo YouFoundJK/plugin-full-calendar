@@ -4,7 +4,8 @@ import {
   DerivedAWBlock,
   PriorCalendarEvent,
   ProfileSignature,
-  ContinuityCandidate
+  ContinuityCandidate,
+  SessionIndex
 } from './sync-types';
 import { SeedState } from './fsm';
 import {
@@ -14,7 +15,6 @@ import {
   pickLatestEvent,
   isKnownActivityWatchProfileEvent,
   normalizeContinuityTitle,
-  parseTimedSingleEventRange,
   getProfileSignature,
   recoverSessionIdForPriorEvent,
   recoverSessionIdFromStore,
@@ -30,53 +30,26 @@ import {
 import { deriveActivityWatchBlocks, hasAwEvidenceAroundAnchorTime } from './sync-derive';
 
 export function findBoundaryOverlappingActivityWatchEvent(
-  plugin: FullCalendarPlugin,
-  targetCalendarId: string,
-  knownProfileSignatures: Set<ProfileSignature>,
+  sessionIndex: SessionIndex,
   syncBoundaryMs: number
 ): PriorCalendarEvent | null {
-  const candidates = plugin.cache.store
-    .getAllEvents()
-    .filter(stored => {
-      if (stored.calendarId !== targetCalendarId) return false;
+  const candidates: PriorCalendarEvent[] = [];
 
-      const range = parseTimedSingleEventRange(stored.event);
-      if (!range) return false;
+  for (const bucket of sessionIndex.values()) {
+    for (const prior of bucket) {
       const overlapsBoundary =
-        range.startMs <= syncBoundaryMs + CONTINUITY_BUFFER_MS &&
-        range.endMs >= syncBoundaryMs - CONTINUITY_BUFFER_MS;
-      if (!overlapsBoundary) return false;
+        prior.startMs <= syncBoundaryMs + CONTINUITY_BUFFER_MS &&
+        prior.endMs >= syncBoundaryMs - CONTINUITY_BUFFER_MS;
+      if (!overlapsBoundary) continue;
 
-      const prior: PriorCalendarEvent = {
-        sessionId: stored.id,
-        event: stored.event,
-        startMs: range.startMs,
-        endMs: range.endMs
-      };
+      if (!normalizeContinuityTitle(prior.event.title)) continue;
 
-      if (!isKnownActivityWatchProfileEvent(prior, knownProfileSignatures)) return false;
-      if (!normalizeContinuityTitle(stored.event.title)) return false;
+      candidates.push(prior);
+    }
+  }
 
-      return true;
-    })
-    .sort((a, b) => {
-      const aRange = parseTimedSingleEventRange(a.event);
-      const bRange = parseTimedSingleEventRange(b.event);
-      return (bRange?.endMs || 0) - (aRange?.endMs || 0);
-    });
-
-  if (!candidates[0]) return null;
-
-  const latest = candidates[0];
-  const latestRange = parseTimedSingleEventRange(latest.event);
-  if (!latestRange) return null;
-
-  return {
-    sessionId: latest.id,
-    event: latest.event,
-    startMs: latestRange.startMs,
-    endMs: latestRange.endMs
-  };
+  candidates.sort((a, b) => b.endMs - a.endMs || b.startMs - a.startMs);
+  return candidates[0] || null;
 }
 
 export async function findContinuityCandidate(
@@ -173,6 +146,7 @@ export function buildSeedStateFromBoundaryEvent(
 export async function createContinuityBlocksAndReplacePriorEvent(
   plugin: FullCalendarPlugin,
   targetCalendarId: string,
+  sessionIndex: SessionIndex,
   blocks: DerivedAWBlock[],
   priorEvent: PriorCalendarEvent,
   canDeleteExistingEvent: boolean
@@ -199,7 +173,7 @@ export async function createContinuityBlocksAndReplacePriorEvent(
 
   let sessionId = priorEvent.sessionId;
   if (!sessionId) {
-    sessionId = recoverSessionIdForPriorEvent(plugin, targetCalendarId, priorEvent);
+    sessionId = recoverSessionIdForPriorEvent(sessionIndex, priorEvent);
   }
 
   if (sessionId) {
@@ -219,6 +193,7 @@ export async function createContinuityBlocksAndReplacePriorEvent(
 export async function createOrUpdateBlock(
   plugin: FullCalendarPlugin,
   targetCalendarId: string,
+  sessionIndex: SessionIndex,
   block: DerivedAWBlock,
   existingOverlapEvents: PriorCalendarEvent[],
   canExtendExistingEvents: boolean,
@@ -236,7 +211,7 @@ export async function createOrUpdateBlock(
       let sessionId = extendable.sessionId;
 
       if (!sessionId) {
-        sessionId = recoverSessionIdFromStore(plugin, targetCalendarId, block);
+        sessionId = recoverSessionIdFromStore(sessionIndex, block);
       }
 
       if (sessionId) {
@@ -249,7 +224,7 @@ export async function createOrUpdateBlock(
         }
       }
     } else {
-      const recoveredSessionId = recoverSessionIdFromStore(plugin, targetCalendarId, block);
+      const recoveredSessionId = recoverSessionIdFromStore(sessionIndex, block);
 
       if (recoveredSessionId) {
         const didExtend = await extendEventEndIfNeeded(plugin, recoveredSessionId, block.endMs);
@@ -270,7 +245,7 @@ export async function createOrUpdateBlock(
     for (const existing of replaceableEvents) {
       let sessionId = existing.sessionId;
       if (!sessionId) {
-        sessionId = recoverSessionIdForPriorEvent(plugin, targetCalendarId, existing);
+        sessionId = recoverSessionIdForPriorEvent(sessionIndex, existing);
       }
 
       if (!sessionId) continue;
@@ -293,7 +268,7 @@ export async function createOrUpdateBlock(
   const created = await plugin.cache.addEvent(targetCalendarId, ofcEvent);
 
   if (created) {
-    const recoveredCreatedSessionId = recoverSessionIdFromStore(plugin, targetCalendarId, block);
+    const recoveredCreatedSessionId = recoverSessionIdFromStore(sessionIndex, block);
     existingOverlapEvents.push({
       sessionId: recoveredCreatedSessionId,
       event: ofcEvent,

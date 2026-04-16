@@ -3,7 +3,7 @@ import { Notice, requestUrl } from 'obsidian';
 import { t } from '../i18n/i18n';
 import { AWBucket } from './api';
 import { SeedState } from './fsm';
-import { DerivedAWBlock, PriorCalendarEvent, ProfileSignature, SyncOptions } from './sync-types';
+import { PriorCalendarEvent, ProfileSignature, SyncOptions } from './sync-types';
 import {
   CONTINUITY_BUFFER_MS,
   getProfileSignature,
@@ -11,7 +11,8 @@ import {
   computeBoundedLookbackDurationMs,
   pickLatestEvent,
   pickBestReconstructedBlockForPriorEvent,
-  coversPriorEventRange
+  coversPriorEventRange,
+  buildSessionIndex
 } from './sync-utils';
 import { deriveActivityWatchBlocks } from './sync-derive';
 import {
@@ -99,6 +100,12 @@ export async function syncActivityWatch(
       profiles.map(profile => getProfileSignature(profile.name, profile.color))
     );
 
+    const sessionIndex = buildSessionIndex(
+      plugin,
+      settings.targetCalendarId,
+      knownProfileSignatures
+    );
+
     const continuityCandidate = await findContinuityCandidate(
       plugin,
       settings,
@@ -116,12 +123,7 @@ export async function syncActivityWatch(
       | NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>[number]
       | undefined;
     if (!isCustomStrategy && settings.lastSyncTime > 0) {
-      const boundaryEvent = findBoundaryOverlappingActivityWatchEvent(
-        plugin,
-        settings.targetCalendarId,
-        knownProfileSignatures,
-        boundaryMs
-      );
+      const boundaryEvent = findBoundaryOverlappingActivityWatchEvent(sessionIndex, boundaryMs);
       if (boundaryEvent) {
         const seeded = buildSeedStateFromBoundaryEvent(profiles, boundaryEvent, boundaryMs);
         if (seeded) {
@@ -175,6 +177,7 @@ export async function syncActivityWatch(
       addedCount += await createContinuityBlocksAndReplacePriorEvent(
         plugin,
         settings.targetCalendarId,
+        sessionIndex,
         finalBlocks,
         continuityCandidate.priorEvent,
         canDeleteExistingEvent
@@ -185,6 +188,7 @@ export async function syncActivityWatch(
         const action = await createOrUpdateBlock(
           plugin,
           settings.targetCalendarId,
+          sessionIndex,
           block,
           existingOverlapEvents,
           canExtendExistingEvents,

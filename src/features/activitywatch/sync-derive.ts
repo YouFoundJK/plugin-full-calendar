@@ -83,9 +83,6 @@ export async function deriveActivityWatchBlocks(
     return COMMON_BROWSER_APP_PATTERN.test(app);
   };
 
-  const rangesOverlap = (left: TimeRange, right: TimeRange): boolean =>
-    left.startMs < right.endMs && right.startMs < left.endMs;
-
   const bucketEventsById = new Map<string, BucketEvent[]>();
   for (const bId of bucketIdsToFetch) {
     const bObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);
@@ -144,61 +141,12 @@ export async function deriveActivityWatchBlocks(
 
   const unifiedMainSplinters = splinterEvents(mainFlatEvents);
 
-  const browserWindowRanges: TimeRange[] = unifiedMainSplinters
-    .filter(s => s.bucketType.toLowerCase().includes('window'))
-    .filter(s =>
-      isBrowserWindowEvent({
-        id: -1,
-        timestamp: new Date(s.startMs).toISOString(),
-        duration: (s.endMs - s.startMs) / 1000,
-        data: s.data
-      })
-    )
-    .map(s => ({ startMs: s.startMs, endMs: s.endMs }));
-
-  const clipToRanges = (range: TimeRange, parents: TimeRange[]): TimeRange[] => {
-    const clipped: TimeRange[] = [];
-    for (const parent of parents) {
-      if (!rangesOverlap(range, parent)) continue;
-      const startMs = Math.max(range.startMs, parent.startMs);
-      const endMs = Math.min(range.endMs, parent.endMs);
-      if (endMs > startMs) clipped.push({ startMs, endMs });
-    }
-    return clipped;
-  };
-
-  const selectDominantNestedForSlice = (
-    slice: TimeRange,
-    nestedEvents: BucketEvent[]
-  ): BucketEvent | null => {
-    let winner: BucketEvent | null = null;
-    let maxOverlapMs = 0;
-    for (const nestedEvent of nestedEvents) {
-      if (!rangesOverlap(slice, nestedEvent.range)) continue;
-      const overlapMs =
-        Math.min(slice.endMs, nestedEvent.range.endMs) -
-        Math.max(slice.startMs, nestedEvent.range.startMs);
-      if (overlapMs <= 0) continue;
-
-      if (!winner || overlapMs > maxOverlapMs) {
-        winner = nestedEvent;
-        maxOverlapMs = overlapMs;
-      }
-    }
-    return winner;
-  };
-
-  let flatEvents: FlattenedEvent[] = [];
-  const webEventsInsideBrowserWindows = webBucketEvents.flatMap(webEvent =>
-    clipToRanges(webEvent.range, browserWindowRanges).map(range => ({
-      ...webEvent,
-      range
-    }))
-  );
+  const sortedWebEvents = [...webBucketEvents].sort((a, b) => a.range.startMs - b.range.startMs);
+  let webIndex = 0;
 
   // Nested web-in-window behavior is intentionally hardcoded as metadata-only.
   // Web events can enrich browser-window slices with title/url, but never alter time ownership.
-  flatEvents = unifiedMainSplinters.map(slice => {
+  const flatEvents: FlattenedEvent[] = unifiedMainSplinters.map(slice => {
     const isWindowSlice = slice.bucketType.toLowerCase().includes('window');
     const isBrowserWindowSlice =
       isWindowSlice &&
@@ -219,10 +167,30 @@ export async function deriveActivityWatchBlocks(
       };
     }
 
-    const nestedWinner = selectDominantNestedForSlice(
-      { startMs: slice.startMs, endMs: slice.endMs },
-      webEventsInsideBrowserWindows
-    );
+    // Advance webIndex so we drop web events that strictly end before our slice begins
+    while (
+      webIndex < sortedWebEvents.length &&
+      sortedWebEvents[webIndex].range.endMs <= slice.startMs
+    ) {
+      webIndex++;
+    }
+
+    let nestedWinner: BucketEvent | null = null;
+    let maxOverlapMs = 0;
+
+    // Scan forward over overlapping nested events
+    for (let i = webIndex; i < sortedWebEvents.length; i++) {
+      const nestedEvent = sortedWebEvents[i];
+      if (nestedEvent.range.startMs >= slice.endMs) break;
+
+      const overlapMs =
+        Math.min(slice.endMs, nestedEvent.range.endMs) -
+        Math.max(slice.startMs, nestedEvent.range.startMs);
+      if (overlapMs > maxOverlapMs) {
+        maxOverlapMs = overlapMs;
+        nestedWinner = nestedEvent;
+      }
+    }
 
     if (!nestedWinner) {
       return {

@@ -1,7 +1,13 @@
 import FullCalendarPlugin from '../../main';
 import { OFCEvent } from '../../types';
 import { moment as obsidianMoment } from 'obsidian';
-import { DerivedAWBlock, PriorCalendarEvent, ProfileSignature, TimeRange } from './sync-types';
+import {
+  DerivedAWBlock,
+  PriorCalendarEvent,
+  ProfileSignature,
+  TimeRange,
+  SessionIndex
+} from './sync-types';
 
 const moment = obsidianMoment as unknown as typeof import('moment');
 
@@ -261,71 +267,84 @@ export function findReplaceableExistingEvents(
   );
 }
 
-export function recoverSessionIdFromStore(
+export function buildSessionIndex(
   plugin: FullCalendarPlugin,
   targetCalendarId: string,
+  knownProfileSignatures: Set<ProfileSignature>
+): SessionIndex {
+  const index = new Map<ProfileSignature, PriorCalendarEvent[]>();
+
+  const allEvents = plugin.cache.store.getAllEvents();
+  for (const stored of allEvents) {
+    if (stored.calendarId !== targetCalendarId) continue;
+
+    const range = parseTimedSingleEventRange(stored.event);
+    if (!range) continue;
+
+    const sig = getProfileSignature(stored.event.subCategory, stored.event.category);
+    if (!knownProfileSignatures.has(sig)) continue;
+
+    let bucket = index.get(sig);
+    if (!bucket) {
+      bucket = [];
+      index.set(sig, bucket);
+    }
+    bucket.push({
+      sessionId: stored.id,
+      event: stored.event,
+      startMs: range.startMs,
+      endMs: range.endMs
+    });
+  }
+
+  for (const bucket of index.values()) {
+    bucket.sort((a, b) => b.endMs - a.endMs || b.startMs - a.startMs);
+  }
+
+  return index;
+}
+
+export function recoverSessionIdFromStore(
+  sessionIndex: SessionIndex,
   block: DerivedAWBlock
 ): string | null {
-  const matches = plugin.cache.store
-    .getAllEvents()
-    .filter(stored => {
-      if (stored.calendarId !== targetCalendarId) return false;
+  const sig = getProfileSignature(block.profileName, block.profileColor);
+  const candidates = sessionIndex.get(sig);
+  if (!candidates) return null;
 
-      const range = parseTimedSingleEventRange(stored.event);
-      if (!range) return false;
+  const matches = candidates.filter(existing => {
+    const sameTitle =
+      normalizeContinuityTitle(existing.event.title) === normalizeContinuityTitle(block.title);
+    const overlaps =
+      existing.endMs >= block.startMs - CONTINUITY_BUFFER_MS &&
+      existing.startMs <= block.endMs + CONTINUITY_BUFFER_MS;
 
-      const sameProfile =
-        stored.event.subCategory === block.profileName &&
-        stored.event.category === block.profileColor;
-      const sameTitle =
-        normalizeContinuityTitle(stored.event.title) === normalizeContinuityTitle(block.title);
-      const overlaps =
-        range.endMs >= block.startMs - CONTINUITY_BUFFER_MS &&
-        range.startMs <= block.endMs + CONTINUITY_BUFFER_MS;
+    return sameTitle && overlaps;
+  });
 
-      return sameProfile && sameTitle && overlaps;
-    })
-    .sort((a, b) => {
-      const aRange = parseTimedSingleEventRange(a.event);
-      const bRange = parseTimedSingleEventRange(b.event);
-      return (bRange?.endMs || 0) - (aRange?.endMs || 0);
-    });
-
-  return matches[0]?.id || null;
+  return matches[0]?.sessionId || null;
 }
 
 export function recoverSessionIdForPriorEvent(
-  plugin: FullCalendarPlugin,
-  targetCalendarId: string,
-  existing: PriorCalendarEvent
+  sessionIndex: SessionIndex,
+  existingEvent: PriorCalendarEvent
 ): string | null {
-  const matches = plugin.cache.store
-    .getAllEvents()
-    .filter(stored => {
-      if (stored.calendarId !== targetCalendarId) return false;
+  const sig = getProfileSignature(existingEvent.event.subCategory, existingEvent.event.category);
+  const candidates = sessionIndex.get(sig);
+  if (!candidates) return null;
 
-      const range = parseTimedSingleEventRange(stored.event);
-      if (!range) return false;
+  const matches = candidates.filter(existing => {
+    const sameTitle =
+      normalizeContinuityTitle(existing.event.title) ===
+      normalizeContinuityTitle(existingEvent.event.title);
+    const nearSameRange =
+      Math.abs(existing.startMs - existingEvent.startMs) <= CONTINUITY_BUFFER_MS &&
+      Math.abs(existing.endMs - existingEvent.endMs) <= CONTINUITY_BUFFER_MS;
 
-      const sameProfile =
-        stored.event.subCategory === existing.event.subCategory &&
-        stored.event.category === existing.event.category;
-      const sameTitle =
-        normalizeContinuityTitle(stored.event.title) ===
-        normalizeContinuityTitle(existing.event.title);
-      const nearSameRange =
-        Math.abs(range.startMs - existing.startMs) <= CONTINUITY_BUFFER_MS &&
-        Math.abs(range.endMs - existing.endMs) <= CONTINUITY_BUFFER_MS;
+    return sameTitle && nearSameRange;
+  });
 
-      return sameProfile && sameTitle && nearSameRange;
-    })
-    .sort((a, b) => {
-      const aRange = parseTimedSingleEventRange(a.event);
-      const bRange = parseTimedSingleEventRange(b.event);
-      return (bRange?.endMs || 0) - (aRange?.endMs || 0);
-    });
-
-  return matches[0]?.id || null;
+  return matches[0]?.sessionId || null;
 }
 
 export function materializeBlockAsEvent(block: DerivedAWBlock): OFCEvent {

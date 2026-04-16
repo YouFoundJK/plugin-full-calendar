@@ -45,3 +45,5 @@ export interface SyncOptions {
   overrideEnd?: Date;
   suppressNotices?: boolean;
 }
+
+export type SessionIndex = Map<ProfileSignature, PriorCalendarEvent[]>;
