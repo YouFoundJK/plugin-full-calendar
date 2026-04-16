@@ -153,13 +153,18 @@ export async function createContinuityBlocksAndReplacePriorEvent(
 ): Promise<number> {
   const sortedBlocks = [...blocks].sort((a, b) => a.startMs - b.startMs);
   const createdBlocks: DerivedAWBlock[] = [];
+  let lastYieldTime = Date.now();
 
   for (const block of sortedBlocks) {
     const created = await plugin.cache.addEvent(targetCalendarId, materializeBlockAsEvent(block));
     if (created) {
       createdBlocks.push(block);
     }
-    await new Promise(r => setTimeout(r, 150));
+
+    if (Date.now() - lastYieldTime > 16) {
+      await new Promise(r => setTimeout(r, 0));
+      lastYieldTime = Date.now();
+    }
   }
 
   if (!canDeleteExistingEvent) {

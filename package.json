@@ -18,7 +18,8 @@
         "test": "jest --ci --silent=true",
         "test-update": "jest --silent=false --updateSnapshot",
         "test-dev": "jest --watch",
-        "coverage": "jest --coverage"
+        "coverage": "jest --coverage",
+        "ra": "prettier --config .prettierrc.json --write src/**/*.ts* && tsc -noEmit --skipLibCheck && eslint src -o lint_report.txt --no-color && node tools/check-and-prune-i18n.mjs && jest --ci --silent=true"
     },
     "keywords": [],
     "author": {

@@ -184,6 +184,8 @@ export async function syncActivityWatch(
       );
     } else {
       const sortedFinalBlocks = [...finalBlocks].sort((a, b) => a.startMs - b.startMs);
+      let lastYieldTime = Date.now();
+
       for (const block of sortedFinalBlocks) {
         const action = await createOrUpdateBlock(
           plugin,
@@ -198,7 +200,11 @@ export async function syncActivityWatch(
         if (action === 'created') {
           addedCount++;
         }
-        await new Promise(r => setTimeout(r, 150));
+
+        if (Date.now() - lastYieldTime > 16) {
+          await new Promise(r => setTimeout(r, 0));
+          lastYieldTime = Date.now();
+        }
       }
     }
 
