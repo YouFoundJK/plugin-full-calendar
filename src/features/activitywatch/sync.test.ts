@@ -1,4 +1,4 @@
-import { executeFSM, FlattenedEvent } from './fsm';
+import { executeFSM, CompoundEvent } from './fsm';
 
 describe('ActivityWatch FSM Best-Fit Integration', () => {
   it('Should properly execute Phase 1/Phase 2 slice and overlap resolution for the Obsidian/Browser/Zotero workflow', () => {
@@ -60,38 +60,30 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       titleTemplate: 'Type 2 Output'
     };
 
-    const flatEvents: FlattenedEvent[] = [
+    const flatEvents: CompoundEvent[] = [
       // 0 to 5 mins: Obsidian
       {
         startMs: 0,
         endMs: 5 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'window',
-        data: { app: 'Obsidian' }
+        states: [{ bucketType: 'window', data: { app: 'Obsidian' } }]
       },
       // 5 to 15 mins: Browser
       {
         startMs: 5 * 60 * 1000,
         endMs: 15 * 60 * 1000,
-        fidelity: 2,
-        bucketType: 'web',
-        data: { url: 'browser' }
+        states: [{ bucketType: 'web', data: { url: 'browser' } }]
       },
       // 15 to 27 mins: Zotero
       {
         startMs: 15 * 60 * 1000,
         endMs: 27 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'window',
-        data: { app: 'zotero' }
+        states: [{ bucketType: 'window', data: { app: 'zotero' } }]
       },
       // 27 to 50 mins: AFK (Mismatch for both)
       {
         startMs: 27 * 60 * 1000,
         endMs: 50 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'afk',
-        data: { status: 'afk' }
+        states: [{ bucketType: 'afk', data: { status: 'afk' } }]
       }
     ];
 
@@ -141,13 +133,11 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       titleTemplate: '{APP}'
     };
 
-    const events: FlattenedEvent[] = [
+    const events: CompoundEvent[] = [
       {
         startMs: 0,
         endMs: 10 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'window', // Lower case
-        data: { app: 'Obsidian' } // Mixed case
+        states: [{ bucketType: 'window', data: { app: 'Obsidian' } }]
       }
     ];
 
@@ -177,13 +167,11 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       titleTemplate: 'YouTube session'
     };
 
-    const events: FlattenedEvent[] = [
+    const events: CompoundEvent[] = [
       {
         startMs: 0,
         endMs: 10 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'window',
-        data: { title: 'Watching youtube' } // Lower case
+        states: [{ bucketType: 'window', data: { title: 'Watching youtube' } }]
       }
     ];
 
@@ -220,13 +208,11 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       titleTemplate: 'YouTube'
     };
 
-    const events: FlattenedEvent[] = [
+    const events: CompoundEvent[] = [
       {
         startMs: 0,
         endMs: 10 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'afk',
-        data: { status: 'afk' }
+        states: [{ bucketType: 'afk', data: { status: 'afk' } }]
       }
     ];
 
@@ -263,34 +249,26 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
       titleTemplate: 'YouTube - {title}'
     };
 
-    const events: FlattenedEvent[] = [
+    const events: CompoundEvent[] = [
       {
         startMs: 0,
         endMs: 5 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'window',
-        data: { title: 'Watching YouTube' }
+        states: [{ bucketType: 'window', data: { title: 'Watching YouTube' } }]
       },
       {
         startMs: 5 * 60 * 1000,
         endMs: 9 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'afk',
-        data: { status: 'afk' }
+        states: [{ bucketType: 'afk', data: { status: 'afk' } }]
       },
       {
         startMs: 9 * 60 * 1000,
         endMs: 10 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'window',
-        data: { app: 'SomeOtherApp' }
+        states: [{ bucketType: 'window', data: { app: 'SomeOtherApp' } }]
       },
       {
         startMs: 10 * 60 * 1000,
         endMs: 12 * 60 * 1000,
-        fidelity: 1,
-        bucketType: 'window',
-        data: { title: 'Still YouTube' }
+        states: [{ bucketType: 'window', data: { title: 'Still YouTube' } }]
       }
     ];
 

@@ -70,30 +70,22 @@ You then apply either a **literal string search** or enable **Regex** for more p
 
 The engine processes your ActivityWatch data through a 3-phase pipeline.
 
-### Phase 0: Sweep-Line Splintering
+### Phase 0: Multi-Dimensional Sweepline
 
-Raw ActivityWatch events from multiple buckets (window, web, AFK) frequently overlap in time. The engine first flattens these into a single, non-overlapping timeline using a **sweep-line algorithm**.
+Raw ActivityWatch events from multiple buckets (window, web, AFK) frequently overlap in time.
 
-When events overlap, normalization now runs in two steps:
+The engine uses a **Multi-Dimensional Sweepline Algorithm**. It marches chronologically through time, tracking *all* buckets simultaneously. Whenever an event starts or ends (e.g. your active window changes, a browser tab updates, or you go AFK), the engine slices the timeline and takes a "snapshot".
 
-1. A unified base timeline is created from **window + AFK** buckets.
-2. Web watcher data is then used as **metadata enrichment** inside browser-window slices.
+Each slice of time stores **the entire concurrent state of your computer**, for instance:
+* `Window`: `LockApp.exe`
+* `AFK`: `status: afk`
+* `Web`: `(null)`
 
-This means browser tab details (like `url`/`title`) can refine titles while the time ownership still comes from the window/AFK timeline.
+This parallel snapshot guarantees **zero data loss from arbitrary prioritization**. Web watcher entries, window tracking, and AFK idle states are packaged and passed into the evaluation pipeline *simultaneously*.
 
-Priority for base timeline ownership is:
-
-| Priority | Source | Rationale |
-|---|---|---|
-| **Highest (3)** | `aw-watcher-afk` | Ground truth — if you're AFK, that overrides whatever window was open |
-| **Medium (2)** | `aw-watcher-window` | Default foreground truth for time ownership |
-
-Web watcher entries no longer independently own timeline slices in this phase; they enrich matching browser-window slices only.
-
-!!! note "AFK Integration"
-    The engine automatically pulls AFK watcher data. Only **true AFK periods** (status = "afk") are injected into the timeline. "Not-AFK" events are filtered out so they don't overwrite useful window/web data.
-
-Adjacent splinters with identical data are merged to reduce noise.
+!!! note "AFK and Web Integration"
+    - **AFK Integration**: The engine tracks your AFK idle state. You explicitly define in your Profile rules whether `status: afk` should trigger a Primary Break, or cleanly sustain a session as Supporting Evidence!
+    - **Web Browser Noise Filter**: To eliminate background-tab noise, Web bucket entries are mapped into the snapshot *only* if your currently active Window is a known internet browser. Background tabs will never corrupt your active IDE coding sessions.
 
 ### Phase 1: Hypothesis Generation (The FSM)
 

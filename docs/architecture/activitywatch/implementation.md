@@ -13,22 +13,23 @@
   - Continuity rewrite path (create-first, delete-later)
   - Standard overlap path (ignore/extend/replace/create)
 
-## Watcher overlap precedence
+## Compound State Discretization
 
-Normalization now has a two-stage policy.
+Legacy normalization relied on an overlapping "fidelity flattening" system which destructively forced a 1-dimensional timeline (e.g. `AFK` > `Window` priority). 
 
-Stage A: timeline ownership
+This has been eradicated and replaced with **Parallel Compound Time Slicing**.
 
-When multiple ActivityWatch buckets overlap for the same time slice, base timeline ownership uses:
+### Phase 0: Multi-Dimensional Sweepline
 
-1. AFK always highest priority.
-2. Window as the default foreground source.
+A discrete chronologic boundary collector sweeps across all valid ActivityWatch events natively. The sweepline dynamically slices the timeline into segments whenever *any* bucket's event triggers a start or end boundary.
 
-Stage B: browser metadata enrichment
+During interval resolution, the pipeline builds a pure `CompoundEvent` slice which maintains a concurrent `states[]` array of all overlapping parallel buckets without forcefully dropping data payloads.
 
-Web bucket events are clipped to browser-window ranges and can enrich slice metadata (`title`, `url`) without changing slice time ownership.
+### Browser Metadata Enforcement
 
-This keeps timing robust against web watcher noise while preserving tab context for title rendering.
+Web bucket payload structures are conditionally filtered *during* the Compound slicing initialization matrix. The active sweep iterates identical boundaries checking if an internet-browser `Window` application string is synchronously active in that slice.
+
+By actively suppressing Web payloads when unrelated desktop apps are focused, it surgically eliminates Web watcher background noise without the data loss previously associated with priority-flattening mutations.
 
 ## Rule semantics
 

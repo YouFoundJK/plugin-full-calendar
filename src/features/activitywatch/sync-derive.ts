@@ -1,7 +1,7 @@
 import FullCalendarPlugin from '../../main';
 import { requestUrl } from 'obsidian';
 import { AWBucket, AWEvent } from './api';
-import { executeFSM, FinalBlock, FlattenedEvent, SeedState, splinterEvents } from './fsm';
+import { executeFSM, FinalBlock, CompoundEvent, AWNode, SeedState } from './fsm';
 import { DerivedAWBlock, TimeRange, BucketEvent, BucketKinds } from './sync-types';
 
 export const COMMON_BROWSER_APP_PATTERN =
@@ -116,106 +116,64 @@ export async function deriveActivityWatchBlocks(
     bucketEventsById.set(bId, normalizedEvents);
   }
 
-  const mainFlatEvents: FlattenedEvent[] = [];
-  const webBucketEvents: BucketEvent[] = [];
-
+  const allNormalizedEvents: BucketEvent[] = [];
   for (const bId of bucketIdsToFetch) {
     const events = bucketEventsById.get(bId) || [];
-    for (const event of events) {
-      if (event.kinds.isWeb) {
-        webBucketEvents.push(event);
-        continue;
-      }
+    for (const ev of events) {
+      allNormalizedEvents.push(ev);
+    }
+  }
 
-      if (!event.kinds.isWindow && !event.kinds.isAfk) continue;
-      const fidelity = event.kinds.isAfk ? 3 : 2;
-      mainFlatEvents.push({
-        startMs: event.range.startMs,
-        endMs: event.range.endMs,
-        fidelity,
-        bucketType: event.bucketType,
-        data: event.data
+  // Collect all unique time boundaries
+  const boundaries = new Set<number>();
+  for (const e of allNormalizedEvents) {
+    boundaries.add(e.range.startMs);
+    boundaries.add(e.range.endMs);
+  }
+  const sortedBounds = Array.from(boundaries).sort((a, b) => a - b);
+  const compoundSlices: CompoundEvent[] = [];
+
+  for (let i = 0; i < sortedBounds.length - 1; i++) {
+    const sliceStart = sortedBounds[i];
+    const sliceEnd = sortedBounds[i + 1];
+    if (sliceStart >= sliceEnd) continue;
+
+    let hasBrowserWindow = false;
+    for (const ev of allNormalizedEvents) {
+      if (ev.range.startMs <= sliceStart && ev.range.endMs >= sliceEnd) {
+        if (ev.kinds.isWindow) {
+          const app = typeof ev.data?.app === 'string' ? ev.data.app : '';
+          if (COMMON_BROWSER_APP_PATTERN.test(app)) {
+            hasBrowserWindow = true;
+            break;
+          }
+        }
+      }
+    }
+
+    const activeStates: AWNode[] = [];
+    for (const ev of allNormalizedEvents) {
+      if (ev.range.startMs <= sliceStart && ev.range.endMs >= sliceEnd) {
+        if (ev.kinds.isWeb && !hasBrowserWindow) {
+          continue; // Web bucket states are strictly dependent on an active browser window
+        }
+        activeStates.push({
+          bucketType: ev.bucketType,
+          data: ev.data
+        });
+      }
+    }
+
+    if (activeStates.length > 0) {
+      compoundSlices.push({
+        startMs: sliceStart,
+        endMs: sliceEnd,
+        states: activeStates
       });
     }
   }
 
-  const unifiedMainSplinters = splinterEvents(mainFlatEvents);
-
-  const sortedWebEvents = [...webBucketEvents].sort((a, b) => a.range.startMs - b.range.startMs);
-  let webIndex = 0;
-
-  // Nested web-in-window behavior is intentionally hardcoded as metadata-only.
-  // Web events can enrich browser-window slices with title/url, but never alter time ownership.
-  const flatEvents: FlattenedEvent[] = unifiedMainSplinters.map(slice => {
-    const isWindowSlice = slice.bucketType.toLowerCase().includes('window');
-    const isBrowserWindowSlice =
-      isWindowSlice &&
-      isBrowserWindowEvent({
-        id: -1,
-        timestamp: new Date(slice.startMs).toISOString(),
-        duration: (slice.endMs - slice.startMs) / 1000,
-        data: slice.data
-      });
-
-    if (!isBrowserWindowSlice) {
-      return {
-        startMs: slice.startMs,
-        endMs: slice.endMs,
-        fidelity: 10,
-        bucketType: slice.bucketType,
-        data: slice.data
-      };
-    }
-
-    // Advance webIndex so we drop web events that strictly end before our slice begins
-    while (
-      webIndex < sortedWebEvents.length &&
-      sortedWebEvents[webIndex].range.endMs <= slice.startMs
-    ) {
-      webIndex++;
-    }
-
-    let nestedWinner: BucketEvent | null = null;
-    let maxOverlapMs = 0;
-
-    // Scan forward over overlapping nested events
-    for (let i = webIndex; i < sortedWebEvents.length; i++) {
-      const nestedEvent = sortedWebEvents[i];
-      if (nestedEvent.range.startMs >= slice.endMs) break;
-
-      const overlapMs =
-        Math.min(slice.endMs, nestedEvent.range.endMs) -
-        Math.max(slice.startMs, nestedEvent.range.startMs);
-      if (overlapMs > maxOverlapMs) {
-        maxOverlapMs = overlapMs;
-        nestedWinner = nestedEvent;
-      }
-    }
-
-    if (!nestedWinner) {
-      return {
-        startMs: slice.startMs,
-        endMs: slice.endMs,
-        fidelity: 10,
-        bucketType: slice.bucketType,
-        data: slice.data
-      };
-    }
-
-    const mergedBucketType = `${slice.bucketType}+${nestedWinner.bucketType}`;
-    return {
-      startMs: slice.startMs,
-      endMs: slice.endMs,
-      fidelity: 10,
-      bucketType: mergedBucketType,
-      data: {
-        ...slice.data,
-        ...nestedWinner.data
-      }
-    };
-  });
-
-  const finalBlocks = executeFSM(flatEvents, profiles, seedStates);
+  const finalBlocks = executeFSM(compoundSlices, profiles, seedStates);
   return finalBlocks.map(block => ({
     startMs: block.startMs,
     endMs: block.endMs,

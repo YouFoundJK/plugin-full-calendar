@@ -2,7 +2,7 @@
 <div align="right">
   <img src="https://img.shields.io/github/downloads/YouFoundJK/plugin-full-calendar/total?label=Downloads" alt="Downloads" />
   <a href="#contributors-"><img src="https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square" alt="All Contributors" /></a>
-  <a href="https://youfoundjk.github.io/plugin-full-calendar/"><img src="https://img.shields.io/badge/Version-v_0.12.8.4-blue" alt="Version" /></a>
+  <a href="https://youfoundjk.github.io/plugin-full-calendar/"><img src="https://img.shields.io/badge/Version-v_0.12.8.5-blue" alt="Version" /></a>
 </div>
 
 

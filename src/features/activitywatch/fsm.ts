@@ -12,12 +12,15 @@ export interface AWEventData {
   [key: string]: unknown;
 }
 
-export interface FlattenedEvent {
-  startMs: number;
-  endMs: number;
-  fidelity: number;
+export interface AWNode {
   bucketType: string;
   data: AWEventData;
+}
+
+export interface CompoundEvent {
+  startMs: number;
+  endMs: number;
+  states: AWNode[];
 }
 
 export interface SplitEvent {
@@ -54,127 +57,59 @@ export interface SeedState {
   fitnessScoreMs: number;
 }
 
-// ── Phase 0: Sweep-Line Splintering ──────────────────────────────────────
-//
-// Takes raw, overlapping FlattenedEvents from multiple AW buckets and
-// produces a non-overlapping timeline of SplitEvents. When events overlap,
-// the highest-fidelity event wins (e.g. AFK > window > web, except browser
-// windows can elevate overlapping web events). Adjacent
-// splinters with identical data get merged to reduce noise.
-//
-export function splinterEvents(events: FlattenedEvent[]): SplitEvent[] {
-  if (events.length === 0) return [];
-
-  // Collect all unique time boundaries
-  const boundaries = new Set<number>();
-  for (const e of events) {
-    if (e.endMs <= e.startMs) continue; // skip zero/negative-duration events
-    boundaries.add(e.startMs);
-    boundaries.add(e.endMs);
-  }
-
-  const sortedBounds = Array.from(boundaries).sort((a, b) => a - b);
-  const splinters: SplitEvent[] = [];
-
-  for (let i = 0; i < sortedBounds.length - 1; i++) {
-    const sliceStart = sortedBounds[i];
-    const sliceEnd = sortedBounds[i + 1];
-    if (sliceStart >= sliceEnd) continue;
-
-    let bestEvent: FlattenedEvent | null = null;
-    let maxFidelity = -1;
-
-    for (const ev of events) {
-      if (ev.endMs <= ev.startMs) continue;
-      if (ev.startMs <= sliceStart && ev.endMs >= sliceEnd) {
-        if (ev.fidelity > maxFidelity) {
-          maxFidelity = ev.fidelity;
-          bestEvent = ev;
-        }
-      }
-    }
-
-    if (bestEvent) {
-      splinters.push({
-        startMs: sliceStart,
-        endMs: sliceEnd,
-        bucketType: bestEvent.bucketType,
-        data: bestEvent.data
-      });
-    }
-  }
-
-  // Merge adjacent splinters with identical bucket+data
-  const merged: SplitEvent[] = [];
-  if (splinters.length > 0) {
-    let curr = { ...splinters[0] };
-    for (let i = 1; i < splinters.length; i++) {
-      const next = splinters[i];
-      const isMergeable =
-        curr.bucketType === next.bucketType &&
-        curr.endMs === next.startMs &&
-        JSON.stringify(curr.data) === JSON.stringify(next.data);
-      if (isMergeable) {
-        curr.endMs = next.endMs;
-      } else {
-        merged.push(curr);
-        curr = { ...next };
-      }
-    }
-    merged.push(curr);
-  }
-
-  return merged;
-}
-
 // ── Rule Evaluation ──────────────────────────────────────────────────────
 //
-// Case-insensitive matching for bucket types, field names, and patterns.
+// Evaluates a rule against all concurrent states in a CompoundEvent time slice.
+// If a match is found, returns the exact AWNode that triggered the rule.
 //
-export function evaluateRule(rule: TriggerRule, event: SplitEvent): boolean {
-  // Bucket type check (case-insensitive)
-  if (rule.bucketType && rule.bucketType.trim() !== '' && rule.bucketType !== 'any') {
-    if (!event.bucketType.toLowerCase().includes(rule.bucketType.toLowerCase())) return false;
-  }
-
-  // Resolve the field value to compare against
-  let compareString = '';
-  if (rule.matchField) {
-    const fieldName = rule.matchField.toLowerCase();
-    // Exact key first, then case-insensitive fallback
-    let fd = event.data[rule.matchField];
-    if (fd === undefined) {
-      const key = Object.keys(event.data).find(k => k.toLowerCase() === fieldName);
-      if (key) fd = event.data[key];
+export function evaluateRule(rule: TriggerRule, event: CompoundEvent): AWNode | null {
+  for (const state of event.states) {
+    if (rule.bucketType && rule.bucketType.trim() !== '' && rule.bucketType !== 'any') {
+      if (!state.bucketType.toLowerCase().includes(rule.bucketType.toLowerCase())) continue;
     }
-    if (fd !== undefined) {
+
+    let compareString = '';
+    if (rule.matchField) {
+      const fieldName = rule.matchField.toLowerCase();
+      let fd = state.data[rule.matchField];
+      if (fd === undefined) {
+        const key = Object.keys(state.data).find(k => k.toLowerCase() === fieldName);
+        if (key) fd = state.data[key];
+      }
+      if (fd !== undefined) {
+        compareString = typeof fd === 'string' ? fd : JSON.stringify(fd);
+      }
+    }
+
+    if (!compareString) {
+      const fd =
+        state.data.app ||
+        state.data.url ||
+        state.data.title ||
+        state.data.project ||
+        state.data.file ||
+        '';
       compareString = typeof fd === 'string' ? fd : JSON.stringify(fd);
     }
-  }
 
-  // Fallback: try common fields
-  if (!compareString) {
-    const fd =
-      event.data.app ||
-      event.data.url ||
-      event.data.title ||
-      event.data.project ||
-      event.data.file ||
-      '';
-    compareString = typeof fd === 'string' ? fd : JSON.stringify(fd);
-  }
+    if (!rule.matchPattern || !compareString) continue;
 
-  if (!rule.matchPattern || !compareString) return false;
-
-  if (rule.useRegex) {
-    try {
-      return new RegExp(rule.matchPattern, 'i').test(compareString);
-    } catch {
-      return false;
+    let matched = false;
+    if (rule.useRegex) {
+      try {
+        matched = new RegExp(rule.matchPattern, 'i').test(compareString);
+      } catch {
+        matched = false;
+      }
+    } else {
+      matched = compareString.toLowerCase().includes(rule.matchPattern.toLowerCase());
     }
-  } else {
-    return compareString.toLowerCase().includes(rule.matchPattern.toLowerCase());
+
+    if (matched) {
+      return state;
+    }
   }
+  return null;
 }
 
 // ── Phase 1: Hypothesis Generation (FSM) ─────────────────────────────────
@@ -190,7 +125,7 @@ export function evaluateRule(rule: TriggerRule, event: SplitEvent): boolean {
 //     and only resets on primary/supporting evidence
 //
 export function generateHypotheses(
-  splinteredTimeline: SplitEvent[],
+  splinteredTimeline: CompoundEvent[],
   profiles: ContextProfile[],
   seedStates: SeedState[] = []
 ): CandidateSession[] {
@@ -276,11 +211,13 @@ export function generateHypotheses(
 
       // ── Classify the event ──
       let tokenType: 'primary_match' | 'supporting_match' | 'mismatch' | 'hard_break' = 'mismatch';
+      let matchedEvidence: AWNode | null = null;
 
       // Check hard break rules first
       let isHardBreak = false;
       for (const rule of profile.hardBreakRules || []) {
-        if (evaluateRule(rule, event)) {
+        const match = evaluateRule(rule, event);
+        if (match) {
           isHardBreak = true;
           break;
         }
@@ -290,8 +227,10 @@ export function generateHypotheses(
       } else {
         // Check primary evidence rules first
         for (const rule of profile.primaryEvidenceRules || []) {
-          if (evaluateRule(rule, event)) {
+          const match = evaluateRule(rule, event);
+          if (match) {
             tokenType = 'primary_match';
+            matchedEvidence = match;
             break;
           }
         }
@@ -299,13 +238,25 @@ export function generateHypotheses(
         // Supporting evidence only matters if no primary rule matched.
         if (tokenType === 'mismatch') {
           for (const rule of profile.supportingEvidenceRules || []) {
-            if (evaluateRule(rule, event)) {
+            const match = evaluateRule(rule, event);
+            if (match) {
               tokenType = 'supporting_match';
+              matchedEvidence = match;
               break;
             }
           }
         }
       }
+
+      const rawNode =
+        matchedEvidence ||
+        (event.states.length > 0 ? event.states[0] : { bucketType: 'unknown', data: {} });
+      const splitEvent: SplitEvent = {
+        startMs: event.startMs,
+        endMs: event.endMs,
+        bucketType: rawNode.bucketType,
+        data: rawNode.data
+      };
 
       // ── State machine transitions ──
       if (state === 'idle') {
@@ -317,8 +268,8 @@ export function generateHypotheses(
           targetTime = duration;
           bufferTime = 0;
           fitnessScore = duration;
-          splintersInside = [event];
-          primaryEvidenceSplinters = [event];
+          splintersInside = [splitEvent];
+          primaryEvidenceSplinters = [splitEvent];
           if (targetTime >= thresholdMs) state = 'active';
         }
         // supporting_match/mismatch/hard_break while idle → stay idle
@@ -329,7 +280,7 @@ export function generateHypotheses(
         } else if (tokenType === 'mismatch') {
           bufferTime += duration;
           sessionEnd = event.endMs;
-          splintersInside.push(event);
+          splintersInside.push(splitEvent);
           if (bufferTime > softBreakMs) {
             resetState();
           }
@@ -338,7 +289,7 @@ export function generateHypotheses(
           bufferTime = 0;
           sessionEnd = event.endMs;
           lastEvidenceEndMs = event.endMs;
-          splintersInside.push(event);
+          splintersInside.push(splitEvent);
         } else {
           // primary_match
           targetTime += duration;
@@ -346,8 +297,8 @@ export function generateHypotheses(
           sessionEnd = event.endMs;
           lastEvidenceEndMs = event.endMs;
           fitnessScore += duration;
-          splintersInside.push(event);
-          primaryEvidenceSplinters.push(event);
+          splintersInside.push(splitEvent);
+          primaryEvidenceSplinters.push(splitEvent);
           if (targetTime >= thresholdMs) state = 'active';
         }
       } else {
@@ -358,7 +309,7 @@ export function generateHypotheses(
         } else if (tokenType === 'mismatch') {
           bufferTime += duration;
           sessionEnd = event.endMs;
-          splintersInside.push(event);
+          splintersInside.push(splitEvent);
           if (bufferTime > softBreakMs) {
             commitCandidate();
             resetState();
@@ -367,15 +318,15 @@ export function generateHypotheses(
           bufferTime = 0;
           sessionEnd = event.endMs;
           lastEvidenceEndMs = event.endMs;
-          splintersInside.push(event);
+          splintersInside.push(splitEvent);
         } else {
           // primary_match
           bufferTime = 0;
           sessionEnd = event.endMs;
           lastEvidenceEndMs = event.endMs;
           fitnessScore += duration;
-          splintersInside.push(event);
-          primaryEvidenceSplinters.push(event);
+          splintersInside.push(splitEvent);
+          primaryEvidenceSplinters.push(splitEvent);
         }
       }
     }
@@ -444,11 +395,10 @@ export function greedyBestFitAllocation(candidates: CandidateSession[]): FinalBl
 // ── Public Entry Point ───────────────────────────────────────────────────
 
 export function executeFSM(
-  flatEvents: FlattenedEvent[],
+  events: CompoundEvent[],
   profiles: ContextProfile[],
   seedStates: SeedState[] = []
 ): FinalBlock[] {
-  const splinteredTimeline = splinterEvents(flatEvents);
-  const candidates = generateHypotheses(splinteredTimeline, profiles, seedStates);
+  const candidates = generateHypotheses(events, profiles, seedStates);
   return greedyBestFitAllocation(candidates);
 }
