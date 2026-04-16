@@ -28,7 +28,7 @@ export const BasesConfigComponent: React.FC<BasesConfigComponentProps> = ({
     setBaseFiles(files.map(f => f.path));
   }, [plugin]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!basePath) return;
     // Default name to filename without extension

@@ -22,7 +22,7 @@ export const DailyNoteConfigComponent: React.FC<DailyNoteConfigComponentProps> =
   const [heading, setHeading] = React.useState(config.heading || '');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!heading) return;
 

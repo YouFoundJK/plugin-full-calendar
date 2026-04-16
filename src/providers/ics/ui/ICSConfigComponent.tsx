@@ -35,7 +35,7 @@ export const ICSConfigComponent: React.FC<ICSConfigComponentProps> = ({
     setLocalFiles(files);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!url) return;
 

@@ -24,7 +24,7 @@ export const CalDAVConfigComponent: React.FC<CalDAVConfigComponentProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitText, setSubmitText] = useState(t('settings.calendars.caldav.importButton'));
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!url || !username || !password) return;
 

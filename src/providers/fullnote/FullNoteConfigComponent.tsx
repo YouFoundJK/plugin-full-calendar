@@ -22,7 +22,7 @@ export const FullNoteConfigComponent: React.FC<FullNoteConfigComponentProps> = (
   const [directory, setDirectory] = React.useState(config.directory || '');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!directory) return;
 

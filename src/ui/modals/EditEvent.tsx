@@ -219,7 +219,7 @@ export const EditEvent = ({
     }
   }, [isDailyNoteCalendar]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     let completedValue: string | false | null = null;
