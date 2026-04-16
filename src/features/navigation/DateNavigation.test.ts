@@ -49,7 +49,7 @@ const createMockApp = () => {
 describe('DateNavigation', () => {
   beforeAll(async () => {
     // Initialize i18n before running tests
-    await initializeI18n(createMockApp());
+    await initializeI18n(createMockApp(), 'full-calendar-remastered');
   });
   describe('getAvailableNavigationOptions', () => {
     it('should return correct options for day view', () => {

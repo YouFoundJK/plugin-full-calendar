@@ -30,18 +30,26 @@ beforeAll(() => {
     value: localStorageMock,
     writable: true
   });
+  Object.defineProperty(global, 'window', {
+    value: { localStorage: localStorageMock },
+    writable: true
+  });
 });
 
 // Mock Obsidian App
 const createMockApp = (language: string = 'en') => {
+  window.localStorage.setItem('language', language);
   return {
     vault: {
-      getConfig: jest.fn().mockReturnValue(language)
-    },
-    loadLocalStorage: jest.fn().mockImplementation((key: string) => {
-      if (key === 'language') return language;
-      return null;
-    })
+      getConfig: jest.fn().mockReturnValue(language),
+      configDir: 'mock-config-dir',
+      adapter: {
+        exists: jest.fn().mockResolvedValue(true),
+        read: jest.fn().mockResolvedValue('{}'),
+        write: jest.fn().mockResolvedValue(undefined),
+        mkdir: jest.fn().mockResolvedValue(undefined)
+      }
+    }
   } as unknown as import('obsidian').App;
 };
 
@@ -56,7 +64,7 @@ describe('i18n Module', () => {
   describe('initializeI18n', () => {
     it('should initialize i18n with English by default', async () => {
       const mockApp = createMockApp('en');
-      await initializeI18n(mockApp);
+      await initializeI18n(mockApp, 'full-calendar-remastered');
 
       expect(i18n.isInitialized).toBe(true);
       expect(i18n.language).toBe('en');
@@ -64,7 +72,7 @@ describe('i18n Module', () => {
 
     it('should detect Obsidian language setting', async () => {
       const mockApp = createMockApp('de');
-      await initializeI18n(mockApp);
+      await initializeI18n(mockApp, 'full-calendar-remastered');
 
       expect(i18n.isInitialized).toBe(true);
       // Even if 'de' is set, it should initialize (fallback to 'en' if no translations)
@@ -72,14 +80,21 @@ describe('i18n Module', () => {
     });
 
     it('should fallback to English if language config is unavailable', async () => {
+      window.localStorage.removeItem('language');
       const mockApp = {
         vault: {
-          getConfig: jest.fn().mockReturnValue(undefined)
-        },
-        loadLocalStorage: jest.fn().mockReturnValue(undefined)
+          getConfig: jest.fn().mockReturnValue(undefined),
+          configDir: 'mock-config-dir',
+          adapter: {
+            exists: jest.fn().mockResolvedValue(false),
+            read: jest.fn().mockResolvedValue('{}'),
+            write: jest.fn().mockResolvedValue(undefined),
+            mkdir: jest.fn().mockResolvedValue(undefined)
+          }
+        }
       } as unknown as import('obsidian').App;
 
-      await initializeI18n(mockApp);
+      await initializeI18n(mockApp, 'full-calendar-remastered');
 
       expect(i18n.isInitialized).toBe(true);
       expect(i18n.language).toBe('en');
@@ -89,7 +104,7 @@ describe('i18n Module', () => {
   describe('Translation function', () => {
     beforeEach(async () => {
       const mockApp = createMockApp('en');
-      await initializeI18n(mockApp);
+      await initializeI18n(mockApp, 'full-calendar-remastered');
     });
 
     it('should translate command strings', () => {
@@ -122,7 +137,7 @@ describe('i18n Module', () => {
   describe('Language switching', () => {
     it('should allow language switching after initialization', async () => {
       const mockApp = createMockApp('en');
-      await initializeI18n(mockApp);
+      await initializeI18n(mockApp, 'full-calendar-remastered');
 
       expect(i18n.language).toBe('en');
 
@@ -133,10 +148,20 @@ describe('i18n Module', () => {
 
     it('should load German translations correctly', async () => {
       const mockApp = createMockApp('de');
-      await initializeI18n(mockApp);
+      // Mock the app adapter to return the local German file so we don't query network during unit test
+      mockApp.vault.adapter.read = jest.fn().mockResolvedValue(
+        JSON.stringify({
+          commands: {
+            newEvent: 'Neues Ereignis',
+            openCalendar: 'Kalender öffnen'
+          },
+          ribbon: {
+            openCalendar: 'Full Calendar öffnen'
+          }
+        })
+      );
 
-      // Change to German explicitly
-      await i18n.changeLanguage('de');
+      await initializeI18n(mockApp, 'full-calendar-remastered');
 
       // Test a German translation
       expect(t('commands.newEvent')).toBe('Neues Ereignis');
@@ -146,9 +171,10 @@ describe('i18n Module', () => {
 
     it('should fallback to English for missing German translations', async () => {
       const mockApp = createMockApp('de');
-      await initializeI18n(mockApp);
+      // Mock the app adapter to return empty {} so it falls back to english
+      mockApp.vault.adapter.read = jest.fn().mockResolvedValue('{}');
 
-      await i18n.changeLanguage('de');
+      await initializeI18n(mockApp, 'full-calendar-remastered');
 
       // Test a key that doesn't exist - should return the key itself as fallback
       const result = t('nonexistent.key');

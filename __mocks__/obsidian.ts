@@ -83,3 +83,11 @@ export class Notice {
         Notice.notices.push(message);
     }
 }
+
+export function normalizePath(path: string): string {
+    return toForwardSlashes(path).replace(/\/+/g, "/");
+}
+
+export async function requestUrl(_url: string): Promise<{ text: string }> {
+    return { text: "{}" };
+}

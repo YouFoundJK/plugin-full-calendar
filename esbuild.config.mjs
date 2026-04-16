@@ -50,7 +50,7 @@ async function build() {
     logLevel: "info",
     minify: prod,
     legalComments: prod ? 'none' : 'eof',
-    drop: prod ? ['console', 'debugger'] : [],
+    // drop: prod ? ['console', 'debugger'] : [],
     alias: {
       'react': 'preact/compat',
       'react-dom/client': 'preact/compat/client',
@@ -99,7 +99,7 @@ async function build() {
     console.log('Watching for changes...');
   } else {
     const result = await context.rebuild();
-    fs.writeFileSync("metafile.json", JSON.stringify(result.metafile));
+    // fs.writeFileSync("metafile.json", JSON.stringify(result.metafile));
     context.dispose();
   }
 }

@@ -98,7 +98,7 @@ export default class FullCalendarPlugin extends Plugin {
    */
   async onload() {
     // Initialize i18n system first, before any UI is rendered
-    await initializeI18n(this.app);
+    await initializeI18n(this.app, this.manifest.id);
 
     this.isMobile = (this.app as App & { isMobile: boolean }).isMobile;
     this.providerRegistry = new ProviderRegistry(this);
