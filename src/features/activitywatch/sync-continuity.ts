@@ -149,9 +149,40 @@ export async function createContinuityBlocksAndReplacePriorEvent(
   sessionIndex: SessionIndex,
   blocks: DerivedAWBlock[],
   priorEvent: PriorCalendarEvent,
-  canDeleteExistingEvent: boolean
+  canDeleteExistingEvent: boolean,
+  existingOverlapEvents: PriorCalendarEvent[],
+  knownProfileSignatures: Set<ProfileSignature>
 ): Promise<number> {
   const sortedBlocks = [...blocks].sort((a, b) => a.startMs - b.startMs);
+
+  const hasSafeCoverage = coversPriorEventRange(sortedBlocks, priorEvent, CONTINUITY_BUFFER_MS);
+  if (!hasSafeCoverage) {
+    return 0;
+  }
+
+  if (canDeleteExistingEvent) {
+    const startThreshold = priorEvent.startMs - CONTINUITY_BUFFER_MS;
+    const toDelete = existingOverlapEvents.filter(
+      existing =>
+        isKnownActivityWatchProfileEvent(existing, knownProfileSignatures) &&
+        existing.startMs >= startThreshold
+    );
+
+    for (const existing of toDelete) {
+      let sessionId = existing.sessionId;
+      if (!sessionId) {
+        sessionId = recoverSessionIdForPriorEvent(sessionIndex, existing);
+      }
+      if (sessionId) {
+        try {
+          await plugin.cache.deleteEvent(sessionId, { force: true });
+        } catch (err) {
+          console.warn('ActivityWatch sync: failed to delete overlapping continuity event.', err);
+        }
+      }
+    }
+  }
+
   const createdBlocks: DerivedAWBlock[] = [];
   let lastYieldTime = Date.now();
 
@@ -164,31 +195,6 @@ export async function createContinuityBlocksAndReplacePriorEvent(
     if (Date.now() - lastYieldTime > 16) {
       await new Promise(r => setTimeout(r, 0));
       lastYieldTime = Date.now();
-    }
-  }
-
-  if (!canDeleteExistingEvent) {
-    return createdBlocks.length;
-  }
-
-  const hasSafeCoverage = coversPriorEventRange(createdBlocks, priorEvent, CONTINUITY_BUFFER_MS);
-  if (!hasSafeCoverage) {
-    return createdBlocks.length;
-  }
-
-  let sessionId = priorEvent.sessionId;
-  if (!sessionId) {
-    sessionId = recoverSessionIdForPriorEvent(sessionIndex, priorEvent);
-  }
-
-  if (sessionId) {
-    try {
-      await plugin.cache.deleteEvent(sessionId, { force: true });
-    } catch (err) {
-      console.warn(
-        'ActivityWatch sync: failed to delete prior continuity event after replacement.',
-        err
-      );
     }
   }
 

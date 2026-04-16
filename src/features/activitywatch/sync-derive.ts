@@ -78,11 +78,6 @@ export async function deriveActivityWatchBlocks(
     };
   };
 
-  const isBrowserWindowEvent = (event: AWEvent): boolean => {
-    const app = typeof event.data?.app === 'string' ? event.data.app : '';
-    return COMMON_BROWSER_APP_PATTERN.test(app);
-  };
-
   const bucketEventsById = new Map<string, BucketEvent[]>();
   for (const bId of bucketIdsToFetch) {
     const bObj = buckets[bId] || Object.values(buckets).find(b => b.id === bId);

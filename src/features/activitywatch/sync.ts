@@ -158,7 +158,7 @@ export async function syncActivityWatch(
     let existingOverlapEvents: PriorCalendarEvent[] = [];
     if (!isCustomStrategy && settings.lastSyncTime > 0) {
       plugin.providerRegistry.buildMap(plugin.cache.store);
-      const overlapEnd = new Date(settings.lastSyncTime);
+      const overlapEnd = endTime;
       existingOverlapEvents = await getCalendarEventsInRange(
         plugin,
         settings.targetCalendarId,
@@ -180,7 +180,9 @@ export async function syncActivityWatch(
         sessionIndex,
         finalBlocks,
         continuityCandidate.priorEvent,
-        canDeleteExistingEvent
+        canDeleteExistingEvent,
+        existingOverlapEvents,
+        knownProfileSignatures
       );
     } else {
       const sortedFinalBlocks = [...finalBlocks].sort((a, b) => a.startMs - b.startMs);
