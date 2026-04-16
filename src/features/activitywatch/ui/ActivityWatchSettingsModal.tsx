@@ -22,7 +22,10 @@ export class ActivityWatchSettingsModal extends ReactModal {
     });
     this.plugin = plugin;
     this.onChange = onChange;
-    // Settings modal title could be set here if the base implementation allows,
-    // but the React component will have a header anyway.
+  }
+
+  onOpen(): void {
+    this.contentEl.parentElement?.addClass('activitywatch-settings-modal');
+    super.onOpen();
   }
 }

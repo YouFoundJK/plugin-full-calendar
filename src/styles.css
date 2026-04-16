@@ -108,3 +108,9 @@
 .u-muted {
   color: var(--text-muted);
 }
+
+/* ActivityWatch Settings Modal */
+.activitywatch-settings-modal {
+  width: 80vw;
+  max-width: 900px;
+}
