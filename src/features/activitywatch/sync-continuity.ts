@@ -60,7 +60,9 @@ export async function findContinuityCandidate(
   profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>,
   knownProfileSignatures: Set<ProfileSignature>
 ): Promise<ContinuityCandidate | null> {
-  if (settings.syncStrategy === 'custom' || settings.lastSyncTime <= 0) return null;
+  if (settings.syncStrategy === 'custom' || settings.lastSyncTime <= 0) {
+    return null;
+  }
 
   const lookbackMs = computeBoundedLookbackDurationMs(profiles);
   const boundaryStart = new Date(Math.max(0, settings.lastSyncTime - lookbackMs));
@@ -73,10 +75,16 @@ export async function findContinuityCandidate(
     boundaryEnd
   );
   const latest = pickLatestEvent(candidates);
-  if (!latest) return null;
+  if (!latest) {
+    return null;
+  }
 
-  if (!isKnownActivityWatchProfileEvent(latest, knownProfileSignatures)) return null;
-  if (!normalizeContinuityTitle(latest.event.title)) return null;
+  if (!isKnownActivityWatchProfileEvent(latest, knownProfileSignatures)) {
+    return null;
+  }
+  if (!normalizeContinuityTitle(latest.event.title)) {
+    return null;
+  }
 
   const reconstructedBlocks = await deriveActivityWatchBlocks(
     settings.apiUrl,
@@ -87,11 +95,15 @@ export async function findContinuityCandidate(
     new Date(latest.endMs)
   );
   const matchedBlock = pickBestReconstructedBlockForPriorEvent(reconstructedBlocks, latest);
-  if (!matchedBlock) return null;
+  if (!matchedBlock) {
+    return null;
+  }
 
   const sameTitle =
     normalizeContinuityTitle(matchedBlock.title) === normalizeContinuityTitle(latest.event.title);
-  if (!sameTitle) return null;
+  if (!sameTitle) {
+    return null;
+  }
 
   const hasSourceEvidence = await hasAwEvidenceAroundAnchorTime(
     settings.apiUrl,
@@ -100,7 +112,9 @@ export async function findContinuityCandidate(
     latest.startMs,
     CONTINUITY_BUFFER_MS
   );
-  if (!hasSourceEvidence) return null;
+  if (!hasSourceEvidence) {
+    return null;
+  }
 
   return {
     priorEvent: latest
@@ -118,7 +132,7 @@ export function buildSeedStateFromBoundaryEvent(
   const matchedProfile = profiles.find(
     profile =>
       getProfileSignature(profile.name, profile.color) ===
-      getProfileSignature(boundaryEvent.event.subCategory || '', boundaryEvent.event.category || '')
+      getProfileSignature(undefined, boundaryEvent.event.category || '')
   );
 
   if (!matchedProfile) return null;

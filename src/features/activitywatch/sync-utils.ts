@@ -77,9 +77,7 @@ export function pickBestReconstructedBlockForPriorEvent(
   const priorRange = { startMs: priorEvent.startMs, endMs: priorEvent.endMs };
 
   const exactProfileMatches = blocks.filter(
-    block =>
-      block.profileName === priorEvent.event.subCategory &&
-      block.profileColor === priorEvent.event.category
+    block => block.profileColor === priorEvent.event.category
   );
   const candidates = exactProfileMatches.length > 0 ? exactProfileMatches : blocks;
 
@@ -117,17 +115,14 @@ export function computeBoundedLookbackDurationMs(
 }
 
 export function isSameProfileBlock(existing: PriorCalendarEvent, block: DerivedAWBlock): boolean {
-  return (
-    existing.event.subCategory === block.profileName &&
-    existing.event.category === block.profileColor
-  );
+  return existing.event.category === block.profileColor;
 }
 
 export function getProfileSignature(
   profileName: string | null | undefined,
   profileColor: string | null | undefined
 ): ProfileSignature {
-  return `${profileName || ''}::${profileColor || ''}`;
+  return `${profileColor || ''}`;
 }
 
 export function normalizeContinuityTitle(title: string | null | undefined): string {
@@ -148,9 +143,7 @@ export function isKnownActivityWatchProfileEvent(
   existing: PriorCalendarEvent,
   knownProfileSignatures: Set<ProfileSignature>
 ): boolean {
-  return knownProfileSignatures.has(
-    getProfileSignature(existing.event.subCategory || '', existing.event.category || '')
-  );
+  return knownProfileSignatures.has(getProfileSignature(undefined, existing.event.category || ''));
 }
 
 export async function getCalendarEventsInRange(
@@ -281,7 +274,7 @@ export function buildSessionIndex(
     const range = parseTimedSingleEventRange(stored.event);
     if (!range) continue;
 
-    const sig = getProfileSignature(stored.event.subCategory, stored.event.category);
+    const sig = getProfileSignature(undefined, stored.event.category);
     if (!knownProfileSignatures.has(sig)) continue;
 
     let bucket = index.get(sig);
@@ -329,7 +322,7 @@ export function recoverSessionIdForPriorEvent(
   sessionIndex: SessionIndex,
   existingEvent: PriorCalendarEvent
 ): string | null {
-  const sig = getProfileSignature(existingEvent.event.subCategory, existingEvent.event.category);
+  const sig = getProfileSignature(undefined, existingEvent.event.category);
   const candidates = sessionIndex.get(sig);
   if (!candidates) return null;
 
@@ -355,7 +348,6 @@ export function materializeBlockAsEvent(block: DerivedAWBlock): OFCEvent {
     type: 'single',
     title: block.title,
     category: block.profileColor,
-    subCategory: block.profileName,
     date: startMoment.format('YYYY-MM-DD'),
     endDate: null,
     allDay: false,
