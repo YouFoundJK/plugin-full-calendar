@@ -4,6 +4,8 @@ describe('ActivityWatch continuity helpers', () => {
   const makePrior = (overrides: Partial<unknown> = {}) =>
     ({
       sessionId: 's1',
+      calendarId: 'aw',
+      cleanTitle: 'Focus Work',
       startMs: 1_000,
       endMs: 5_000,
       event: {
@@ -44,7 +46,8 @@ describe('ActivityWatch continuity helpers', () => {
         startTime: '00:00',
         endTime: '00:01',
         display: 'auto'
-      }
+      },
+      cleanTitle: 'Old'
     });
 
     const blocks = [

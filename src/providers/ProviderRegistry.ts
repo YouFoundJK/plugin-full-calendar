@@ -2,7 +2,8 @@ import { TFile, Notice } from 'obsidian';
 import {
   CalendarProvider,
   CalendarProviderCapabilities,
-  SyncKeyProvider
+  SyncKeyProvider,
+  CanonicalTitleProvider
 } from '../providers/Provider';
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
@@ -259,6 +260,19 @@ export class ProviderRegistry {
 
     // Fallback: use the existing (potentially expensive) global identifier
     return this.getGlobalIdentifier(event, calendarId);
+  }
+
+  public getCanonicalTitle(event: OFCEvent, calendarId: string): string {
+    const instance = this.instances.get(calendarId);
+    if (
+      instance &&
+      'getCanonicalTitle' in instance &&
+      typeof (instance as CanonicalTitleProvider).getCanonicalTitle === 'function'
+    ) {
+      return (instance as CanonicalTitleProvider).getCanonicalTitle(event);
+    }
+
+    return event.title;
   }
 
   public buildMap(store: {

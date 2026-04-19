@@ -42,7 +42,7 @@ export function findBoundaryOverlappingActivityWatchEvent(
         prior.endMs >= syncBoundaryMs - CONTINUITY_BUFFER_MS;
       if (!overlapsBoundary) continue;
 
-      if (!normalizeContinuityTitle(prior.event.title)) continue;
+      if (!normalizeContinuityTitle(prior.cleanTitle)) continue;
 
       candidates.push(prior);
     }
@@ -82,7 +82,7 @@ export async function findContinuityCandidate(
   if (!isKnownActivityWatchProfileEvent(latest, knownProfileSignatures)) {
     return null;
   }
-  if (!normalizeContinuityTitle(latest.event.title)) {
+  if (!normalizeContinuityTitle(latest.cleanTitle)) {
     return null;
   }
 
@@ -100,7 +100,7 @@ export async function findContinuityCandidate(
   }
 
   const sameTitle =
-    normalizeContinuityTitle(matchedBlock.title) === normalizeContinuityTitle(latest.event.title);
+    normalizeContinuityTitle(matchedBlock.title) === normalizeContinuityTitle(latest.cleanTitle);
   if (!sameTitle) {
     return null;
   }
@@ -138,7 +138,7 @@ export function buildSeedStateFromBoundaryEvent(
   if (!matchedProfile) return null;
   if ((matchedProfile.supportingEvidenceRules || []).length === 0) return null;
 
-  const eventTitle = normalizeContinuityTitle(boundaryEvent.event.title);
+  const eventTitle = normalizeContinuityTitle(boundaryEvent.cleanTitle);
   if (!eventTitle) return null;
 
   const thresholdMs = matchedProfile.activationThresholdMins * 60 * 1000;
@@ -191,8 +191,35 @@ export async function createContinuityBlocksAndReplacePriorEvent(
         try {
           await plugin.cache.deleteEvent(sessionId, { force: true });
         } catch (err) {
+          console.error(
+            'ActivityWatch continuity rewrite failed: detected a continuous session but could not delete the prior event before rewriting.',
+            {
+              sessionId,
+              title: existing.event.title,
+              category: existing.event.category,
+              startMs: existing.startMs,
+              endMs: existing.endMs,
+              priorEventTitle: priorEvent.event.title,
+              priorEventStartMs: priorEvent.startMs,
+              priorEventEndMs: priorEvent.endMs,
+              error: err
+            }
+          );
           console.warn('ActivityWatch sync: failed to delete overlapping continuity event.', err);
         }
+      } else {
+        console.error(
+          'ActivityWatch continuity rewrite failed: detected a continuous session but could not resolve the prior event to a deletable session id.',
+          {
+            title: existing.event.title,
+            category: existing.event.category,
+            startMs: existing.startMs,
+            endMs: existing.endMs,
+            priorEventTitle: priorEvent.event.title,
+            priorEventStartMs: priorEvent.startMs,
+            priorEventEndMs: priorEvent.endMs
+          }
+        );
       }
     }
   }
@@ -244,7 +271,12 @@ export async function createOrUpdateBlock(
         if (didExtend) {
           extendable.sessionId = sessionId;
           extendable.endMs = block.endMs;
-          extendable.event = materializeBlockAsEvent(block);
+          extendable.cleanTitle = block.title;
+          extendable.event = {
+            ...extendable.event,
+            ...materializeBlockAsEvent(block),
+            uid: extendable.event.uid
+          };
           return 'extended';
         }
       }
@@ -296,6 +328,8 @@ export async function createOrUpdateBlock(
     const recoveredCreatedSessionId = recoverSessionIdFromStore(sessionIndex, block);
     existingOverlapEvents.push({
       sessionId: recoveredCreatedSessionId,
+      calendarId: targetCalendarId,
+      cleanTitle: block.title,
       event: ofcEvent,
       startMs: block.startMs,
       endMs: block.endMs

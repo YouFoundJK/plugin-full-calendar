@@ -102,3 +102,7 @@ export interface SyncKeyProvider {
    */
   computeSyncKey(event: OFCEvent): string;
 }
+
+export interface CanonicalTitleProvider {
+  getCanonicalTitle(event: OFCEvent): string;
+}

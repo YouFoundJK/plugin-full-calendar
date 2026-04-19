@@ -135,7 +135,7 @@ export function isSameContinuityBlock(
 ): boolean {
   return (
     isSameProfileBlock(existing, block) &&
-    normalizeContinuityTitle(existing.event.title) === normalizeContinuityTitle(block.title)
+    normalizeContinuityTitle(existing.cleanTitle) === normalizeContinuityTitle(block.title)
   );
 }
 
@@ -174,6 +174,8 @@ export async function getCalendarEventsInRange(
 
     candidates.push({
       sessionId,
+      calendarId: targetCalendarId,
+      cleanTitle: plugin.providerRegistry.getCanonicalTitle(event, targetCalendarId),
       event,
       startMs: eventRange.startMs,
       endMs: eventRange.endMs
@@ -284,6 +286,8 @@ export function buildSessionIndex(
     }
     bucket.push({
       sessionId: stored.id,
+      calendarId: targetCalendarId,
+      cleanTitle: plugin.providerRegistry.getCanonicalTitle(stored.event, targetCalendarId),
       event: stored.event,
       startMs: range.startMs,
       endMs: range.endMs
@@ -307,7 +311,7 @@ export function recoverSessionIdFromStore(
 
   const matches = candidates.filter(existing => {
     const sameTitle =
-      normalizeContinuityTitle(existing.event.title) === normalizeContinuityTitle(block.title);
+      normalizeContinuityTitle(existing.cleanTitle) === normalizeContinuityTitle(block.title);
     const overlaps =
       existing.endMs >= block.startMs - CONTINUITY_BUFFER_MS &&
       existing.startMs <= block.endMs + CONTINUITY_BUFFER_MS;
@@ -328,8 +332,8 @@ export function recoverSessionIdForPriorEvent(
 
   const matches = candidates.filter(existing => {
     const sameTitle =
-      normalizeContinuityTitle(existing.event.title) ===
-      normalizeContinuityTitle(existingEvent.event.title);
+      normalizeContinuityTitle(existing.cleanTitle) ===
+      normalizeContinuityTitle(existingEvent.cleanTitle);
     const nearSameRange =
       Math.abs(existing.startMs - existingEvent.startMs) <= CONTINUITY_BUFFER_MS &&
       Math.abs(existing.endMs - existingEvent.endMs) <= CONTINUITY_BUFFER_MS;

@@ -194,6 +194,7 @@ describe('DailyNoteProvider workflow', () => {
 
     const handle = provider.getEventHandle(createdEvent);
     expect(handle).not.toBeNull();
+    expect(createdEvent.uid).toBe(handle!.persistentId);
     expect(handle!.location?.path).toBe('Daily/2026-03-27.md');
 
     await provider.deleteEvent(handle!);
@@ -375,6 +376,8 @@ describe('DailyNoteProvider workflow', () => {
 
     expect(id1).toBeTruthy();
     expect(id2).toBeTruthy();
+    expect(createdFirst.uid).toBe(id1);
+    expect(createdSecond.uid).toBe(id2);
     expect(id1).not.toEqual(id2);
     expect(id2).toContain('-_-_-1');
 
@@ -461,5 +464,7 @@ describe('DailyNoteProvider workflow', () => {
     expect(secondId).toBeTruthy();
     expect(firstId).not.toEqual(secondId);
     expect(secondId).toContain('-_-_-1');
+    expect(provider.getCanonicalTitle(first)).toBe('Wellness - Sleep - Night');
+    expect(provider.getCanonicalTitle(second)).toBe('Wellness - Sleep - Night');
   });
 });

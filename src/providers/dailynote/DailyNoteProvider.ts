@@ -22,7 +22,12 @@ import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
 import { constructTitle } from '../../features/category/categoryParser';
 
-import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
+import {
+  CalendarProvider,
+  CalendarProviderCapabilities,
+  SyncKeyProvider,
+  CanonicalTitleProvider
+} from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { DailyNoteProviderConfig } from './typesDaily';
 import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
@@ -113,7 +118,7 @@ const DailyNoteConfigWrapper: React.FC<DailyNoteConfigProps> = props => {
 };
 
 export class DailyNoteProvider
-  implements CalendarProvider<DailyNoteProviderConfig>, SyncKeyProvider
+  implements CalendarProvider<DailyNoteProviderConfig>, SyncKeyProvider, CanonicalTitleProvider
 {
   // Static metadata for registry
   static readonly type = 'dailynote';
@@ -150,10 +155,22 @@ export class DailyNoteProvider
     return { canCreate: true, canEdit: true, canDelete: true };
   }
 
+  private _fullTitleForEvent(event: OFCEvent): string {
+    return constructTitle(event.category, event.subCategory, event.title);
+  }
+
+  private _persistentIdForEvent(event: OFCEvent): string | null {
+    if (event.type !== 'single' || !event.date) {
+      return null;
+    }
+
+    return `${event.date}::${this._fullTitleForEvent(event)}`;
+  }
+
   getEventHandle(event: OFCEvent): EventHandle | null {
     if (event.type === 'single' && event.date) {
-      const fullTitle = constructTitle(event.category, event.subCategory, event.title);
-      const persistentId = `${event.date}::${fullTitle}`;
+      const persistentId = event.uid || this._persistentIdForEvent(event);
+      if (!persistentId) return null;
       const m = moment(event.date);
       const file = getDailyNote(m, getAllDailyNotes());
       if (!file || !(file instanceof TFile)) return null;
@@ -169,8 +186,7 @@ export class DailyNoteProvider
    */
   computeSyncKey(event: OFCEvent): string {
     if (event.type === 'single' && event.date) {
-      const fullTitle = constructTitle(event.category, event.subCategory, event.title);
-      return `${event.date}::${fullTitle}`;
+      return event.uid || this._persistentIdForEvent(event) || '';
     }
     // Fallback for non-standard event types (should not occur in practice)
     return `${event.type || 'unknown'}::${event.title || ''}::${JSON.stringify(event)}`;
@@ -180,6 +196,10 @@ export class DailyNoteProvider
     // Encapsulates the logic of checking the daily note folder.
     const { folder } = getDailyNoteSettings();
     return folder ? file.path.startsWith(folder + '/') : true;
+  }
+
+  getCanonicalTitle(event: OFCEvent): string {
+    return stripDuplicateSuffix(event.title);
   }
 
   private _withTitleFromFullTitle(event: OFCEvent, fullTitle: string): OFCEvent {
@@ -199,6 +219,12 @@ export class DailyNoteProvider
     }
 
     return { ...event, title };
+  }
+
+  private _withoutUid(event: OFCEvent): OFCEvent {
+    const eventWithoutUid = { ...event };
+    delete eventWithoutUid.uid;
+    return eventWithoutUid;
   }
 
   private async _ensureUniqueFullTitleInFile(
@@ -355,6 +381,7 @@ export class DailyNoteProvider
     let file = getDailyNote(m, getAllDailyNotes());
     if (!file) file = await createDailyNote(m);
     const eventToStore = await this._withUniqueStoredTitle(file, event);
+    const eventToWrite = this._withoutUid(eventToStore);
     const metadata = await this.app.waitForMetadata(file);
     const headingInfo = metadata.headings?.find(h => h.heading == this.source.heading);
     // if (!headingInfo) {
@@ -363,12 +390,15 @@ export class DailyNoteProvider
     const lineNumber = await this.app.rewrite(file, (contents: string) => {
       const { page, lineNumber } = addToHeading(
         contents,
-        { heading: headingInfo, item: eventToStore, headingText: this.source.heading },
+        { heading: headingInfo, item: eventToWrite, headingText: this.source.heading },
         this.plugin.settings
       );
       return [page, lineNumber] as [string, number];
     });
-    return [eventToStore, { file, lineNumber }];
+    return [
+      { ...eventToStore, uid: this._persistentIdForEvent(eventToStore) || undefined },
+      { file, lineNumber }
+    ];
   }
 
   async updateEvent(
@@ -397,7 +427,9 @@ export class DailyNoteProvider
       let newFile = getDailyNote(m, getAllDailyNotes());
       if (!newFile) newFile = await createDailyNote(m);
       const eventToStore = await this._withUniqueStoredTitle(newFile, newEventData);
+      const eventToWrite = this._withoutUid(eventToStore);
       Object.assign(newEventData, eventToStore);
+      newEventData.uid = this._persistentIdForEvent(eventToStore) || undefined;
 
       // First, delete the line from the old file.
       await this.app.rewrite(file, oldFileContents => {
@@ -418,7 +450,7 @@ export class DailyNoteProvider
       const newLn = await this.app.rewrite(newFile, newFileContents => {
         const { page, lineNumber } = addToHeading(
           newFileContents,
-          { heading: headingInfo, item: eventToStore, headingText: this.source.heading },
+          { heading: headingInfo, item: eventToWrite, headingText: this.source.heading },
           this.plugin.settings
         );
         return [page, lineNumber] as [string, number];
@@ -432,10 +464,12 @@ export class DailyNoteProvider
         newEventData,
         handle.persistentId
       );
+      const eventToWrite = this._withoutUid(eventToStore);
       Object.assign(newEventData, eventToStore);
+      newEventData.uid = this._persistentIdForEvent(eventToStore) || undefined;
       await this.app.rewrite(file, (contents: string) => {
         const lines = contents.split('\n');
-        const newLine = modifyListItem(lines[lineNumber], eventToStore, this.plugin.settings);
+        const newLine = modifyListItem(lines[lineNumber], eventToWrite, this.plugin.settings);
         if (!newLine) throw new Error('Did not successfully update line.');
         lines[lineNumber] = newLine;
         return lines.join('\n');

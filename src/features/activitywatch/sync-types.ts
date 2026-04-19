@@ -11,6 +11,8 @@ export type DerivedAWBlock = {
 
 export type PriorCalendarEvent = {
   sessionId: string | null;
+  calendarId: string;
+  cleanTitle: string;
   event: OFCEvent;
   startMs: number;
   endMs: number;
