@@ -34,20 +34,8 @@ import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
 
 const moment = obsidianMoment as unknown as typeof import('moment');
 const METADATA_WAIT_TIMEOUT_MS = 1500;
-const SUFFIX_PATTERN = '-_-_-';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
-
-const stripDuplicateSuffix = (fullTitle: string): string =>
-  fullTitle.replace(new RegExp(`${SUFFIX_PATTERN}\\d+$`), '');
-
-const getSuffixNumberForBase = (candidate: string, baseTitle: string): number | null => {
-  if (candidate === baseTitle) return 0;
-  if (!candidate.startsWith(`${baseTitle}${SUFFIX_PATTERN}`)) return null;
-  const suffix = candidate.slice(`${baseTitle}${SUFFIX_PATTERN}`.length);
-  if (!/^\d+$/.test(suffix)) return null;
-  return Number(suffix);
-};
 
 const waitForMetadataWithTimeout = async (
   app: ObsidianInterface,
@@ -164,12 +152,15 @@ export class DailyNoteProvider
       return null;
     }
 
+    if (event.uid) {
+      return `${event.date}::uid:${event.uid}`;
+    }
     return `${event.date}::${this._fullTitleForEvent(event)}`;
   }
 
   getEventHandle(event: OFCEvent): EventHandle | null {
     if (event.type === 'single' && event.date) {
-      const persistentId = event.uid || this._persistentIdForEvent(event);
+      const persistentId = this._persistentIdForEvent(event);
       if (!persistentId) return null;
       const m = moment(event.date);
       const file = getDailyNote(m, getAllDailyNotes());
@@ -186,7 +177,7 @@ export class DailyNoteProvider
    */
   computeSyncKey(event: OFCEvent): string {
     if (event.type === 'single' && event.date) {
-      return event.uid || this._persistentIdForEvent(event) || '';
+      return this._persistentIdForEvent(event) || '';
     }
     // Fallback for non-standard event types (should not occur in practice)
     return `${event.type || 'unknown'}::${event.title || ''}::${JSON.stringify(event)}`;
@@ -199,113 +190,39 @@ export class DailyNoteProvider
   }
 
   getCanonicalTitle(event: OFCEvent): string {
-    return stripDuplicateSuffix(event.title);
+    return event.title;
   }
 
-  private _withTitleFromFullTitle(event: OFCEvent, fullTitle: string): OFCEvent {
-    const category = event.category;
-    const subCategory = event.subCategory;
+  private async _assignLocalUid(file: TFile, event: OFCEvent): Promise<OFCEvent> {
+    if (event.uid) return event;
 
-    let title = fullTitle;
-    if (category && subCategory) {
-      const prefix = `${category} - ${subCategory} - `;
-      if (fullTitle.startsWith(prefix)) title = fullTitle.slice(prefix.length);
-    } else if (category) {
-      const prefix = `${category} - `;
-      if (fullTitle.startsWith(prefix)) title = fullTitle.slice(prefix.length);
-    } else if (subCategory) {
-      const prefix = `${subCategory} - `;
-      if (fullTitle.startsWith(prefix)) title = fullTitle.slice(prefix.length);
-    }
-
-    return { ...event, title };
-  }
-
-  private _withoutUid(event: OFCEvent): OFCEvent {
-    const eventWithoutUid = { ...event };
-    delete eventWithoutUid.uid;
-    return eventWithoutUid;
-  }
-
-  private async _ensureUniqueFullTitleInFile(
-    file: TFile,
-    requestedFullTitle: string,
-    excludePersistentId?: string
-  ): Promise<string> {
     const content = await this.app.read(file);
     const lines = content.split('\n');
     const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
-    if (!date) {
-      return requestedFullTitle;
-    }
 
-    const baseTitle = stripDuplicateSuffix(requestedFullTitle);
-    let maxSuffix = -1;
+    const usedUids = new Set<number>();
 
     for (const line of lines) {
+      if (!date) continue;
       const parsed = getInlineEventFromLine(line, { date });
-      if (!parsed || parsed.type !== 'single') continue;
-
-      const existingFullTitle = constructTitle(parsed.category, parsed.subCategory, parsed.title);
-      const existingId = `${parsed.date}::${existingFullTitle}`;
-      if (excludePersistentId && existingId === excludePersistentId) continue;
-
-      if (stripDuplicateSuffix(existingFullTitle) !== baseTitle) continue;
-
-      const suffixNumber = getSuffixNumberForBase(existingFullTitle, baseTitle);
-      if (suffixNumber !== null) {
-        maxSuffix = Math.max(maxSuffix, suffixNumber);
+      if (parsed && parsed.uid && !isNaN(Number(parsed.uid))) {
+        usedUids.add(Number(parsed.uid));
       }
     }
 
-    if (maxSuffix < 0) {
-      return baseTitle;
+    let localUid = 1;
+    while (usedUids.has(localUid)) {
+      localUid++;
     }
-    return `${baseTitle}${SUFFIX_PATTERN}${maxSuffix + 1}`;
+
+    return { ...event, uid: localUid.toString() };
   }
 
-  private async _withUniqueStoredTitle(
+  private async _findEventLineNumber(
     file: TFile,
-    event: OFCEvent,
-    excludePersistentId?: string
-  ): Promise<OFCEvent> {
-    const requestedFullTitle = constructTitle(event.category, event.subCategory, event.title);
-    const uniqueFullTitle = await this._ensureUniqueFullTitleInFile(
-      file,
-      requestedFullTitle,
-      excludePersistentId
-    );
-    return this._withTitleFromFullTitle(event, uniqueFullTitle);
-  }
-
-  private _normalizeDuplicateTitlesInMemory(events: OFCEvent[]): OFCEvent[] {
-    const usedTitles = new Set<string>();
-
-    return events.map(event => {
-      if (event.type !== 'single' || !event.date) {
-        return event;
-      }
-
-      const fullTitle = constructTitle(event.category, event.subCategory, event.title);
-      if (!usedTitles.has(fullTitle)) {
-        usedTitles.add(fullTitle);
-        return event;
-      }
-
-      const baseTitle = stripDuplicateSuffix(fullTitle);
-      let i = 1;
-      let candidate = `${baseTitle}${SUFFIX_PATTERN}${i}`;
-      while (usedTitles.has(candidate)) {
-        i++;
-        candidate = `${baseTitle}${SUFFIX_PATTERN}${i}`;
-      }
-
-      usedTitles.add(candidate);
-      return this._withTitleFromFullTitle(event, candidate);
-    });
-  }
-
-  private async _findEventLineNumber(file: TFile, persistentId: string): Promise<number> {
+    persistentId: string,
+    hint?: number
+  ): Promise<number> {
     const content = await this.app.read(file);
     const lines = content.split('\n');
     const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
@@ -316,18 +233,32 @@ export class DailyNoteProvider
       throw new Error(`Could not determine date from file: ${file.path}`);
     }
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const event = getInlineEventFromLine(line, { date });
-      if (event && event.type === 'single') {
-        // Check for event type
-        const fullTitle = constructTitle(event.category, event.subCategory, event.title);
-        // Now it's safe to access event.date
-        const currentId = `${event.date}::${fullTitle}`;
-        if (currentId === persistentId) {
-          return i; // Found it
-        }
+    let isV2 = false;
+    let targetUid = '';
+    const match = persistentId.match(/^(\d{4}-\d{2}-\d{2})::uid:(\d+)$/);
+    if (match) {
+      isV2 = true;
+      targetUid = match[2];
+    }
+
+    const checkLine = (line: string): boolean => {
+      const parsed = getInlineEventFromLine(line, { date });
+      if (parsed && parsed.type === 'single') {
+        if (isV2 && parsed.uid === targetUid) return true;
+
+        const fullTitle = constructTitle(parsed.category, parsed.subCategory, parsed.title);
+        const currentId = `${parsed.date}::${fullTitle}`;
+        if (!isV2 && currentId === persistentId) return true;
       }
+      return false;
+    };
+
+    if (hint !== undefined && hint >= 0 && hint < lines.length) {
+      if (checkLine(lines[hint])) return hint;
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      if (checkLine(lines[i])) return i;
     }
 
     throw new Error(`Could not find event with ID "${persistentId}" in file "${file.path}".`);
@@ -343,12 +274,10 @@ export class DailyNoteProvider
     const inlineEvents = await this.app.process(file, text =>
       getAllInlineEventsFromFile(text, listItems, { date })
     );
-    const normalizedEvents = this._normalizeDuplicateTitlesInMemory(
-      inlineEvents.map(({ event }) => event)
-    );
+
     // The raw events are returned as-is. The EventEnhancer handles timezone conversion.
-    return inlineEvents.map(({ lineNumber }, index) => {
-      return [normalizedEvents[index], { file, lineNumber }];
+    return inlineEvents.map(({ event, lineNumber }) => {
+      return [event, { file, lineNumber }];
     });
   }
 
@@ -380,25 +309,22 @@ export class DailyNoteProvider
     const m = moment(event.date);
     let file = getDailyNote(m, getAllDailyNotes());
     if (!file) file = await createDailyNote(m);
-    const eventToStore = await this._withUniqueStoredTitle(file, event);
-    const eventToWrite = this._withoutUid(eventToStore);
+
+    const eventToStore = await this._assignLocalUid(file, event);
+
     const metadata = await this.app.waitForMetadata(file);
     const headingInfo = metadata.headings?.find(h => h.heading == this.source.heading);
-    // if (!headingInfo) {
-    //   throw new Error(`Could not find heading ${this.source.heading} in daily note ${file.path}.`);
-    // }
+
     const lineNumber = await this.app.rewrite(file, (contents: string) => {
       const { page, lineNumber } = addToHeading(
         contents,
-        { heading: headingInfo, item: eventToWrite, headingText: this.source.heading },
+        { heading: headingInfo, item: eventToStore, headingText: this.source.heading },
         this.plugin.settings
       );
       return [page, lineNumber] as [string, number];
     });
-    return [
-      { ...eventToStore, uid: this._persistentIdForEvent(eventToStore) || undefined },
-      { file, lineNumber }
-    ];
+
+    return [eventToStore, { file, lineNumber }];
   }
 
   async updateEvent(
@@ -417,7 +343,11 @@ export class DailyNoteProvider
     const file = this.app.getFileByPath(path);
     if (!file) throw new Error(`File not found at path: ${path}`);
 
-    const lineNumber = await this._findEventLineNumber(file, handle.persistentId);
+    const lineNumber = await this._findEventLineNumber(
+      file,
+      handle.persistentId,
+      handle.location.lineNumber
+    );
 
     const oldDate = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
     if (!oldDate) throw new Error(`Could not get date from file at path ${file.path}`);
@@ -426,10 +356,9 @@ export class DailyNoteProvider
       const m = moment(newEventData.date);
       let newFile = getDailyNote(m, getAllDailyNotes());
       if (!newFile) newFile = await createDailyNote(m);
-      const eventToStore = await this._withUniqueStoredTitle(newFile, newEventData);
-      const eventToWrite = this._withoutUid(eventToStore);
+      const eventToStore = await this._assignLocalUid(newFile, newEventData);
+
       Object.assign(newEventData, eventToStore);
-      newEventData.uid = this._persistentIdForEvent(eventToStore) || undefined;
 
       // First, delete the line from the old file.
       await this.app.rewrite(file, oldFileContents => {
@@ -450,7 +379,7 @@ export class DailyNoteProvider
       const newLn = await this.app.rewrite(newFile, newFileContents => {
         const { page, lineNumber } = addToHeading(
           newFileContents,
-          { heading: headingInfo, item: eventToWrite, headingText: this.source.heading },
+          { heading: headingInfo, item: eventToStore, headingText: this.source.heading },
           this.plugin.settings
         );
         return [page, lineNumber] as [string, number];
@@ -459,17 +388,13 @@ export class DailyNoteProvider
       // Finally, return the authoritative new location to the cache.
       return { file: newFile, lineNumber: newLn };
     } else {
-      const eventToStore = await this._withUniqueStoredTitle(
-        file,
-        newEventData,
-        handle.persistentId
-      );
-      const eventToWrite = this._withoutUid(eventToStore);
+      // It's in the same file, keep existing uid or generate one.
+      const eventToStore = await this._assignLocalUid(file, newEventData);
+
       Object.assign(newEventData, eventToStore);
-      newEventData.uid = this._persistentIdForEvent(eventToStore) || undefined;
       await this.app.rewrite(file, (contents: string) => {
         const lines = contents.split('\n');
-        const newLine = modifyListItem(lines[lineNumber], eventToWrite, this.plugin.settings);
+        const newLine = modifyListItem(lines[lineNumber], eventToStore, this.plugin.settings);
         if (!newLine) throw new Error('Did not successfully update line.');
         lines[lineNumber] = newLine;
         return lines.join('\n');
@@ -486,7 +411,11 @@ export class DailyNoteProvider
     const file = this.app.getFileByPath(path);
     if (!file) throw new Error(`File not found at path: ${path}`);
 
-    const lineNumber = await this._findEventLineNumber(file, handle.persistentId);
+    const lineNumber = await this._findEventLineNumber(
+      file,
+      handle.persistentId,
+      handle.location?.lineNumber
+    );
 
     await this.app.rewrite(file, (contents: string) => {
       const lines = contents.split('\n');

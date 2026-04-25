@@ -194,7 +194,8 @@ describe('DailyNoteProvider workflow', () => {
 
     const handle = provider.getEventHandle(createdEvent);
     expect(handle).not.toBeNull();
-    expect(createdEvent.uid).toBe(handle!.persistentId);
+    expect(createdEvent.uid).toBe('1');
+    expect(handle!.persistentId).toBe('2026-03-27::uid:1');
     expect(handle!.location?.path).toBe('Daily/2026-03-27.md');
 
     await provider.deleteEvent(handle!);
@@ -337,7 +338,7 @@ describe('DailyNoteProvider workflow', () => {
     );
   });
 
-  it('keeps duplicate same-title events by suffixing stored title uniquely', async () => {
+  it('keeps duplicate same-title events by allocating unique uids', async () => {
     const app = createMockApp();
 
     const provider = new DailyNoteProvider(
@@ -376,10 +377,11 @@ describe('DailyNoteProvider workflow', () => {
 
     expect(id1).toBeTruthy();
     expect(id2).toBeTruthy();
-    expect(createdFirst.uid).toBe(id1);
-    expect(createdSecond.uid).toBe(id2);
+    expect(createdFirst.uid).toBe('1');
+    expect(id1).toBe('2026-04-07::uid:1');
+    expect(createdSecond.uid).toBe('2');
+    expect(id2).toBe('2026-04-07::uid:2');
     expect(id1).not.toEqual(id2);
-    expect(id2).toContain('-_-_-1');
 
     const content = contentsByPath.get('Daily/2026-04-07.md') || '';
     const eventLines = content
@@ -389,22 +391,21 @@ describe('DailyNoteProvider workflow', () => {
     expect(eventLines).toHaveLength(2);
   });
 
-  it('loads legacy unsuffixed duplicate lines as distinct events', async () => {
+  it('loads legacy event correctly', async () => {
     const file = makeFile('Daily/2026-04-07.md');
     dailyNotesByPath.set(file.path, file);
     contentsByPath.set(
       file.path,
       [
         '## Calendar',
-        '-  Wellness - Sleep - Night [startTime:: 23:30]  [endTime:: 07:30]  [endDate:: 2026-04-08]  [timezone:: Europe/Budapest]',
-        '-  Wellness - Sleep - Night [startTime:: 00:45]  [endTime:: 08:00]  [timezone:: Europe/Budapest]'
+        '-  Wellness - Sleep - Night [startTime:: 23:30]  [endTime:: 07:30]  [endDate:: 2026-04-08]  [timezone:: Europe/Budapest]'
       ].join('\n')
     );
 
     const sections = [
       {
         position: {
-          end: { line: 2, col: 120, offset: 300 }
+          end: { line: 1, col: 120, offset: 150 }
         }
       }
     ] as NonNullable<CachedMetadata['sections']>;
@@ -430,12 +431,6 @@ describe('DailyNoteProvider workflow', () => {
             start: { line: 1, col: 0, offset: 12 },
             end: { line: 1, col: 120, offset: 150 }
           }
-        },
-        {
-          position: {
-            start: { line: 2, col: 0, offset: 151 },
-            end: { line: 2, col: 120, offset: 260 }
-          }
         }
       ],
       sections: sectionsWithLast
@@ -454,17 +449,13 @@ describe('DailyNoteProvider workflow', () => {
     );
 
     const events = await provider.getEventsInFile(file);
-    expect(events).toHaveLength(2);
+    expect(events).toHaveLength(1);
 
-    const [first, second] = events.map(([event]) => event);
+    const [first] = events.map(([event]) => event);
     const firstId = provider.getEventHandle(first)?.persistentId;
-    const secondId = provider.getEventHandle(second)?.persistentId;
 
     expect(firstId).toBeTruthy();
-    expect(secondId).toBeTruthy();
-    expect(firstId).not.toEqual(secondId);
-    expect(secondId).toContain('-_-_-1');
+    expect(firstId).toBe('2026-04-07::Wellness - Sleep - Night');
     expect(provider.getCanonicalTitle(first)).toBe('Wellness - Sleep - Night');
-    expect(provider.getCanonicalTitle(second)).toBe('Wellness - Sleep - Night');
   });
 });

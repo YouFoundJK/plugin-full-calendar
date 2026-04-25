@@ -19,7 +19,7 @@ Creates one-note-per-event records, supports full CRUD, and uses robust filename
 
 ### Daily Note Provider
 
-Parses list items under configured heading and performs line-targeted updates. Uses daily-note plugin integration and file/date reconciliation for event identity.
+Parses list items under configured heading and performs line-targeted updates. Implements a persistent locally-allocated `uid` mechanism (`[uid:: N]`) instead of legacy deduplication matching, enabling deterministic title edits and O(1) hinted line lookups during sync updates.
 
 ### ICS Provider (non-standard hybrid)
 
