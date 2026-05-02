@@ -337,8 +337,8 @@
           "description": "Nom d'affichage pour ce calendrier"
         },
         "readOnly": {
-          "label": "Calendrier en lecture seule",
-          "description": "Les tâches peuvent être consultées mais pas modifiées via l'interface du calendrier. Pour modifier les tâches, utilisez le plugin Tasks ou modifiez directement vos notes."
+          "label": "Événements",
+          "description": "Les modifications d'événements se font directement dans le modèle Tasks et non dans la fenêtre d'édition de Full Calendar."
         },
         "adding": "Ajout...",
         "cancel": "Annuler"

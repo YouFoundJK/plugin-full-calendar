@@ -9,6 +9,18 @@ export interface CalendarProviderCapabilities {
   hasCustomEditUI?: boolean; // This is the new capability
 }
 
+export class RecoverableProviderLoadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RecoverableProviderLoadError';
+  }
+}
+
+export interface ProviderLoadRetryPolicy {
+  retryDelayMs: number;
+  maxAttempts?: number;
+}
+
 export interface CalendarProvider<TConfig> {
   readonly type: string;
   readonly displayName: string;
@@ -20,6 +32,13 @@ export interface CalendarProvider<TConfig> {
    * Use this to subscribe to external events or set up live watchers.
    */
   initialize?(): void;
+
+  /**
+   * Optional retry policy for providers that may be temporarily unavailable during
+   * Obsidian startup. The registry owns the delayed retry loop so views can render
+   * while provider data catches up in the background.
+   */
+  getLoadRetryPolicy?(): ProviderLoadRetryPolicy | null;
 
   getCapabilities(): CalendarProviderCapabilities;
 

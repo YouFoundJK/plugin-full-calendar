@@ -17,7 +17,12 @@ import { TFile, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
-import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
+import {
+  CalendarProvider,
+  CalendarProviderCapabilities,
+  RecoverableProviderLoadError,
+  SyncKeyProvider
+} from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent, TasksConfigComponentProps } from './TasksConfigComponent';
@@ -28,6 +33,9 @@ import { t } from '../../features/i18n/i18n';
 
 // CHANGE: Define Scheduled emoji instead of Due
 const getScheduledDateEmoji = (): string => '⏳';
+const TASKS_CACHE_TIMEOUT_MS = 5000;
+const TASKS_CACHE_RETRY_DELAY_MS = 10000;
+const DEFAULT_TIMED_TASK_DURATION_MINUTES = 30;
 
 /**
  * Extracts a time or time range from a task title.
@@ -330,6 +338,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (this.tasksPromise) {
       return this.tasksPromise;
     }
+    let didTimeout = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     this.tasksPromise = new Promise((resolve, reject) => {
       const callback = (cacheData: TasksCacheData) => {
         if (
@@ -338,9 +348,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
             (typeof cacheData.state === 'object' && cacheData.state?.name === 'Warm')) &&
           cacheData.tasks
         ) {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
           this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
           this.isTasksCacheWarm = true;
           this.tasksPromise = null;
+          if (didTimeout) {
+            this.plugin.providerRegistry.reloadProviderNow(this.source.id);
+          }
           resolve();
         }
       };
@@ -348,18 +365,34 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         trigger: (event: string, callback: (data: TasksCacheData) => void) => void;
       };
 
-      workspace.trigger('obsidian-tasks-plugin:request-cache-update', callback);
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         if (!this.isTasksCacheWarm) {
+          didTimeout = true;
           console.error(
             "Full Calendar: Timed out waiting for Tasks plugin's cache. The Tasks plugin may not be enabled or may have failed to load."
           );
           this.tasksPromise = null;
-          reject(new Error("Timed out waiting for Tasks plugin's cache."));
+          reject(new RecoverableProviderLoadError("Timed out waiting for Tasks plugin's cache."));
         }
-      }, 5000);
+      }, TASKS_CACHE_TIMEOUT_MS);
+      workspace.trigger('obsidian-tasks-plugin:request-cache-update', callback);
     });
     return this.tasksPromise;
+  }
+
+  public getLoadRetryPolicy(): { retryDelayMs: number } {
+    return { retryDelayMs: TASKS_CACHE_RETRY_DELAY_MS };
+  }
+
+  private getDefaultEndTime(startTime: string): string {
+    const formats = ['H:mm', 'HH:mm', 'h:mm a'];
+    for (const format of formats) {
+      const parsed = DateTime.fromFormat(startTime, format);
+      if (parsed.isValid) {
+        return parsed.plus({ minutes: DEFAULT_TIMED_TASK_DURATION_MINUTES }).toFormat('HH:mm');
+      }
+    }
+    return startTime;
   }
 
   /**
@@ -383,7 +416,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'),
           endDate: null,
           startTime: task.startTime,
-          endTime: task.endTime ?? task.startTime,
+          endTime: task.endTime ?? this.getDefaultEndTime(task.startTime),
           completed: task.isDone ? DateTime.now().toISO() : false,
           uid: task.id
         }
@@ -417,8 +450,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     const handleLiveCacheUpdate = async (cacheData: TasksCacheData) => {
       if (
         this.isProcessingUpdate ||
-        !this.isTasksCacheWarm ||
-        !this.plugin.cache ||
         !cacheData ||
         !(
           (typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
@@ -426,6 +457,18 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         ) ||
         !cacheData.tasks
       ) {
+        return;
+      }
+
+      if (!this.isTasksCacheWarm) {
+        this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
+        this.isTasksCacheWarm = true;
+        this.tasksPromise = null;
+        this.plugin.providerRegistry.reloadProviderNow(this.source.id);
+        return;
+      }
+
+      if (!this.plugin.cache) {
         return;
       }
 

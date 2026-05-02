@@ -337,8 +337,8 @@
           "description": "Display name for this calendar"
         },
         "readOnly": {
-          "label": "Read-Only Calendar",
-          "description": "Tasks can be viewed but not modified through the calendar interface. To edit tasks, use the Tasks plugin or modify your notes directly."
+          "label": "Events",
+          "description": "Event Edits happen directly in the Tasks Model and not the Full Calendar Edit Modal."
         },
         "adding": "Adding...",
         "cancel": "Cancel"

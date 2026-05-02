@@ -33,6 +33,7 @@ type MockPlugin = {
   settings: Record<string, unknown>;
   providerRegistry: {
     refreshBacklogViews: jest.Mock;
+    reloadProviderNow: jest.Mock;
   };
 };
 
@@ -69,7 +70,8 @@ describe('TasksPluginProvider', () => {
       },
       settings: {},
       providerRegistry: {
-        refreshBacklogViews: jest.fn()
+        refreshBacklogViews: jest.fn(),
+        reloadProviderNow: jest.fn()
       }
     };
 
@@ -105,6 +107,70 @@ describe('TasksPluginProvider', () => {
   });
 
   describe('Tasks API integration', () => {
+    it('keeps explicit task time ranges for timed calendar events', async () => {
+      mockPlugin.app.workspace.trigger.mockImplementation(
+        (eventName: string, callback: (data: unknown) => void) => {
+          if (eventName === 'obsidian-tasks-plugin:request-cache-update') {
+            callback({
+              state: 'Warm',
+              tasks: [
+                {
+                  path: 'Daily.md',
+                  description: 'Planning (09:00-10:15)',
+                  taskLocation: { lineNumber: 0 },
+                  scheduledDate: { toDate: () => new Date('2026-05-02T00:00:00') },
+                  originalMarkdown: '- [ ] Planning (09:00-10:15) ⏳ 2026-05-02',
+                  isDone: false
+                }
+              ]
+            });
+          }
+        }
+      );
+
+      const events = await provider.getEvents();
+
+      expect(events[0][0]).toMatchObject({
+        type: 'single',
+        allDay: false,
+        date: '2026-05-02',
+        startTime: '09:00',
+        endTime: '10:15'
+      });
+    });
+
+    it('gives single-time tasks a visible duration for week/time-grid views', async () => {
+      mockPlugin.app.workspace.trigger.mockImplementation(
+        (eventName: string, callback: (data: unknown) => void) => {
+          if (eventName === 'obsidian-tasks-plugin:request-cache-update') {
+            callback({
+              state: 'Warm',
+              tasks: [
+                {
+                  path: 'Daily.md',
+                  description: 'Standup (09:00)',
+                  taskLocation: { lineNumber: 0 },
+                  scheduledDate: { toDate: () => new Date('2026-05-02T00:00:00') },
+                  originalMarkdown: '- [ ] Standup (09:00) ⏳ 2026-05-02',
+                  isDone: false
+                }
+              ]
+            });
+          }
+        }
+      );
+
+      const events = await provider.getEvents();
+
+      expect(events[0][0]).toMatchObject({
+        type: 'single',
+        allDay: false,
+        date: '2026-05-02',
+        startTime: '09:00',
+        endTime: '09:30'
+      });
+    });
+
     it('should reject creating events directly', async () => {
       const event = { title: 'Test Event', type: 'single', date: '2024-01-01' } as OFCEvent;
 

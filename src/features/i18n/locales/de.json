@@ -337,8 +337,8 @@
           "description": "Anzeigename für diesen Kalender"
         },
         "readOnly": {
-          "label": "Schreibgeschützter Kalender",
-          "description": "Aufgaben können angezeigt, aber nicht über die Kalenderoberfläche bearbeitet werden. Zum Bearbeiten verwenden Sie das Tasks-Plugin oder ändern Sie Ihre Notizen direkt."
+          "label": "Ereignisse",
+          "description": "Ereignisbearbeitungen erfolgen direkt im Tasks-Modell und nicht im Full Calendar Bearbeitungsfenster."
         },
         "adding": "Wird hinzugefügt...",
         "cancel": "Abbrechen"

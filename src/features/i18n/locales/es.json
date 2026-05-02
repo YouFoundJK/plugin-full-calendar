@@ -337,8 +337,8 @@
           "description": "Nombre para mostrar de este calendario"
         },
         "readOnly": {
-          "label": "Calendario de solo lectura",
-          "description": "Las tareas pueden verse pero no modificarse desde la interfaz del calendario. Para editar tareas, usa el plugin Tasks o modifica tus notas directamente."
+          "label": "Eventos",
+          "description": "Las ediciones de eventos se realizan directamente en el modelo de Tasks y no en la ventana de edición de Full Calendar."
         },
         "adding": "Agregando...",
         "cancel": "Cancelar"

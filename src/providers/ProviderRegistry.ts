@@ -3,7 +3,8 @@ import {
   CalendarProvider,
   CalendarProviderCapabilities,
   SyncKeyProvider,
-  CanonicalTitleProvider
+  CanonicalTitleProvider,
+  ProviderLoadRetryPolicy
 } from '../providers/Provider';
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
@@ -41,6 +42,8 @@ export class ProviderRegistry {
   private providers = new Map<string, ProviderLoader>();
   private instances = new Map<string, CalendarProvider<unknown>>();
   private sources: CalendarInfo[] = [];
+  private providerRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private providerRetryAttempts = new Map<string, number>();
 
   // Properties from IdentifierManager and for linking singletons
   private plugin: FullCalendarPlugin;
@@ -183,6 +186,11 @@ export class ProviderRegistry {
   }
 
   public async initializeInstances(): Promise<void> {
+    for (const timer of this.providerRetryTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.providerRetryTimers.clear();
+    this.providerRetryAttempts.clear();
     this.instances.clear();
     const sources = this.plugin.settings.calendarSources;
 
@@ -351,6 +359,7 @@ export class ProviderRegistry {
         } catch (e) {
           const source = this.getSource(settingsId);
           console.warn(`Full Calendar: Failed to load calendar source`, source, e);
+          this.scheduleProviderReload(settingsId, instance, e);
         }
       })();
       promises.push(promise);
@@ -410,6 +419,7 @@ export class ProviderRegistry {
       } catch (e) {
         const source = this.getSource(settingsId);
         console.warn(`Full Calendar: Failed to load local calendar source (Stage 1)`, source, e);
+        this.scheduleProviderReload(settingsId, instance, e);
       }
     });
 
@@ -429,7 +439,9 @@ export class ProviderRegistry {
           const rawEvents = await instance.getEvents();
           processResults(settingsId, rawEvents);
         } catch {
-          // Suppress errors if they are just re-runs
+          // Suppress noisy logs for background re-runs, but still let retryable
+          // providers ask the registry for a delayed reload.
+          this.scheduleProviderReload(settingsId, instance);
         }
       });
       void Promise.all(localPromises2);
@@ -447,11 +459,77 @@ export class ProviderRegistry {
         } catch (e) {
           const source = this.getSource(settingsId);
           console.warn(`Full Calendar: Failed to load remote calendar source pipeline`, source, e);
+          this.scheduleProviderReload(settingsId, instance, e);
         }
       });
 
       await Promise.allSettled(remotePromises);
     })();
+  }
+
+  private getRetryPolicy(instance: CalendarProvider<unknown>): ProviderLoadRetryPolicy | null {
+    return instance.getLoadRetryPolicy?.() ?? null;
+  }
+
+  private scheduleProviderReload(
+    settingsId: string,
+    instance: CalendarProvider<unknown>,
+    reason?: unknown
+  ): void {
+    const policy = this.getRetryPolicy(instance);
+    if (!policy || !this.cache) {
+      return;
+    }
+
+    if (this.providerRetryTimers.has(settingsId)) {
+      return;
+    }
+
+    const attempts = this.providerRetryAttempts.get(settingsId) ?? 0;
+    if (policy.maxAttempts !== undefined && attempts >= policy.maxAttempts) {
+      console.warn(`Full Calendar: Provider "${settingsId}" exhausted reload attempts.`, reason);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      this.providerRetryTimers.delete(settingsId);
+      this.providerRetryAttempts.set(settingsId, attempts + 1);
+      void this.reloadProvider(settingsId);
+    }, policy.retryDelayMs);
+
+    this.providerRetryTimers.set(settingsId, timer);
+  }
+
+  private async reloadProvider(settingsId: string): Promise<void> {
+    if (!this.cache) {
+      return;
+    }
+
+    const instance = this.instances.get(settingsId);
+    if (!instance) {
+      return;
+    }
+
+    try {
+      const rawEvents = await instance.getEvents();
+      this.cache.syncCalendar(settingsId, rawEvents);
+      this.providerRetryAttempts.delete(settingsId);
+      this.refreshBacklogViews();
+    } catch (e) {
+      const source = this.getSource(settingsId);
+      console.warn(`Full Calendar: Delayed provider reload failed`, source, e);
+      this.scheduleProviderReload(settingsId, instance, e);
+    }
+  }
+
+  public reloadProviderNow(settingsId: string): void {
+    const timer = this.providerRetryTimers.get(settingsId);
+    if (timer) {
+      clearTimeout(timer);
+      this.providerRetryTimers.delete(settingsId);
+    }
+    this.providerRetryAttempts.delete(settingsId);
+    void this.reloadProvider(settingsId);
   }
 
   public async createEventInProvider(
@@ -700,6 +778,11 @@ export class ProviderRegistry {
         off: (name: string, cb: () => void) => void;
       }
     ).off('full-calendar:sources-changed', this.onSourcesChanged);
+    for (const timer of this.providerRetryTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.providerRetryTimers.clear();
+    this.providerRetryAttempts.clear();
   }
 
   /**
