@@ -435,6 +435,25 @@
         "failed": "ActivityWatch sync failed.",
         "enabledPrompt": "Activitywatch enabled. Please configure the target calendar by clicking the gear icon."
       }
+    },
+    "tasksIntegration": {
+      "title": "Obsidian Tasks Integration",
+      "description": "Configure how Full Calendar schedules tasks from the Tasks backlog.",
+      "configButton": "Configure Tasks integration",
+      "modal": {
+        "title": "Tasks Integration"
+      },
+      "backlogDateTarget": {
+        "label": "Backlog drop date field",
+        "description": "Choose which Tasks date marker is written when dragging from backlog. The backlog shows tasks missing this selected date marker.",
+        "scheduled": "Scheduled date",
+        "start": "Start date",
+        "due": "Due date"
+      },
+      "openEditModalAfterBacklogDrop": {
+        "label": "Open Tasks edit modal after backlog drop",
+        "description": "Open the Obsidian Tasks edit modal immediately after dragging a task from the backlog onto the calendar."
+      }
     }
   },
   "modals": {

@@ -1,0 +1,52 @@
+import { Modal, Setting } from 'obsidian';
+import FullCalendarPlugin from '../../main';
+import { t } from '../../features/i18n/i18n';
+import { TasksBacklogDateTarget } from '../../types/settings';
+
+export class TasksIntegrationSettingsModal extends Modal {
+  constructor(
+    private plugin: FullCalendarPlugin,
+    private onChange: () => void
+  ) {
+    super(plugin.app);
+  }
+
+  onOpen(): void {
+    this.contentEl.empty();
+    this.titleEl.setText(t('settings.tasksIntegration.modal.title'));
+
+    const settings = this.plugin.settings.tasksIntegration;
+
+    new Setting(this.contentEl)
+      .setName(t('settings.tasksIntegration.backlogDateTarget.label'))
+      .setDesc(t('settings.tasksIntegration.backlogDateTarget.description'))
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('scheduledDate', t('settings.tasksIntegration.backlogDateTarget.scheduled'))
+          .addOption('startDate', t('settings.tasksIntegration.backlogDateTarget.start'))
+          .addOption('dueDate', t('settings.tasksIntegration.backlogDateTarget.due'))
+          .setValue(settings.backlogDateTarget)
+          .onChange(async value => {
+            settings.backlogDateTarget = value as TasksBacklogDateTarget;
+            await this.plugin.saveSettings();
+            this.plugin.providerRegistry.refreshBacklogViews();
+            this.onChange();
+          });
+      });
+
+    new Setting(this.contentEl)
+      .setName(t('settings.tasksIntegration.openEditModalAfterBacklogDrop.label'))
+      .setDesc(t('settings.tasksIntegration.openEditModalAfterBacklogDrop.description'))
+      .addToggle(toggle => {
+        toggle.setValue(settings.openEditModalAfterBacklogDrop).onChange(async value => {
+          settings.openEditModalAfterBacklogDrop = value;
+          await this.plugin.saveSettings();
+          this.onChange();
+        });
+      });
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+}

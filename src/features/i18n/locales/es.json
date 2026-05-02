@@ -435,6 +435,25 @@
         "failed": "Error en la sincronización de ActivityWatch.",
         "enabledPrompt": "ActivityWatch habilitado. Por favor, configure el calendario de destino haciendo clic en el icono de engranaje."
       }
+    },
+    "tasksIntegration": {
+      "title": "Integración con Obsidian Tasks",
+      "description": "Configura cómo Full Calendar programa tareas desde el backlog de Tasks.",
+      "configButton": "Configurar integración de Tasks",
+      "modal": {
+        "title": "Integración de Tasks"
+      },
+      "backlogDateTarget": {
+        "label": "Campo de fecha para soltar en backlog",
+        "description": "Elige qué marcador de fecha de Tasks se escribe al arrastrar desde el backlog. El backlog muestra tareas que no tienen este marcador de fecha seleccionado.",
+        "scheduled": "Fecha programada",
+        "start": "Fecha de inicio",
+        "due": "Fecha de vencimiento"
+      },
+      "openEditModalAfterBacklogDrop": {
+        "label": "Abrir modal de edición de Tasks tras soltar en backlog",
+        "description": "Abre el modal de edición de Tasks de Obsidian inmediatamente después de arrastrar una tarea del backlog al calendario."
+      }
     }
   },
   "modals": {

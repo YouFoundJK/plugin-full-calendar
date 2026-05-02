@@ -41,9 +41,12 @@ export { extractTimeFromTitle } from './taskPayloadAdapter';
 
 // CHANGE: Define Scheduled emoji instead of Due
 const getScheduledDateEmoji = (): string => '⏳';
+const getStartDateEmoji = (): string => '🛫';
+const getDueDateEmoji = (): string => '📅';
 const TASKS_CACHE_TIMEOUT_MS = 5000;
 const TASKS_CACHE_RETRY_DELAY_MS = 10000;
 const DEFAULT_TIMED_TASK_DURATION_MINUTES = 30;
+type TasksDateTarget = 'scheduledDate' | 'startDate' | 'dueDate';
 
 /**
  * Updates or removes the time block `(H:MM)` / `(H:MM AM)` or their range forms
@@ -577,13 +580,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       .filter((e): e is [OFCEvent, EventLocation | null] => e !== null);
   }
 
-  // REPLACE getUndatedTasks with corrected logic
   public async getUndatedTasks(): Promise<ParsedUndatedTask[]> {
     await this._ensureTasksCacheIsWarm();
     return (
       this.allTasks
-        // An undated task for the backlog has no dates and is not done.
-        .filter(t => !t.scheduledDate && !t.isDone) // !t.startDate && !t.dueDate &&
+        .filter(t => !this.hasBacklogTargetDate(t) && !t.isDone)
         // Map to the format expected by the backlog view.
         .map(t => ({
           title: t.title,
@@ -634,26 +635,65 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    * Updates the date component of a task's original markdown line.
    * Changed to use Scheduled Date (⏳) instead of Due Date (📅).
    */
-  private updateTaskLine(originalMarkdown: string, newDate: Date): string {
-    // CHANGE: Use scheduled emoji
-    const scheduledSymbol = getScheduledDateEmoji();
-    const newDateString = DateTime.fromJSDate(newDate).toFormat('yyyy-MM-dd'); // MODIFIED
-    const newScheduledComponent = `${scheduledSymbol} ${newDateString}`;
-    // CHANGE: Regex looks for scheduled icon
-    const scheduledDateRegex = /⏳\s*\d{4}-\d{2}-\d{2}/;
+  private getDateTargetEmoji(target: TasksDateTarget): string {
+    switch (target) {
+      case 'startDate':
+        return getStartDateEmoji();
+      case 'dueDate':
+        return getDueDateEmoji();
+      case 'scheduledDate':
+      default:
+        return getScheduledDateEmoji();
+    }
+  }
 
-    // If a scheduled date already exists, replace it.
-    if (originalMarkdown.match(scheduledDateRegex)) {
-      return originalMarkdown.replace(scheduledDateRegex, newScheduledComponent);
+  private setTaskDate(task: CalendarTask, target: TasksDateTarget, date: Date): void {
+    switch (target) {
+      case 'startDate':
+        task.startDate = date;
+        break;
+      case 'dueDate':
+        task.dueDate = date;
+        break;
+      case 'scheduledDate':
+        task.scheduledDate = date;
+        break;
+    }
+  }
+
+  private hasBacklogTargetDate(task: CalendarTask): boolean {
+    switch (this.plugin.settings.tasksIntegration.backlogDateTarget) {
+      case 'startDate':
+        return !!task.startDate;
+      case 'dueDate':
+        return !!task.dueDate;
+      case 'scheduledDate':
+      default:
+        return !!task.scheduledDate;
+    }
+  }
+
+  private updateTaskLine(
+    originalMarkdown: string,
+    newDate: Date,
+    target: TasksDateTarget = 'scheduledDate'
+  ): string {
+    const dateSymbol = this.getDateTargetEmoji(target);
+    const newDateString = DateTime.fromJSDate(newDate).toFormat('yyyy-MM-dd'); // MODIFIED
+    const newDateComponent = `${dateSymbol} ${newDateString}`;
+    const dateRegex = new RegExp(`${dateSymbol}\\s*\\d{4}-\\d{2}-\\d{2}`, 'u');
+
+    if (originalMarkdown.match(dateRegex)) {
+      return originalMarkdown.replace(dateRegex, newDateComponent);
     } else {
       // Otherwise, append it, being careful to preserve any block links (^uuid).
       const blockLinkRegex = /(\s*\^[a-zA-Z0-9-]+)$/;
       const blockLinkMatch = originalMarkdown.match(blockLinkRegex);
       if (blockLinkMatch) {
         const contentWithoutBlockLink = originalMarkdown.replace(blockLinkRegex, '');
-        return `${contentWithoutBlockLink.trim()} ${newScheduledComponent}${blockLinkMatch[1]}`;
+        return `${contentWithoutBlockLink.trim()} ${newDateComponent}${blockLinkMatch[1]}`;
       } else {
-        return `${originalMarkdown.trim()} ${newScheduledComponent}`;
+        return `${originalMarkdown.trim()} ${newDateComponent}`;
       }
     }
   }
@@ -729,7 +769,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (!task) {
       throw new Error(`Cannot find original task with ID ${taskId} to update.`);
     }
-    let newLine = this.updateTaskLine(task.originalMarkdown, newDate);
+    let newLine = this.updateTaskLine(task.originalMarkdown, newDate, 'scheduledDate');
     // Only update the time block when explicitly provided (undefined = no change).
     if (startTime !== undefined) {
       newLine = updateTimeInLine(newLine, startTime, endTime ?? null, timeFormat24h);
@@ -748,10 +788,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (!task) {
       throw new Error(`Cannot find original task to schedule at ${taskId}`);
     }
-    const newLine = this.updateTaskLine(task.originalMarkdown, date);
+    const dateTarget = this.plugin.settings.tasksIntegration.backlogDateTarget;
+    const newLine = this.updateTaskLine(task.originalMarkdown, date, dateTarget);
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
     task.originalMarkdown = newLine;
-    task.scheduledDate = date;
+    this.setTaskDate(task, dateTarget, date);
     const tasksApi = (
       this.plugin.app as unknown as {
         plugins?: {
@@ -762,13 +803,13 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         };
       }
     ).plugins?.plugins?.['obsidian-tasks-plugin']?.apiV1;
-    if (tasksApi) {
+    if (tasksApi && this.plugin.settings.tasksIntegration.openEditModalAfterBacklogDrop) {
       const editedTaskLine = await tasksApi.editTaskLineModal(newLine);
       if (editedTaskLine !== undefined && editedTaskLine !== newLine) {
         await this.replaceTaskInFile(task.filePath, task.lineNumber, [editedTaskLine]);
         task.originalMarkdown = editedTaskLine;
       }
-    } else {
+    } else if (!tasksApi && this.plugin.settings.tasksIntegration.openEditModalAfterBacklogDrop) {
       new Notice(t('notices.tasks.scheduledNoModal'));
     }
   }

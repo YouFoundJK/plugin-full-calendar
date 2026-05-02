@@ -619,12 +619,20 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         break;
       }
       case 'integrations': {
-        const [{ renderActivityWatchSettings }, { renderGoogleSettings }] = await Promise.all([
+        const [
+          { renderActivityWatchSettings },
+          { renderGoogleSettings },
+          { renderTasksIntegrationSettings }
+        ] = await Promise.all([
           import('../../features/activitywatch/ui/renderActivityWatch'),
-          import('../../providers/google/ui/renderGoogle')
+          import('../../providers/google/ui/renderGoogle'),
+          import('../../providers/tasks/renderTasksIntegration')
         ]);
 
         renderActivityWatchSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        renderTasksIntegrationSettings(containerEl, this.plugin, () => {
           void this.display();
         });
         renderGoogleSettings(containerEl, this.plugin, () => {

@@ -435,6 +435,25 @@
         "failed": "ActivityWatch-Sync fehlgeschlagen.",
         "enabledPrompt": "ActivityWatch aktiviert. Bitte konfigurieren Sie den Zielkalender, indem Sie auf das Zahnrad-Symbol klicken."
       }
+    },
+    "tasksIntegration": {
+      "title": "Obsidian Tasks Integration",
+      "description": "Konfigurieren Sie, wie Full Calendar Aufgaben aus dem Tasks-Backlog plant.",
+      "configButton": "Tasks-Integration konfigurieren",
+      "modal": {
+        "title": "Tasks-Integration"
+      },
+      "backlogDateTarget": {
+        "label": "Backlog-Zieldatum-Feld",
+        "description": "Wählen Sie, welcher Tasks-Datumsmarker beim Ziehen aus dem Backlog geschrieben wird. Das Backlog zeigt Aufgaben an, denen dieser ausgewählte Datumsmarker fehlt.",
+        "scheduled": "Geplantes Datum",
+        "start": "Startdatum",
+        "due": "Fälligkeitsdatum"
+      },
+      "openEditModalAfterBacklogDrop": {
+        "label": "Tasks-Bearbeitungsfenster nach Backlog-Drop öffnen",
+        "description": "Öffnet das Obsidian Tasks-Bearbeitungsfenster sofort nach dem Ziehen einer Aufgabe aus dem Backlog in den Kalender."
+      }
     }
   },
   "modals": {

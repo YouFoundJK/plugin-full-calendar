@@ -37,6 +37,13 @@ export interface ActivityWatchSettings {
   profiles: ContextProfile[];
 }
 
+export type TasksBacklogDateTarget = 'scheduledDate' | 'startDate' | 'dueDate';
+
+export interface TasksIntegrationSettings {
+  backlogDateTarget: TasksBacklogDateTarget;
+  openEditModalAfterBacklogDrop: boolean;
+}
+
 export interface BusinessHoursSettings {
   enabled: boolean;
   daysOfWeek: number[]; // 0=Sunday, 1=Monday, etc.
@@ -122,6 +129,7 @@ export interface FullCalendarSettings {
   hiddenDays?: number[]; // Array of day numbers to hide (0=Sunday, 1=Monday, etc.)
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
   activityWatch: ActivityWatchSettings;
+  tasksIntegration: TasksIntegrationSettings;
 
   currentVersion: string | null;
 }
@@ -177,6 +185,10 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     customDateStart: '',
     customDateEnd: '',
     profiles: []
+  },
+  tasksIntegration: {
+    backlogDateTarget: 'scheduledDate',
+    openEditModalAfterBacklogDrop: false
   },
 
   enableDefaultReminder: true,

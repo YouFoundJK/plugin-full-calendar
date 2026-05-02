@@ -435,6 +435,25 @@
         "failed": "Échec de la synchronisation ActivityWatch.",
         "enabledPrompt": "ActivityWatch activé. Veuillez configurer le calendrier cible en cliquant sur l'icône d'engrenage."
       }
+    },
+    "tasksIntegration": {
+      "title": "Intégration Obsidian Tasks",
+      "description": "Configurez comment Full Calendar planifie les tâches à partir du backlog Tasks.",
+      "configButton": "Configurer l'intégration Tasks",
+      "modal": {
+        "title": "Intégration Tasks"
+      },
+      "backlogDateTarget": {
+        "label": "Champ de date pour le dépôt du backlog",
+        "description": "Choisissez quel marqueur de date Tasks est écrit lors du glisser-déposer depuis le backlog. Le backlog affiche les tâches auxquelles il manque ce marqueur de date sélectionné.",
+        "scheduled": "Date planifiée",
+        "start": "Date de début",
+        "due": "Date d'échéance"
+      },
+      "openEditModalAfterBacklogDrop": {
+        "label": "Ouvrir la fenêtre d'édition Tasks après dépôt du backlog",
+        "description": "Ouvre immédiatement la fenêtre d'édition Tasks d'Obsidian après avoir glissé une tâche du backlog sur le calendrier."
+      }
     }
   },
   "modals": {

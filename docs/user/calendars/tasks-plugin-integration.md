@@ -33,8 +33,40 @@ Once a Tasks Calendar is active, a new **Tasks Backlog** panel will be registere
 
 -   **Drag-and-Drop Scheduling:** Quickly schedule tasks by dragging them from the backlog to a specific date and time.
 -   **Filtering:** Use the filter bar to narrow down tasks by status (`todo`, `done`) or by the file path they belong to.
+-   **Backlog Date Field:** Choose whether the backlog is organized around missing scheduled dates, start dates, or due dates. The same setting is available from **Settings -> Integrations -> Obsidian Tasks Integration** and from the dropdown at the top of the Tasks Backlog panel.
 
 <!-- Image missing: ../../assets/calendars/task-backlog.gif -->
+
+#### Backlog Date Field
+
+The Tasks Backlog is driven by a single date-field setting:
+
+| Setting        | Backlog shows                  | Dragging to calendar writes |
+| -------------- | ------------------------------ | --------------------------- |
+| Scheduled date | Tasks without a scheduled date | `⏳ YYYY-MM-DD`             |
+| Start date     | Tasks without a start date     | `🛫 YYYY-MM-DD`             |
+| Due date       | Tasks without a due date       | `📅 YYYY-MM-DD`             |
+
+Changing the dropdown in either Settings or the Tasks Backlog panel refreshes open backlog panels immediately. This means the backlog can be used as a focused queue: for example, set it to **Due date** when you want to review every task that still needs a deadline, even if some of those tasks already have scheduled dates.
+
+By default, dragging from the backlog schedules the task without opening the Tasks edit modal. You can enable **Open Tasks edit modal after backlog drop** from the Tasks integration settings if you want to review the task immediately after dropping it onto the calendar.
+
+#### What the Calendar Shows
+
+The backlog date field does **not** change the calendar display policy. It only controls:
+
+-   Which tasks appear in the Tasks Backlog panel.
+-   Which Tasks date marker is written when you drag from backlog onto the calendar.
+
+The calendar view still shows any incomplete Tasks item that has at least one calendar date marker. When a task has more than one date marker, Full Calendar chooses the display date in this order:
+
+1.  Scheduled date (`⏳ YYYY-MM-DD`)
+2.  Due date (`📅 YYYY-MM-DD`)
+3.  Start date (`🛫 YYYY-MM-DD`)
+
+For example, if the backlog dropdown is set to **Due date**, the backlog shows tasks that are missing a due date. A task that already has a scheduled date but no due date can still appear in the backlog, because it needs a due date. That same task can also appear on the calendar, because the calendar can display it from its scheduled date.
+
+Dragging that task from the backlog onto the calendar writes the selected missing field, such as `📅 YYYY-MM-DD` for **Due date**. Moving an existing Tasks event directly inside the calendar continues to update its scheduled date, because calendar drag/edit behavior is separate from backlog scheduling.
 
 ### Full CRUD Support
 
@@ -55,12 +87,12 @@ In the calendar view, you can also drag and drop tasks between the "all day" are
 
 **Supported formats:**
 
-| Format | Example | Result |
-|---|---|---|
-| Single time (24h) | `(14:30)` | Event starts at 2:30 PM |
-| Time range (24h) | `(9:00-10:30)` | Event from 9:00 AM to 10:30 AM |
-| Single time (12h) | `(2:30 PM)` | Event starts at 2:30 PM |
-| Time range (12h) | `(9:00 AM-10:30 AM)` | Event from 9:00 AM to 10:30 AM |
+| Format            | Example              | Result                         |
+| ----------------- | -------------------- | ------------------------------ |
+| Single time (24h) | `(14:30)`            | Event starts at 2:30 PM        |
+| Time range (24h)  | `(9:00-10:30)`       | Event from 9:00 AM to 10:30 AM |
+| Single time (12h) | `(2:30 PM)`          | Event starts at 2:30 PM        |
+| Time range (12h)  | `(9:00 AM-10:30 AM)` | Event from 9:00 AM to 10:30 AM |
 
 A complete task line with a time block looks like this:
 
@@ -81,3 +113,4 @@ The integration is built with flexibility in mind.
 -   **Multi-day Events:** The provider correctly parses tasks that span multiple days.
 -   **Custom Statuses:** The plugin's parser can detect custom task statuses.
 -   **Title Cleaning:** A setting is available to automatically strip tags from task titles for a cleaner look on the calendar.
+-   **Tasks Integration Settings:** The Integrations section appears only after a Tasks calendar source exists. Its options control backlog date-field behavior and whether the Tasks edit modal opens after backlog drag-and-drop.

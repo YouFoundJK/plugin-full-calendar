@@ -5,11 +5,11 @@
 
 ## Provider families
 
-| Family | Providers | Notes |
-|---|---|---|
-| Local | Full Note, Daily Note | Vault-backed, file-centric parsing and persistence. |
-| Remote | Google, CalDAV, ICS | Network-backed with auth/protocol handling and staged loading behavior. |
-| Integration | Tasks, Bases | Plugin/API integration with custom semantics beyond simple event files. |
+| Family      | Providers             | Notes                                                                   |
+| ----------- | --------------------- | ----------------------------------------------------------------------- |
+| Local       | Full Note, Daily Note | Vault-backed, file-centric parsing and persistence.                     |
+| Remote      | Google, CalDAV, ICS   | Network-backed with auth/protocol handling and staged loading behavior. |
+| Integration | Tasks, Bases          | Plugin/API integration with custom semantics beyond simple event files. |
 
 ## Key implementation notes
 
@@ -36,6 +36,27 @@ Uses OAuth-backed authenticated requests, handles recurrence cancellation edge c
 ### Tasks Provider (non-standard surgical writer)
 
 Not a simple calendar source: it integrates with Tasks plugin cache, supports task-completion toggles, time-token parsing in task text, and surgical markdown line rewrites while preserving task metadata patterns.
+
+#### Tasks backlog integration contract
+
+The Tasks backlog is controlled by `settings.tasksIntegration.backlogDateTarget`, not by a hardcoded definition of "undated." This setting is the single source of truth for both filtering and write-back:
+
+| Target          | Backlog filter                                   | Markdown write-back              |
+| --------------- | ------------------------------------------------ | -------------------------------- |
+| `scheduledDate` | Include incomplete tasks without `scheduledDate` | Write or replace `⏳ YYYY-MM-DD` |
+| `startDate`     | Include incomplete tasks without `startDate`     | Write or replace `🛫 YYYY-MM-DD` |
+| `dueDate`       | Include incomplete tasks without `dueDate`       | Write or replace `📅 YYYY-MM-DD` |
+
+Both UI entry points must use the same setting:
+
+- Settings -> Integrations -> Obsidian Tasks Integration.
+- The dropdown in the Tasks Backlog view header.
+
+Changing the setting must save plugin settings and call `providerRegistry.refreshBacklogViews()` so all open backlog views re-query the provider. Backlog filtering belongs in `TasksPluginProvider.getUndatedTasks()` because the provider owns the Tasks cache shape and the date-field mapping. UI components should not duplicate that filtering logic.
+
+Calendar event drag/update behavior remains intentionally separate from backlog drag/drop behavior. Existing scheduled Tasks events continue to update `scheduledDate` when moved on the calendar; only backlog scheduling uses `tasksIntegration.backlogDateTarget`.
+
+The `openEditModalAfterBacklogDrop` setting gates the Tasks plugin edit modal after backlog drops. Its default is `false`, so the normal drag/drop path stays fast and non-blocking unless the user explicitly opts into the modal.
 
 ## Cross-provider orchestration constraints
 

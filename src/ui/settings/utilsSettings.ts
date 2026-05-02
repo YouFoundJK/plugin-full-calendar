@@ -79,6 +79,10 @@ export function migrateAndSanitizeSettings(settings: unknown): {
       ...DEFAULT_SETTINGS.activityWatch,
       ...((raw as Partial<FullCalendarSettings>).activityWatch || {})
     },
+    tasksIntegration: {
+      ...DEFAULT_SETTINGS.tasksIntegration,
+      ...((raw as Partial<FullCalendarSettings>).tasksIntegration || {})
+    },
     currentVersion: raw.currentVersion ?? null
   } as FullCalendarSettings & { calendarSources: (CalendarInfo | GoogleSourceWithAuth)[] } & {
     googleAuth?: LegacyGoogleAuth;
