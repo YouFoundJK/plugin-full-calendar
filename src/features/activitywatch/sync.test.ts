@@ -1,4 +1,14 @@
 import { executeFSM, CompoundEvent } from './fsm';
+import { requestUrl } from 'obsidian';
+import { DEFAULT_SETTINGS } from '../../types/settings';
+import { syncActivityWatch } from './sync';
+
+jest.mock('obsidian', () => ({
+  Notice: jest.fn(),
+  requestUrl: jest.fn()
+}));
+
+const requestUrlMock = requestUrl as jest.MockedFunction<typeof requestUrl>;
 
 describe('ActivityWatch FSM Best-Fit Integration', () => {
   it('Should properly execute Phase 1/Phase 2 slice and overlap resolution for the Obsidian/Browser/Zotero workflow', () => {
@@ -276,5 +286,59 @@ describe('ActivityWatch FSM Best-Fit Integration', () => {
     expect(finalBlocks.length).toBe(1);
     expect(finalBlocks[0].startMs).toBe(0);
     expect(finalBlocks[0].endMs).toBe(12 * 60 * 1000);
+  });
+});
+
+describe('ActivityWatch automatic sync backend gate', () => {
+  beforeEach(() => {
+    requestUrlMock.mockReset();
+  });
+
+  const makePlugin = (
+    activityWatch: Partial<typeof DEFAULT_SETTINGS.activityWatch>
+  ): {
+    plugin: Parameters<typeof syncActivityWatch>[0];
+    getInstanceMock: jest.Mock;
+  } => {
+    const getInstanceMock = jest.fn();
+    const plugin = {
+      settings: {
+        ...DEFAULT_SETTINGS,
+        activityWatch: {
+          ...DEFAULT_SETTINGS.activityWatch,
+          enabled: true,
+          targetCalendarId: 'daily',
+          syncStrategy: 'auto',
+          autoSyncEnabled: false,
+          ...activityWatch
+        }
+      },
+      providerRegistry: {
+        getInstance: getInstanceMock
+      }
+    } as unknown as Parameters<typeof syncActivityWatch>[0];
+
+    return { plugin, getInstanceMock };
+  };
+
+  it('does not fetch ActivityWatch data for automatic sync when auto-sync is disabled', async () => {
+    const { plugin, getInstanceMock } = makePlugin({ autoSyncEnabled: false });
+
+    await syncActivityWatch(plugin, { trigger: 'auto', suppressNotices: true });
+
+    expect(requestUrlMock).not.toHaveBeenCalled();
+    expect(getInstanceMock).not.toHaveBeenCalled();
+  });
+
+  it('does not fetch ActivityWatch data for automatic sync while custom strategy is selected', async () => {
+    const { plugin, getInstanceMock } = makePlugin({
+      autoSyncEnabled: true,
+      syncStrategy: 'custom'
+    });
+
+    await syncActivityWatch(plugin, { trigger: 'auto', suppressNotices: true });
+
+    expect(requestUrlMock).not.toHaveBeenCalled();
+    expect(getInstanceMock).not.toHaveBeenCalled();
   });
 });

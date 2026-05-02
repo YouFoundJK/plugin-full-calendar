@@ -23,13 +23,24 @@ import {
   createOrUpdateBlock
 } from './sync-continuity';
 
+function isActivityWatchSyncAllowed(
+  settings: FullCalendarPlugin['settings']['activityWatch'],
+  options?: SyncOptions
+): boolean {
+  if (!settings.enabled) return false;
+  if (options?.trigger === 'auto') {
+    return settings.autoSyncEnabled && settings.syncStrategy === 'auto';
+  }
+  return true;
+}
+
 export async function syncActivityWatch(
   plugin: FullCalendarPlugin,
   options?: SyncOptions
 ): Promise<void> {
   const settings = plugin.settings.activityWatch;
 
-  if (!settings.enabled) return;
+  if (!isActivityWatchSyncAllowed(settings, options)) return;
   if (!settings.targetCalendarId) {
     new Notice(t('settings.activityWatch.sync.targetNotSet'));
     return;
@@ -67,6 +78,8 @@ export async function syncActivityWatch(
     } catch {
       buckets = JSON.parse(bucketsResponse.text) as Record<string, AWBucket>;
     }
+
+    if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
 
     const bucketIdsToFetch = new Set<string>();
     for (const b of Object.values(buckets)) {
@@ -155,6 +168,8 @@ export async function syncActivityWatch(
       seedStates
     );
 
+    if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
+
     let existingOverlapEvents: PriorCalendarEvent[] = [];
     if (!isCustomStrategy && settings.lastSyncTime > 0) {
       plugin.providerRegistry.buildMap(plugin.cache.store);
@@ -174,6 +189,7 @@ export async function syncActivityWatch(
 
     let addedCount = 0;
     if (continuityCandidate && !options?.overrideStart) {
+      if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
       addedCount += await createContinuityBlocksAndReplacePriorEvent(
         plugin,
         settings.targetCalendarId,
@@ -189,6 +205,7 @@ export async function syncActivityWatch(
       let lastYieldTime = Date.now();
 
       for (const block of sortedFinalBlocks) {
+        if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
         const action = await createOrUpdateBlock(
           plugin,
           settings.targetCalendarId,
@@ -211,6 +228,7 @@ export async function syncActivityWatch(
     }
 
     if (settings.syncStrategy !== 'custom') {
+      if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
       settings.lastSyncTime = endTime.getTime();
       await plugin.saveSettings();
     }

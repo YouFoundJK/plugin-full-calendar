@@ -464,7 +464,7 @@ export default class FullCalendarPlugin extends Plugin {
     this.activityWatchAutoSyncInFlight = true;
     try {
       const { syncActivityWatch } = await import('./features/activitywatch/sync');
-      await syncActivityWatch(this, { suppressNotices: true });
+      await syncActivityWatch(this, { suppressNotices: true, trigger: 'auto' });
     } catch (error) {
       console.error('ActivityWatch auto-sync failed:', error);
     } finally {
