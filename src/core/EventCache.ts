@@ -1188,7 +1188,8 @@ export default class EventCache {
       }
 
       // 2. Handle Additions
-      for (const { event, location } of additions) {
+      for (const { event: rawEvent, location } of additions) {
+        const event = this.enhancer.enhance(rawEvent);
         const newSessionId = this.generateId();
         this.store.add({ calendarId, location, id: newSessionId, event });
         this.plugin.providerRegistry.addMapping(event, calendarId, newSessionId);
@@ -1196,7 +1197,8 @@ export default class EventCache {
       }
 
       // 3. Handle Updates
-      for (const { sessionId, event, location } of updateArr) {
+      for (const { sessionId, event: rawEvent, location } of updateArr) {
+        const event = this.enhancer.enhance(rawEvent);
         const oldEvent = this.store.getEventById(sessionId);
         if (oldEvent) {
           this.plugin.providerRegistry.removeMapping(sessionId);

@@ -179,6 +179,41 @@ describe('event cache with readonly calendar', () => {
     expect(sources[0].editable).toBeFalsy();
   });
 
+  it('enhances provider-pushed additions through the same read pipeline as initial load', async () => {
+    const cache = makeCache([]);
+    cache.updateSettings({
+      ...DEFAULT_SETTINGS,
+      enableAdvancedCategorization: true,
+      categorySettings: [{ name: 'Wellness', color: '#448844' }]
+    });
+
+    await cache.processProviderUpdates('test', {
+      additions: [
+        {
+          event: {
+            uid: 'Daily.md::2',
+            title: 'Wellness - Task 2 - edit 2',
+            type: 'single',
+            allDay: true,
+            date: '2026-04-30',
+            endDate: null,
+            completed: false
+          },
+          location: null
+        }
+      ],
+      updates: [],
+      deletions: []
+    });
+
+    const [event] = extractEvents(cache.getAllEvents()[0]);
+    expect(event).toMatchObject({
+      uid: 'Daily.md::2',
+      title: 'Task 2 - edit 2',
+      category: 'Wellness'
+    });
+  });
+
   it('properly sorts events into separate calendars', async () => {
     const events1 = [mockEvent()];
     const events2 = [mockEvent(), mockEvent()];

@@ -46,48 +46,6 @@ const TASKS_CACHE_RETRY_DELAY_MS = 10000;
 const DEFAULT_TIMED_TASK_DURATION_MINUTES = 30;
 
 /**
- * Extracts a time or time range from a task title.
- * Matches patterns like (18:00) or (18:00-20:00) anywhere in the title.
- * Returns { startTime, endTime, cleanTitle } where cleanTitle has the pattern removed.
- */
-function extractTimeFromTitleLocal(title: string): {
-  startTime: string | null;
-  endTime: string | null;
-  cleanTitle: string;
-} {
-  // A single time token: H:MM or H:MM AM/PM (case-insensitive, optional space before meridiem).
-  const TIME_TOKEN = String.raw`\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?`;
-  const timeRangePattern = new RegExp(`\\((${TIME_TOKEN})-(${TIME_TOKEN})\\)`);
-  const timePattern = new RegExp(`\\((${TIME_TOKEN})\\)`);
-
-  // Normalise a captured time token: ensure a single space + uppercase meridiem where present.
-  // e.g. "9:00am" → "9:00 AM", "14:30" → "14:30"
-  const normalise = (t: string) =>
-    t.replace(/\s*([AaPp][Mm])$/, (_, m: string) => ` ${m.toUpperCase()}`);
-
-  const collapseSpaces = (s: string) => s.replace(/\s+/g, ' ').trim();
-  const rangeMatch = title.match(timeRangePattern);
-  if (rangeMatch) {
-    return {
-      startTime: normalise(rangeMatch[1]),
-      endTime: normalise(rangeMatch[2]),
-      cleanTitle: collapseSpaces(title.replace(rangeMatch[0], ''))
-    };
-  }
-
-  const singleMatch = title.match(timePattern);
-  if (singleMatch) {
-    return {
-      startTime: normalise(singleMatch[1]),
-      endTime: null,
-      cleanTitle: collapseSpaces(title.replace(singleMatch[0], ''))
-    };
-  }
-
-  return { startTime: null, endTime: null, cleanTitle: collapseSpaces(title) };
-}
-
-/**
  * Updates or removes the time block `(H:MM)` / `(H:MM AM)` or their range forms
  * embedded in a task's markdown line (i.e. inside the description, before metadata emojis).
  *
@@ -384,7 +342,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     this.tasksPromise = new Promise((resolve, reject) => {
       const callback = (cacheData: TasksCacheData) => {
-        this.debugTasksCachePayload('request-cache-update', cacheData);
+        // this.debugTasksCachePayload('request-cache-update', cacheData);
         if (
           cacheData &&
           ((typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
@@ -595,7 +553,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     };
 
     workspace.on('obsidian-tasks-plugin:cache-update', data => {
-      this.debugTasksCachePayload('cache-update', data);
+      // this.debugTasksCachePayload('cache-update', data);
       void handleLiveCacheUpdate(data);
     });
     this.isSubscribed = true;
@@ -777,6 +735,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       newLine = updateTimeInLine(newLine, startTime, endTime ?? null, timeFormat24h);
     }
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
+    task.originalMarkdown = newLine;
+    task.scheduledDate = newDate;
+    if (startTime !== undefined) {
+      task.startTime = startTime;
+      task.endTime = startTime ? (endTime ?? null) : null;
+    }
   }
 
   public async scheduleTask(taskId: string, date: Date): Promise<void> {
@@ -786,6 +750,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
     const newLine = this.updateTaskLine(task.originalMarkdown, date);
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
+    task.originalMarkdown = newLine;
+    task.scheduledDate = date;
     const tasksApi = (
       this.plugin.app as unknown as {
         plugins?: {
@@ -800,6 +766,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       const editedTaskLine = await tasksApi.editTaskLineModal(newLine);
       if (editedTaskLine !== undefined && editedTaskLine !== newLine) {
         await this.replaceTaskInFile(task.filePath, task.lineNumber, [editedTaskLine]);
+        task.originalMarkdown = editedTaskLine;
       }
     } else {
       new Notice(t('notices.tasks.scheduledNoModal'));
