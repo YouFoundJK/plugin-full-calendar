@@ -14,6 +14,8 @@
 
 Keep your calendar in your vault! This plugin integrates the [FullCalendar](https://github.com/fullcalendar/fullcalendar) library into your Obsidian Vault so that you can keep your ever-changing daily schedule and special events and plans alongside your tasks and notes, and link freely between all of them. Each event is stored as a separate note with special frontmatter so you can take notes, form connections and add context to any event on your calendar.
 
+> Checkout the [Documentation](https://youfoundjk.github.io/plugin-full-calendar/); [Development Timeline](https://github.com/users/YouFoundJK/projects/2) for the development timeline.
+
 Full Calendar supports multiple calendar sources:
 
 - [**Full Note**](https://youfoundjk.github.io/plugin-full-calendar/calendars/local/): Events from frontmatter on individual notes
@@ -24,7 +26,6 @@ Full Calendar supports multiple calendar sources:
 - [**Bases**](https://youfoundjk.github.io/plugin-full-calendar/calendars/bases/): Integrate with the Obsidian Bases plugin
 - [**Tasks Plugin**](https://youfoundjk.github.io/plugin-full-calendar/calendars/tasks-plugin-integration/): Sync with the Obsidian Tasks plugin
 
-You can find the full documentation [here](https://youfoundjk.github.io/plugin-full-calendar/) or [here](https://github.com/users/YouFoundJK/projects/2) for the development timeline.
 
 ![Sample Calendar](https://raw.githubusercontent.com/YouFoundJK/plugin-full-calendar/main/docs/assets/guides/sample-calendar.png)
 

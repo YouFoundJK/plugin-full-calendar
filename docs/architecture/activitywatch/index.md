@@ -25,5 +25,5 @@
 ## Reading order
 
 1. [Implementation and Algorithms](implementation.md)
-2. [User behavior controls](../../user/features/activitywatch.md)
+2. [User behavior controls](../../user/calendars/activitywatch.md)
 3. [System event ownership](../system/eventcache.md)

@@ -1,8 +1,12 @@
 # ActivityWatch Integration: Best-Fit Engine
 
-Full Calendar integrates deeply with [ActivityWatch](https://activitywatch.net/), enabling you to transform granular, noisy computer usage timelines into beautiful, semantic intent-based calendar blocks natively inside Obsidian.
+Full Calendar integrates deeply with [ActivityWatch](https://activitywatch.net/){: target="_blank" rel="noopener" }, enabling you to transform granular, noisy computer usage timelines into beautiful, semantic intent-based calendar blocks natively inside Obsidian.
 
-The engine uses a deeply mathematical **Best-Fit Finite State Machine (FSM)**. Instead of mapping one event to one block, it evaluates your timeline using "Context Profiles" to generate optimal sessions that reflect what you were *actually* doing, automatically filtering out minor distractions.
+The engine uses a deeply mathematical **Best-Fit [Finite State Machine (FSM)](https://en.wikipedia.org/wiki/Finite-state_machine){: target="_blank" rel="noopener" }**. Instead of mapping one event to one block, it evaluates your timeline using "Context Profiles" to generate optimal sessions that reflect what you were *actually* doing, automatically filtering out minor distractions.
+
+!!! tip "Recommended"
+    For best experience use it together with [Advanced Categories](../events/categories.md){: target="_blank" rel="noopener" } feature, allowing you to color-code your events and organize them for [Timeline](../views/timeline_view.md){: target="_blank" rel="noopener" } and Advanced analysis via [ChronoAnalyser](../chrono_analyser/index.md){: target="_blank" rel="noopener" }. It's **highly recommended**!
+
 
 ---
 
@@ -15,8 +19,8 @@ Instead of simple mapping rules, you create **Context Profiles**. Each profile r
 | Setting | Description |
 |---|---|
 | **Profile Name** | Identifier for this profile. Becomes the sub-category label on the calendar block. |
-| **Category (Color)** | The color tag applied to the block in Full Calendar (maps to your existing Category Colors). |
-| **Activation Threshold (Mins)** | The minimum accumulated matching time required before a session "locks in." If you match for 8 minutes and stop, but your threshold is 10, it will not appear on the calendar. |
+| **Category (Color)** | The color tag applied to the block in Full Calendar (maps to your existing [Category Colors](../events/categories.md){: target="_blank" rel="noopener" }). |
+| **Activation Threshold (Mins)** | The minimum accumulated matching time required before a session "locks in." If you match for 8 minutes and stop, but your threshold is 10, it will not appear on the calendar. Intelligently incorporates **Soft Break** so 8 min match + 2 min away (< Soft Break Limit) + 2 match will still count |
 | **Soft Break Limit (Mins)** | The hysteresis buffer. Dictates how long you can be *mismatching* (e.g. checking Twitter, a bathroom break, or going AFK) before the session is formally terminated. Return to a matching app before this limit expires and the session continues seamlessly. |
 | **Title Template** | The template string for the calendar block title (see [Section 4](#4-dynamic-title-templating)). |
 
@@ -214,7 +218,7 @@ When this toggle is OFF:
 When toggled back ON, the saved configuration becomes active again.
 
 
-# FAQ
+## FAQ
 
-#### Watcher in chrome not automatically recording
+#### Why is Watcher in chrome not automatically recording?
 - This is a bug within the aw-chrome extension - [aw-watcher-web/199](https://github.com/ActivityWatch/aw-watcher-web/issues/199) and a easiest fix is via building your own from the pull request and using it in your Chrome based browser via the Developer mode.

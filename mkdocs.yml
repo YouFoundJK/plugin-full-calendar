@@ -35,6 +35,7 @@ markdown_extensions:
     - toc:
           permalink: true
     - admonition # Add admonition for notes and warnings
+    - attr_list
 
 extra_javascript:
     - assets/javascripts/nav-section-links.js
@@ -51,9 +52,9 @@ nav:
           - What's New: whats_new.md
           - Changelog: changelog.md
     - User Docs:
-          - user/guides/index.md
+          - user/index.md
           - Onboarding and Daily Use:
-                - user/guides/onboarding-and-daily-use.md
+                - user/guides/index.md
                 - Getting Started: getting_started.md
                 - Commands and Shortcuts: user/guides/commands-and-shortcuts.md
                 - Interactions and Gestures: user/guides/interactions.md
@@ -68,7 +69,8 @@ nav:
                 - Google Calendar: user/calendars/gcal.md
                 - Obsidian Bases Calendar: user/calendars/bases.md
                 - Tasks Plugin Integration: user/calendars/tasks-plugin-integration.md
-                - ActivityWatch Integration: user/features/activitywatch.md
+                - ActivityWatch Integration: user/calendars/activitywatch.md
+                - Dataview Integration: user/calendars/dataview.md
           - Working with Events:
                 - user/events/index.md
                 - Event Management: user/events/manage.md
@@ -126,7 +128,6 @@ nav:
                 - RRULE Timezone Date-Shift Fix: architecture/dev-logs/devlog_rrule_timezone_patch.md
     - Reference:
           - Internationalization: user/features/i18n.md
-          - Dataview Integration: user/reference/dataview.md
           - Data Integrity and File Modifications: user/reference/data_integrity.md
     - Privacy and Terms:
           - Privacy Policy: user/legal/privacy-policy.md

@@ -1,8 +1,12 @@
 # Full Calendar Changelog
 
-This page provides a detailed breakdown of every version of the Full Calendar plugin, including new features, improvements, and bugfixes.
+This page provides a detailed breakdown of every version of the Full Calendar plugin, including new features, improvements, and bugfixes. 
 
-## Version 0.12.8
+Corresponds to  
+-   **For Users**: [Releases](https://github.com/YouFoundJK/plugin-full-calendar/releases)  
+-   **For Dev**: `git tags` of the `main` branch
+
+## v0.12.8
 
 Thanks to [@oskardotglobal](https://github.com/oskardotglobal) and [@rolfkleef](https://github.com/rolfkleef) for their contributions in this release!
 
@@ -37,7 +41,7 @@ Thanks to [@oskardotglobal](https://github.com/oskardotglobal) and [@rolfkleef](
 
 ---
 
-## Version 0.12.7.1
+## v0.12.7.1
 
 -   **Asynchronous Event Discovery Pipeline**  
     _The core synchronization engine has been rewritten to eliminate UI freezes and dramatically improve load performance._
@@ -83,7 +87,7 @@ Thanks to [@oskardotglobal](https://github.com/oskardotglobal) and [@rolfkleef](
 
 ---
 
-## Version 0.12.7
+## v0.12.7
 
 -   **Local ICS Support**  
     _You can now view `.ics` files stored directly in your Obsidian vault!_
@@ -113,7 +117,7 @@ Thanks to [@oskardotglobal](https://github.com/oskardotglobal) and [@rolfkleef](
 
 ---
 
-## Version 0.12.6
+## v0.12.6
 
 Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.com/mivanit) for the incredible contributions in this release!
 
@@ -151,7 +155,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 ---
 
 
-## Version 0.12.5
+## v0.12.5
 
 -   **CalDAV validation and parsing** ([#193](https://github.com/YouFoundJK/plugin-full-calendar/issues/193))  
     _CalDAVProvider now validates calendar collections with PROPFIND, parses calendar-data via DOMParser, adds JSDOM-backed tests, and surfaces clearer errors when a URL is not a calendar collection._
@@ -168,7 +172,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 ---
 
 
-## Version 0.12.4
+## v0.12.4
 
 -   **CalDAV and Provider Architecture Refactor** ([#102](https://github.com/YouFoundJK/plugin-full-calendar/issues/102))  
     _The calendar source/provider system has been refactored for modularity, reliability, and easier extension. CalDAV support is now more robust and easier to configure._
@@ -185,7 +189,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 ---
 
 
-## Version 0.12.3.1-beta
+## v0.12.3.1-beta
 
 -   **Tasks Provider Rearchitected for Performance and Precision** ([#151](https://github.com/YouFoundJK/plugin-full-calendar/issues/151), [#155](https://github.com/YouFoundJK/plugin-full-calendar/issues/155))  
     _The Tasks provider is now powered by the official Tasks plugin's live cache, eliminating manual vault scans and delivering instant updates. Edits are now "surgical," preserving user metadata like links, tags, and comments when scheduling or completing tasks._
@@ -202,7 +206,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 ---
 
 
-## Version 0.12.3
+## v0.12.3
 
 -   **Deep Tasks Integration with Backlog & Filtering** ([#122](https://github.com/YouFoundJK/plugin-full-calendar/issues/122), [#128](https://github.com/YouFoundJK/plugin-full-calendar/issues/128), [#136](https://github.com/YouFoundJK/plugin-full-calendar/issues/136))  
     _Full Calendar now has first-class support for the Obsidian Tasks plugin. A new "Tasks" calendar source syncs your tasks directly onto the calendar. Features include a dedicated task backlog, drag-and-drop rescheduling, and in-calendar completion. Create, update, and delete tasks without leaving the calendar view._
@@ -228,7 +232,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 ---
 
 
-## Version 0.12.2 (beta)
+## v0.12.2 (beta)
 
 -   **Multi-day Daily Note events with explicit endDate**  
     _Daily Note calendar now supports explicit multi‑day events via `[endDate:: YYYY-MM-DD]` while remaining backward compatible with legacy overnight detection._
@@ -260,7 +264,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 ---
 
 
-## Version 0.12.1 (beta)
+## v0.12.1 (beta)
 
 -   **Event Reminder System with Desktop Notifications (BETA)**  
     _Introducing the `NotificationManager` for native desktop notifications. Users can opt-in to receive reminders 10 minutes before events start and, optionally, 10 minutes before they end. Perfect for never missing important meetings or deadlines._
@@ -288,7 +292,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.11.9
+## v0.11.9
 
 -   **Calendar Workspaces** ([#90](https://github.com/YouFoundJK/plugin-full-calendar/issues/90))  
     _Save and switch between customized calendar setups (sources, filters, and view preferences). Workspaces include a header switcher, a command palette action ("Full Calendar: Switch Workspace"), and an optional default workspace on startup. Saved state covers selected sources (Local, Daily Notes, ICS, CalDAV, Google), category/sub‑category filters, tasks visibility, all‑day toggle, initial view (month/week/day/timeline), week start, and time‑grid display options._
@@ -307,7 +311,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.11.8
+## v0.11.8
 
 -   **Business Hours and Background Events Support**  
     _Highlight working hours in calendar views and display events as background highlights (e.g., vacations or focus blocks). Configurable via settings and event frontmatter._
@@ -341,7 +345,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.11.7
+## v0.11.7
 
 -   **Full Google Calendar Integration with Two‑Way Sync**  
     _Connect your Google account to create, modify, and delete events (including recurring events) directly in Obsidian. Includes OAuth 2.0 authentication, calendar selection, and proper token refresh handling._
@@ -366,7 +370,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.11.6
+## v0.11.6
 
 -   **Advanced Categorization with Hierarchical Timeline View**  
     _Events can now be organized by categories and sub-categories in a new Resource Timeline view. Expandable groups and aggregated parent rows make it easier to manage complex schedules._
@@ -388,7 +392,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.11.5-beta
+## v0.11.5-beta
 
 -   **Monthly and Yearly Recurring Events**  
     _You can now create events that repeat every month or every year — perfect for things like anniversaries, billing cycles, or project reviews._
@@ -410,7 +414,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.11.4
+## v0.11.4
 
 -   **Smarter Recurring Events and Tasks**  
     _Recurring events can now be edited per-instance — drag, resize, or complete a task without affecting the whole series. Changes are reversible and tracked cleanly._
@@ -428,7 +432,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
     _Refactored recurring event logic, improved performance on large calendars, and cleaned up the plugin architecture to prepare for future features._
 
 ---
-## Version 0.11.3
+## v0.11.3
 
 -   **Insights Engine has smarter Dashboard with Personas**  
     _Adding persona (predefined rules like "Productivity", "Routine") to Categories in Insight Config Setting now cater to more powerful analysis._
@@ -438,7 +442,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.11.2
+## v0.11.2
 
 -   **Insights Engine in ChronoAnalyser**  
     _New intelligent engine that can analyse your calendar for past events and give you cool insights._
@@ -451,7 +455,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.11.1
+## v0.11.1
 
 -   **Category Coloring Engine and Settings UI**  
     _A new optional setting, 'Enable Category Coloring,' allows you to color events based on a category defined in the event's title (e.g., 'Work - Project Meeting'). This overrides the default calendar color for fine-grained visual organization._
@@ -470,7 +474,7 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.10.13-beta
+## v0.10.13-beta
 
 -   **Robust Timezone Support**  
     _Events from local and remote calendars are now fully timezone-aware, fixing bugs related to DST and travel._
@@ -483,14 +487,14 @@ Thanks to [@kapej42](https://github.com/kapej42) and [@mivanit](https://github.c
 
 ---
 
-## Version 0.10.8
+## v0.10.8
 
 -   **ChronoAnalyser Released**  
     _ChronoAnalyser can now analyse your time spending! Check the new `Analysis` button in the Full-Calendar Window._
 
 ---
 
-## Version 0.10.7
+## v0.10.7
 
 -   **Initial Plugin Release**  
     _Welcome to the first version of the enhanced Full Calendar!_

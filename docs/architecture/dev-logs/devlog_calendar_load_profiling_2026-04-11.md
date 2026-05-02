@@ -1,6 +1,35 @@
 # Devlog: Calendar Load Profiling Audit
 
-## Metadata
+## v0.12.8.3 - Algorithm A & C Validation
+
+### Overview
+
+This update validates the performance impact of implementing Algorithm A (Keyed Identity Diffing) and Algorithm C (Reverse-Index Mapping) to resolve the syncCalendar bottleneck.
+
+### Performance Comparison Table
+
+| Metric (DailyNote Stage-2 Sync) | v0.12.8.2 (Baseline) | v0.12.8.3 (Optimized) | Delta |
+| :--- | :--- | :--- | :--- |
+| **Total Sync Time** | **~5137ms** | **~1482ms** | **-71.1%** |
+| diffPrepMs | ~4942ms | ~1283ms | -74.0% |
+| **removeMappingMs** | **~1648ms** | **~0.2ms** | **-99.9%** |
+| addMappingMs | ~3292ms | ~1279ms | -61.1% |
+
+### Key Findings
+
+1. **Algorithm C Success**: The transition to a sessionId-based reverse index for removals was a total success. `removeMappingMs` essentially vanished from the profile (1.6s -> 0ms).
+2. **Synchronization Gain**: The overhead of diffing is now drastically lower due to Keyed Identity Diffing. However, a significant stall remains in the "addition" path.
+3. **Remaining Bottleneck: addMapping Parsing Pressure**: addMappingMs still consumes ~1.3 seconds during large syncs. New instrumentation shows this is because addMapping continues to call getEventHandle(), which triggers expensive file parsing (slow getEventsInFile) even when the identity is deterministically known via the sync key.
+4. **UI Thread Impact**: While the main thread stall is shorter, it is still long enough to trigger JXL violations (~164ms RAF handler).
+
+### Next Steps
+
+- **Optimize addMapping**: Modify ProviderRegistry.addMapping to accept or leverage the SyncKey to avoid redundant provider calculations.
+- **Batching**: Investigate batching or yielding during the `ewLoop` to prevent the UI thread from freezing for >1s during massive additions.
+
+---
+
+## v0.12.8.2 - Algorithm A & C Validation
 
 - Date: 2026-04-11
 - Plugin version context: `0.12.8.2`
@@ -313,29 +342,3 @@ It would also be useful to refine UI profiling for the large update path:
 - The purpose of this dev log is to preserve evidence before implementation work begins.
 - This document has been reconciled against the raw trace to ensure timing and event-count accuracy for both Daily Note stage-1 and stage-2 paths.
 
-## Update: Version 0.12.8.3 - Algorithm A & C Validation
-
-### Overview
-
-This update validates the performance impact of implementing Algorithm A (Keyed Identity Diffing) and Algorithm C (Reverse-Index Mapping) to resolve the syncCalendar bottleneck.
-
-### Performance Comparison Table
-
-| Metric (DailyNote Stage-2 Sync) | v0.12.8.2 (Baseline) | v0.12.8.3 (Optimized) | Delta |
-| :--- | :--- | :--- | :--- |
-| **Total Sync Time** | **~5137ms** | **~1482ms** | **-71.1%** |
-| diffPrepMs | ~4942ms | ~1283ms | -74.0% |
-| **removeMappingMs** | **~1648ms** | **~0.2ms** | **-99.9%** |
-| addMappingMs | ~3292ms | ~1279ms | -61.1% |
-
-### Key Findings
-
-1. **Algorithm C Success**: The transition to a sessionId-based reverse index for removals was a total success. `removeMappingMs` essentially vanished from the profile (1.6s -> 0ms).
-2. **Synchronization Gain**: The overhead of diffing is now drastically lower due to Keyed Identity Diffing. However, a significant stall remains in the "addition" path.
-3. **Remaining Bottleneck: addMapping Parsing Pressure**: addMappingMs still consumes ~1.3 seconds during large syncs. New instrumentation shows this is because addMapping continues to call getEventHandle(), which triggers expensive file parsing (slow getEventsInFile) even when the identity is deterministically known via the sync key.
-4. **UI Thread Impact**: While the main thread stall is shorter, it is still long enough to trigger JXL violations (~164ms RAF handler).
-
-### Next Steps
-
-- **Optimize addMapping**: Modify ProviderRegistry.addMapping to accept or leverage the SyncKey to avoid redundant provider calculations.
-- **Batching**: Investigate batching or yielding during the `ewLoop` to prevent the UI thread from freezing for >1s during massive additions.

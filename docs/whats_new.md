@@ -4,7 +4,7 @@ This page highlights the latest major features and improvements to help you get 
 For a detailed version-by-version breakdown, see the [Changelog](changelog.md).
 
 
-## ✅ CalDAV Two-Way Sync
+## 📅 CalDAV Two-Way Sync
 
 You asked, we delivered. CalDAV calendars now support full two-way synchronization. Create, modify, and delete events from your private iCloud, Fastmail, or self-hosted CalDAV servers directly within Obsidian.
 
@@ -23,7 +23,7 @@ Full Calendar now supports multiple languages! The UI will automatically switch 
 
 ---
 
-## ✅ Tasks Integration Reimagined
+## ✔️ Tasks Integration Reimagined
 
 The integration with the **Obsidian Tasks plugin** has been completely overhauled for maximum performance and reliability. It's now faster, safer, and more intuitive than ever.
 
