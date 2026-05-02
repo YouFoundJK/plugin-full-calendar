@@ -15,8 +15,10 @@ import { changelogData } from './changelogData';
 import { Version } from './changelogData';
 import { Setting, requestUrl } from 'obsidian';
 import './changelog.css';
+import { t } from '../../../features/i18n/i18n';
 
 import { renderFooter } from '../sections/calendars/renderFooter';
+import { createDocsLinksFragment } from '../docsLinks';
 
 interface ChangelogProps {
   onBack: () => void;
@@ -72,7 +74,7 @@ export const VersionSection = ({
         className={`full-calendar-version-header ${isOpen ? 'is-open' : ''}`}
         onClick={toggleOpen}
       >
-        <h3>Version {version.version}</h3>
+        <h3>{t('settings.changelog.versionWithNumber', { version: version.version })}</h3>
       </div>
       <div className={`full-calendar-version-content ${isOpen ? '' : 'is-collapsed'}`}>
         {version.changes.map((change, idx) => (
@@ -105,7 +107,15 @@ export const Changelog = ({ onBack }: ChangelogProps) => {
   useEffect(() => {
     if (settingRef.current) {
       settingRef.current.empty(); // Clear on re-render
-      new Setting(settingRef.current).setName('Changelog').setHeading();
+      new Setting(settingRef.current)
+        .setName(t('settings.changelog.title'))
+        .setHeading()
+        .setDesc(
+          createDocsLinksFragment([
+            { text: t('settings.changelog.whatsNewPageLink'), path: 'whats_new' },
+            { text: t('settings.changelog.changelogPageLink'), path: 'changelog' }
+          ])
+        );
     }
     if (footerRef.current) {
       footerRef.current.empty();
@@ -150,11 +160,13 @@ export const Changelog = ({ onBack }: ChangelogProps) => {
         <div style={{ textAlign: 'center', margin: '20px 0' }}>
           {errorLoading && (
             <div style={{ color: 'var(--text-error)', marginBottom: '10px' }}>
-              Failed to load older versions. You may be offline.
+              {t('settings.changelog.loadOlder.errorOffline')}
             </div>
           )}
           <button onClick={() => void loadOlderVersions()} disabled={isLoading}>
-            {isLoading ? 'Loading...' : 'Load older versions'}
+            {isLoading
+              ? t('settings.changelog.loadOlder.loading')
+              : t('settings.changelog.loadOlder.button')}
           </button>
         </div>
       )}

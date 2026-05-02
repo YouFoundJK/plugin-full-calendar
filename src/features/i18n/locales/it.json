@@ -94,10 +94,52 @@
       "apiUnavailable": "API del plugin Obsidian Tasks non disponibile."
     }
   },
+  "eventCache": {
+    "calendarNotFound": "Impossibile aggiungere l'evento: calendario con ID {{calendarId}} non trovato.",
+    "providerNotFound": "Impossibile aggiungere l'evento: provider per il tipo {{type}} non trovato.",
+    "readOnly": "Impossibile aggiungere un evento a un calendario di sola lettura.",
+    "createFailed": "Creazione dell'evento non riuscita. La modifica è stata annullata.",
+    "deleteFailed": "Eliminazione dell'evento non riuscita. La modifica è stata annullata.",
+    "updateFailed": "Aggiornamento dell'evento non riuscito. La modifica è stata annullata.",
+    "movePartialSuccess": "Evento spostato con successo, ma alcuni elementi secondari potrebbero non essere stati spostati."
+  },
+  "recurEvents": {
+    "promotingChildren": "Promozione di {{count}} evento/i figlio/i.",
+    "deletedAndPromoted": "Evento ricorrente eliminato e figli promossi.",
+    "deletingWithChildren": "Eliminazione dell'evento ricorrente e della/e sua/e {{count}} sostituzione/i secondaria/e...",
+    "deletedAll": "Evento ricorrente e tutti i figli eliminati con successo.",
+    "preservingTiming": "Mantenimento dei tempi dell'evento modificato e ripristino dell'attività.",
+    "revertingControl": "Ripristino del controllo alla sequenza principale degli eventi ricorrenti.",
+    "updatingChildren": "Aggiornamento di {{count}} evento/i figlio/i in modo che corrisponda al nuovo titolo del padre.",
+    "updateError": "Errore durante l'aggiornamento dell'evento ricorrente. Alcuni figli potrebbero non essere stati aggiornati.",
+    "movingChildren": "Spostamento di {{count}} evento/i figlio/i nel nuovo calendario."
+  },
   "ribbon": {
     "openCalendar": "Apri Full Calendar"
   },
   "settings": {
+    "categories": {
+      "general": {
+        "label": "Generale",
+        "description": "Comportamento generale, promemoria e aggiornamenti recenti."
+      },
+      "appearance": {
+        "label": "Aspetto",
+        "description": "Personalizza l'aspetto del calendario, i formati orari e la visibilità."
+      },
+      "calendars": {
+        "label": "Calendari",
+        "description": "Gestisci le sorgenti calendario e la configurazione specifica del provider."
+      },
+      "organization": {
+        "label": "Organizzazione",
+        "description": "Organizza le viste con aree di lavoro e categorizzazione degli eventi."
+      },
+      "integrations": {
+        "label": "Integrazioni",
+        "description": "Collega servizi esterni come Google e ActivityWatch."
+      }
+    },
     "general": {
       "desktopInitialView": {
         "label": "Vista iniziale desktop",
@@ -114,6 +156,17 @@
       "clickToCreateEvent": {
         "label": "Clicca su un giorno nella vista mese per creare evento",
         "description": "Disattiva per aprire la vista giorno al clic."
+      }
+    },
+    "reminders": {
+      "title": "Promemoria",
+      "enableDefault": {
+        "label": "Abilita promemoria predefinito",
+        "description": "Aggiungi automaticamente un promemoria ai nuovi eventi."
+      },
+      "defaultTime": {
+        "label": "Ora del promemoria predefinita",
+        "description": "Minuti prima dell'evento da ricordare (predefinito: 10)"
       }
     },
     "appearance": {
@@ -159,6 +212,22 @@
         "slotMaxTime": {
           "label": "Orario massimo da visualizzare",
           "description": "Imposta l'orario massimo visibile nelle viste a griglia (formato: HH:mm)"
+        },
+        "allDaySlot": {
+          "label": "Mostra riga tutto il giorno (settimana/giorno)",
+          "description": "Attiva o disattiva la riga tutto il giorno in alto nelle viste settimana e giorno."
+        },
+        "timeGridDayHeaderFormat": {
+          "label": "Formato data intestazione settimana/giorno",
+          "description": "Scegli come visualizzare le etichette dei giorni nelle viste settimana e giorno.",
+          "options": {
+            "ddmmDay": "GG/MM giorno",
+            "mmddDay": "MM/GG giorno",
+            "dayDdmm": "giorno GG/MM",
+            "dayMmdd": "giorno MM/GG",
+            "ddmmyyyyDay": "GG/MM/AAAA giorno",
+            "mmddyyyyDay": "MM/GG/AAAA giorno"
+          }
         }
       },
       "dayVisibility": {
@@ -268,8 +337,8 @@
           "description": "Nome visualizzato per questo calendario"
         },
         "readOnly": {
-          "label": "Calendario di sola lettura",
-          "description": "I task possono essere visualizzati ma non modificati tramite l'interfaccia calendario. Per modificare i task, usa il plugin Tasks o modifica direttamente le note."
+          "label": "Eventi",
+          "description": "Le modifiche agli eventi avvengono direttamente nel modello Tasks e non nella finestra di modifica di Full Calendar."
         },
         "adding": "Aggiunta...",
         "cancel": "Annulla"
@@ -331,8 +400,17 @@
       "saturday": "Sabato"
     },
     "changelog": {
+      "title": "Registro modifiche",
       "whatsNew": "Novità",
-      "viewFull": "Vedi il log delle modifiche completo"
+      "viewFull": "Vedi il log delle modifiche completo",
+      "versionWithNumber": "Versione {{version}}",
+      "whatsNewPageLink": "Pagina Novità",
+      "changelogPageLink": "Registro modifiche",
+      "loadOlder": {
+        "button": "Carica versioni precedenti",
+        "loading": "Caricamento...",
+        "errorOffline": "Impossibile caricare le versioni precedenti. Potresti essere offline."
+      }
     },
     "utils": {
       "timelineDisabled": "La vista timeline è disabilitata. Ripristino della vista desktop predefinita a \"Settimana\"."
@@ -340,15 +418,45 @@
     "warnings": {
       "oneDailyNote": "È consentita solo una nota giornaliera."
     },
-    "reminders": {
-      "title": "Promemoria",
-      "enableDefault": {
-        "label": "Abilita promemoria predefinito",
-        "description": "Aggiungi automaticamente un promemoria ai nuovi eventi."
+    "activityWatch": {
+      "title": "Integrazione ActivityWatch",
+      "enable": {
+        "label": "Abilita sincronizzazione ActivityWatch",
+        "description": "Recupera periodicamente i dati dalla tua istanza locale di ActivityWatch."
       },
-      "defaultTime": {
-        "label": "Ora del promemoria predefinita",
-        "description": "Minuti prima dell'evento da ricordare (predefinito: 10)"
+      "configButton": "⚙️ Configura ActivityWatch",
+      "sync": {
+        "targetNotSet": "Sincronizzazione ActivityWatch: calendario di destinazione non impostato. Configuralo nelle impostazioni.",
+        "targetNotFoundOrReadOnly": "Sincronizzazione ActivityWatch: calendario di destinazione ({{calendarId}}) non trovato o in sola lettura.",
+        "fetchingData": "Sincronizzazione ActivityWatch: recupero dati in corso...",
+        "failedFetchBuckets": "Recupero bucket fallito. Stato: {{status}}",
+        "addedEvents": "Sincronizzazione ActivityWatch: {{count}} eventi aggiunti!",
+        "failedWithError": "Sincronizzazione ActivityWatch fallita: {{message}}",
+        "failed": "Sincronizzazione ActivityWatch fallita.",
+        "enabledPrompt": "ActivityWatch abilitato. Configura il calendario di destinazione cliccando sull'icona dell'ingranaggio."
+      }
+    },
+    "tasksIntegration": {
+      "title": "Integrazione con Obsidian Tasks",
+      "description": "Configura come Full Calendar pianifica le attività dal backlog di Tasks.",
+      "configButton": "Configura integrazione Tasks",
+      "modal": {
+        "title": "Integrazione Tasks"
+      },
+      "backlogDateTarget": {
+        "label": "Campo data per rilascio backlog",
+        "description": "Scegli quale marcatore di data di Tasks viene scritto trascinando dal backlog. Il backlog mostra le attività a cui manca questo marcatore di data selezionato.",
+        "scheduled": "Data programmata",
+        "start": "Data di inizio",
+        "due": "Data di scadenza"
+      },
+      "openEditModalAfterBacklogDrop": {
+        "label": "Apri la finestra di modifica Tasks dopo rilascio backlog",
+        "description": "Apre immediatamente la finestra di modifica Tasks di Obsidian dopo aver trascinato un'attività dal backlog sul calendario."
+      },
+      "calendarDisplayDateTarget": {
+        "label": "Campo data di visualizzazione calendario",
+        "description": "Scegli quale marcatore di data di Tasks Full Calendar utilizza per visualizzare gli eventi Tasks. Nessun fallback su altri marcatori di data. Riavvia Obsidian o ricarica il plugin affinché questa modifica abbia effetto."
       }
     }
   },
@@ -376,6 +484,22 @@
       "buttons": {
         "openNote": "Apri Nota"
       },
+      "errors": {
+        "createNoCalendars": "Impossibile creare l'evento: non sono disponibili calendari scrivibili.",
+        "createError": "Errore durante la creazione dell'evento: {{message}}",
+        "eventNotFound": "Evento non trovato.",
+        "detailsNotFound": "Dettagli dell'evento non trovati.",
+        "parentNotFound": "Impossibile trovare l'evento ricorrente genitore.",
+        "updateError": "Errore durante l'aggiornamento dell'evento: {{message}}",
+        "deleteError": "Errore durante l'eliminazione dell'evento: {{message}}"
+      },
+      "confirmations": {
+        "editParentTitle": "Modificare l'evento genitore?",
+        "editParentMessage": "Questa proprietà viene ereditata dall'evento ricorrente genitore. Desideri aprire il genitore per apportare modifiche?"
+      },
+      "misc": {
+        "unknownCalendar": "Calendario Sconosciuto"
+      },
       "fields": {
         "title": {
           "label": "Titolo",
@@ -390,7 +514,6 @@
           "options": {
             "auto": "Evento normale",
             "background": "Evento di sfondo",
-            "inverseBackground": "Sfondo inverso",
             "none": "Nascosto"
           }
         },
@@ -408,6 +531,18 @@
           "allDay": "Tutto il giorno",
           "isTask": "È un Task",
           "completed": "Completato"
+        },
+        "notification": {
+          "label": "Notifica:",
+          "mins": "Min",
+          "select": "Seleziona...",
+          "presets": {
+            "30m": "30 min",
+            "1h": "1 ora",
+            "6h": "6 ore",
+            "12h": "12 ore",
+            "24h": "24 ore"
+          }
         },
         "repeats": {
           "label": "Ripetizioni",
@@ -436,39 +571,11 @@
           },
           "yearlyText": "Ripete ogni anno il {{date}}.",
           "endRepeat": "Termina ripetizione"
-        },
-        "notification": {
-          "label": "Notifica:",
-          "mins": "Min",
-          "select": "Seleziona...",
-          "presets": {
-            "30m": "30 min",
-            "1h": "1 ora",
-            "6h": "6 ore",
-            "12h": "12 ore",
-            "24h": "24 ore"
-          }
         }
       },
       "tooltips": {
         "recurringTaskCompletion": "Il completamento dei task ricorrenti può essere attivato sulle singole istanze nella vista calendario.",
         "dailyNoteRecurring": "Gli eventi ricorrenti non sono supportati nelle Note Giornaliere. Usa invece un calendario 'Nota completa'."
-      },
-      "errors": {
-        "createNoCalendars": "Impossibile creare l'evento: non sono disponibili calendari scrivibili.",
-        "createError": "Errore durante la creazione dell'evento: {{message}}",
-        "eventNotFound": "Evento non trovato.",
-        "detailsNotFound": "Dettagli dell'evento non trovati.",
-        "parentNotFound": "Impossibile trovare l'evento ricorrente genitore.",
-        "updateError": "Errore durante l'aggiornamento dell'evento: {{message}}",
-        "deleteError": "Errore durante l'eliminazione dell'evento: {{message}}"
-      },
-      "confirmations": {
-        "editParentTitle": "Modificare l'evento genitore?",
-        "editParentMessage": "Questa proprietà viene ereditata dall'evento ricorrente genitore. Desideri aprire il genitore per apportare modifiche?"
-      },
-      "misc": {
-        "unknownCalendar": "Calendario Sconosciuto"
       }
     },
     "deleteRecurring": {
@@ -651,6 +758,50 @@
         "button": "Imposta predefinito",
         "errorEmpty": "Inserisci un nome categoria."
       }
+    },
+    "activityWatchSetup": {
+      "saved": "Configurazione ActivityWatch salvata",
+      "strategy": {
+        "title": "Strategia di sincronizzazione",
+        "auto": "Sincronizza dall'ultimo controllo",
+        "custom": "Intervallo di date personalizzato",
+        "datePlaceholder": "Seleziona data di inizio e fine",
+        "lastSynced": "Last checked",
+        "neverSynced": "Never checked",
+        "autoSyncEnabled": "Enable automatic sync",
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)",
+        "autoDescription": "Manual and automatic syncs update the last checked time.",
+        "customDescription": "Debug-only manual range. It never updates the last checked time and cannot run automatically."
+      },
+      "buttons": {
+        "save": "Salva",
+        "cancel": "Annulla"
+      },
+      "apiUrl": "API URL",
+      "targetCalendar": "Target Calendar",
+      "unselected": "Unselected",
+      "profiles": {
+        "title": "Context Profiles (Best-Fit FSM)",
+        "config": "Profile Configuration",
+        "btnDelete": "Delete",
+        "name": "Profile Name",
+        "category": "Category (Color tag)",
+        "activationThreshold": "Activation Threshold (Mins)",
+        "softBreakLimit": "Soft Break Limit (Mins)",
+        "titleTemplate": "Title Template",
+        "titleTemplatePlaceholder": "e.g. Work - {app}",
+        "primaryEvidenceRules": "Primary Evidence Rules (Can start and sustain sessions)",
+        "supportingEvidenceRules": "Supporting Evidence Rules (Can sustain, but cannot start)",
+        "hardBreakRules": "Hard Break Rules (Instantly end the session)",
+        "btnAddProfile": "+ Add Context Profile"
+      },
+      "rules": {
+        "bucketPlaceholder": "Bucket (e.g. window)",
+        "fieldPlaceholder": "Field (e.g. app)",
+        "matchPatternPlaceholder": "Match Pattern",
+        "regex": "Regex",
+        "btnAdd": "+ Add Rule"
+      }
     }
   },
   "google": {
@@ -699,17 +850,6 @@
     "loading": "Caricamento..."
   },
   "ui": {
-    "buttons": {
-      "addCalendar": "Aggiungi calendario"
-    },
-    "navigation": {
-      "thisMonth": "Questo mese",
-      "thisWeek": "Questa settimana",
-      "customDate": "Data personalizzata...",
-      "viewMonth": "Vista mese",
-      "viewWeek": "Vista settimana",
-      "viewDay": "Vista giorno"
-    },
     "view": {
       "errors": {
         "cacheNotLoaded": "Cache degli eventi di Full Calendar non caricata.",
@@ -739,6 +879,17 @@
         "delete": "Eliminare",
         "noActions": "Nessuna azione disponibile sugli eventi remoti"
       }
+    },
+    "buttons": {
+      "addCalendar": "Aggiungi calendario"
+    },
+    "navigation": {
+      "thisMonth": "Questo mese",
+      "thisWeek": "Questa settimana",
+      "customDate": "Data personalizzata...",
+      "viewMonth": "Vista mese",
+      "viewWeek": "Vista settimana",
+      "viewDay": "Vista giorno"
     }
   },
   "notifications": {
@@ -749,25 +900,5 @@
     "inMinutes": "(Tra {{mins}} minuti)",
     "failed": "Full Calendar: Impossibile creare la notifica desktop.",
     "errorBody": "Full Calendar: Impossibile mostrare la notifica desktop. Controlla la console per errori."
-  },
-  "eventCache": {
-    "calendarNotFound": "Impossibile aggiungere l'evento: calendario con ID {{calendarId}} non trovato.",
-    "providerNotFound": "Impossibile aggiungere l'evento: provider per il tipo {{type}} non trovato.",
-    "readOnly": "Impossibile aggiungere un evento a un calendario di sola lettura.",
-    "createFailed": "Creazione dell'evento non riuscita. La modifica è stata annullata.",
-    "deleteFailed": "Eliminazione dell'evento non riuscita. La modifica è stata annullata.",
-    "updateFailed": "Aggiornamento dell'evento non riuscito. La modifica è stata annullata.",
-    "movePartialSuccess": "Evento spostato con successo, ma alcuni elementi secondari potrebbero non essere stati spostati."
-  },
-  "recurEvents": {
-    "promotingChildren": "Promozione di {{count}} evento/i figlio/i.",
-    "deletedAndPromoted": "Evento ricorrente eliminato e figli promossi.",
-    "deletingWithChildren": "Eliminazione dell'evento ricorrente e della/e sua/e {{count}} sostituzione/i secondaria/e...",
-    "deletedAll": "Evento ricorrente e tutti i figli eliminati con successo.",
-    "preservingTiming": "Mantenimento dei tempi dell'evento modificato e ripristino dell'attività.",
-    "revertingControl": "Ripristino del controllo alla sequenza principale degli eventi ricorrenti.",
-    "updatingChildren": "Aggiornamento di {{count}} evento/i figlio/i in modo che corrisponda al nuovo titolo del padre.",
-    "updateError": "Errore durante l'aggiornamento dell'evento ricorrente. Alcuni figli potrebbero non essere stati aggiornati.",
-    "movingChildren": "Spostamento di {{count}} evento/i figlio/i nel nuovo calendario."
   }
 }

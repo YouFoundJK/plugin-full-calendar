@@ -59,10 +59,24 @@ interface ExtraRenderProps {
   // New granular view configuration properties
   slotMinTime?: string;
   slotMaxTime?: string;
+  allDaySlot?: boolean;
+  timeGridDayHeaderFormat?: string;
   weekends?: boolean;
   hiddenDays?: number[];
   dayMaxEvents?: number | boolean;
+  highlightCurrentOrNextEvent?: boolean;
+  onSearchQueryChange?: (query: string) => void;
+  initialSearchQuery?: string;
+  onEventsSet?: () => void;
 }
+
+type TimeGridDayHeaderFormat =
+  | 'ddmm-day'
+  | 'mmdd-day'
+  | 'day-ddmm'
+  | 'day-mmdd'
+  | 'ddmmyyyy-day'
+  | 'mmddyyyy-day';
 
 export async function renderCalendar(
   containerEl: HTMLElement,
@@ -87,8 +101,15 @@ export async function renderCalendar(
     : null;
   const MOBILE_BREAKPOINT = 500;
   const COMPACT_DESKTOP_BREAKPOINT = 910;
+  const SWIPE_MIN_DISTANCE = 60;
+  const SWIPE_DIRECTION_RATIO = 1.2;
 
-  const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
+  const getResponsiveWidth = (): number => {
+    const measuredWidth = containerEl.getBoundingClientRect().width || containerEl.clientWidth;
+    return measuredWidth > 0 ? measuredWidth : window.innerWidth;
+  };
+
+  const isMobile = getResponsiveWidth() < MOBILE_BREAKPOINT;
   const isNarrow = settings?.forceNarrow || isMobile;
 
   // Apply RRULE monkeypatch on every render to capture the latest settings.timeZone.
@@ -113,7 +134,10 @@ export async function renderCalendar(
     resources,
     onViewChange,
     businessHours,
-    drop
+    drop,
+    onSearchQueryChange,
+    initialSearchQuery,
+    onEventsSet
   } = settings || {};
 
   // Wrap eventClick to ignore shadow events
@@ -163,7 +187,7 @@ export async function renderCalendar(
         mode: 'narrow',
         headerToolbar: false,
         footerToolbar: {
-          left: 'today prev,next',
+          left: 'prev,today,next search',
           right: 'views,more'
         }
       };
@@ -173,7 +197,7 @@ export async function renderCalendar(
       return {
         mode: 'compact-desktop',
         headerToolbar: {
-          left: 'today prev,next',
+          left: 'prev,today,next search',
           center: 'title',
           right: 'analysis more'
         },
@@ -188,7 +212,7 @@ export async function renderCalendar(
     return {
       mode: 'desktop',
       headerToolbar: {
-        left: 'workspace prev,next today,navigate',
+        left: 'workspace prev,today,navigate,next search',
         center: 'title',
         right: `analysis ${fullDesktopViewGroup}`
       },
@@ -196,25 +220,61 @@ export async function renderCalendar(
     };
   };
 
-  const initialToolbarLayout = getToolbarLayout(window.innerWidth);
+  const initialToolbarLayout = getToolbarLayout(getResponsiveWidth());
   let currentToolbarMode: ToolbarMode = initialToolbarLayout.mode;
+
+  const formatTimeGridDayHeader = (date: Date): string => {
+    const format =
+      (settings?.timeGridDayHeaderFormat as TimeGridDayHeaderFormat | undefined) || 'day-mmdd';
+    const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(date);
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const dd = String(day).padStart(2, '0');
+    const mm = String(month).padStart(2, '0');
+    const yyyy = String(date.getFullYear());
+
+    switch (format) {
+      case 'ddmm-day':
+        return `${day}/${month} ${weekday}`;
+      case 'mmdd-day':
+        return `${month}/${day} ${weekday}`;
+      case 'day-ddmm':
+        return `${weekday} ${day}/${month}`;
+      case 'ddmmyyyy-day':
+        return `${dd}/${mm}/${yyyy} ${weekday}`;
+      case 'mmddyyyy-day':
+        return `${mm}/${dd}/${yyyy} ${weekday}`;
+      case 'day-mmdd':
+      default:
+        return `${weekday} ${month}/${day}`;
+    }
+  };
 
   type ViewSpec = {
     type: string;
     duration?: { days?: number; weeks?: number };
     buttonText: string;
     slotMinWidth?: number;
+    dayHeaderContent?: (arg: { date: Date }) => string;
   };
   const views: Record<string, ViewSpec> = {
+    timeGridWeek: {
+      type: 'timeGrid',
+      duration: { weeks: 1 },
+      buttonText: 'week',
+      dayHeaderContent: arg => formatTimeGridDayHeader(arg.date)
+    },
     timeGridDay: {
       type: 'timeGrid',
       duration: { days: 1 },
-      buttonText: isNarrow ? '1' : 'day'
+      buttonText: isNarrow ? '1' : 'day',
+      dayHeaderContent: arg => formatTimeGridDayHeader(arg.date)
     },
     timeGrid3Days: {
       type: 'timeGrid',
       duration: { days: 3 },
-      buttonText: '3'
+      buttonText: '3',
+      dayHeaderContent: arg => formatTimeGridDayHeader(arg.date)
     }
   };
   if (showResourceViews) {
@@ -268,6 +328,20 @@ export async function renderCalendar(
       const menu = new Menu();
       addViewOptionsToMenu(menu, currentToolbarMode);
       menu.showAtMouseEvent(ev);
+    }
+  };
+
+  customButtonConfig.search = {
+    text: '⌕',
+    click: () => {
+      const input = containerEl.querySelector<HTMLInputElement>('.ofc-toolbar-search-input');
+      const wrap = containerEl.querySelector<HTMLElement>('.ofc-toolbar-search-input-wrap');
+      if (!input || !wrap) {
+        return;
+      }
+      wrap.setCssProps({ width: '180px' });
+      input.focus();
+      input.select();
     }
   };
 
@@ -355,6 +429,93 @@ export async function renderCalendar(
     ? (resourceTimeline as { default: PluginDef }).default
     : null;
 
+  let currentUpcomingEventIds = new Set<string>();
+
+  const isEditableTarget = (target: EventTarget | null): boolean => {
+    if (!(target instanceof Element)) {
+      return false;
+    }
+
+    return !!target.closest(
+      'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"], .cm-content, .cm-editor, .markdown-source-view, .markdown-preview-view'
+    );
+  };
+
+  const toggleEventHighlightById = (eventId: string, add: boolean) => {
+    const escapedId = CSS.escape(eventId);
+    const elements = containerEl.querySelectorAll<HTMLElement>(`[data-event-id="${escapedId}"]`);
+    elements.forEach(el => {
+      el.toggleClass('ofc-event-current-or-next', add);
+
+      // Month/Week/Timeline views often clip event glow at harness level,
+      // so toggle a class on the nearest harness wrapper too.
+      const harness = el.closest<HTMLElement>(
+        '.fc-timegrid-event-harness, .fc-daygrid-event-harness, .fc-timeline-event-harness'
+      );
+      harness?.toggleClass('ofc-event-current-or-next-harness', add);
+    });
+  };
+
+  const findCurrentOrNextEventIds = (events: EventApi[]): Set<string> => {
+    const result = new Set<string>();
+    if (!settings?.highlightCurrentOrNextEvent) {
+      return result;
+    }
+
+    const nowMs = Date.now();
+    let currentCandidate: EventApi | null = null;
+    let currentCandidateEnd = Number.POSITIVE_INFINITY;
+    let nextCandidate: EventApi | null = null;
+    let nextCandidateStart = Number.POSITIVE_INFINITY;
+
+    for (const event of events) {
+      if (event.extendedProps?.isShadow || !event.start || event.allDay) {
+        continue;
+      }
+
+      const startMs = event.start.getTime();
+      const rawEndMs = event.end?.getTime() ?? startMs;
+      // Treat zero-duration events as a 1ms window so equality checks stay deterministic.
+      const endMs = rawEndMs <= startMs ? startMs + 1 : rawEndMs;
+
+      if (startMs <= nowMs && nowMs < endMs) {
+        if (endMs < currentCandidateEnd) {
+          currentCandidate = event;
+          currentCandidateEnd = endMs;
+        }
+        continue;
+      }
+
+      if (startMs > nowMs && startMs < nextCandidateStart) {
+        nextCandidate = event;
+        nextCandidateStart = startMs;
+      }
+    }
+
+    const activeEvent = currentCandidate ?? nextCandidate;
+    if (activeEvent?.id) {
+      result.add(activeEvent.id);
+    }
+    return result;
+  };
+
+  const updateCurrentOrNextEventHighlight = () => {
+    const nextUpcomingEventIds = findCurrentOrNextEventIds(cal.getEvents());
+
+    for (const oldId of currentUpcomingEventIds) {
+      if (!nextUpcomingEventIds.has(oldId)) {
+        toggleEventHighlightById(oldId, false);
+      }
+    }
+
+    // Always reapply in case FullCalendar remounted DOM nodes.
+    for (const newId of nextUpcomingEventIds) {
+      toggleEventHighlightById(newId, true);
+    }
+
+    currentUpcomingEventIds = nextUpcomingEventIds;
+  };
+
   const cal = new CalendarCtor(containerEl, {
     // Only include schedulerLicenseKey when resource-timeline plugin is loaded
     ...(showResourceViews && resourceTimelinePlugin
@@ -406,7 +567,7 @@ export async function renderCalendar(
     },
 
     windowResize: () => {
-      const nextToolbarLayout = getToolbarLayout(window.innerWidth);
+      const nextToolbarLayout = getToolbarLayout(getResponsiveWidth());
       if (nextToolbarLayout.mode === currentToolbarMode) {
         return;
       }
@@ -420,6 +581,7 @@ export async function renderCalendar(
     // New granular view configuration settings
     ...(settings?.slotMinTime !== undefined && { slotMinTime: settings.slotMinTime }),
     ...(settings?.slotMaxTime !== undefined && { slotMaxTime: settings.slotMaxTime }),
+    ...(settings?.allDaySlot !== undefined && { allDaySlot: settings.allDaySlot }),
     ...(settings?.weekends !== undefined && { weekends: settings.weekends }),
     ...(settings?.hiddenDays !== undefined && { hiddenDays: settings.hiddenDays }),
     ...(settings?.timeFormat24h && {
@@ -470,6 +632,13 @@ export async function renderCalendar(
         return;
       }
 
+      el.setAttribute('data-event-id', event.id);
+      el.toggleClass('ofc-event-current-or-next', currentUpcomingEventIds.has(event.id));
+      const eventColor = event.backgroundColor || event.borderColor || '';
+      if (eventColor) {
+        el.style.setProperty('--event-color', eventColor);
+      }
+
       el.addEventListener('contextmenu', e => {
         e.preventDefault();
         if (openContextMenuForEvent) {
@@ -513,7 +682,16 @@ export async function renderCalendar(
       }
     },
 
-    viewDidMount: onViewChange,
+    viewDidMount: () => {
+      onViewChange?.();
+      updateCurrentOrNextEventHighlight();
+      requestAnimationFrame(() => ensureToolbarSearchControl());
+    },
+
+    eventsSet: () => {
+      updateCurrentOrNextEventHighlight();
+      onEventsSet?.();
+    },
 
     // Enable drag-and-drop from external sources (e.g., Tasks Backlog)
     droppable: drop && true,
@@ -530,7 +708,271 @@ export async function renderCalendar(
     longPressDelay: 250
   });
 
+  // Keep toolbar mode and sizing in sync with pane/container changes
+  // (e.g. Obsidian sidebars opening/closing) that do not emit window resize.
+  const resizeObserver = new ResizeObserver(() => {
+    const nextToolbarLayout = getToolbarLayout(getResponsiveWidth());
+    if (nextToolbarLayout.mode !== currentToolbarMode) {
+      currentToolbarMode = nextToolbarLayout.mode;
+      cal.setOption('headerToolbar', nextToolbarLayout.headerToolbar);
+      cal.setOption('footerToolbar', nextToolbarLayout.footerToolbar);
+      requestAnimationFrame(() => ensureToolbarSearchControl());
+    }
+
+    cal.updateSize();
+  });
+  resizeObserver.observe(containerEl);
+
+  let searchQuery = initialSearchQuery || '';
+  let searchExpanded = !!searchQuery;
+  let searchDebounceId: number | null = null;
+
+  const scheduleSearchQueryUpdate = () => {
+    if (searchDebounceId !== null) {
+      window.clearTimeout(searchDebounceId);
+    }
+    searchDebounceId = window.setTimeout(() => {
+      onSearchQueryChange?.(searchQuery);
+    }, 80);
+  };
+
+  const ensureToolbarSearchControl = () => {
+    const searchButtonEl = containerEl.querySelector<HTMLButtonElement>('.fc-search-button');
+    if (!searchButtonEl) {
+      return;
+    }
+
+    const allWrapEls = Array.from(
+      containerEl.querySelectorAll<HTMLElement>('.ofc-toolbar-search-input-wrap')
+    );
+    const anchoredWrapEl = searchButtonEl.nextElementSibling;
+    const keepWrapEl =
+      anchoredWrapEl instanceof HTMLElement &&
+      anchoredWrapEl.classList.contains('ofc-toolbar-search-input-wrap')
+        ? anchoredWrapEl
+        : null;
+
+    for (const wrapEl of allWrapEls) {
+      if (keepWrapEl && wrapEl === keepWrapEl) {
+        continue;
+      }
+      wrapEl.remove();
+    }
+
+    if (searchButtonEl.dataset.ofcSearchBound === 'true' && keepWrapEl) {
+      keepWrapEl.setCssProps({ width: searchExpanded || searchQuery ? '180px' : '0px' });
+      keepWrapEl.toggleClass('is-active-query', !!searchQuery);
+      return;
+    }
+
+    searchButtonEl.dataset.ofcSearchBound = 'true';
+    searchButtonEl.type = 'button';
+    searchButtonEl.ariaLabel = 'Search events';
+    searchButtonEl.toggleClass('clickable-icon', true);
+    searchButtonEl.parentElement?.toggleClass('ofc-toolbar-search-host', true);
+
+    const inputWrapEl =
+      keepWrapEl ||
+      (() => {
+        const wrapEl = document.createElement('div');
+        wrapEl.className = 'ofc-toolbar-search-input-wrap';
+        wrapEl.setCssProps({
+          width: searchExpanded || searchQuery ? '180px' : '0px'
+        });
+
+        const inputEl = document.createElement('input');
+        inputEl.className = 'ofc-toolbar-search-input';
+        inputEl.type = 'text';
+        inputEl.placeholder = 'Search events...';
+        inputEl.value = searchQuery;
+        inputEl.ariaLabel = 'Search events';
+
+        const clearEl = document.createElement('button');
+        clearEl.className = 'clickable-icon ofc-toolbar-search-clear';
+        clearEl.type = 'button';
+        clearEl.ariaLabel = 'Clear search';
+        clearEl.textContent = '×';
+        clearEl.setCssProps({ display: searchQuery ? 'inline-flex' : 'none' });
+
+        wrapEl.appendChild(inputEl);
+        wrapEl.appendChild(clearEl);
+        searchButtonEl.insertAdjacentElement('afterend', wrapEl);
+        return wrapEl;
+      })();
+
+    const searchInputEl = inputWrapEl.querySelector<HTMLInputElement>('.ofc-toolbar-search-input');
+    const clearButtonEl = inputWrapEl.querySelector<HTMLButtonElement>('.ofc-toolbar-search-clear');
+    if (!searchInputEl || !clearButtonEl) {
+      return;
+    }
+
+    searchInputEl.value = searchQuery;
+
+    const syncState = () => {
+      inputWrapEl.setCssProps({ width: searchExpanded || searchQuery ? '180px' : '0px' });
+      clearButtonEl.setCssProps({ display: searchQuery ? 'inline-flex' : 'none' });
+      searchButtonEl.toggleClass('is-active', searchExpanded || !!searchQuery);
+      inputWrapEl.toggleClass('is-active-query', !!searchQuery);
+    };
+
+    searchButtonEl.addEventListener('click', () => {
+      searchExpanded = true;
+      syncState();
+      searchInputEl.focus();
+      searchInputEl.select();
+    });
+
+    searchInputEl.addEventListener('input', () => {
+      searchQuery = searchInputEl.value;
+      syncState();
+      scheduleSearchQueryUpdate();
+    });
+
+    searchInputEl.addEventListener('blur', () => {
+      if (searchQuery) {
+        return;
+      }
+      searchExpanded = false;
+      syncState();
+    });
+
+    searchInputEl.addEventListener('keydown', evt => {
+      if (evt.key === 'Escape') {
+        if (searchQuery) {
+          searchQuery = '';
+          searchInputEl.value = '';
+          scheduleSearchQueryUpdate();
+        } else {
+          searchExpanded = false;
+        }
+        syncState();
+        searchInputEl.blur();
+      }
+    });
+
+    clearButtonEl.addEventListener('mousedown', evt => {
+      evt.preventDefault();
+      searchQuery = '';
+      searchInputEl.value = '';
+      scheduleSearchQueryUpdate();
+      syncState();
+      searchInputEl.focus();
+    });
+
+    syncState();
+  };
+
   cal.render();
+  ensureToolbarSearchControl();
+
+  if (!containerEl.hasAttribute('tabindex')) {
+    containerEl.setAttribute('tabindex', '0');
+  }
+
+  const onPointerDownFocus = (event: PointerEvent) => {
+    if (isEditableTarget(event.target)) {
+      return;
+    }
+
+    containerEl.focus({ preventScroll: true });
+  };
+
+  const onKeyDownNavigate = (event: KeyboardEvent) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+      return;
+    }
+
+    if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.key === 'ArrowLeft') {
+      cal.prev();
+      return;
+    }
+
+    cal.next();
+  };
+
+  let touchStartX: number | null = null;
+  let touchStartY: number | null = null;
+  let swipeEnabled = false;
+
+  const onTouchStartNavigate = (event: TouchEvent) => {
+    if (event.touches.length !== 1 || isEditableTarget(event.target)) {
+      swipeEnabled = false;
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    swipeEnabled = true;
+  };
+
+  const onTouchEndNavigate = (event: TouchEvent) => {
+    if (!swipeEnabled || touchStartX === null || touchStartY === null || !event.changedTouches[0]) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+
+    touchStartX = null;
+    touchStartY = null;
+    swipeEnabled = false;
+
+    if (Math.abs(deltaX) < SWIPE_MIN_DISTANCE) {
+      return;
+    }
+
+    if (Math.abs(deltaX) < Math.abs(deltaY) * SWIPE_DIRECTION_RATIO) {
+      return;
+    }
+
+    if (deltaX < 0) {
+      cal.next();
+      return;
+    }
+
+    cal.prev();
+  };
+
+  containerEl.addEventListener('pointerdown', onPointerDownFocus);
+  containerEl.addEventListener('keydown', onKeyDownNavigate);
+  containerEl.addEventListener('touchstart', onTouchStartNavigate, { passive: true });
+  containerEl.addEventListener('touchend', onTouchEndNavigate, { passive: true });
+
+  updateCurrentOrNextEventHighlight();
+  const activeHighlightInterval = window.setInterval(updateCurrentOrNextEventHighlight, 60_000);
+  const onVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      updateCurrentOrNextEventHighlight();
+    }
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
+  const originalDestroy = cal.destroy.bind(cal);
+  cal.destroy = () => {
+    resizeObserver.disconnect();
+    containerEl.removeEventListener('pointerdown', onPointerDownFocus);
+    containerEl.removeEventListener('keydown', onKeyDownNavigate);
+    containerEl.removeEventListener('touchstart', onTouchStartNavigate);
+    containerEl.removeEventListener('touchend', onTouchEndNavigate);
+    window.clearInterval(activeHighlightInterval);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    originalDestroy();
+  };
 
   // Set up date navigation after calendar is created
   dateNavigation = createDateNavigation(cal, containerEl);

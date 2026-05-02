@@ -1,4 +1,4 @@
-import { moment as obsidianMoment, TFile } from 'obsidian';
+import { CachedMetadata, moment as obsidianMoment, TFile } from 'obsidian';
 import * as React from 'react';
 import {
   appHasDailyNotesPluginLoaded,
@@ -22,14 +22,44 @@ import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
 import { constructTitle } from '../../features/category/categoryParser';
 
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import {
+  CalendarProvider,
+  CalendarProviderCapabilities,
+  SyncKeyProvider,
+  CanonicalTitleProvider
+} from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { DailyNoteProviderConfig } from './typesDaily';
 import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
 
 const moment = obsidianMoment as unknown as typeof import('moment');
+const METADATA_WAIT_TIMEOUT_MS = 1500;
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
+
+const waitForMetadataWithTimeout = async (
+  app: ObsidianInterface,
+  file: TFile,
+  timeoutMs = METADATA_WAIT_TIMEOUT_MS
+): Promise<CachedMetadata | null> => {
+  const existing = app.getMetadata(file);
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    return await Promise.race([
+      app.waitForMetadata(file),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
+    ]);
+  } catch (error) {
+    console.warn(
+      `Full Calendar: Failed while waiting for metadata for daily note file "${file.path}".`,
+      error
+    );
+    return null;
+  }
+};
 
 // Settings row component for Daily Note Provider
 const DailyNoteHeadingSetting: React.FC<{
@@ -75,7 +105,9 @@ const DailyNoteConfigWrapper: React.FC<DailyNoteConfigProps> = props => {
   });
 };
 
-export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConfig> {
+export class DailyNoteProvider
+  implements CalendarProvider<DailyNoteProviderConfig>, SyncKeyProvider, CanonicalTitleProvider
+{
   // Static metadata for registry
   static readonly type = 'dailynote';
   static readonly displayName = 'Daily Note';
@@ -111,10 +143,25 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     return { canCreate: true, canEdit: true, canDelete: true };
   }
 
+  private _fullTitleForEvent(event: OFCEvent): string {
+    return constructTitle(event.category, event.subCategory, event.title);
+  }
+
+  private _persistentIdForEvent(event: OFCEvent): string | null {
+    if (event.type !== 'single' || !event.date) {
+      return null;
+    }
+
+    if (event.uid) {
+      return `${event.date}::uid:${event.uid}`;
+    }
+    return `${event.date}::${this._fullTitleForEvent(event)}`;
+  }
+
   getEventHandle(event: OFCEvent): EventHandle | null {
     if (event.type === 'single' && event.date) {
-      const fullTitle = constructTitle(event.category, event.subCategory, event.title);
-      const persistentId = `${event.date}::${fullTitle}`;
+      const persistentId = this._persistentIdForEvent(event);
+      if (!persistentId) return null;
       const m = moment(event.date);
       const file = getDailyNote(m, getAllDailyNotes());
       if (!file || !(file instanceof TFile)) return null;
@@ -123,13 +170,59 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     return null;
   }
 
+  /**
+   * Pure-string sync key — identical to the persistentId from getEventHandle,
+   * but WITHOUT the expensive moment() + getAllDailyNotes() vault scan.
+   * This makes bulk sync diffing O(N) instead of O(N×V).
+   */
+  computeSyncKey(event: OFCEvent): string {
+    if (event.type === 'single' && event.date) {
+      return this._persistentIdForEvent(event) || '';
+    }
+    // Fallback for non-standard event types (should not occur in practice)
+    return `${event.type || 'unknown'}::${event.title || ''}::${JSON.stringify(event)}`;
+  }
+
   public isFileRelevant(file: TFile): boolean {
     // Encapsulates the logic of checking the daily note folder.
     const { folder } = getDailyNoteSettings();
     return folder ? file.path.startsWith(folder + '/') : true;
   }
 
-  private async _findEventLineNumber(file: TFile, persistentId: string): Promise<number> {
+  getCanonicalTitle(event: OFCEvent): string {
+    return event.title;
+  }
+
+  private async _assignLocalUid(file: TFile, event: OFCEvent): Promise<OFCEvent> {
+    if (event.uid) return event;
+
+    const content = await this.app.read(file);
+    const lines = content.split('\n');
+    const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
+
+    const usedUids = new Set<number>();
+
+    for (const line of lines) {
+      if (!date) continue;
+      const parsed = getInlineEventFromLine(line, { date });
+      if (parsed && parsed.uid && !isNaN(Number(parsed.uid))) {
+        usedUids.add(Number(parsed.uid));
+      }
+    }
+
+    let localUid = 1;
+    while (usedUids.has(localUid)) {
+      localUid++;
+    }
+
+    return { ...event, uid: localUid.toString() };
+  }
+
+  private async _findEventLineNumber(
+    file: TFile,
+    persistentId: string,
+    hint?: number
+  ): Promise<number> {
     const content = await this.app.read(file);
     const lines = content.split('\n');
     const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
@@ -140,18 +233,32 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       throw new Error(`Could not determine date from file: ${file.path}`);
     }
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const event = getInlineEventFromLine(line, { date });
-      if (event && event.type === 'single') {
-        // Check for event type
-        const fullTitle = constructTitle(event.category, event.subCategory, event.title);
-        // Now it's safe to access event.date
-        const currentId = `${event.date}::${fullTitle}`;
-        if (currentId === persistentId) {
-          return i; // Found it
-        }
+    let isV2 = false;
+    let targetUid = '';
+    const match = persistentId.match(/^(\d{4}-\d{2}-\d{2})::uid:(\d+)$/);
+    if (match) {
+      isV2 = true;
+      targetUid = match[2];
+    }
+
+    const checkLine = (line: string): boolean => {
+      const parsed = getInlineEventFromLine(line, { date });
+      if (parsed && parsed.type === 'single') {
+        if (isV2 && parsed.uid === targetUid) return true;
+
+        const fullTitle = constructTitle(parsed.category, parsed.subCategory, parsed.title);
+        const currentId = `${parsed.date}::${fullTitle}`;
+        if (!isV2 && currentId === persistentId) return true;
       }
+      return false;
+    };
+
+    if (hint !== undefined && hint >= 0 && hint < lines.length) {
+      if (checkLine(lines[hint])) return hint;
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      if (checkLine(lines[i])) return i;
     }
 
     throw new Error(`Could not find event with ID "${persistentId}" in file "${file.path}".`);
@@ -159,15 +266,18 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
 
   public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
     const date = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
-    const cache = this.app.getMetadata(file);
-    if (!cache) return [];
+    const cache = await waitForMetadataWithTimeout(this.app, file);
+    if (!cache) {
+      return [];
+    }
     const listItems = getListsUnderHeading(this.source.heading, cache);
     const inlineEvents = await this.app.process(file, text =>
       getAllInlineEventsFromFile(text, listItems, { date })
     );
+
     // The raw events are returned as-is. The EventEnhancer handles timezone conversion.
-    return inlineEvents.map(({ event: rawEvent, lineNumber }) => {
-      return [rawEvent, { file, lineNumber }];
+    return inlineEvents.map(({ event, lineNumber }) => {
+      return [event, { file, lineNumber }];
     });
   }
 
@@ -199,20 +309,22 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     const m = moment(event.date);
     let file = getDailyNote(m, getAllDailyNotes());
     if (!file) file = await createDailyNote(m);
+
+    const eventToStore = await this._assignLocalUid(file, event);
+
     const metadata = await this.app.waitForMetadata(file);
     const headingInfo = metadata.headings?.find(h => h.heading == this.source.heading);
-    // if (!headingInfo) {
-    //   throw new Error(`Could not find heading ${this.source.heading} in daily note ${file.path}.`);
-    // }
+
     const lineNumber = await this.app.rewrite(file, (contents: string) => {
       const { page, lineNumber } = addToHeading(
         contents,
-        { heading: headingInfo, item: event, headingText: this.source.heading },
+        { heading: headingInfo, item: eventToStore, headingText: this.source.heading },
         this.plugin.settings
       );
       return [page, lineNumber] as [string, number];
     });
-    return [event, { file, lineNumber }];
+
+    return [eventToStore, { file, lineNumber }];
   }
 
   async updateEvent(
@@ -231,7 +343,11 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     const file = this.app.getFileByPath(path);
     if (!file) throw new Error(`File not found at path: ${path}`);
 
-    const lineNumber = await this._findEventLineNumber(file, handle.persistentId);
+    const lineNumber = await this._findEventLineNumber(
+      file,
+      handle.persistentId,
+      handle.location.lineNumber
+    );
 
     const oldDate = getDateFromFile(file, 'day')?.format('YYYY-MM-DD');
     if (!oldDate) throw new Error(`Could not get date from file at path ${file.path}`);
@@ -240,6 +356,9 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       const m = moment(newEventData.date);
       let newFile = getDailyNote(m, getAllDailyNotes());
       if (!newFile) newFile = await createDailyNote(m);
+      const eventToStore = await this._assignLocalUid(newFile, newEventData);
+
+      Object.assign(newEventData, eventToStore);
 
       // First, delete the line from the old file.
       await this.app.rewrite(file, oldFileContents => {
@@ -260,7 +379,7 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       const newLn = await this.app.rewrite(newFile, newFileContents => {
         const { page, lineNumber } = addToHeading(
           newFileContents,
-          { heading: headingInfo, item: newEventData, headingText: this.source.heading },
+          { heading: headingInfo, item: eventToStore, headingText: this.source.heading },
           this.plugin.settings
         );
         return [page, lineNumber] as [string, number];
@@ -269,9 +388,13 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
       // Finally, return the authoritative new location to the cache.
       return { file: newFile, lineNumber: newLn };
     } else {
+      // It's in the same file, keep existing uid or generate one.
+      const eventToStore = await this._assignLocalUid(file, newEventData);
+
+      Object.assign(newEventData, eventToStore);
       await this.app.rewrite(file, (contents: string) => {
         const lines = contents.split('\n');
-        const newLine = modifyListItem(lines[lineNumber], newEventData, this.plugin.settings);
+        const newLine = modifyListItem(lines[lineNumber], eventToStore, this.plugin.settings);
         if (!newLine) throw new Error('Did not successfully update line.');
         lines[lineNumber] = newLine;
         return lines.join('\n');
@@ -288,7 +411,11 @@ export class DailyNoteProvider implements CalendarProvider<DailyNoteProviderConf
     const file = this.app.getFileByPath(path);
     if (!file) throw new Error(`File not found at path: ${path}`);
 
-    const lineNumber = await this._findEventLineNumber(file, handle.persistentId);
+    const lineNumber = await this._findEventLineNumber(
+      file,
+      handle.persistentId,
+      handle.location?.lineNumber
+    );
 
     await this.app.rewrite(file, (contents: string) => {
       const lines = contents.split('\n');

@@ -1,5 +1,11 @@
 import { TFile, Notice } from 'obsidian';
-import { CalendarProvider, CalendarProviderCapabilities } from '../providers/Provider';
+import {
+  CalendarProvider,
+  CalendarProviderCapabilities,
+  SyncKeyProvider,
+  CanonicalTitleProvider,
+  ProviderLoadRetryPolicy
+} from '../providers/Provider';
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import EventCache from '../core/EventCache';
 import FullCalendarPlugin from '../main';
@@ -36,12 +42,15 @@ export class ProviderRegistry {
   private providers = new Map<string, ProviderLoader>();
   private instances = new Map<string, CalendarProvider<unknown>>();
   private sources: CalendarInfo[] = [];
+  private providerRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private providerRetryAttempts = new Map<string, number>();
 
   // Properties from IdentifierManager and for linking singletons
   private plugin: FullCalendarPlugin;
   private cache: EventCache | null = null;
   private pkCounter = 0;
   private identifierToSessionIdMap: Map<string, string> = new Map();
+  private sessionIdToIdentifierMap: Map<string, string> = new Map();
   private identifierMapPromise: Promise<void> | null = null;
 
   // Tasks backlog manager for lifecycle management
@@ -177,6 +186,11 @@ export class ProviderRegistry {
   }
 
   public async initializeInstances(): Promise<void> {
+    for (const timer of this.providerRetryTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.providerRetryTimers.clear();
+    this.providerRetryAttempts.clear();
     this.instances.clear();
     const sources = this.plugin.settings.calendarSources;
 
@@ -231,6 +245,44 @@ export class ProviderRegistry {
     return `${calendarId}::${handle.persistentId}`;
   }
 
+  /**
+   * Computes a lightweight sync key for diffing during bulk sync operations.
+   * Delegates to the provider's computeSyncKey() if it implements SyncKeyProvider,
+   * otherwise falls back to getGlobalIdentifier() (which may be expensive for
+   * providers like DailyNote).
+   *
+   * The key is scoped to the calendarId to ensure global uniqueness.
+   */
+  public computeSyncKeyForEvent(event: OFCEvent, calendarId: string): string | null {
+    const instance = this.instances.get(calendarId);
+    if (!instance) return null;
+
+    // Type guard: check if the provider implements SyncKeyProvider
+    if (
+      'computeSyncKey' in instance &&
+      typeof (instance as SyncKeyProvider).computeSyncKey === 'function'
+    ) {
+      const key = (instance as SyncKeyProvider).computeSyncKey(event);
+      return `${calendarId}::${key}`;
+    }
+
+    // Fallback: use the existing (potentially expensive) global identifier
+    return this.getGlobalIdentifier(event, calendarId);
+  }
+
+  public getCanonicalTitle(event: OFCEvent, calendarId: string): string {
+    const instance = this.instances.get(calendarId);
+    if (
+      instance &&
+      'getCanonicalTitle' in instance &&
+      typeof (instance as CanonicalTitleProvider).getCanonicalTitle === 'function'
+    ) {
+      return (instance as CanonicalTitleProvider).getCanonicalTitle(event);
+    }
+
+    return event.title;
+  }
+
   public buildMap(store: {
     getAllEvents(): { event: OFCEvent; calendarId: string; id: string }[];
   }): void {
@@ -238,6 +290,7 @@ export class ProviderRegistry {
     if (!this.cache) return;
     this.identifierMapPromise = (() => {
       this.identifierToSessionIdMap.clear();
+      this.sessionIdToIdentifierMap.clear();
       for (const storedEvent of store.getAllEvents()) {
         const globalIdentifier = this.getGlobalIdentifier(
           storedEvent.event,
@@ -245,6 +298,7 @@ export class ProviderRegistry {
         );
         if (globalIdentifier) {
           this.identifierToSessionIdMap.set(globalIdentifier, storedEvent.id);
+          this.sessionIdToIdentifierMap.set(storedEvent.id, globalIdentifier);
         }
       }
       return Promise.resolve();
@@ -254,14 +308,29 @@ export class ProviderRegistry {
   public addMapping(event: OFCEvent, calendarId: string, sessionId: string): void {
     const globalIdentifier = this.getGlobalIdentifier(event, calendarId);
     if (globalIdentifier) {
+      // If this sessionId already has a mapping (e.g. re-mapping after
+      // optimistic → authoritative correction), clean up the old forward entry
+      // before inserting the new one.
+      const existingGlobalId = this.sessionIdToIdentifierMap.get(sessionId);
+      if (existingGlobalId && existingGlobalId !== globalIdentifier) {
+        this.identifierToSessionIdMap.delete(existingGlobalId);
+      }
       this.identifierToSessionIdMap.set(globalIdentifier, sessionId);
+      this.sessionIdToIdentifierMap.set(sessionId, globalIdentifier);
     }
   }
 
-  public removeMapping(event: OFCEvent, calendarId: string): void {
-    const globalIdentifier = this.getGlobalIdentifier(event, calendarId);
+  /**
+   * Removes the identifier mapping for a given session ID.
+   * Uses a reverse-index lookup (O(1)) instead of calling getEventHandle,
+   * which is critical for providers like DailyNote where getEventHandle
+   * performs expensive vault scans.
+   */
+  public removeMapping(sessionId: string): void {
+    const globalIdentifier = this.sessionIdToIdentifierMap.get(sessionId);
     if (globalIdentifier) {
       this.identifierToSessionIdMap.delete(globalIdentifier);
+      this.sessionIdToIdentifierMap.delete(sessionId);
     }
   }
 
@@ -290,6 +359,7 @@ export class ProviderRegistry {
         } catch (e) {
           const source = this.getSource(settingsId);
           console.warn(`Full Calendar: Failed to load calendar source`, source, e);
+          this.scheduleProviderReload(settingsId, instance, e);
         }
       })();
       promises.push(promise);
@@ -349,6 +419,7 @@ export class ProviderRegistry {
       } catch (e) {
         const source = this.getSource(settingsId);
         console.warn(`Full Calendar: Failed to load local calendar source (Stage 1)`, source, e);
+        this.scheduleProviderReload(settingsId, instance, e);
       }
     });
 
@@ -368,7 +439,9 @@ export class ProviderRegistry {
           const rawEvents = await instance.getEvents();
           processResults(settingsId, rawEvents);
         } catch {
-          // Suppress errors if they are just re-runs
+          // Suppress noisy logs for background re-runs, but still let retryable
+          // providers ask the registry for a delayed reload.
+          this.scheduleProviderReload(settingsId, instance);
         }
       });
       void Promise.all(localPromises2);
@@ -386,11 +459,77 @@ export class ProviderRegistry {
         } catch (e) {
           const source = this.getSource(settingsId);
           console.warn(`Full Calendar: Failed to load remote calendar source pipeline`, source, e);
+          this.scheduleProviderReload(settingsId, instance, e);
         }
       });
 
       await Promise.allSettled(remotePromises);
     })();
+  }
+
+  private getRetryPolicy(instance: CalendarProvider<unknown>): ProviderLoadRetryPolicy | null {
+    return instance.getLoadRetryPolicy?.() ?? null;
+  }
+
+  private scheduleProviderReload(
+    settingsId: string,
+    instance: CalendarProvider<unknown>,
+    reason?: unknown
+  ): void {
+    const policy = this.getRetryPolicy(instance);
+    if (!policy || !this.cache) {
+      return;
+    }
+
+    if (this.providerRetryTimers.has(settingsId)) {
+      return;
+    }
+
+    const attempts = this.providerRetryAttempts.get(settingsId) ?? 0;
+    if (policy.maxAttempts !== undefined && attempts >= policy.maxAttempts) {
+      console.warn(`Full Calendar: Provider "${settingsId}" exhausted reload attempts.`, reason);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      this.providerRetryTimers.delete(settingsId);
+      this.providerRetryAttempts.set(settingsId, attempts + 1);
+      void this.reloadProvider(settingsId);
+    }, policy.retryDelayMs);
+
+    this.providerRetryTimers.set(settingsId, timer);
+  }
+
+  private async reloadProvider(settingsId: string): Promise<void> {
+    if (!this.cache) {
+      return;
+    }
+
+    const instance = this.instances.get(settingsId);
+    if (!instance) {
+      return;
+    }
+
+    try {
+      const rawEvents = await instance.getEvents();
+      this.cache.syncCalendar(settingsId, rawEvents);
+      this.providerRetryAttempts.delete(settingsId);
+      this.refreshBacklogViews();
+    } catch (e) {
+      const source = this.getSource(settingsId);
+      console.warn(`Full Calendar: Delayed provider reload failed`, source, e);
+      this.scheduleProviderReload(settingsId, instance, e);
+    }
+  }
+
+  public reloadProviderNow(settingsId: string): void {
+    const timer = this.providerRetryTimers.get(settingsId);
+    if (timer) {
+      clearTimeout(timer);
+      this.providerRetryTimers.delete(settingsId);
+    }
+    this.providerRetryAttempts.delete(settingsId);
+    void this.reloadProvider(settingsId);
   }
 
   public async createEventInProvider(
@@ -639,6 +778,11 @@ export class ProviderRegistry {
         off: (name: string, cb: () => void) => void;
       }
     ).off('full-calendar:sources-changed', this.onSourcesChanged);
+    for (const timer of this.providerRetryTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.providerRetryTimers.clear();
+    this.providerRetryAttempts.clear();
   }
 
   /**

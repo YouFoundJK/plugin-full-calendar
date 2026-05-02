@@ -118,6 +118,28 @@
     "openCalendar": "Full Calendar öffnen"
   },
   "settings": {
+    "categories": {
+      "general": {
+        "label": "Allgemein",
+        "description": "Allgemeines Verhalten, Erinnerungen und aktuelle Aktualisierungen."
+      },
+      "appearance": {
+        "label": "Aussehen",
+        "description": "Passen Sie Kalenderdarstellung, Zeitformate und Sichtbarkeit an."
+      },
+      "calendars": {
+        "label": "Kalender",
+        "description": "Verwalten Sie Kalenderquellen und anbieterspezifische Konfigurationen."
+      },
+      "organization": {
+        "label": "Organisation",
+        "description": "Organisieren Sie Ansichten mit Workspaces und Ereigniskategorisierung."
+      },
+      "integrations": {
+        "label": "Integrationen",
+        "description": "Verbinden Sie externe Dienste wie Google und ActivityWatch."
+      }
+    },
     "general": {
       "desktopInitialView": {
         "label": "Desktop-Startansicht",
@@ -134,6 +156,17 @@
       "clickToCreateEvent": {
         "label": "Klicken Sie auf einen Tag in der Monatsansicht, um ein Ereignis zu erstellen",
         "description": "Deaktivieren, um stattdessen die Tagesansicht zu öffnen."
+      }
+    },
+    "reminders": {
+      "title": "Erinnerungen",
+      "enableDefault": {
+        "label": "Standarderinnerung aktivieren",
+        "description": "Fügen Sie neuen Ereignissen automatisch eine Erinnerung hinzu."
+      },
+      "defaultTime": {
+        "label": "Standarderinnerungszeit",
+        "description": "Minuten vor dem Ereignis zur Erinnerung (Standard: 10)"
       }
     },
     "appearance": {
@@ -179,6 +212,22 @@
         "slotMaxTime": {
           "label": "Späteste angezeigte Zeit",
           "description": "Setzen Sie die späteste Zeit in Zeitrasteransichten (Format: HH:mm)"
+        },
+        "allDaySlot": {
+          "label": "Ganztagszeile anzeigen (Woche/Tag)",
+          "description": "Aktivieren oder deaktivieren Sie die Ganztagszeile oben in den Wochen- und Tagesansichten."
+        },
+        "timeGridDayHeaderFormat": {
+          "label": "Datumsformat für Wochen-/Tagesüberschrift",
+          "description": "Wählen Sie, wie die Tagesbezeichnungen in Wochen- und Tagesansichten angezeigt werden.",
+          "options": {
+            "ddmmDay": "TT/MM Tag",
+            "mmddDay": "MM/TT Tag",
+            "dayDdmm": "Tag TT/MM",
+            "dayMmdd": "Tag MM/TT",
+            "ddmmyyyyDay": "TT/MM/JJJJ Tag",
+            "mmddyyyyDay": "MM/TT/JJJJ Tag"
+          }
         }
       },
       "dayVisibility": {
@@ -288,8 +337,8 @@
           "description": "Anzeigename für diesen Kalender"
         },
         "readOnly": {
-          "label": "Schreibgeschützter Kalender",
-          "description": "Aufgaben können angezeigt, aber nicht über die Kalenderoberfläche bearbeitet werden. Zum Bearbeiten verwenden Sie das Tasks-Plugin oder ändern Sie Ihre Notizen direkt."
+          "label": "Ereignisse",
+          "description": "Ereignisbearbeitungen erfolgen direkt im Tasks-Modell und nicht im Full Calendar Bearbeitungsfenster."
         },
         "adding": "Wird hinzugefügt...",
         "cancel": "Abbrechen"
@@ -351,8 +400,17 @@
       "saturday": "Samstag"
     },
     "changelog": {
+      "title": "Änderungsprotokoll",
       "whatsNew": "Was ist neu",
-      "viewFull": "Vollständiges Änderungsprotokoll anzeigen"
+      "viewFull": "Vollständiges Änderungsprotokoll anzeigen",
+      "versionWithNumber": "Version {{version}}",
+      "whatsNewPageLink": "Was ist neu-Seite",
+      "changelogPageLink": "Änderungsprotokoll",
+      "loadOlder": {
+        "button": "Ältere Versionen laden",
+        "loading": "Wird geladen...",
+        "errorOffline": "Ältere Versionen konnten nicht geladen werden. Möglicherweise sind Sie offline."
+      }
     },
     "utils": {
       "timelineDisabled": "Timeline-Ansicht ist deaktiviert. Standard-Desktop-Ansicht wird auf \"Woche\" zurückgesetzt."
@@ -360,15 +418,45 @@
     "warnings": {
       "oneDailyNote": "Nur eine tägliche Notiz ist erlaubt."
     },
-    "reminders": {
-      "title": "Erinnerungen",
-      "enableDefault": {
-        "label": "Standarderinnerung aktivieren",
-        "description": "Fügen Sie neuen Ereignissen automatisch eine Erinnerung hinzu."
+    "activityWatch": {
+      "title": "ActivityWatch-Integration",
+      "enable": {
+        "label": "ActivityWatch-Synchronisierung aktivieren",
+        "description": "Regelmäßig Daten von Ihrer lokalen ActivityWatch-Instanz abrufen."
       },
-      "defaultTime": {
-        "label": "Standarderinnerungszeit",
-        "description": "Minuten vor dem Ereignis zur Erinnerung (Standard: 10)"
+      "configButton": "⚙️ ActivityWatch konfigurieren",
+      "sync": {
+        "targetNotSet": "ActivityWatch-Sync: Zielkalender nicht festgelegt. Bitte in den Einstellungen konfigurieren.",
+        "targetNotFoundOrReadOnly": "ActivityWatch-Sync: Zielkalender ({{calendarId}}) nicht gefunden oder schreibgeschützt.",
+        "fetchingData": "ActivityWatch-Sync: Daten werden abgerufen...",
+        "failedFetchBuckets": "Buckets konnten nicht abgerufen werden. Status: {{status}}",
+        "addedEvents": "ActivityWatch-Sync: {{count}} Ereignisse hinzugefügt!",
+        "failedWithError": "ActivityWatch-Sync fehlgeschlagen: {{message}}",
+        "failed": "ActivityWatch-Sync fehlgeschlagen.",
+        "enabledPrompt": "ActivityWatch aktiviert. Bitte konfigurieren Sie den Zielkalender, indem Sie auf das Zahnrad-Symbol klicken."
+      }
+    },
+    "tasksIntegration": {
+      "title": "Obsidian Tasks Integration",
+      "description": "Konfigurieren Sie, wie Full Calendar Aufgaben aus dem Tasks-Backlog plant.",
+      "configButton": "Tasks-Integration konfigurieren",
+      "modal": {
+        "title": "Tasks-Integration"
+      },
+      "backlogDateTarget": {
+        "label": "Backlog-Zieldatum-Feld",
+        "description": "Wählen Sie, welcher Tasks-Datumsmarker beim Ziehen aus dem Backlog geschrieben wird. Das Backlog zeigt Aufgaben an, denen dieser ausgewählte Datumsmarker fehlt.",
+        "scheduled": "Geplantes Datum",
+        "start": "Startdatum",
+        "due": "Fälligkeitsdatum"
+      },
+      "openEditModalAfterBacklogDrop": {
+        "label": "Tasks-Bearbeitungsfenster nach Backlog-Drop öffnen",
+        "description": "Öffnet das Obsidian Tasks-Bearbeitungsfenster sofort nach dem Ziehen einer Aufgabe aus dem Backlog in den Kalender."
+      },
+      "calendarDisplayDateTarget": {
+        "label": "Kalender-Anzeigedatum-Feld",
+        "description": "Wählen Sie, welchen Tasks-Datumsmarker Full Calendar zur Anzeige von Tasks-Ereignissen verwendet. Es gibt kein Fallback auf andere Datumsmarker. Starten Sie Obsidian neu oder laden Sie das Plugin neu, damit diese Änderung vollständig wirksam wird."
       }
     }
   },
@@ -396,6 +484,22 @@
       "buttons": {
         "openNote": "Notiz öffnen"
       },
+      "errors": {
+        "createNoCalendars": "Ereignis kann nicht erstellt werden: Es sind keine beschreibbaren Kalender verfügbar.",
+        "createError": "Fehler beim Erstellen des Ereignisses: {{message}}",
+        "eventNotFound": "Ereignis nicht gefunden.",
+        "detailsNotFound": "Ereignisdetails nicht gefunden.",
+        "parentNotFound": "Das übergeordnete wiederkehrende Ereignis konnte nicht gefunden werden.",
+        "updateError": "Fehler beim Aktualisieren des Ereignisses: {{message}}",
+        "deleteError": "Fehler beim Löschen des Ereignisses: {{message}}"
+      },
+      "confirmations": {
+        "editParentTitle": "Übergeordnetes Ereignis bearbeiten?",
+        "editParentMessage": "Diese Eigenschaft wird vom übergeordneten wiederkehrenden Ereignis geerbt. Möchten Sie das übergeordnete Element öffnen, um Änderungen vorzunehmen?"
+      },
+      "misc": {
+        "unknownCalendar": "Unbekannter Kalender"
+      },
       "fields": {
         "title": {
           "label": "Titel",
@@ -410,7 +514,6 @@
           "options": {
             "auto": "Normales Ereignis",
             "background": "Hintergrundereignis",
-            "inverseBackground": "Invertierter Hintergrund",
             "none": "Versteckt"
           }
         },
@@ -428,6 +531,18 @@
           "allDay": "Ganztägig",
           "isTask": "Ist eine Aufgabe",
           "completed": "Abgeschlossen"
+        },
+        "notification": {
+          "label": "Benachrichtigen:",
+          "mins": "Min.",
+          "select": "Auswählen...",
+          "presets": {
+            "30m": "30 Min.",
+            "1h": "1 Stunde",
+            "6h": "6 Stunden",
+            "12h": "12 Stunden",
+            "24h": "24 Stunden"
+          }
         },
         "repeats": {
           "label": "Wiederholt sich",
@@ -456,39 +571,11 @@
           },
           "yearlyText": "Wiederholt sich jedes Jahr am {{date}}.",
           "endRepeat": "Wiederholung beenden"
-        },
-        "notification": {
-          "label": "Benachrichtigen:",
-          "mins": "Min.",
-          "select": "Auswählen...",
-          "presets": {
-            "30m": "30 Min.",
-            "1h": "1 Stunde",
-            "6h": "6 Stunden",
-            "12h": "12 Stunden",
-            "24h": "24 Stunden"
-          }
         }
       },
       "tooltips": {
         "recurringTaskCompletion": "Die Fertigstellung für wiederkehrende Aufgaben kann für einzelne Instanzen in der Kalenderansicht umgeschaltet werden.",
         "dailyNoteRecurring": "Wiederkehrende Ereignisse werden in Tagesnotizen nicht unterstützt. Bitte verwenden Sie stattdessen einen 'Vollständige Notiz'-Kalender."
-      },
-      "errors": {
-        "createNoCalendars": "Ereignis kann nicht erstellt werden: Es sind keine beschreibbaren Kalender verfügbar.",
-        "createError": "Fehler beim Erstellen des Ereignisses: {{message}}",
-        "eventNotFound": "Ereignis nicht gefunden.",
-        "detailsNotFound": "Ereignisdetails nicht gefunden.",
-        "parentNotFound": "Das übergeordnete wiederkehrende Ereignis konnte nicht gefunden werden.",
-        "updateError": "Fehler beim Aktualisieren des Ereignisses: {{message}}",
-        "deleteError": "Fehler beim Löschen des Ereignisses: {{message}}"
-      },
-      "confirmations": {
-        "editParentTitle": "Übergeordnetes Ereignis bearbeiten?",
-        "editParentMessage": "Diese Eigenschaft wird vom übergeordneten wiederkehrenden Ereignis geerbt. Möchten Sie das übergeordnete Element öffnen, um Änderungen vorzunehmen?"
-      },
-      "misc": {
-        "unknownCalendar": "Unbekannter Kalender"
       }
     },
     "deleteRecurring": {
@@ -671,6 +758,50 @@
         "button": "Standard setzen",
         "errorEmpty": "Bitte geben Sie einen Kategorienamen ein."
       }
+    },
+    "activityWatchSetup": {
+      "saved": "ActivityWatch-Konfiguration gespeichert",
+      "strategy": {
+        "title": "Synchronisierungsstrategie",
+        "auto": "Seit der letzten Prüfung synchronisieren",
+        "custom": "Benutzerdefinierter Datumsbereich",
+        "datePlaceholder": "Start- und Enddatum auswählen",
+        "lastSynced": "Last checked",
+        "neverSynced": "Never checked",
+        "autoSyncEnabled": "Enable automatic sync",
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)",
+        "autoDescription": "Manual and automatic syncs update the last checked time.",
+        "customDescription": "Debug-only manual range. It never updates the last checked time and cannot run automatically."
+      },
+      "buttons": {
+        "save": "Speichern",
+        "cancel": "Abbrechen"
+      },
+      "apiUrl": "API URL",
+      "targetCalendar": "Target Calendar",
+      "unselected": "Unselected",
+      "profiles": {
+        "title": "Context Profiles (Best-Fit FSM)",
+        "config": "Profile Configuration",
+        "btnDelete": "Delete",
+        "name": "Profile Name",
+        "category": "Category (Color tag)",
+        "activationThreshold": "Activation Threshold (Mins)",
+        "softBreakLimit": "Soft Break Limit (Mins)",
+        "titleTemplate": "Title Template",
+        "titleTemplatePlaceholder": "e.g. Work - {app}",
+        "primaryEvidenceRules": "Primary Evidence Rules (Can start and sustain sessions)",
+        "supportingEvidenceRules": "Supporting Evidence Rules (Can sustain, but cannot start)",
+        "hardBreakRules": "Hard Break Rules (Instantly end the session)",
+        "btnAddProfile": "+ Add Context Profile"
+      },
+      "rules": {
+        "bucketPlaceholder": "Bucket (e.g. window)",
+        "fieldPlaceholder": "Field (e.g. app)",
+        "matchPatternPlaceholder": "Match Pattern",
+        "regex": "Regex",
+        "btnAdd": "+ Add Rule"
+      }
     }
   },
   "google": {
@@ -719,17 +850,6 @@
     "loading": "Lädt..."
   },
   "ui": {
-    "buttons": {
-      "addCalendar": "Kalender hinzufügen"
-    },
-    "navigation": {
-      "thisMonth": "Diesen Monat",
-      "thisWeek": "Diese Woche",
-      "customDate": "Benutzerdefiniertes Datum...",
-      "viewMonth": "Monat anzeigen",
-      "viewWeek": "Woche anzeigen",
-      "viewDay": "Tag anzeigen"
-    },
     "view": {
       "errors": {
         "cacheNotLoaded": "Der Ereignis-Cache von Full Calendar wurde nicht geladen.",
@@ -759,6 +879,17 @@
         "delete": "Löschen",
         "noActions": "Keine Aktionen für Remote-Ereignisse verfügbar"
       }
+    },
+    "buttons": {
+      "addCalendar": "Kalender hinzufügen"
+    },
+    "navigation": {
+      "thisMonth": "Diesen Monat",
+      "thisWeek": "Diese Woche",
+      "customDate": "Benutzerdefiniertes Datum...",
+      "viewMonth": "Monat anzeigen",
+      "viewWeek": "Woche anzeigen",
+      "viewDay": "Tag anzeigen"
     }
   },
   "notifications": {

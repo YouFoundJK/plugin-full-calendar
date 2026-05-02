@@ -5,7 +5,7 @@
  */
 
 import { Notice } from 'obsidian';
-import { FullCalendarSettings, GoogleAccount } from '../../types/settings'; // Add GoogleAccount import
+import { FullCalendarSettings, GoogleAccount, DEFAULT_SETTINGS } from '../../types/settings'; // Add GoogleAccount import
 import { CalendarInfo, generateCalendarId } from '../../types/calendar_settings';
 import { t } from '../../features/i18n/i18n';
 
@@ -64,13 +64,25 @@ export function migrateAndSanitizeSettings(settings: unknown): {
     workspaces: raw.workspaces || [],
     activeWorkspace: raw.activeWorkspace ?? null,
     showEventInStatusBar: (raw as Partial<FullCalendarSettings>).showEventInStatusBar ?? false,
+    highlightCurrentOrNextEvent:
+      (raw as Partial<FullCalendarSettings>).highlightCurrentOrNextEvent ?? true,
 
     // New granular view configuration properties with sensible defaults
     slotMinTime: raw.slotMinTime ?? '00:00',
     slotMaxTime: raw.slotMaxTime ?? '24:00',
+    allDaySlot: raw.allDaySlot ?? true,
+    timeGridDayHeaderFormat: raw.timeGridDayHeaderFormat ?? 'day-mmdd',
     weekends: raw.weekends ?? true,
     hiddenDays: raw.hiddenDays ?? [],
     dayMaxEvents: raw.dayMaxEvents ?? false,
+    activityWatch: {
+      ...DEFAULT_SETTINGS.activityWatch,
+      ...((raw as Partial<FullCalendarSettings>).activityWatch || {})
+    },
+    tasksIntegration: {
+      ...DEFAULT_SETTINGS.tasksIntegration,
+      ...((raw as Partial<FullCalendarSettings>).tasksIntegration || {})
+    },
     currentVersion: raw.currentVersion ?? null
   } as FullCalendarSettings & { calendarSources: (CalendarInfo | GoogleSourceWithAuth)[] } & {
     googleAuth?: LegacyGoogleAuth;

@@ -138,6 +138,8 @@ const makeCache = (events: OFCEvent[]) => {
       buildMap: jest.fn(),
       addMapping: jest.fn(),
       removeMapping: jest.fn(),
+      computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+        `${calendarId}::${event.uid || event.title}`,
       getSource: () => calendarInfo,
       getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false })
     }
@@ -175,6 +177,41 @@ describe('event cache with readonly calendar', () => {
     expect(extractEvents(sources[0])).toEqual([event1, event2, event3]);
     expect(sources[0].color).toEqual('#000000');
     expect(sources[0].editable).toBeFalsy();
+  });
+
+  it('enhances provider-pushed additions through the same read pipeline as initial load', async () => {
+    const cache = makeCache([]);
+    cache.updateSettings({
+      ...DEFAULT_SETTINGS,
+      enableAdvancedCategorization: true,
+      categorySettings: [{ name: 'Wellness', color: '#448844' }]
+    });
+
+    await cache.processProviderUpdates('test', {
+      additions: [
+        {
+          event: {
+            uid: 'Daily.md::2',
+            title: 'Wellness - Task 2 - edit 2',
+            type: 'single',
+            allDay: true,
+            date: '2026-04-30',
+            endDate: null,
+            completed: false
+          },
+          location: null
+        }
+      ],
+      updates: [],
+      deletions: []
+    });
+
+    const [event] = extractEvents(cache.getAllEvents()[0]);
+    expect(event).toMatchObject({
+      uid: 'Daily.md::2',
+      title: 'Task 2 - edit 2',
+      category: 'Wellness'
+    });
   });
 
   it('properly sorts events into separate calendars', async () => {
@@ -258,7 +295,9 @@ describe('event cache with readonly calendar', () => {
         generateId: withCounter(x => x, 'test-id'),
         buildMap: jest.fn(),
         addMapping: jest.fn(),
-        removeMapping: jest.fn()
+        removeMapping: jest.fn(),
+        computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+          `${calendarId}::${event.uid || event.title}`
       }
     } as unknown as FullCalendarPlugin;
     const cache = new EventCache(mockPlugin);
@@ -421,7 +460,9 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
           return `${calendarId}::${storedEvents[0][1].file.path}`;
         }
         return `${calendarId}::/path/to/${event.title}.md`;
-      }
+      },
+      computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+        `${calendarId}::${event.uid || event.title}`
     }
   } as unknown as FullCalendarPlugin;
   const cache = new EventCache(mockPlugin);
@@ -912,7 +953,9 @@ describe('editable calendars', () => {
           },
           buildMap: jest.fn(),
           addMapping: jest.fn(),
-          removeMapping: jest.fn()
+          removeMapping: jest.fn(),
+          computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+            `${calendarId}::${event.uid || event.title}`
         }
       } as unknown as FullCalendarPlugin;
 
@@ -1044,6 +1087,8 @@ describe('editable calendars', () => {
           buildMap: jest.fn(),
           addMapping: jest.fn(),
           removeMapping: jest.fn(),
+          computeSyncKeyForEvent: (event: OFCEvent, calendarId: string) =>
+            `${calendarId}::${event.uid || event.title}`,
           getSource: (id: string) => calendarSources.find(s => s.id === id)
         }
       } as unknown as FullCalendarPlugin;

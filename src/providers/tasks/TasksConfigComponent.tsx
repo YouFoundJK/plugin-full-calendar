@@ -31,7 +31,7 @@ export const TasksConfigComponent: React.FC<TasksConfigComponentProps> = ({
   const [name, setName] = React.useState(config.name || 'Obsidian Tasks');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setIsSubmitting(true);

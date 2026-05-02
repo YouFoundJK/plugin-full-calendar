@@ -194,6 +194,8 @@ describe('DailyNoteProvider workflow', () => {
 
     const handle = provider.getEventHandle(createdEvent);
     expect(handle).not.toBeNull();
+    expect(createdEvent.uid).toBe('1');
+    expect(handle!.persistentId).toBe('2026-03-27::uid:1');
     expect(handle!.location?.path).toBe('Daily/2026-03-27.md');
 
     await provider.deleteEvent(handle!);
@@ -256,5 +258,204 @@ describe('DailyNoteProvider workflow', () => {
     expect(contentsByPath.get('Daily/2026-03-28.md') || '').not.toContain(
       'Daily lifecycle renamed'
     );
+  });
+
+  it('waits for metadata before parsing a daily note during startup scan', async () => {
+    const file = makeFile('Daily/2026-03-29.md');
+    dailyNotesByPath.set(file.path, file);
+    contentsByPath.set(
+      file.path,
+      ['# Calendar', '- [ ] Startup sync event [startTime:: 09:00]'].join('\n')
+    );
+    const sections = [
+      {
+        position: {
+          end: { line: 1, col: 47, offset: 58 }
+        }
+      }
+    ] as NonNullable<CachedMetadata['sections']>;
+    const sectionsWithLast = sections as NonNullable<CachedMetadata['sections']> & {
+      last: () => NonNullable<CachedMetadata['sections']>[number];
+    };
+    sectionsWithLast.last = () => sections[sections.length - 1];
+
+    const startupMetadata = {
+      headings: [
+        {
+          heading: 'Calendar',
+          level: 1,
+          position: {
+            start: { line: 0, col: 0, offset: 0 },
+            end: { line: 0, col: 10, offset: 10 }
+          }
+        }
+      ],
+      listItems: [
+        {
+          position: {
+            start: { line: 1, col: 0, offset: 11 },
+            end: { line: 1, col: 47, offset: 58 }
+          }
+        }
+      ],
+      sections: sectionsWithLast
+    } as CachedMetadata;
+
+    let hasMetadata = false;
+    const app: ObsidianInterface = {
+      getAbstractFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
+      getFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
+      getMetadata: (_file: TFile) => (hasMetadata ? startupMetadata : null),
+      waitForMetadata: (_file: TFile) => {
+        hasMetadata = true;
+        return Promise.resolve(startupMetadata);
+      },
+      read: (target: TFile) => Promise.resolve(contentsByPath.get(target.path) ?? ''),
+      process: <T>(target: TFile, func: (text: string) => T): Promise<T> =>
+        Promise.resolve(func(contentsByPath.get(target.path) ?? '')),
+      create: (_path: string, _contents: string) =>
+        Promise.reject(new Error('Not used by DailyNoteProvider')),
+      rewrite: (() => Promise.resolve(undefined)) as ObsidianInterface['rewrite'],
+      rename: (_file: TFile, _newPath: string) =>
+        Promise.reject(new Error('Not used by DailyNoteProvider')),
+      delete: (_file: TFile) => Promise.reject(new Error('Not used by DailyNoteProvider'))
+    };
+
+    const provider = new DailyNoteProvider(
+      { id: 'dailynote_1', heading: 'Calendar' },
+      makePlugin(),
+      app
+    );
+
+    const events = await provider.getEventsInFile(file);
+
+    expect(events).toHaveLength(1);
+    expect(events[0][0]).toEqual(
+      expect.objectContaining({
+        title: 'Startup sync event',
+        date: '2026-03-29'
+      })
+    );
+  });
+
+  it('keeps duplicate same-title events by allocating unique uids', async () => {
+    const app = createMockApp();
+
+    const provider = new DailyNoteProvider(
+      { id: 'dailynote_1', heading: 'Calendar' },
+      makePlugin(),
+      app
+    );
+
+    const firstEvent: OFCEvent = {
+      title: 'Wellness - Sleep - Night',
+      type: 'single',
+      allDay: false,
+      date: '2026-04-07',
+      startTime: '23:30',
+      endTime: '07:30',
+      endDate: '2026-04-08',
+      timezone: 'Europe/Budapest'
+    };
+
+    const secondEvent: OFCEvent = {
+      title: 'Wellness - Sleep - Night',
+      type: 'single',
+      allDay: false,
+      date: '2026-04-07',
+      startTime: '00:45',
+      endTime: '08:00',
+      endDate: null,
+      timezone: 'Europe/Budapest'
+    };
+
+    const [createdFirst] = await provider.createEvent(firstEvent);
+    const [createdSecond] = await provider.createEvent(secondEvent);
+
+    const id1 = provider.getEventHandle(createdFirst)?.persistentId;
+    const id2 = provider.getEventHandle(createdSecond)?.persistentId;
+
+    expect(id1).toBeTruthy();
+    expect(id2).toBeTruthy();
+    expect(createdFirst.uid).toBe('1');
+    expect(id1).toBe('2026-04-07::uid:1');
+    expect(createdSecond.uid).toBe('2');
+    expect(id2).toBe('2026-04-07::uid:2');
+    expect(id1).not.toEqual(id2);
+
+    const content = contentsByPath.get('Daily/2026-04-07.md') || '';
+    const eventLines = content
+      .split('\n')
+      .filter(line => line.trim().startsWith('-') && line.includes('[startTime::'));
+
+    expect(eventLines).toHaveLength(2);
+  });
+
+  it('loads legacy event correctly', async () => {
+    const file = makeFile('Daily/2026-04-07.md');
+    dailyNotesByPath.set(file.path, file);
+    contentsByPath.set(
+      file.path,
+      [
+        '## Calendar',
+        '-  Wellness - Sleep - Night [startTime:: 23:30]  [endTime:: 07:30]  [endDate:: 2026-04-08]  [timezone:: Europe/Budapest]'
+      ].join('\n')
+    );
+
+    const sections = [
+      {
+        position: {
+          end: { line: 1, col: 120, offset: 150 }
+        }
+      }
+    ] as NonNullable<CachedMetadata['sections']>;
+    const sectionsWithLast = sections as NonNullable<CachedMetadata['sections']> & {
+      last: () => NonNullable<CachedMetadata['sections']>[number];
+    };
+    sectionsWithLast.last = () => sections[sections.length - 1];
+
+    const metadata = {
+      headings: [
+        {
+          heading: 'Calendar',
+          level: 2,
+          position: {
+            start: { line: 0, col: 0, offset: 0 },
+            end: { line: 0, col: 11, offset: 11 }
+          }
+        }
+      ],
+      listItems: [
+        {
+          position: {
+            start: { line: 1, col: 0, offset: 12 },
+            end: { line: 1, col: 120, offset: 150 }
+          }
+        }
+      ],
+      sections: sectionsWithLast
+    } as CachedMetadata;
+
+    const app: ObsidianInterface = {
+      ...createMockApp(),
+      getMetadata: (_file: TFile) => metadata,
+      waitForMetadata: (_file: TFile) => Promise.resolve(metadata)
+    };
+
+    const provider = new DailyNoteProvider(
+      { id: 'dailynote_1', heading: 'Calendar' },
+      makePlugin(),
+      app
+    );
+
+    const events = await provider.getEventsInFile(file);
+    expect(events).toHaveLength(1);
+
+    const [first] = events.map(([event]) => event);
+    const firstId = provider.getEventHandle(first)?.persistentId;
+
+    expect(firstId).toBeTruthy();
+    expect(firstId).toBe('2026-04-07::Wellness - Sleep - Night');
+    expect(provider.getCanonicalTitle(first)).toBe('Wellness - Sleep - Night');
   });
 });

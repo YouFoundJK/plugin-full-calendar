@@ -1,13 +1,13 @@
 import { rrulestr } from 'rrule';
 import { DateTime } from 'luxon';
-import { TFile, TFolder, normalizePath } from 'obsidian';
+import { CachedMetadata, TFile, TFolder, normalizePath } from 'obsidian';
 import * as React from 'react';
 
 import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
 import { constructTitle } from '../../features/category/categoryParser';
 import { newFrontmatter, modifyFrontmatterString, replaceFrontmatter } from './frontmatter';
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { FullNoteProviderConfig } from './typesLocal';
 import { ObsidianInterface } from '../../ObsidianAdapter';
@@ -84,6 +84,7 @@ const filenameForEvent = (event: OFCEvent, settings: TitleSettingsLike) =>
 const SUFFIX_PATTERN = '-_-_-';
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+const METADATA_WAIT_TIMEOUT_MS = 1500;
 
 const waitForFileAtPath = async (
   app: ObsidianInterface,
@@ -99,6 +100,30 @@ const waitForFileAtPath = async (
     await sleep(delayMs);
   }
   return null;
+};
+
+const waitForMetadataWithTimeout = async (
+  app: ObsidianInterface,
+  file: TFile,
+  timeoutMs = METADATA_WAIT_TIMEOUT_MS
+): Promise<CachedMetadata | null> => {
+  const existing = app.getMetadata(file);
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    return await Promise.race([
+      app.waitForMetadata(file),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
+    ]);
+  } catch (error) {
+    console.warn(
+      `Full Calendar: Failed while waiting for metadata for local note file "${file.path}".`,
+      error
+    );
+    return null;
+  }
 };
 
 type FullNoteConfigProps = {
@@ -148,7 +173,7 @@ function findUniquePath(app: ObsidianInterface, directory: string, baseFilename:
 // Provider Implementation
 // =================================================================================================
 
-export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig> {
+export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig>, SyncKeyProvider {
   // Static metadata for registry
   static readonly type = 'local';
   static readonly displayName = 'Local Notes';
@@ -191,15 +216,21 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return { persistentId: path };
   }
 
+  computeSyncKey(event: OFCEvent): string {
+    if (event.uid) return event.uid;
+    const filename = filenameForEvent(event, this.plugin.settings);
+    return normalizePath(`${this.source.directory}/${filename}`);
+  }
+
   public isFileRelevant(file: TFile): boolean {
     const directory = this.source.directory;
     return !!directory && file.path.startsWith(directory + '/');
   }
 
-  public getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
-    const metadata = this.app.getMetadata(file);
+  public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
+    const metadata = await waitForMetadataWithTimeout(this.app, file);
     if (!metadata?.frontmatter) {
-      return Promise.resolve([]);
+      return [];
     }
 
     const rawEventData = {
@@ -209,14 +240,14 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
     const event = validateEvent(rawEventData);
     if (!event) {
-      return Promise.resolve([]);
+      return [];
     }
 
     // Populate UID from the file path.
     event.uid = file.path;
 
     // The raw event is returned as-is. The EventEnhancer will handle timezone conversion.
-    return Promise.resolve([[event, { file, lineNumber: undefined }]]);
+    return [[event, { file, lineNumber: undefined }]];
   }
 
   async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {

@@ -14,6 +14,17 @@ export interface Version {
 // Add new versions to the TOP of this array.
 export const changelogData: Version[] = [
   {
+    version: '0.12.8.5',
+    changes: [
+      {
+        type: 'new',
+        title: 'Tasks Time Features',
+        description:
+          'Tasks can now have an optional time block. Drag and drop a task to a specific time or back to all-day to update it. (#227)'
+      }
+    ]
+  },
+  {
     version: '0.12.8',
     changes: [
       {

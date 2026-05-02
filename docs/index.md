@@ -2,13 +2,16 @@
 
 Keep your calendar in your vault! This plugin integrates the [FullCalendar.io](https://fullcalendar.io/) library into your [Obsidian vault](https://docs.obsidian.md/Plugins/Vault). Keep your schedule, events, and plans alongside your tasks and notes, and link freely between them.
 
-With Full Calendar, you can connect to [local note-based calendars](calendars/local.md), your [daily notes](calendars/dailynote.md), remote sources like [Google Calendar](calendars/gcal.md) with two-way sync, [CalDAV providers](calendars/caldav.md) (iCloud, Fastmail), local or remote [`.ics` files](calendars/ics.md), and even your [Obsidian Tasks](calendars/tasks-plugin-integration.md).
+!!! success "Courtesy and LICENSE"
+    Remastered edition is a fork of the original [Full Calender plugin](https://github.com/obsidian-community/obsidian-full-calendar) by [Davis Haupt](https://davi.sh/) under [GNU license](https://github.com/YouFoundJK/plugin-full-calendar?tab=License-1-ov-file#readme)
 
-If you are new here or is looking for workflow guide head to [User Docs](guides/index.md) / use the Search bar above (or press `S`), while if you are a veteran who wants to contribute or is just crazy to find joy in reading the core architecture jump to [Architecture Docs](system/index.md).
+With Full Calendar, you can connect to [local note-based calendars](user/calendars/local.md), your [daily notes](user/calendars/dailynote.md), remote sources like [Google Calendar](user/calendars/gcal.md) with two-way sync, [CalDAV providers](user/calendars/caldav.md) (iCloud, Fastmail), local or remote [`.ics` files](user/calendars/ics.md), and even your [Obsidian Tasks](user/calendars/tasks-plugin-integration.md).
 
-The latest version 0.12.7 introduces **[Local ICS Support](calendars/ics.md)**, a dramatically improved **Staged Loading Architecture** for lightning-fast startup, and completely rewritten **[Timezone & DST Hardening](events/timezones.md)** to ensure accurate events everywhere.
+If you are new here or is looking for workflow guide head to [User Docs](user/index.md) / use the Search bar above (or press `S`), while if you are a veteran who wants to contribute or is just crazy to find joy in reading the core architecture jump to [Architecture Docs](architecture/system/index.md).
 
-Recent major releases have brought incredible features like **[Full CalDAV Two-Way Sync](calendars/caldav.md)**, **[Mobile Workspaces & Monthly Views](views/workspaces.md)**, **[Multi-Language (i18n) Support](features/i18n.md)**, a deeply integrated **[Tasks Provider](calendars/tasks-plugin-integration.md)** with drag-and-drop backlog, and powerful additions like the **[Chrono Analyser dashboard](chrono_analyser/introduction.md)** and **[Advanced Categories system](events/categories.md)**.
+The latest version 0.12.7 introduces **[Local ICS Support](user/calendars/ics.md)**, a dramatically improved **[Staged Loading Architecture](./architecture/dev-logs/devlog_calendar_load_profiling_2026-04-11.md){: target="_blank" rel="noopener" }** for lightning-fast startup, and completely rewritten **[Timezone & DST Hardening](user/events/timezones.md)** to ensure accurate events everywhere.
+
+Recent major releases have brought incredible features like **[Full CalDAV Two-Way Sync](user/calendars/caldav.md)**, **[Mobile Workspaces & Monthly Views](user/views/workspaces.md)**, **[Multi-Language (i18n) Support](user/features/i18n.md)**, a deeply integrated **[Tasks Provider](user/calendars/tasks-plugin-integration.md)** with drag-and-drop backlog, and powerful additions like the **[Chrono Analyser dashboard](user/chrono_analyser/introduction.md)** and **[Advanced Categories system](user/events/categories.md)**.
 
 
 This documentation site will guide you through setup and advanced features. If something is unclear, don't hesitate to [submit an issue on GitHub](https://github.com/YouFoundJK/plugin-full-calendar/issues).
@@ -21,6 +24,6 @@ This documentation site will guide you through setup and advanced features. If s
 
 **Full version history:** [Changelog](changelog.md)
 
-**For advanced users:** [Data Integrity Notes](advanced/data_integrity.md)
+**For advanced users:** [Data Integrity Notes](user/reference/data_integrity.md)
 
 [![Support me on Ko-Fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/youfoundjk)

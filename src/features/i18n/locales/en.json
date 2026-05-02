@@ -118,6 +118,28 @@
     "openCalendar": "Open Full Calendar"
   },
   "settings": {
+    "categories": {
+      "general": {
+        "label": "General",
+        "description": "General behavior, reminders, and recent updates."
+      },
+      "appearance": {
+        "label": "Appearance",
+        "description": "Customize calendar appearance, time formats, and visibility."
+      },
+      "calendars": {
+        "label": "Calendars",
+        "description": "Manage calendar sources and provider-specific configuration."
+      },
+      "organization": {
+        "label": "Organization",
+        "description": "Organize views with workspaces and event categorization."
+      },
+      "integrations": {
+        "label": "Integrations",
+        "description": "Connect external services like Google and ActivityWatch."
+      }
+    },
     "general": {
       "desktopInitialView": {
         "label": "Desktop initial view",
@@ -190,6 +212,22 @@
         "slotMaxTime": {
           "label": "Latest time to display",
           "description": "Set the latest time visible in time grid views (format: HH:mm)"
+        },
+        "allDaySlot": {
+          "label": "Show all-day row (week/day views)",
+          "description": "Toggle the all-day row at the top of week and day time-grid views."
+        },
+        "timeGridDayHeaderFormat": {
+          "label": "Week/day header date format",
+          "description": "Choose how day labels are displayed in week and day views.",
+          "options": {
+            "ddmmDay": "DD/MM day",
+            "mmddDay": "MM/DD day",
+            "dayDdmm": "day DD/MM",
+            "dayMmdd": "day MM/DD",
+            "ddmmyyyyDay": "DD/MM/YYYY day",
+            "mmddyyyyDay": "MM/DD/YYYY day"
+          }
         }
       },
       "dayVisibility": {
@@ -299,8 +337,8 @@
           "description": "Display name for this calendar"
         },
         "readOnly": {
-          "label": "Read-Only Calendar",
-          "description": "Tasks can be viewed but not modified through the calendar interface. To edit tasks, use the Tasks plugin or modify your notes directly."
+          "label": "Events",
+          "description": "Event Edits happen directly in the Tasks Model and not the Full Calendar Edit Modal."
         },
         "adding": "Adding...",
         "cancel": "Cancel"
@@ -362,14 +400,64 @@
       "saturday": "Saturday"
     },
     "changelog": {
+      "title": "Changelog",
       "whatsNew": "What's new",
-      "viewFull": "View full changelog"
+      "viewFull": "View full changelog",
+      "versionWithNumber": "Version {{version}}",
+      "whatsNewPageLink": "What's New page",
+      "changelogPageLink": "Changelog",
+      "loadOlder": {
+        "button": "Load older versions",
+        "loading": "Loading...",
+        "errorOffline": "Failed to load older versions. You may be offline."
+      }
     },
     "utils": {
       "timelineDisabled": "Timeline view is disabled. Resetting default desktop view to \"Week\"."
     },
     "warnings": {
       "oneDailyNote": "Only one daily note is allowed."
+    },
+    "activityWatch": {
+      "title": "ActivityWatch Integration",
+      "enable": {
+        "label": "Enable ActivityWatch Sync",
+        "description": "Periodically pull data from your local ActivityWatch instance."
+      },
+      "configButton": "⚙️ Configure ActivityWatch",
+      "sync": {
+        "targetNotSet": "Activitywatch sync: target calendar not set. Please configure in settings.",
+        "targetNotFoundOrReadOnly": "Activitywatch sync: target calendar ({{calendarId}}) not found or read-only.",
+        "fetchingData": "Activitywatch sync: fetching data...",
+        "failedFetchBuckets": "Failed to fetch buckets. Status: {{status}}",
+        "addedEvents": "ActivityWatch sync: added {{count}} events!",
+        "failedWithError": "ActivityWatch sync failed: {{message}}",
+        "failed": "ActivityWatch sync failed.",
+        "enabledPrompt": "Activitywatch enabled. Please configure the target calendar by clicking the gear icon."
+      }
+    },
+    "tasksIntegration": {
+      "title": "Obsidian Tasks Integration",
+      "description": "Configure how Full Calendar schedules tasks from the Tasks backlog.",
+      "configButton": "Configure Tasks integration",
+      "modal": {
+        "title": "Tasks Integration"
+      },
+      "backlogDateTarget": {
+        "label": "Backlog filter date field",
+        "description": "Choose which Tasks date marker the backlog tracks. The backlog shows tasks missing this selected date marker.",
+        "scheduled": "Scheduled date",
+        "start": "Start date",
+        "due": "Due date"
+      },
+      "calendarDisplayDateTarget": {
+        "label": "Calendar display date field",
+        "description": "Choose which Tasks date marker Full Calendar uses to display Tasks events. There is no fallback to other date markers. Restart Obsidian or reload the plugin for this change to fully take effect."
+      },
+      "openEditModalAfterBacklogDrop": {
+        "label": "Open Tasks edit modal after backlog drop",
+        "description": "Open the Obsidian Tasks edit modal immediately after dragging a task from the backlog onto the calendar."
+      }
     }
   },
   "modals": {
@@ -426,7 +514,6 @@
           "options": {
             "auto": "Normal event",
             "background": "Background event",
-            "inverseBackground": "Inverse background",
             "none": "Hidden"
           }
         },
@@ -671,6 +758,50 @@
         "button": "Set Default",
         "errorEmpty": "Please enter a category name."
       }
+    },
+    "activityWatchSetup": {
+      "saved": "Activitywatch configuration saved",
+      "apiUrl": "API URL",
+      "targetCalendar": "Target Calendar",
+      "unselected": "Unselected",
+      "strategy": {
+        "title": "Sync Strategy",
+        "auto": "Sync from Last Checked",
+        "custom": "Custom Date Range",
+        "datePlaceholder": "Select Start and End Date",
+        "lastSynced": "Last checked",
+        "neverSynced": "Never checked",
+        "autoSyncEnabled": "Enable automatic sync",
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)",
+        "autoDescription": "Manual and automatic syncs update the last checked time.",
+        "customDescription": "Debug-only manual range. It never updates the last checked time and cannot run automatically."
+      },
+      "profiles": {
+        "title": "Context Profiles (Best-Fit FSM)",
+        "config": "Profile Configuration",
+        "btnDelete": "Delete",
+        "name": "Profile Name",
+        "category": "Category (Color tag)",
+        "activationThreshold": "Activation Threshold (Mins)",
+        "softBreakLimit": "Soft Break Limit (Mins)",
+        "titleTemplate": "Title Template",
+        "titleTemplatePlaceholder": "e.g. Work - {app}",
+        "primaryEvidenceRules": "Primary Evidence Rules (Can start and sustain sessions)",
+        "supportingEvidenceRules": "Supporting Evidence Rules (Can sustain, but cannot start)",
+        "hardBreakRules": "Hard Break Rules (Instantly end the session)",
+        "btnAddProfile": "+ Add Context Profile"
+      },
+      "rules": {
+        "bucketPlaceholder": "Bucket (e.g. window)",
+        "fieldPlaceholder": "Field (e.g. app)",
+        "matchPatternPlaceholder": "Match Pattern",
+        "regex": "Regex",
+        "btnAdd": "+ Add Rule"
+      },
+      "buttons": {
+        "save": "Save",
+        "cancel": "Cancel"
+      }
     }
   },
   "google": {
@@ -698,7 +829,7 @@
         "description": "Your Google OAuth 2.0 Client Secret"
       }
     },
-    "noAccounts": "No Google accounts connected. Add a calendar source to connect an account.",
+    "noAccounts": "No Google accounts connected. Add Google calendar In Calendars section to connect an account.",
     "accountDescription": "Connected account. ID: {{id}}",
     "buttons": {
       "disconnect": "Disconnect",

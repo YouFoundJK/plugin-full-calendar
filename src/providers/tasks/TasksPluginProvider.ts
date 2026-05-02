@@ -17,7 +17,12 @@ import { TFile, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import {
+  CalendarProvider,
+  CalendarProviderCapabilities,
+  RecoverableProviderLoadError,
+  SyncKeyProvider
+} from '../Provider';
 import { EventHandle, FCReactComponent } from '../typesProvider';
 import { TasksProviderConfig } from './typesTask';
 import { TasksConfigComponent, TasksConfigComponentProps } from './TasksConfigComponent';
@@ -25,51 +30,23 @@ import React from 'react';
 import { ParsedUndatedTask } from './typesTask';
 import { DateTime } from 'luxon';
 import { t } from '../../features/i18n/i18n';
+import {
+  CalendarTask,
+  TasksCacheData,
+  TasksPluginTask,
+  tasksToCalendarTasks
+} from './taskPayloadAdapter';
+import { TasksDateTarget } from '../../types/settings';
+
+export { extractTimeFromTitle } from './taskPayloadAdapter';
 
 // CHANGE: Define Scheduled emoji instead of Due
 const getScheduledDateEmoji = (): string => '⏳';
-
-/**
- * Extracts a time or time range from a task title.
- * Matches patterns like (18:00) or (18:00-20:00) anywhere in the title.
- * Returns { startTime, endTime, cleanTitle } where cleanTitle has the pattern removed.
- */
-export function extractTimeFromTitle(title: string): {
-  startTime: string | null;
-  endTime: string | null;
-  cleanTitle: string;
-} {
-  // A single time token: H:MM or H:MM AM/PM (case-insensitive, optional space before meridiem).
-  const TIME_TOKEN = String.raw`\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?`;
-  const timeRangePattern = new RegExp(`\\((${TIME_TOKEN})-(${TIME_TOKEN})\\)`);
-  const timePattern = new RegExp(`\\((${TIME_TOKEN})\\)`);
-
-  // Normalise a captured time token: ensure a single space + uppercase meridiem where present.
-  // e.g. "9:00am" → "9:00 AM", "14:30" → "14:30"
-  const normalise = (t: string) =>
-    t.replace(/\s*([AaPp][Mm])$/, (_, m: string) => ` ${m.toUpperCase()}`);
-
-  const collapseSpaces = (s: string) => s.replace(/\s+/g, ' ').trim();
-  const rangeMatch = title.match(timeRangePattern);
-  if (rangeMatch) {
-    return {
-      startTime: normalise(rangeMatch[1]),
-      endTime: normalise(rangeMatch[2]),
-      cleanTitle: collapseSpaces(title.replace(rangeMatch[0], ''))
-    };
-  }
-
-  const singleMatch = title.match(timePattern);
-  if (singleMatch) {
-    return {
-      startTime: normalise(singleMatch[1]),
-      endTime: null,
-      cleanTitle: collapseSpaces(title.replace(singleMatch[0], ''))
-    };
-  }
-
-  return { startTime: null, endTime: null, cleanTitle: collapseSpaces(title) };
-}
+const getStartDateEmoji = (): string => '🛫';
+const getDueDateEmoji = (): string => '📅';
+const TASKS_CACHE_TIMEOUT_MS = 5000;
+const TASKS_CACHE_RETRY_DELAY_MS = 10000;
+const DEFAULT_TIMED_TASK_DURATION_MINUTES = 30;
 
 /**
  * Updates or removes the time block `(H:MM)` / `(H:MM AM)` or their range forms
@@ -89,7 +66,8 @@ export function updateTimeInLine(
   line: string,
   startTime: string | null,
   endTime: string | null,
-  timeFormat24h = true
+  timeFormat24h = true,
+  dateSymbol = getScheduledDateEmoji()
 ): string {
   // Strip any existing time block (24h or 12h) from the line.
   const timeBlockPattern =
@@ -102,8 +80,8 @@ export function updateTimeInLine(
     const fmtEnd = endTime && endTime !== startTime ? fmt(endTime) : null;
     const timeBlock = fmtEnd ? `(${fmtStart}-${fmtEnd})` : `(${fmtStart})`;
 
-    // Insert before the scheduled emoji ⏳ (guaranteed present after updateTaskLine).
-    const scheduledEmojiIdx = result.indexOf('⏳');
+    // Insert before the configured date marker (guaranteed present after updateTaskLine).
+    const scheduledEmojiIdx = result.indexOf(dateSymbol);
     if (scheduledEmojiIdx !== -1) {
       const before = result.slice(0, scheduledEmojiIdx).trimEnd();
       const after = result.slice(scheduledEmojiIdx);
@@ -142,46 +120,51 @@ function formatTimeToken(time: string, timeFormat24h: boolean): string {
   return parsed.isValid ? parsed.toFormat('h:mm a').toUpperCase() : time;
 }
 
-// This is our own internal, simplified interface for a task from the Tasks plugin's cache.
-// It prevents the need to import anything from the Tasks plugin itself.
-interface CalendarTask {
-  id: string; // A unique ID created by us, e.g., "filePath::lineNumber"
-  title: string;
-  startDate: Date | null;
-  dueDate: Date | null;
-  scheduledDate: Date | null;
-  originalMarkdown: string; // The full original line from the file.
-  filePath: string;
-  lineNumber: number; // 1-based line number.
-  isDone: boolean;
-  startTime: string | null; // HH:mm if a time pattern was found in the title
-  endTime: string | null; // HH:mm if a time range pattern was found in the title
-}
+function summarizeDebugValue(value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return value;
+  }
 
-interface TasksPluginTaskDate {
-  toDate(): Date;
-}
+  if (typeof value !== 'object') {
+    return value;
+  }
 
-interface TasksPluginTask {
-  path: string;
-  description: string;
-  taskLocation: { lineNumber: number };
-  startDate?: TasksPluginTaskDate;
-  dueDate?: TasksPluginTaskDate;
-  scheduledDate?: TasksPluginTaskDate;
-  originalMarkdown: string;
-  isDone?: boolean;
-  doneDatez?: unknown;
-}
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
 
-interface TasksCacheData {
-  state?: { name?: string } | string;
-  tasks?: TasksPluginTask[];
+  const valueWithMethods = value as {
+    constructor?: { name?: string };
+    toDate?: () => Date;
+    toString?: () => string;
+  };
+  const summary: Record<string, unknown> = {
+    type: valueWithMethods.constructor?.name,
+    keys: Object.keys(value as Record<string, unknown>)
+  };
+
+  if (typeof valueWithMethods.toDate === 'function') {
+    try {
+      summary.toDate = valueWithMethods.toDate().toISOString();
+    } catch (e) {
+      summary.toDateError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  if (typeof valueWithMethods.toString === 'function') {
+    try {
+      summary.stringValue = valueWithMethods.toString();
+    } catch (e) {
+      summary.toStringError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  return summary;
 }
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
-export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig> {
+export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig>, SyncKeyProvider {
   // Static metadata for registry
   static readonly type = 'tasks';
   static readonly displayName = 'Obsidian Tasks';
@@ -301,6 +284,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private isSubscribed = false;
   private isTasksCacheWarm = false;
   private tasksPromise: Promise<void> | null = null;
+  private tasksPromiseResolve: (() => void) | null = null;
+  private tasksCacheTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isProcessingUpdate = false; // Singleton guard for live update
 
   readonly type = 'tasks';
@@ -320,9 +305,73 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     // No parser instantiation needed anymore.
   }
 
+  private debugTasksCachePayload(origin: string, cacheData: TasksCacheData): void {
+    const tasks = Array.isArray(cacheData.tasks) ? cacheData.tasks : [];
+    const taskKeyUnion = Array.from(
+      tasks.reduce((keys, task) => {
+        Object.keys(task as unknown as Record<string, unknown>).forEach(key => keys.add(key));
+        return keys;
+      }, new Set<string>())
+    ).sort();
+
+    console.debug('[Full Calendar][Tasks] cache payload received', {
+      origin,
+      sourceId: this.source.id,
+      state: cacheData.state,
+      taskCount: tasks.length,
+      taskKeyUnion,
+      sampleTasks: tasks.slice(0, 5).map((task, index) => {
+        const rawTask = task as unknown as Record<string, unknown>;
+        return {
+          index,
+          keys: Object.keys(rawTask).sort(),
+          values: Object.fromEntries(
+            Object.entries(rawTask).map(([key, value]) => [key, summarizeDebugValue(value)])
+          )
+        };
+      }),
+      rawPayload: cacheData
+    });
+  }
+
   /**
    * On-demand cache warming: requests initial data from the Tasks plugin and waits for response.
    */
+  private isWarmTasksCacheData(
+    cacheData: TasksCacheData
+  ): cacheData is TasksCacheData & { tasks: TasksPluginTask[] } {
+    return (
+      !!cacheData &&
+      ((typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
+        (typeof cacheData.state === 'object' && cacheData.state?.name === 'Warm')) &&
+      Array.isArray(cacheData.tasks)
+    );
+  }
+
+  private clearTasksCacheTimeout(): void {
+    if (this.tasksCacheTimeoutId) {
+      clearTimeout(this.tasksCacheTimeoutId);
+      this.tasksCacheTimeoutId = null;
+    }
+  }
+
+  private resolveTasksCacheWarm(cacheData: TasksCacheData): boolean {
+    if (!this.isWarmTasksCacheData(cacheData)) {
+      return false;
+    }
+
+    this.clearTasksCacheTimeout();
+    this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
+    this.isTasksCacheWarm = true;
+
+    const resolve = this.tasksPromiseResolve;
+    this.tasksPromise = null;
+    this.tasksPromiseResolve = null;
+    resolve?.();
+
+    return true;
+  }
+
   private _ensureTasksCacheIsWarm(): Promise<void> {
     if (this.isTasksCacheWarm) {
       return Promise.resolve();
@@ -330,48 +379,65 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (this.tasksPromise) {
       return this.tasksPromise;
     }
+    let didTimeout = false;
     this.tasksPromise = new Promise((resolve, reject) => {
+      this.tasksPromiseResolve = resolve;
+
       const callback = (cacheData: TasksCacheData) => {
-        if (
-          cacheData &&
-          ((typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
-            (typeof cacheData.state === 'object' && cacheData.state?.name === 'Warm')) &&
-          cacheData.tasks
-        ) {
-          this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
-          this.isTasksCacheWarm = true;
-          this.tasksPromise = null;
-          resolve();
+        // this.debugTasksCachePayload('request-cache-update', cacheData);
+        if (this.resolveTasksCacheWarm(cacheData)) {
+          if (didTimeout) {
+            this.plugin.providerRegistry.reloadProviderNow(this.source.id);
+          }
         }
       };
       const workspace = this.plugin.app.workspace as unknown as {
         trigger: (event: string, callback: (data: TasksCacheData) => void) => void;
       };
 
-      workspace.trigger('obsidian-tasks-plugin:request-cache-update', callback);
-      setTimeout(() => {
+      this.tasksCacheTimeoutId = setTimeout(() => {
         if (!this.isTasksCacheWarm) {
+          didTimeout = true;
           console.error(
             "Full Calendar: Timed out waiting for Tasks plugin's cache. The Tasks plugin may not be enabled or may have failed to load."
           );
+          this.clearTasksCacheTimeout();
           this.tasksPromise = null;
-          reject(new Error("Timed out waiting for Tasks plugin's cache."));
+          this.tasksPromiseResolve = null;
+          reject(new RecoverableProviderLoadError("Timed out waiting for Tasks plugin's cache."));
         }
-      }, 5000);
+      }, TASKS_CACHE_TIMEOUT_MS);
+      workspace.trigger('obsidian-tasks-plugin:request-cache-update', callback);
     });
     return this.tasksPromise;
   }
 
+  public getLoadRetryPolicy(): { retryDelayMs: number } {
+    return { retryDelayMs: TASKS_CACHE_RETRY_DELAY_MS };
+  }
+
+  private getDefaultEndTime(startTime: string): string {
+    const formats = ['H:mm', 'HH:mm', 'h:mm a'];
+    for (const format of formats) {
+      const parsed = DateTime.fromFormat(startTime, format);
+      if (parsed.isValid) {
+        return parsed.plus({ minutes: DEFAULT_TIMED_TASK_DURATION_MINUTES }).toFormat('HH:mm');
+      }
+    }
+    return startTime;
+  }
+
   /**
    * Helper to convert a CalendarTask to an OFCEvent and EventLocation.
-   * This now prioritizes Scheduled Date and ensures tasks are single-day events.
+   * Uses the configured Tasks calendar display date field with no fallback.
    */
   private _taskToOFCEvent(task: CalendarTask): [OFCEvent, EventLocation | null] | null {
-    // NEW PRIORITY LOGIC: Scheduled > Due > Start
-    const primaryDate = task.scheduledDate || task.dueDate || task.startDate;
+    const displayDate = this.getTaskDateValue(
+      task,
+      this.plugin.settings.tasksIntegration.calendarDisplayDateTarget
+    );
 
-    // A task must have at least one of these dates to appear on the calendar.
-    if (!primaryDate) {
+    if (!displayDate) {
       return null;
     }
 
@@ -380,10 +446,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           type: 'single',
           title: task.title,
           allDay: false,
-          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'),
+          date: DateTime.fromJSDate(displayDate).toFormat('yyyy-MM-dd'),
           endDate: null,
           startTime: task.startTime,
-          endTime: task.endTime ?? task.startTime,
+          endTime: task.endTime ?? this.getDefaultEndTime(task.startTime),
           completed: task.isDone ? DateTime.now().toISO() : false,
           uid: task.id
         }
@@ -391,7 +457,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           type: 'single',
           title: task.title,
           allDay: true,
-          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'),
+          date: DateTime.fromJSDate(displayDate).toFormat('yyyy-MM-dd'),
           endDate: null,
           completed: task.isDone ? DateTime.now().toISO() : false,
           uid: task.id
@@ -417,8 +483,6 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     const handleLiveCacheUpdate = async (cacheData: TasksCacheData) => {
       if (
         this.isProcessingUpdate ||
-        !this.isTasksCacheWarm ||
-        !this.plugin.cache ||
         !cacheData ||
         !(
           (typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
@@ -426,6 +490,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         ) ||
         !cacheData.tasks
       ) {
+        return;
+      }
+
+      if (!this.isTasksCacheWarm) {
+        this.resolveTasksCacheWarm(cacheData);
+        this.plugin.providerRegistry.reloadProviderNow(this.source.id);
+        return;
+      }
+
+      if (!this.plugin.cache) {
         return;
       }
 
@@ -448,7 +522,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         // Find deletions
         for (const [id, oldTask] of oldTasksMap.entries()) {
           if (!newTasksMap.has(id)) {
-            if (oldTask.startDate || oldTask.scheduledDate || oldTask.dueDate) {
+            if (
+              this.getTaskDateValue(
+                oldTask,
+                this.plugin.settings.tasksIntegration.calendarDisplayDateTarget
+              )
+            ) {
               providerPayload.deletions.push(id);
             }
           }
@@ -458,7 +537,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         for (const [id, newTask] of newTasksMap.entries()) {
           const oldTask = oldTasksMap.get(id);
           const transformed = this._taskToOFCEvent(newTask);
-          const wasDated = !!(oldTask?.startDate || oldTask?.scheduledDate || oldTask?.dueDate);
+          const wasDated = oldTask
+            ? !!this.getTaskDateValue(
+                oldTask,
+                this.plugin.settings.tasksIntegration.calendarDisplayDateTarget
+              )
+            : false;
           const isDated = transformed !== null;
 
           if (!oldTask && isDated) {
@@ -509,6 +593,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     };
 
     workspace.on('obsidian-tasks-plugin:cache-update', data => {
+      // this.debugTasksCachePayload('cache-update', data);
       void handleLiveCacheUpdate(data);
     });
     this.isSubscribed = true;
@@ -518,30 +603,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    * Parses the raw task data from the Tasks plugin into our internal, simplified CalendarTask format.
    */
   private parseTasksForCalendar(tasks: TasksPluginTask[]): CalendarTask[] {
-    if (!tasks) return [];
-
-    // FIX: Use the stable, nested line number from taskLocation and convert to 1-based index.
-    const calendarTasks = tasks.map((task, index) => {
-      const oneBasedLineNumber = task.taskLocation.lineNumber + 1;
-      const { startTime, endTime, cleanTitle } = extractTimeFromTitle(task.description);
-      return {
-        // The ID must be based on the 0-indexed number to match the live-update diffing logic.
-        id: `${task.path}::${task.taskLocation.lineNumber}`,
-        title: cleanTitle,
-        startDate: task.startDate ? task.startDate.toDate() : null,
-        dueDate: task.dueDate ? task.dueDate.toDate() : null,
-        scheduledDate: task.scheduledDate ? task.scheduledDate.toDate() : null,
-        originalMarkdown: task.originalMarkdown,
-        filePath: task.path,
-        // The internal lineNumber must be 1-based for surgical editing.
-        lineNumber: oneBasedLineNumber,
-        isDone: task.isDone || !!task.doneDatez,
-        startTime,
-        endTime
-      };
-    });
-
-    return calendarTasks;
+    return tasksToCalendarTasks(tasks);
   }
 
   // ====================================================================
@@ -555,13 +617,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       .filter((e): e is [OFCEvent, EventLocation | null] => e !== null);
   }
 
-  // REPLACE getUndatedTasks with corrected logic
   public async getUndatedTasks(): Promise<ParsedUndatedTask[]> {
     await this._ensureTasksCacheIsWarm();
     return (
       this.allTasks
-        // An undated task for the backlog has no dates and is not done.
-        .filter(t => !t.scheduledDate && !t.isDone) // !t.startDate && !t.dueDate &&
+        .filter(t => !this.hasBacklogTargetDate(t) && !t.isDone)
         // Map to the format expected by the backlog view.
         .map(t => ({
           title: t.title,
@@ -612,26 +672,69 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    * Updates the date component of a task's original markdown line.
    * Changed to use Scheduled Date (⏳) instead of Due Date (📅).
    */
-  private updateTaskLine(originalMarkdown: string, newDate: Date): string {
-    // CHANGE: Use scheduled emoji
-    const scheduledSymbol = getScheduledDateEmoji();
-    const newDateString = DateTime.fromJSDate(newDate).toFormat('yyyy-MM-dd'); // MODIFIED
-    const newScheduledComponent = `${scheduledSymbol} ${newDateString}`;
-    // CHANGE: Regex looks for scheduled icon
-    const scheduledDateRegex = /⏳\s*\d{4}-\d{2}-\d{2}/;
+  private getDateTargetEmoji(target: TasksDateTarget): string {
+    switch (target) {
+      case 'startDate':
+        return getStartDateEmoji();
+      case 'dueDate':
+        return getDueDateEmoji();
+      case 'scheduledDate':
+      default:
+        return getScheduledDateEmoji();
+    }
+  }
 
-    // If a scheduled date already exists, replace it.
-    if (originalMarkdown.match(scheduledDateRegex)) {
-      return originalMarkdown.replace(scheduledDateRegex, newScheduledComponent);
+  private setTaskDate(task: CalendarTask, target: TasksDateTarget, date: Date): void {
+    switch (target) {
+      case 'startDate':
+        task.startDate = date;
+        break;
+      case 'dueDate':
+        task.dueDate = date;
+        break;
+      case 'scheduledDate':
+        task.scheduledDate = date;
+        break;
+    }
+  }
+
+  private getTaskDateValue(task: CalendarTask, target: TasksDateTarget): Date | null {
+    switch (target) {
+      case 'startDate':
+        return task.startDate;
+      case 'dueDate':
+        return task.dueDate;
+      case 'scheduledDate':
+      default:
+        return task.scheduledDate;
+    }
+  }
+
+  private hasBacklogTargetDate(task: CalendarTask): boolean {
+    return !!this.getTaskDateValue(task, this.plugin.settings.tasksIntegration.backlogDateTarget);
+  }
+
+  private updateTaskLine(
+    originalMarkdown: string,
+    newDate: Date,
+    target: TasksDateTarget = 'scheduledDate'
+  ): string {
+    const dateSymbol = this.getDateTargetEmoji(target);
+    const newDateString = DateTime.fromJSDate(newDate).toFormat('yyyy-MM-dd'); // MODIFIED
+    const newDateComponent = `${dateSymbol} ${newDateString}`;
+    const dateRegex = new RegExp(`${dateSymbol}\\s*\\d{4}-\\d{2}-\\d{2}`, 'u');
+
+    if (originalMarkdown.match(dateRegex)) {
+      return originalMarkdown.replace(dateRegex, newDateComponent);
     } else {
       // Otherwise, append it, being careful to preserve any block links (^uuid).
       const blockLinkRegex = /(\s*\^[a-zA-Z0-9-]+)$/;
       const blockLinkMatch = originalMarkdown.match(blockLinkRegex);
       if (blockLinkMatch) {
         const contentWithoutBlockLink = originalMarkdown.replace(blockLinkRegex, '');
-        return `${contentWithoutBlockLink.trim()} ${newScheduledComponent}${blockLinkMatch[1]}`;
+        return `${contentWithoutBlockLink.trim()} ${newDateComponent}${blockLinkMatch[1]}`;
       } else {
-        return `${originalMarkdown.trim()} ${newScheduledComponent}`;
+        return `${originalMarkdown.trim()} ${newDateComponent}`;
       }
     }
   }
@@ -707,12 +810,25 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (!task) {
       throw new Error(`Cannot find original task with ID ${taskId} to update.`);
     }
-    let newLine = this.updateTaskLine(task.originalMarkdown, newDate);
+    const dateTarget = this.plugin.settings.tasksIntegration.calendarDisplayDateTarget;
+    let newLine = this.updateTaskLine(task.originalMarkdown, newDate, dateTarget);
     // Only update the time block when explicitly provided (undefined = no change).
     if (startTime !== undefined) {
-      newLine = updateTimeInLine(newLine, startTime, endTime ?? null, timeFormat24h);
+      newLine = updateTimeInLine(
+        newLine,
+        startTime,
+        endTime ?? null,
+        timeFormat24h,
+        this.getDateTargetEmoji(dateTarget)
+      );
     }
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
+    task.originalMarkdown = newLine;
+    this.setTaskDate(task, dateTarget, newDate);
+    if (startTime !== undefined) {
+      task.startTime = startTime;
+      task.endTime = startTime ? (endTime ?? null) : null;
+    }
   }
 
   public async scheduleTask(taskId: string, date: Date): Promise<void> {
@@ -720,8 +836,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (!task) {
       throw new Error(`Cannot find original task to schedule at ${taskId}`);
     }
-    const newLine = this.updateTaskLine(task.originalMarkdown, date);
+    const dateTarget = this.plugin.settings.tasksIntegration.calendarDisplayDateTarget;
+    const newLine = this.updateTaskLine(task.originalMarkdown, date, dateTarget);
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
+    task.originalMarkdown = newLine;
+    this.setTaskDate(task, dateTarget, date);
     const tasksApi = (
       this.plugin.app as unknown as {
         plugins?: {
@@ -732,12 +851,13 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         };
       }
     ).plugins?.plugins?.['obsidian-tasks-plugin']?.apiV1;
-    if (tasksApi) {
+    if (tasksApi && this.plugin.settings.tasksIntegration.openEditModalAfterBacklogDrop) {
       const editedTaskLine = await tasksApi.editTaskLineModal(newLine);
       if (editedTaskLine !== undefined && editedTaskLine !== newLine) {
         await this.replaceTaskInFile(task.filePath, task.lineNumber, [editedTaskLine]);
+        task.originalMarkdown = editedTaskLine;
       }
-    } else {
+    } else if (!tasksApi && this.plugin.settings.tasksIntegration.openEditModalAfterBacklogDrop) {
       new Notice(t('notices.tasks.scheduledNoModal'));
     }
   }
@@ -843,7 +963,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       canCreate: false, // Prevents UI creation and standard addEvent pathway.
       canEdit: true,
       canDelete: true,
-      hasCustomEditUI: true
+      hasCustomEditUI: true,
+      contextMenu: {
+        allowGenericTaskActions: false,
+        providesNativeTaskSemantics: true
+      }
     };
   }
 
@@ -856,6 +980,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       return { persistentId: event.uid };
     }
     return null;
+  }
+
+  computeSyncKey(event: OFCEvent): string {
+    return event.uid || JSON.stringify(event);
   }
 
   public isFileRelevant(file: TFile): boolean {

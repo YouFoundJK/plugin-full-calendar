@@ -49,6 +49,13 @@ async function build() {
     target: "es2016",
     logLevel: "info",
     minify: prod,
+    legalComments: prod ? 'none' : 'eof',
+    // drop: prod ? ['console', 'debugger'] : [],
+    alias: {
+      'react': 'preact/compat',
+      'react-dom/client': 'preact/compat/client',
+      'react-dom': 'preact/compat',
+    },
     sourcemap: prod ? false : "inline",
     treeShaking: true,
     entryNames: "[name]", // Use the entry name as the output name
@@ -84,13 +91,15 @@ async function build() {
       }
     ],
     outfile: "obsidian-dev-vault/.obsidian/plugins/full-calendar-remastered/main.js",
+    metafile: true,
   });
 
   if (!prod) {
     context.watch();
     console.log('Watching for changes...');
   } else {
-    await context.rebuild();
+    const result = await context.rebuild();
+    // fs.writeFileSync("metafile.json", JSON.stringify(result.metafile));
     context.dispose();
   }
 }

@@ -2,7 +2,7 @@ import { OFCEvent, EventLocation } from '../../types';
 import { getEventsFromICS } from '../ics/ics';
 import { eventToIcs, createOverrideVEvent } from '../ics/formatter';
 import ical from 'ical.js';
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { CalDAVProviderConfig } from './typesCalDAV';
 import FullCalendarPlugin from '../../main';
@@ -277,7 +277,7 @@ const CalDAVConfigWrapper: React.FC<CalDAVConfigProps> = props => {
   });
 };
 
-export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
+export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, SyncKeyProvider {
   static readonly type = 'caldav';
   static readonly displayName = 'CalDAV';
 
@@ -302,6 +302,10 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig> {
 
   getEventHandle(event: OFCEvent): EventHandle | null {
     return event.uid ? { persistentId: event.uid } : null;
+  }
+
+  computeSyncKey(event: OFCEvent): string {
+    return event.uid || JSON.stringify(event);
   }
 
   async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {

@@ -77,6 +77,23 @@ describe('interop toEventInput tests', () => {
       expect(result!.allDay).toBe(false);
     });
 
+    it('should preserve duplicate suffix token in converted title', () => {
+      const event = {
+        type: 'single',
+        title: 'Sleep Event-_-_-2',
+        date: '2026-04-07',
+        startTime: '00:45',
+        endTime: '08:00',
+        allDay: false,
+        endDate: null
+      } as OFCEvent;
+
+      const result = toEventInput('dup-id', event, baseSettings);
+
+      expect(result).not.toBeNull();
+      expect(result!.title).toBe('Sleep Event-_-_-2');
+    });
+
     it('should handle all-day single events', () => {
       const event = {
         type: 'single',
@@ -561,7 +578,6 @@ describe('interop toEventInput tests', () => {
           uid: 'unique-123',
           category: 'Work',
           subCategory: 'Meeting',
-          cleanTitle: 'Full Event',
           isShadow: false
         })
       );

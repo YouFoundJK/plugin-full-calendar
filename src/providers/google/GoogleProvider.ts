@@ -4,7 +4,7 @@ import FullCalendarPlugin from '../../main';
 import { fromGoogleEvent, toGoogleEvent, GoogleEventLike } from './parser/parser_gcal';
 import { makeAuthenticatedRequest, GoogleApiError } from './auth/request';
 
-import { CalendarProvider, CalendarProviderCapabilities } from '../Provider';
+import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
 import { GoogleProviderConfig } from './typesGCal';
 
@@ -71,7 +71,7 @@ const createGoogleConfigWrapper = (
   };
 };
 
-export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
+export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, SyncKeyProvider {
   // Static metadata for registry
   static readonly type = 'google';
   static readonly displayName = 'Google Calendar';
@@ -105,6 +105,10 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig> {
       return { persistentId: event.uid };
     }
     return null;
+  }
+
+  computeSyncKey(event: OFCEvent): string {
+    return event.uid || JSON.stringify(event);
   }
 
   async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {

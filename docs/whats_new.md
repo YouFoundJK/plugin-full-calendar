@@ -4,7 +4,7 @@ This page highlights the latest major features and improvements to help you get 
 For a detailed version-by-version breakdown, see the [Changelog](changelog.md).
 
 
-## ✅ CalDAV Two-Way Sync
+## 📅 CalDAV Two-Way Sync
 
 You asked, we delivered. CalDAV calendars now support full two-way synchronization. Create, modify, and delete events from your private iCloud, Fastmail, or self-hosted CalDAV servers directly within Obsidian.
 
@@ -19,11 +19,11 @@ CalDAV imports now verify that the URL is a real calendar collection via PROPFIN
 
 ## 🌐 Multi-Language Support
 
-Full Calendar now supports multiple languages! The UI will automatically switch based on your Obsidian language setting. Developers can contribute new translations using the i18n system with type-safe keys. See [i18n documentation](features/i18n.md).
+Full Calendar now supports multiple languages! The UI will automatically switch based on your Obsidian language setting. Developers can contribute new translations using the i18n system with type-safe keys. See [i18n documentation](user/features/i18n.md).
 
 ---
 
-## ✅ Tasks Integration Reimagined
+## ✔️ Tasks Integration Reimagined
 
 The integration with the **Obsidian Tasks plugin** has been completely overhauled for maximum performance and reliability. It's now faster, safer, and more intuitive than ever.
 
@@ -32,7 +32,7 @@ The integration with the **Obsidian Tasks plugin** has been completely overhaule
 - **Robust Drag-and-Drop:** Drag tasks from the backlog or between dates with confidence. The new provider ensures that scheduling is reliable and predictable.
 - **Seamless Experience:** Create, update, and complete tasks directly from the calendar. All changes are powered by the Tasks plugin's own engine for data integrity.
 
-➡️ Learn more about [Tasks Integration](calendars/tasks-plugin-integration.md).
+➡️ Learn more about [Tasks Integration](user/calendars/tasks-plugin-integration.md).
 
 ---
 
@@ -57,7 +57,7 @@ Create and switch between tailored calendar setups with Workspaces. Save your se
 - Quick switcher in the calendar header and command palette support
 - Optional default workspace on startup
 
-➡️ See how to use it: [Workspaces](views/workspaces.md)
+➡️ See how to use it: [Workspaces](user/views/workspaces.md)
 
 ---
 
@@ -70,7 +70,7 @@ Full Calendar now supports **two-way sync with Google Calendar**! Connect your G
 - **Advanced Categories:** Google Calendar events can use category coloring and sub-category organization for powerful visual management.
 - **Multi-Account Multi-Calendar:** Now supports multiple calendars across different Google Accounts.
 
-➡️ **[Learn how to set up OAUTH2.0 for Google Calendar Sync](calendars/gcal.md)**
+➡️ **[Learn how to set up OAUTH2.0 for Google Calendar Sync](user/calendars/gcal.md)**
 
 ---
 
@@ -84,7 +84,7 @@ Visualize your schedule by category and sub-category with the new **Timeline Vie
 - **Custom Colors:** Color-code categories and sub-categories for instant recognition.
 - **Works with All Sources:** Timeline View supports local, remote, and Google Calendar events.
 
-➡️ **[See Timeline View Usage](views/timeline_view.md)**
+➡️ **[See Timeline View Usage](user/views/timeline_view.md)**
 
 ---
 
@@ -97,7 +97,7 @@ Supercharge your calendar's organization with Advanced Categories! This new syst
 -   **Smart Setup:** When you enable the feature, the plugin can automatically categorize your existing events based on their folder structure.
 -   **Autocomplete Editor:** The event editor now has a dedicated "Category" field with autocomplete suggestions for all your existing categories, ensuring consistency.
 
-➡️ **[Learn how to set up Advanced Categories](events/categories.md)**
+➡️ **[Learn how to set up Advanced Categories](user/events/categories.md)**
 
 ---
 
@@ -109,7 +109,7 @@ The entire recurring event system has been rebuilt from the ground up to be more
 - **Recurring Tasks That Work:** Check off a single instance of a recurring task as "done." It will be crossed out for that day only, leaving future occurrences ready for action.
 - **Safe Deletion:** When deleting a recurring event, you'll now be asked whether you want to delete just that one instance, or the entire series (including any overrides you've made).
 
-➡️ **[Learn more about Recurring Events & Overrides](events/recurring.md)**
+➡️ **[Learn more about Recurring Events & Overrides](user/events/recurring.md)**
 
 ---
 
@@ -123,7 +123,7 @@ Unlock powerful insights into your time with Chrono Analyser! Chrono Analyser is
 - **All Sources Supported:** Works with Full Note, Daily Note, Google Calendar, CalDAV, and ICS calendars.
 - **Real-Time Filtering:** Instantly filter by category, project, or date range.
 
-➡️ **[Learn more about Chrono Analyser](chrono_analyser/introduction.md)**
+➡️ **[Learn more about Chrono Analyser](user/chrono_analyser/introduction.md)**
 
 ---
 
@@ -135,7 +135,7 @@ Travel and collaborate across timezones with confidence. Full Calendar is now fu
 -   **Automatic Conversion:** Events from all sources—local notes, daily notes, and remote calendars like Google Calendar—are automatically converted to your chosen display timezone.
 -   **DST Safe:** All conversions are Daylight Saving Time aware, so you never have to worry about "fall back" or "spring forward" bugs again.
 
-➡️ **[Read more about Timezone Support](events/timezones.md)**
+➡️ **[Read more about Timezone Support](user/events/timezones.md)**
 
 ---
 

@@ -16,7 +16,7 @@ import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { CalendarInfo, OFCEvent } from '../../types';
 import { AutocompleteInput } from '../components/forms/AutocompleteInput';
-import { constructTitle, parseSubcategoryTitle } from '../../features/category/categoryParser';
+import { parseSubcategoryTitle } from '../../features/category/categoryParser';
 import { t } from '../../features/i18n/i18n';
 
 interface DayChoiceProps {
@@ -143,11 +143,7 @@ export const EditEvent = ({
   const [endTime, setEndTime] = useState(
     initialEvent?.allDay === false ? initialEvent.endTime || '' : ''
   );
-  const [title, setTitle] = useState(
-    enableCategory
-      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
-      : initialEvent?.title || ''
-  );
+  const [title, setTitle] = useState(initialEvent?.title || '');
   const [category, setCategory] = useState(initialEvent?.category || '');
   // const [isRecurring, setIsRecurring] = useState(initialEvent?.type === 'recurring' || false);
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>(
@@ -193,9 +189,11 @@ export const EditEvent = ({
     initialEvent?.type === 'recurring' ? initialEvent.repeatOn?.weekday || 0 : 0
   );
   // END ADDITION
-  const [display, setDisplay] = useState<
-    'auto' | 'block' | 'list-item' | 'background' | 'inverse-background' | 'none'
-  >(initialEvent?.display || 'auto');
+  const initialDisplay =
+    initialEvent?.display === 'inverse-background' ? 'auto' : (initialEvent?.display ?? 'auto');
+  const [display, setDisplay] = useState<'auto' | 'block' | 'list-item' | 'background' | 'none'>(
+    initialDisplay
+  );
 
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -217,7 +215,7 @@ export const EditEvent = ({
     }
   }, [isDailyNoteCalendar]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     let completedValue: string | false | null = null;
@@ -377,9 +375,6 @@ export const EditEvent = ({
                 <option value="auto">{t('modals.editEvent.fields.display.options.auto')}</option>
                 <option value="background">
                   {t('modals.editEvent.fields.display.options.background')}
-                </option>
-                <option value="inverse-background">
-                  {t('modals.editEvent.fields.display.options.inverseBackground')}
                 </option>
                 <option value="none">{t('modals.editEvent.fields.display.options.none')}</option>
               </select>

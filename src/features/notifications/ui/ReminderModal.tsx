@@ -37,7 +37,7 @@ export const ReminderModal = ({
     { label: t('modals.reminder.presets.1h'), value: 60 }
   ];
 
-  const handleSnooze = (e: React.FormEvent) => {
+  const handleSnooze = (e: React.SyntheticEvent) => {
     e.preventDefault();
     onSnooze(snoozeDuration);
   };

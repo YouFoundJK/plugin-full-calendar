@@ -67,6 +67,10 @@
     text-decoration-line: none;
 }
 
+.fc .fc-bg-event {
+    pointer-events: auto;
+}
+
 .fc-button-active {
     color: var(--text-on-accent) !important;
 }
@@ -75,6 +79,67 @@
     border: 0px solid transparent !important;
     line-height: 1 !important;
     padding: var(--size-4-1) var(--size-4-3) !important;
+}
+
+.fc .fc-toolbar.fc-header-toolbar {
+    flex-wrap: nowrap;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-toolbar-chunk {
+    min-width: 0;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-toolbar-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fc .ofc-toolbar-search-host {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+}
+
+.fc .ofc-toolbar-search-input-wrap {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    position: relative;
+    overflow: hidden;
+    transition: width 140ms ease;
+    width: 0px;
+    min-width: 0;
+}
+
+.fc .ofc-toolbar-search-input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 6px 26px 6px 10px;
+    background-color: var(--background-primary);
+}
+
+.fc .ofc-toolbar-search-input-wrap.is-active-query .ofc-toolbar-search-input {
+    border-color: var(--text-error);
+    box-shadow: 0 0 0 2px color-mix(in srgb, white 85%, transparent),
+        0 0 16px 5px color-mix(in srgb, var(--text-error) 66%, transparent),
+        0 0 32px 12px color-mix(in srgb, var(--text-error) 52%, transparent);
+}
+
+.fc .ofc-toolbar-search-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    line-height: 1;
+    padding: 0;
 }
 
 .ofc-has-checkbox {
@@ -342,6 +407,62 @@
 /* Ensure shadow events don't interfere with interactions */
 .fc-event-shadow:hover {
     opacity: 0.4 !important;
+}
+
+/* Highlight only the current event, or the immediate next one when nothing is current. */
+.fc .fc-event.ofc-event-current-or-next,
+.fc .fc-list-event.ofc-event-current-or-next {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85) !important,
+        0 0 24px 8px color-mix(in srgb, var(--interactive-accent) 78%, transparent) !important,
+        0 0 56px 24px color-mix(in srgb, var(--interactive-accent) 62%, transparent) !important;
+    outline: none !important;
+    overflow: visible !important;
+    isolation: isolate;
+    z-index: 3;
+}
+
+/* Month view: daygrid events are compact and need explicit background/border highlighting. */
+.fc .fc-daygrid-event.ofc-event-current-or-next,
+.fc .fc-daygrid-dot-event.ofc-event-current-or-next {
+    background: color-mix(in srgb, var(--interactive-accent) 26%, var(--background-primary)) !important;
+    border: 1px solid color-mix(in srgb, var(--interactive-accent) 88%, white) !important;
+    border-radius: var(--radius-s) !important;
+    box-shadow: 0 0 16px 5px color-mix(in srgb, var(--interactive-accent) 66%, transparent) !important,
+        0 0 32px 12px color-mix(in srgb, var(--interactive-accent) 52%, transparent) !important;
+}
+
+.fc .fc-daygrid-dot-event.ofc-event-current-or-next .fc-event-title,
+.fc .fc-daygrid-event.ofc-event-current-or-next .fc-event-title {
+    color: var(--text-normal) !important;
+    font-weight: 700;
+}
+
+/* Ensure the outer glow is not clipped by event harness wrappers. */
+.fc .fc-timegrid-event-harness.ofc-event-current-or-next-harness,
+.fc .fc-daygrid-event-harness.ofc-event-current-or-next-harness,
+.fc .fc-timeline-event-harness.ofc-event-current-or-next-harness {
+    overflow: visible !important;
+    z-index: 12 !important;
+    filter: drop-shadow(0 0 18px color-mix(in srgb, var(--interactive-accent) 72%, transparent))
+        drop-shadow(0 0 30px color-mix(in srgb, var(--interactive-accent) 58%, transparent));
+}
+
+/* List rows are table rows, so render glow at cell level for visibility. */
+.fc .fc-list-event.ofc-event-current-or-next > td {
+    background: linear-gradient(90deg,
+            color-mix(in srgb, var(--interactive-accent) 28%, var(--background-primary)) 0%,
+            color-mix(in srgb, var(--interactive-accent) 16%, var(--background-primary)) 100%) !important;
+    border-top: 1px solid color-mix(in srgb, var(--interactive-accent) 78%, white);
+    border-bottom: 1px solid color-mix(in srgb, var(--interactive-accent) 78%, white);
+    box-shadow: 0 0 18px 6px color-mix(in srgb, var(--interactive-accent) 58%, transparent);
+}
+
+.fc .fc-list-event.ofc-event-current-or-next > td:first-child {
+    border-left: 3px solid color-mix(in srgb, var(--interactive-accent) 90%, white);
+}
+
+.fc .fc-list-event.ofc-event-current-or-next > td:last-child {
+    border-right: 1px solid color-mix(in srgb, var(--interactive-accent) 72%, white);
 }
 
 .fc-resource-timeline .fc-datagrid-cell.fc-resource.fc-resource-group {

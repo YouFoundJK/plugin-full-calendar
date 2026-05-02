@@ -11,56 +11,89 @@
  */
 
 import i18next from 'i18next';
-import { App } from 'obsidian';
+import { App, requestUrl, normalizePath } from 'obsidian';
 
-// Import translation resources
+// Load English as default and fallback statically
 import en from './locales/en.json';
-import de from './locales/de.json';
-import fr from './locales/fr.json';
-import it from './locales/it.json';
-import es from './locales/es.json';
 
 /**
- * Type-safe translation resources
+ * Type-safe translation resources container
  */
-const resources = {
-  en: { translation: en },
-  de: { translation: de },
-  fr: { translation: fr },
-  it: { translation: it },
-  es: { translation: es }
+const resources: Record<string, { translation: Record<string, unknown> }> = {
+  en: { translation: en }
 };
 
 /**
  * Available language codes
  */
-export type LanguageCode = keyof typeof resources;
+const SUPPORTED_LANGUAGES = ['en', 'de', 'fr', 'it', 'es'] as const;
+export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number];
 
 /**
  * Get the current Obsidian language setting
  * @param app Obsidian App instance
- * @returns The current language code (e.g., 'en', 'de', 'zh-cn')
+ * @returns The current language code
  */
-function getObsidianLanguage(app: App): string {
-  const language = (app.loadLocalStorage as (key: string) => unknown)('language');
-  return typeof language === 'string' ? language : 'en';
+function getObsidianLanguage(_app: App): string {
+  // Obsidian stores the UI language in global localStorage under 'language'.
+  // NOTE: app.loadLocalStorage() is plugin-scoped and prefixes keys with the plugin ID,
+  // so it would look for 'full-calendar-remastered-language' which is NOT what we want.
+  try {
+    const language = window.localStorage.getItem('language');
+    return typeof language === 'string' && language.length > 0 ? language : 'en';
+  } catch {
+    return 'en';
+  }
 }
+
 /**
  * Initialize the i18n system
  * @param app Obsidian App instance
- * @returns Promise that resolves when i18n is initialized
+ * @param pluginId The plugin's manifest ID (e.g. plugin.manifest.id)
  */
-export async function initializeI18n(app: App): Promise<void> {
+export async function initializeI18n(app: App, pluginId: string): Promise<void> {
   const detectedLanguage = getObsidianLanguage(app);
+  let resolvedLanguage = 'en';
+
+  if (SUPPORTED_LANGUAGES.includes(detectedLanguage as LanguageCode) && detectedLanguage !== 'en') {
+    try {
+      const localesFolder = normalizePath(`${app.vault.configDir}/plugins/${pluginId}/locales`);
+      const localeFile = normalizePath(`${localesFolder}/${detectedLanguage}.json`);
+
+      let localeDataStr = '';
+
+      // Check if the localized translation is already present in the plugin directory
+      if (await app.vault.adapter.exists(localeFile)) {
+        localeDataStr = await app.vault.adapter.read(localeFile);
+      } else {
+        // If not found, download it once from the stable GitHub main branch
+        const url = `https://raw.githubusercontent.com/YouFoundJK/plugin-full-calendar/main/src/features/i18n/locales/${detectedLanguage}.json`;
+        const response = await requestUrl(url);
+        localeDataStr = response.text;
+
+        // Ensure locales directory exists before caching the downloaded file
+        if (!(await app.vault.adapter.exists(localesFolder))) {
+          await app.vault.adapter.mkdir(localesFolder);
+        }
+        await app.vault.adapter.write(localeFile, localeDataStr);
+      }
+
+      const parsedData = JSON.parse(localeDataStr) as Record<string, unknown>;
+      resources[detectedLanguage] = { translation: parsedData };
+      resolvedLanguage = detectedLanguage;
+    } catch {
+      // Fails gracefully back to 'en' if network is down and cache is empty
+    }
+  }
 
   await i18next.init({
-    lng: detectedLanguage,
+    lng: resolvedLanguage,
     fallbackLng: 'en',
     resources,
     interpolation: {
       escapeValue: false // React already escapes values
     },
-    // Return key if translation is missing (helpful for debugging)
+    // Return key if translation is missing
     returnNull: false,
     returnEmptyString: false
   });

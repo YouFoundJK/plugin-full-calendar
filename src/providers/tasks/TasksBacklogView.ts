@@ -15,6 +15,8 @@ import { Draggable } from '@fullcalendar/interaction';
 import FullCalendarPlugin from '../../main';
 import { TasksPluginProvider } from './TasksPluginProvider';
 import { ParsedUndatedTask } from './typesTask';
+import { TasksBacklogDateTarget } from '../../types/settings';
+import { t } from '../../features/i18n/i18n';
 import './backlog-styles.css';
 
 export const TASKS_BACKLOG_VIEW_TYPE = 'tasks-backlog-view';
@@ -135,11 +137,13 @@ export class TasksBacklogView extends ItemView {
 
     // Header
     const header = container.createEl('div', { cls: 'tasks-backlog-header' });
-    header.createEl('h3', { text: 'Tasks backlog' });
+    const headerTitleRow = header.createEl('div', { cls: 'tasks-backlog-title-row' });
+    headerTitleRow.createEl('h3', { text: 'Tasks backlog' });
+    this.renderDateTargetSelector(headerTitleRow);
 
     if (this.undatedTasks.length > 0) {
       header.createEl('div', {
-        text: `${this.undatedTasks.length} undated tasks`,
+        text: `${this.undatedTasks.length} ${this.getBacklogCountLabel()}`,
         cls: 'tasks-backlog-count'
       });
     }
@@ -158,11 +162,71 @@ export class TasksBacklogView extends ItemView {
    */
   private renderEmptyState(container: HTMLElement): void {
     const emptyState = container.createEl('div', { cls: 'tasks-backlog-empty' });
-    emptyState.createEl('div', { text: 'No undated tasks found.' });
+    emptyState.createEl('div', { text: `No tasks missing ${this.getBacklogDateTargetLabel()}.` });
     emptyState.createEl('div', {
-      text: 'Tasks without due dates will appear here.',
+      text: 'Change the backlog date field above to review a different task date marker.',
       cls: 'tasks-backlog-help'
     });
+  }
+
+  private renderDateTargetSelector(container: HTMLElement): void {
+    const wrapper = container.createEl('label', { cls: 'tasks-backlog-target' });
+    wrapper.createEl('span', { text: 'Missing date' });
+
+    const select = wrapper.createEl('select', {
+      cls: 'tasks-backlog-target-select',
+      attr: { 'aria-label': t('settings.tasksIntegration.backlogDateTarget.label') }
+    });
+
+    this.addDateTargetOption(
+      select,
+      'scheduledDate',
+      t('settings.tasksIntegration.backlogDateTarget.scheduled')
+    );
+    this.addDateTargetOption(
+      select,
+      'startDate',
+      t('settings.tasksIntegration.backlogDateTarget.start')
+    );
+    this.addDateTargetOption(
+      select,
+      'dueDate',
+      t('settings.tasksIntegration.backlogDateTarget.due')
+    );
+    select.value = this.plugin.settings.tasksIntegration.backlogDateTarget;
+
+    select.addEventListener('change', () => {
+      this.plugin.settings.tasksIntegration.backlogDateTarget =
+        select.value as TasksBacklogDateTarget;
+      this.currentPage = 1;
+      void this.plugin.saveSettings().then(() => {
+        this.plugin.providerRegistry.refreshBacklogViews();
+      });
+    });
+  }
+
+  private addDateTargetOption(
+    select: HTMLSelectElement,
+    value: TasksBacklogDateTarget,
+    label: string
+  ): void {
+    select.createEl('option', { text: label, attr: { value } });
+  }
+
+  private getBacklogDateTargetLabel(): string {
+    switch (this.plugin.settings.tasksIntegration.backlogDateTarget) {
+      case 'startDate':
+        return t('settings.tasksIntegration.backlogDateTarget.start').toLowerCase();
+      case 'dueDate':
+        return t('settings.tasksIntegration.backlogDateTarget.due').toLowerCase();
+      case 'scheduledDate':
+      default:
+        return t('settings.tasksIntegration.backlogDateTarget.scheduled').toLowerCase();
+    }
+  }
+
+  private getBacklogCountLabel(): string {
+    return `tasks missing ${this.getBacklogDateTargetLabel()}`;
   }
 
   /**

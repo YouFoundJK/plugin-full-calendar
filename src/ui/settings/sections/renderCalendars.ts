@@ -12,13 +12,22 @@ import { addCalendarButton } from '../SettingsTab';
 import { CalendarSettings, CalendarSettingsRef } from './calendars/CalendarSetting';
 import { CalendarInfo } from '../../../types/calendar_settings';
 import { t } from '../../../features/i18n/i18n';
+import { createDocsLinksFragment } from '../docsLinks';
 
 export function renderCalendarManagement(
   containerEl: HTMLElement,
   plugin: FullCalendarPlugin,
   calendarSettingsRef: RefObject<CalendarSettingsRef>
 ): void {
-  new Setting(containerEl).setName(t('settings.calendars.title')).setHeading();
+  new Setting(containerEl)
+    .setName(t('settings.calendars.title'))
+    .setHeading()
+    .setDesc(
+      createDocsLinksFragment([
+        { text: 'Calendar sources settings', path: 'user/settings/sources' },
+        { text: 'Calendar types', path: 'user/calendars/' }
+      ])
+    );
   containerEl.createEl('hr', { cls: 'settings-view-new-divider' });
   const sourcesDiv = containerEl.createDiv();
   const root = ReactDOM.createRoot(sourcesDiv);
@@ -42,5 +51,20 @@ export function renderCalendarManagement(
       calendarSettingsRef.current?.addSource(source);
     },
     () => calendarSettingsRef.current?.getUsedDirectories() ?? []
+  );
+
+  new Setting(containerEl).setDesc(
+    createDocsLinksFragment(
+      [
+        { text: 'Full Note calendar', path: 'user/calendars/local' },
+        { text: 'Daily Note calendar', path: 'user/calendars/dailynote' },
+        { text: 'ICS calendars', path: 'user/calendars/ics' },
+        { text: 'CalDAV calendars', path: 'user/calendars/caldav' },
+        { text: 'Google calendar', path: 'user/calendars/gcal' },
+        { text: 'Tasks integration', path: 'user/calendars/tasks-plugin-integration' },
+        { text: 'Bases calendar', path: 'user/calendars/bases' }
+      ],
+      'Provider guides: '
+    )
   );
 }

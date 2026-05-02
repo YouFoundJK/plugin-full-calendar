@@ -36,6 +36,8 @@ const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';
 
 export default class FullCalendarPlugin extends Plugin {
   private _settings: FullCalendarSettings = DEFAULT_SETTINGS;
+  private activityWatchAutoSyncTimer: number | null = null;
+  private activityWatchAutoSyncInFlight = false;
 
   notificationManager!: NotificationManager;
   statusBarManager!: StatusBarManager;
@@ -96,7 +98,7 @@ export default class FullCalendarPlugin extends Plugin {
    */
   async onload() {
     // Initialize i18n system first, before any UI is rendered
-    await initializeI18n(this.app);
+    await initializeI18n(this.app, this.manifest.id);
 
     this.isMobile = (this.app as App & { isMobile: boolean }).isMobile;
     this.providerRegistry = new ProviderRegistry(this);
@@ -107,6 +109,8 @@ export default class FullCalendarPlugin extends Plugin {
     await this.loadSettings(); // This now handles setting and syncing
 
     await this.providerRegistry.initializeInstances();
+
+    this.setupActivityWatchAutoSync();
 
     // Ensure Tasks Backlog view is available immediately if a Tasks calendar exists
     this.providerRegistry.syncBacklogManagerLifecycle();
@@ -235,6 +239,24 @@ export default class FullCalendarPlugin extends Plugin {
       }
     });
     this.addCommand({
+      id: 'full-calendar-sync-activitywatch',
+      // eslint-disable-next-line obsidianmd/ui/sentence-case
+      name: 'Sync ActivityWatch', // Intentionally not using i18n for this specific new command as we didn't add it to en.json for brevity
+      checkCallback: checking => {
+        const isEnabled = this.settings.activityWatch.enabled;
+        if (!isEnabled) {
+          return false;
+        }
+        if (!checking) {
+          void (async () => {
+            const { syncActivityWatch } = await import('./features/activitywatch/sync');
+            await syncActivityWatch(this);
+          })();
+        }
+        return true;
+      }
+    });
+    this.addCommand({
       id: 'full-calendar-open',
       name: t('commands.openCalendar'),
       callback: () => {
@@ -297,6 +319,7 @@ export default class FullCalendarPlugin extends Plugin {
    * It cleans up by detaching all calendar and sidebar views.
    */
   onunload() {
+    this.clearActivityWatchAutoSync();
     if (this.notificationManager) {
       this.notificationManager.unload();
     }
@@ -396,11 +419,57 @@ export default class FullCalendarPlugin extends Plugin {
 
     // Update the snapshot
     this._loadedSettings = newSettingsString;
+    this.setupActivityWatchAutoSync();
 
     // This manual call is now redundant and will be removed.
     // if (this.notificationManager) {
     //   this.notificationManager.update(this.settings);
     // }
+  }
+
+  private clearActivityWatchAutoSync(): void {
+    if (this.activityWatchAutoSyncTimer !== null) {
+      window.clearInterval(this.activityWatchAutoSyncTimer);
+      this.activityWatchAutoSyncTimer = null;
+    }
+  }
+
+  private setupActivityWatchAutoSync(): void {
+    this.clearActivityWatchAutoSync();
+
+    const aw = this.settings.activityWatch;
+    if (!aw.enabled || !aw.autoSyncEnabled || aw.syncStrategy !== 'auto') {
+      return;
+    }
+
+    const intervalMinutes = Math.max(1, aw.autoSyncIntervalMins || 10);
+    const intervalMs = intervalMinutes * 60 * 1000;
+
+    this.activityWatchAutoSyncTimer = window.setInterval(() => {
+      void this.runActivityWatchAutoSyncTick();
+    }, intervalMs);
+    this.registerInterval(this.activityWatchAutoSyncTimer);
+  }
+
+  private async runActivityWatchAutoSyncTick(): Promise<void> {
+    if (this.activityWatchAutoSyncInFlight) {
+      return;
+    }
+
+    const aw = this.settings.activityWatch;
+    if (!aw.enabled || !aw.autoSyncEnabled || aw.syncStrategy !== 'auto') {
+      return;
+    }
+
+    this.activityWatchAutoSyncInFlight = true;
+    try {
+      const { syncActivityWatch } = await import('./features/activitywatch/sync');
+      await syncActivityWatch(this, { suppressNotices: true, trigger: 'auto' });
+    } catch (error) {
+      console.error('ActivityWatch auto-sync failed:', error);
+    } finally {
+      this.activityWatchAutoSyncInFlight = false;
+    }
   }
 
   /**

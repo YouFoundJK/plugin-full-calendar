@@ -106,6 +106,14 @@ export class WorkspaceManager {
       workspaceSettings.slotMaxTime = workspace.slotMaxTime;
     }
 
+    if (workspace.allDaySlot !== undefined) {
+      workspaceSettings.allDaySlot = workspace.allDaySlot;
+    }
+
+    if (workspace.timeGridDayHeaderFormat !== undefined) {
+      workspaceSettings.timeGridDayHeaderFormat = workspace.timeGridDayHeaderFormat;
+    }
+
     if (workspace.weekends !== undefined) {
       workspaceSettings.weekends = workspace.weekends;
     }

@@ -20,6 +20,7 @@ import {
   DropdownComponent,
   Notice,
   PluginSettingTab,
+  setIcon,
   Setting,
   TFile,
   TFolder
@@ -37,9 +38,64 @@ import { makeDefaultPartialCalendarSource } from '../../types/calendar_settings'
 
 import { generateCalendarId } from '../../types/calendar_settings';
 import { t } from '../../features/i18n/i18n';
+import { createDocsLinksFragment } from './docsLinks';
 
 // Import the new React components
 import './changelogs/changelog.css';
+
+type SettingsCategoryId = 'general' | 'appearance' | 'calendars' | 'organization' | 'integrations';
+
+interface SettingsCategory {
+  id: SettingsCategoryId;
+}
+
+const SETTINGS_CATEGORIES: SettingsCategory[] = [
+  {
+    id: 'general'
+  },
+  {
+    id: 'appearance'
+  },
+  {
+    id: 'calendars'
+  },
+  {
+    id: 'organization'
+  },
+  {
+    id: 'integrations'
+  }
+];
+
+function getCategoryLabel(id: SettingsCategoryId): string {
+  switch (id) {
+    case 'general':
+      return t('settings.categories.general.label');
+    case 'appearance':
+      return t('settings.categories.appearance.label');
+    case 'calendars':
+      return t('settings.categories.calendars.label');
+    case 'organization':
+      return t('settings.categories.organization.label');
+    case 'integrations':
+      return t('settings.categories.integrations.label');
+  }
+}
+
+function getCategoryDescription(id: SettingsCategoryId): string {
+  switch (id) {
+    case 'general':
+      return t('settings.categories.general.description');
+    case 'appearance':
+      return t('settings.categories.appearance.description');
+    case 'calendars':
+      return t('settings.categories.calendars.description');
+    case 'organization':
+      return t('settings.categories.organization.description');
+    case 'integrations':
+      return t('settings.categories.integrations.description');
+  }
+}
 
 export function addCalendarButton(
   plugin: FullCalendarPlugin,
@@ -207,6 +263,10 @@ export function addCalendarButton(
 export class FullCalendarSettingTab extends PluginSettingTab {
   plugin: FullCalendarPlugin;
   private showFullChangelog = false;
+  private activeCategory: SettingsCategoryId = 'general';
+  private searchQuery = '';
+  private searchExpanded = false;
+  private searchDebounceId: number | null = null;
   private calendarSettingsRef: React.RefObject<CalendarSettingsRef | null> =
     createRef<CalendarSettingsRef>();
   registry: ProviderRegistry;
@@ -247,71 +307,357 @@ export class FullCalendarSettingTab extends PluginSettingTab {
   }
 
   private async _renderMainSettings(): Promise<void> {
-    // Defer loading of heavy settings sections
-    const [
-      renderGeneralSettings,
-      renderAppearanceSettings,
-      renderWorkspaceSettings,
-      renderCategorizationSettings,
-      renderWhatsNew,
-      renderCalendarManagement,
-      renderGoogleSettings,
-      renderRemindersSettings,
-      renderFooter
-    ] = await Promise.all([
-      import('./sections/renderGeneral').then(m => m.renderGeneralSettings),
-      import('./sections/renderAppearance').then(m => m.renderAppearanceSettings),
-      import('../../features/workspaces/ui/renderWorkspaces').then(m => m.renderWorkspaceSettings),
-      import('../../features/category/ui/renderCategorization').then(
-        m => m.renderCategorizationSettings
-      ),
-      import('./changelogs/renderWhatsNew').then(m => m.renderWhatsNew),
-      import('./sections/renderCalendars').then(m => m.renderCalendarManagement),
-      import('../../providers/google/ui/renderGoogle').then(m => m.renderGoogleSettings),
-      import('../../features/notifications/ui/renderReminders').then(
-        m => m.renderRemindersSettings
-      ),
-      import('./sections/calendars/renderFooter').then(m => m.renderFooter)
-    ]);
+    const shellEl = this.containerEl.createDiv('full-calendar-settings-shell');
+    const headerEl = shellEl.createDiv('full-calendar-settings-header');
+    headerEl.createEl('p', {
+      text: 'Switch between focused setting groups to keep configuration lighter and easier to scan.'
+    });
 
-    renderGeneralSettings(this.containerEl, this.plugin, () => {
-      void this.display();
+    const tabsRowEl = shellEl.createDiv('full-calendar-settings-tabs-row');
+    tabsRowEl.setCssProps({
+      display: 'flex',
+      'align-items': 'center',
+      'justify-content': 'space-between',
+      gap: '12px'
     });
-    renderAppearanceSettings(this.containerEl, this.plugin, () => {
-      void this.display();
+
+    const tabsEl = tabsRowEl.createDiv('full-calendar-settings-tabs');
+    SETTINGS_CATEGORIES.forEach(category => {
+      const isActive = category.id === this.activeCategory;
+      const button = tabsEl.createEl('button', {
+        cls: `full-calendar-settings-tab${isActive ? ' is-active' : ''}`,
+        text: getCategoryLabel(category.id)
+      });
+      button.type = 'button';
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      button.addEventListener('click', () => {
+        if (this.activeCategory === category.id) {
+          return;
+        }
+        this.activeCategory = category.id;
+        void this.display();
+      });
     });
-    renderRemindersSettings(this.containerEl, this.plugin, () => {
-      void this.display();
+
+    const contentEl = shellEl.createDiv('full-calendar-settings-content');
+
+    const searchWrapEl = tabsRowEl.createDiv('full-calendar-settings-search-wrap');
+    searchWrapEl.setCssProps({
+      display: 'flex',
+      'align-items': 'center',
+      gap: '6px',
+      position: 'relative'
     });
-    renderWorkspaceSettings(this.containerEl, this.plugin, () => {
-      void this.display();
+
+    const searchButtonEl = searchWrapEl.createEl('button', {
+      cls: 'clickable-icon full-calendar-settings-search-trigger'
     });
-    renderCategorizationSettings(this.containerEl, this.plugin, () => {
-      void this.display();
+    searchButtonEl.type = 'button';
+    searchButtonEl.ariaLabel = 'Search settings';
+    searchButtonEl.setCssProps({
+      border: '1px solid var(--background-modifier-border)',
+      'border-radius': '8px',
+      padding: '4px',
+      'background-color': 'var(--background-secondary-alt)'
     });
-    renderWhatsNew(this.containerEl, () => {
-      this.showFullChangelog = true;
-      void this.display();
+    setIcon(searchButtonEl, 'search');
+
+    const inputWrapEl = searchWrapEl.createDiv('full-calendar-settings-search-input-wrap');
+    inputWrapEl.setCssProps({
+      position: 'relative',
+      width: this.searchExpanded || this.searchQuery ? '170px' : '0px',
+      overflow: 'hidden',
+      transition: 'width 140ms ease'
     });
-    renderCalendarManagement(
-      this.containerEl,
-      this.plugin,
-      this.calendarSettingsRef as unknown as React.RefObject<CalendarSettingsRef>
-    );
-    renderGoogleSettings(this.containerEl, this.plugin, () => {
-      void this.display();
+
+    const searchInputEl = inputWrapEl.createEl('input', {
+      cls: 'full-calendar-settings-search-input'
     });
-    this._renderInitialSetupNotice();
-    renderFooter(this.containerEl);
+    searchInputEl.type = 'text';
+    searchInputEl.placeholder = 'Search settings...';
+    searchInputEl.value = this.searchQuery;
+    searchInputEl.setCssProps({
+      width: '100%',
+      padding: '6px 28px 6px 10px',
+      'border-radius': '8px',
+      border: '1px solid var(--background-modifier-border)'
+    });
+
+    const clearButtonEl = inputWrapEl.createEl('button', {
+      cls: 'clickable-icon full-calendar-settings-search-clear'
+    });
+    clearButtonEl.type = 'button';
+    clearButtonEl.ariaLabel = 'Clear search';
+    clearButtonEl.setCssProps({
+      position: 'absolute',
+      right: '6px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      display: this.searchQuery ? 'inline-flex' : 'none'
+    });
+    setIcon(clearButtonEl, 'x');
+
+    const renderSearchResults = () => {
+      void this._renderSettingsContent(contentEl);
+      clearButtonEl.setCssProps({ display: this.searchQuery ? 'inline-flex' : 'none' });
+      searchButtonEl.setCssProps({
+        display: this.searchExpanded || !!this.searchQuery ? 'none' : 'inline-flex'
+      });
+      searchButtonEl.toggleClass('is-active', this.searchExpanded || !!this.searchQuery);
+      inputWrapEl.toggleClass('is-active-query', !!this.searchQuery);
+    };
+
+    searchButtonEl.addEventListener('click', () => {
+      this.searchExpanded = true;
+      inputWrapEl.setCssProps({ width: '170px' });
+      searchButtonEl.setCssProps({ display: 'none' });
+      searchInputEl.focus();
+      searchButtonEl.toggleClass('is-active', true);
+    });
+
+    searchInputEl.addEventListener('blur', () => {
+      if (this.searchQuery) return;
+      this.searchExpanded = false;
+      inputWrapEl.setCssProps({ width: '0px' });
+      searchButtonEl.setCssProps({ display: 'inline-flex' });
+      searchButtonEl.toggleClass('is-active', false);
+    });
+
+    searchInputEl.addEventListener('input', () => {
+      this.searchQuery = searchInputEl.value;
+      if (this.searchDebounceId !== null) {
+        window.clearTimeout(this.searchDebounceId);
+      }
+      this.searchDebounceId = window.setTimeout(renderSearchResults, 80);
+    });
+
+    clearButtonEl.addEventListener('mousedown', evt => {
+      evt.preventDefault();
+      this.searchQuery = '';
+      searchInputEl.value = '';
+      renderSearchResults();
+      searchInputEl.focus();
+    });
+
+    await this._renderSettingsContent(contentEl);
+
+    const { renderFooter } = await import('./sections/calendars/renderFooter');
+    renderFooter(shellEl);
   }
 
-  private _renderInitialSetupNotice(): void {
+  private async _renderSettingsContent(containerEl: HTMLElement): Promise<void> {
+    containerEl.empty();
+    const query = this.searchQuery.trim();
+
+    if (!query) {
+      const activeCategory = SETTINGS_CATEGORIES.find(
+        category => category.id === this.activeCategory
+      );
+      const introEl = containerEl.createDiv('full-calendar-settings-category-intro');
+      if (activeCategory) {
+        introEl.createEl('p', { text: getCategoryDescription(activeCategory.id) });
+      }
+      const panelEl = containerEl.createDiv('full-calendar-settings-panel');
+      await this._renderActiveCategory(panelEl, this.activeCategory);
+      return;
+    }
+
+    let hasAnyMatches = false;
+    for (const category of SETTINGS_CATEGORIES) {
+      const sectionEl = containerEl.createDiv('full-calendar-settings-search-section');
+      const introEl = sectionEl.createDiv('full-calendar-settings-category-intro');
+      new Setting(introEl).setName(getCategoryLabel(category.id)).setHeading();
+      introEl.createEl('p', { text: getCategoryDescription(category.id) });
+
+      const panelEl = sectionEl.createDiv('full-calendar-settings-panel');
+      await this._renderActiveCategory(panelEl, category.id);
+
+      const sectionHasMatches = this._applySearchFilter(panelEl, query);
+      if (!sectionHasMatches) {
+        sectionEl.remove();
+      } else {
+        hasAnyMatches = true;
+      }
+    }
+
+    if (!hasAnyMatches) {
+      const emptyEl = containerEl.createDiv('full-calendar-settings-search-empty');
+      emptyEl.createEl('p', {
+        text: `No settings match "${query}".`
+      });
+    }
+  }
+
+  private _applySearchFilter(containerEl: HTMLElement, query: string): boolean {
+    const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const settingEls = Array.from(containerEl.querySelectorAll<HTMLElement>('.setting-item'));
+
+    let visibleCount = 0;
+    settingEls.forEach(settingEl => {
+      const titleEl = settingEl.querySelector<HTMLElement>('.setting-item-name');
+      const descriptionEl = settingEl.querySelector<HTMLElement>('.setting-item-description');
+      const title = titleEl?.textContent ?? '';
+      const description = descriptionEl?.textContent ?? '';
+      const haystack = `${title} ${description}`.toLowerCase();
+
+      // Strict search: every token must appear in visible title/description text.
+      const isMatch = tokens.every(token => haystack.includes(token));
+      settingEl.setCssProps({ display: isMatch ? '' : 'none' });
+      if (isMatch) {
+        this._highlightSearchTokens(titleEl, tokens);
+        this._highlightSearchTokens(descriptionEl, tokens);
+        visibleCount += 1;
+      }
+    });
+
+    return visibleCount > 0;
+  }
+
+  private _highlightSearchTokens(el: HTMLElement | null, tokens: string[]): void {
+    if (!el) {
+      return;
+    }
+    const rawText = el.textContent ?? '';
+    if (!rawText || tokens.length === 0) {
+      return;
+    }
+
+    const escapedTokens = tokens
+      .filter(Boolean)
+      .map(token => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (escapedTokens.length === 0) {
+      return;
+    }
+
+    const regex = new RegExp(`(${escapedTokens.join('|')})`, 'gi');
+    const fragment = document.createDocumentFragment();
+    let lastIndex = 0;
+
+    for (const match of rawText.matchAll(regex)) {
+      const matchText = match[0];
+      const matchIndex = match.index ?? -1;
+      if (matchIndex < 0) {
+        continue;
+      }
+
+      if (matchIndex > lastIndex) {
+        fragment.append(rawText.slice(lastIndex, matchIndex));
+      }
+
+      const markEl = document.createElement('mark');
+      markEl.textContent = matchText;
+      fragment.append(markEl);
+      lastIndex = matchIndex + matchText.length;
+    }
+
+    if (lastIndex < rawText.length) {
+      fragment.append(rawText.slice(lastIndex));
+    }
+
+    el.empty();
+    el.append(fragment);
+  }
+
+  private async _renderActiveCategory(
+    containerEl: HTMLElement,
+    categoryId: SettingsCategoryId
+  ): Promise<void> {
+    switch (categoryId) {
+      case 'general': {
+        const [{ renderGeneralSettings }, { renderRemindersSettings }, { renderWhatsNew }] =
+          await Promise.all([
+            import('./sections/renderGeneral'),
+            import('../../features/notifications/ui/renderReminders'),
+            import('./changelogs/renderWhatsNew')
+          ]);
+
+        this._renderInitialSetupNotice(containerEl);
+        renderGeneralSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        renderRemindersSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        renderWhatsNew(containerEl, () => {
+          this.showFullChangelog = true;
+          void this.display();
+        });
+        break;
+      }
+      case 'appearance': {
+        const [{ renderAppearanceSettings }] = await Promise.all([
+          import('./sections/renderAppearance')
+        ]);
+        renderAppearanceSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        break;
+      }
+      case 'calendars': {
+        const [{ renderCalendarManagement }] = await Promise.all([
+          import('./sections/renderCalendars')
+        ]);
+        renderCalendarManagement(
+          containerEl,
+          this.plugin,
+          this.calendarSettingsRef as unknown as React.RefObject<CalendarSettingsRef>
+        );
+        break;
+      }
+      case 'organization': {
+        const [{ renderWorkspaceSettings }, { renderCategorizationSettings }] = await Promise.all([
+          import('../../features/workspaces/ui/renderWorkspaces'),
+          import('../../features/category/ui/renderCategorization')
+        ]);
+
+        renderWorkspaceSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        renderCategorizationSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        break;
+      }
+      case 'integrations': {
+        const [
+          { renderActivityWatchSettings },
+          { renderGoogleSettings },
+          { renderTasksIntegrationSettings }
+        ] = await Promise.all([
+          import('../../features/activitywatch/ui/renderActivityWatch'),
+          import('../../providers/google/ui/renderGoogle'),
+          import('../../providers/tasks/renderTasksIntegration')
+        ]);
+
+        renderActivityWatchSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        renderTasksIntegrationSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        renderGoogleSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        break;
+      }
+    }
+  }
+
+  private _renderInitialSetupNotice(containerEl: HTMLElement): void {
     if (this.plugin.settings.calendarSources.length === 0) {
-      const notice = this.containerEl.createDiv('full-calendar-initial-setup-notice');
+      const notice = containerEl.createDiv('full-calendar-initial-setup-notice');
       new Setting(notice).setName('').setHeading();
       notice.createEl('p', {
         text: t('settings.quickStart.description')
       });
+      const docsPara = notice.createEl('p');
+      docsPara.append(
+        createDocsLinksFragment([
+          { text: 'Onboarding and daily use', path: 'user/guides/onboarding-and-daily-use' },
+          { text: 'Calendar types', path: 'user/calendars/index' },
+          { text: 'Troubleshooting', path: 'user/guides/troubleshooting' }
+        ])
+      );
     }
   }
 }

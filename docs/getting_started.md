@@ -6,14 +6,14 @@ When you open Full Calendar for the first time, you'll be prompted to add your f
 
 It's recommended to start with a local calendar type, as these are editable directly from the plugin.
 
--   **[Full Note Calendar](calendars/local.md):** The most powerful option. Each event is a separate note in your vault.
+-   **[Full Note Calendar](user/calendars/local.md):** The most powerful option. Each event is a separate note in your vault.
 
--   **[Daily Note Calendar](calendars/dailynote.md):** Store events as checklist items in your daily notes, in a efficient and compact way.
+-   **[Daily Note Calendar](user/calendars/dailynote.md):** Store events as checklist items in your daily notes, in a efficient and compact way.
 
 Remote calendars (ICS/CalDAV) are read-only.
 
 !!! tip
-    Use a combination for Full Note (for recurring and other detailed events) and Daily Note Calender (daily events stored compactly). Also check out [Advanced Categorization](events/categories.md) and its **event naming convention**, to unleash the full power of this plugin and supercharge your workflow!
+    Use a combination for Full Note (for recurring and other detailed events) and Daily Note Calender (daily events stored compactly). Also check out [Advanced Categorization](user/events/categories.md) and its **event naming convention**, to unleash the full power of this plugin and supercharge your workflow!
 
 ![Welcome page](assets/settings/welcome-settings.gif)
 

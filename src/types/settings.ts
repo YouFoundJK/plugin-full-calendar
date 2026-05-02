@@ -4,6 +4,49 @@ import { CalendarInfo } from './calendar_settings';
 
 import type { InsightsConfig } from '../chrono_analyser/ui/ui';
 
+export interface TriggerRule {
+  id: string;
+  bucketType: string;
+  matchField?: string;
+  matchPattern: string;
+  useRegex: boolean;
+}
+
+export interface ContextProfile {
+  id: string;
+  name: string;
+  activationThresholdMins: number;
+  softBreakLimitMins: number;
+  primaryEvidenceRules: TriggerRule[];
+  supportingEvidenceRules?: TriggerRule[];
+  hardBreakRules: TriggerRule[];
+  titleTemplate: string;
+  color: string;
+}
+
+export interface ActivityWatchSettings {
+  enabled: boolean;
+  apiUrl: string;
+  lastSyncTime: number;
+  autoSyncEnabled: boolean;
+  autoSyncIntervalMins: number;
+  targetCalendarId: string;
+  syncStrategy: 'auto' | 'custom';
+  customDateStart: string;
+  customDateEnd: string;
+  profiles: ContextProfile[];
+}
+
+export type TasksDateTarget = 'scheduledDate' | 'startDate' | 'dueDate';
+
+export type TasksBacklogDateTarget = TasksDateTarget;
+
+export interface TasksIntegrationSettings {
+  backlogDateTarget: TasksBacklogDateTarget;
+  calendarDisplayDateTarget: TasksDateTarget;
+  openEditModalAfterBacklogDrop: boolean;
+}
+
 export interface BusinessHoursSettings {
   enabled: boolean;
   daysOfWeek: number[]; // 0=Sunday, 1=Monday, etc.
@@ -36,6 +79,8 @@ export interface WorkspaceSettings {
   // New granular view configuration overrides
   slotMinTime?: string; // Format: 'HH:mm' - earliest time to display
   slotMaxTime?: string; // Format: 'HH:mm' - latest time to display
+  allDaySlot?: boolean; // Whether to show all-day slot in week/day time-grid views
+  timeGridDayHeaderFormat?: string; // Format for week/day column headers in time-grid views
   weekends?: boolean; // Whether to display weekends
   hiddenDays?: number[]; // Array of day numbers to hide (0=Sunday, 1=Monday, etc.)
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
@@ -76,13 +121,19 @@ export interface FullCalendarSettings {
   workspaces: WorkspaceSettings[];
   activeWorkspace: string | null; // Workspace ID, null means default view
   showEventInStatusBar: boolean;
+  highlightCurrentOrNextEvent: boolean;
 
   // New granular view configuration options
   slotMinTime?: string; // Format: 'HH:mm' - earliest time to display
   slotMaxTime?: string; // Format: 'HH:mm' - latest time to display
+  allDaySlot?: boolean; // Whether to show all-day slot in week/day time-grid views
+  timeGridDayHeaderFormat?: string; // Format for week/day column headers in time-grid views
   weekends?: boolean; // Whether to display weekends
   hiddenDays?: number[]; // Array of day numbers to hide (0=Sunday, 1=Monday, etc.)
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
+  activityWatch: ActivityWatchSettings;
+  tasksIntegration: TasksIntegrationSettings;
+
   currentVersion: string | null;
 }
 
@@ -116,13 +167,34 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   workspaces: [],
   activeWorkspace: null,
   showEventInStatusBar: false,
+  highlightCurrentOrNextEvent: true,
 
   // New granular view configuration defaults
   slotMinTime: '00:00', // Show all hours by default
   slotMaxTime: '24:00', // Show all hours by default
+  allDaySlot: true, // Show all-day row in week/day views by default
+  timeGridDayHeaderFormat: 'day-mmdd', // Default: Wed 4/9
   weekends: true, // Show weekends by default
   hiddenDays: [], // Show all days by default
   dayMaxEvents: false, // Use FullCalendar default behavior
+  activityWatch: {
+    enabled: false,
+    apiUrl: 'http://127.0.0.1:5600',
+    lastSyncTime: 0,
+    autoSyncEnabled: false,
+    autoSyncIntervalMins: 10,
+    targetCalendarId: '',
+    syncStrategy: 'auto',
+    customDateStart: '',
+    customDateEnd: '',
+    profiles: []
+  },
+  tasksIntegration: {
+    backlogDateTarget: 'scheduledDate',
+    calendarDisplayDateTarget: 'scheduledDate',
+    openEditModalAfterBacklogDrop: false
+  },
+
   enableDefaultReminder: true,
   defaultReminderMinutes: 10,
   currentVersion: null

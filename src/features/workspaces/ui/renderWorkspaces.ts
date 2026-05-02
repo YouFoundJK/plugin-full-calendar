@@ -9,6 +9,7 @@ import FullCalendarPlugin from '../../../main';
 import { WorkspaceSettings, createDefaultWorkspace } from '../../../types/settings';
 import { WorkspaceModal } from './WorkspaceModal';
 import { t } from '../../i18n/i18n';
+import { createDescWithDocs } from '../../../ui/settings/docsLinks';
 
 export function renderWorkspaceSettings(
   containerEl: HTMLElement,
@@ -20,13 +21,22 @@ export function renderWorkspaceSettings(
 
   new Setting(workspaceSection)
     .setName(t('settings.workspaces.title'))
-    .setDesc(t('settings.workspaces.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.workspaces.description'), [
+        { text: 'Workspaces guide', path: 'user/views/workspaces' },
+        { text: 'Views guide', path: 'user/views/' }
+      ])
+    )
     .setHeading();
 
   // Add workspace button
   new Setting(workspaceSection)
     .setName(t('settings.workspaces.addNew.label'))
-    .setDesc(t('settings.workspaces.addNew.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.workspaces.addNew.description'), [
+        { text: 'Workspaces guide', path: 'user/views/workspaces' }
+      ])
+    )
     .addButton(button => {
       button
         .setButtonText(t('settings.workspaces.buttons.new'))

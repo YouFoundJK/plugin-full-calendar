@@ -7,6 +7,7 @@
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../../features/i18n/i18n';
+import { createDescWithDocs, createDocsLinksFragment } from '../docsLinks';
 
 const WEEKDAYS_KEYS = [
   'settings.weekdays.sunday',
@@ -23,11 +24,23 @@ export function renderAppearanceSettings(
   plugin: FullCalendarPlugin,
   rerender: () => void
 ): void {
-  new Setting(containerEl).setName(t('settings.appearance.title')).setHeading();
+  new Setting(containerEl)
+    .setName(t('settings.appearance.title'))
+    .setHeading()
+    .setDesc(
+      createDocsLinksFragment([
+        { text: 'Display and behavior', path: 'user/settings/fc_config' },
+        { text: 'Views guide', path: 'user/views/' }
+      ])
+    );
 
   new Setting(containerEl)
     .setName(t('settings.appearance.firstDay.label'))
-    .setDesc(t('settings.appearance.firstDay.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.appearance.firstDay.description'), [
+        { text: 'Display and behavior', path: 'user/settings/fc_config' }
+      ])
+    )
     .addDropdown(dropdown => {
       WEEKDAYS_KEYS.forEach((dayKey, code) => {
         dropdown.addOption(code.toString(), t(dayKey));
@@ -41,7 +54,11 @@ export function renderAppearanceSettings(
 
   new Setting(containerEl)
     .setName(t('settings.appearance.timeFormat24h.label'))
-    .setDesc(t('settings.appearance.timeFormat24h.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.appearance.timeFormat24h.description'), [
+        { text: 'Display and behavior', path: 'user/settings/fc_config' }
+      ])
+    )
     .addToggle(toggle => {
       toggle.setValue(plugin.settings.timeFormat24h);
       toggle.onChange(async val => {
@@ -53,7 +70,11 @@ export function renderAppearanceSettings(
   // Business Hours Settings
   new Setting(containerEl)
     .setName(t('settings.appearance.businessHours.enable.label'))
-    .setDesc(t('settings.appearance.businessHours.enable.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.appearance.businessHours.enable.description'), [
+        { text: 'Display and behavior', path: 'user/settings/fc_config' }
+      ])
+    )
     .addToggle(toggle => {
       toggle.setValue(plugin.settings.businessHours.enabled);
       toggle.onChange(async val => {
@@ -115,7 +136,12 @@ export function renderAppearanceSettings(
   }
 
   // New granular view configuration section
-  new Setting(containerEl).setName(t('settings.appearance.viewTimeRange.title')).setHeading();
+  new Setting(containerEl)
+    .setName(t('settings.appearance.viewTimeRange.title'))
+    .setHeading()
+    .setDesc(
+      createDocsLinksFragment([{ text: 'Display and behavior', path: 'user/settings/fc_config' }])
+    );
 
   new Setting(containerEl)
     .setName(t('settings.appearance.viewTimeRange.slotMinTime.label'))
@@ -145,7 +171,61 @@ export function renderAppearanceSettings(
       });
     });
 
-  new Setting(containerEl).setName(t('settings.appearance.dayVisibility.title')).setHeading();
+  new Setting(containerEl)
+    .setName(t('settings.appearance.viewTimeRange.allDaySlot.label'))
+    .setDesc(t('settings.appearance.viewTimeRange.allDaySlot.description'))
+    .addToggle(toggle => {
+      toggle.setValue(plugin.settings.allDaySlot ?? true);
+      toggle.onChange(async val => {
+        plugin.settings.allDaySlot = val;
+        await plugin.saveSettings();
+        rerender();
+      });
+    });
+
+  new Setting(containerEl)
+    .setName(t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.label'))
+    .setDesc(t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.description'))
+    .addDropdown(dropdown => {
+      dropdown.addOption(
+        'ddmm-day',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.ddmmDay')
+      );
+      dropdown.addOption(
+        'mmdd-day',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.mmddDay')
+      );
+      dropdown.addOption(
+        'day-ddmm',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.dayDdmm')
+      );
+      dropdown.addOption(
+        'day-mmdd',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.dayMmdd')
+      );
+      dropdown.addOption(
+        'ddmmyyyy-day',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.ddmmyyyyDay')
+      );
+      dropdown.addOption(
+        'mmddyyyy-day',
+        t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.mmddyyyyDay')
+      );
+
+      dropdown.setValue(plugin.settings.timeGridDayHeaderFormat || 'day-mmdd');
+      dropdown.onChange(async value => {
+        plugin.settings.timeGridDayHeaderFormat = value;
+        await plugin.saveSettings();
+        rerender();
+      });
+    });
+
+  new Setting(containerEl)
+    .setName(t('settings.appearance.dayVisibility.title'))
+    .setHeading()
+    .setDesc(
+      createDocsLinksFragment([{ text: 'Display and behavior', path: 'user/settings/fc_config' }])
+    );
 
   new Setting(containerEl)
     .setName(t('settings.appearance.dayVisibility.weekends.label'))
@@ -210,7 +290,11 @@ export function renderAppearanceSettings(
 
   new Setting(containerEl)
     .setName(t('settings.appearance.dayMaxEvents.label'))
-    .setDesc(t('settings.appearance.dayMaxEvents.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.appearance.dayMaxEvents.description'), [
+        { text: 'Display and behavior', path: 'user/settings/fc_config' }
+      ])
+    )
     .addDropdown(dropdown => {
       dropdown.addOption('false', t('settings.appearance.dayMaxEvents.options.default'));
       dropdown.addOption('true', t('settings.appearance.dayMaxEvents.options.unlimited'));
@@ -237,7 +321,11 @@ export function renderAppearanceSettings(
 
   new Setting(containerEl)
     .setName(t('settings.appearance.enableBackgroundEvents.label'))
-    .setDesc(t('settings.appearance.enableBackgroundEvents.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.appearance.enableBackgroundEvents.description'), [
+        { text: 'Display and behavior', path: 'user/settings/fc_config' }
+      ])
+    )
     .addToggle(toggle => {
       toggle.setValue(plugin.settings.enableBackgroundEvents);
       toggle.onChange(async val => {
@@ -249,12 +337,33 @@ export function renderAppearanceSettings(
   // Show current event in status bar toggle
   new Setting(containerEl)
     .setName(t('settings.appearance.showEventInStatusBar.label'))
-    .setDesc(t('settings.appearance.showEventInStatusBar.description'))
+    .setDesc(
+      createDescWithDocs(t('settings.appearance.showEventInStatusBar.description'), [
+        { text: 'Display and behavior', path: 'user/settings/fc_config' }
+      ])
+    )
     .addToggle(toggle => {
       toggle.setValue(plugin.settings.showEventInStatusBar);
       toggle.onChange(async val => {
         plugin.settings.showEventInStatusBar = val;
         await plugin.saveSettings();
+      });
+    });
+
+  new Setting(containerEl)
+    .setName('Highlight current or next event')
+    .setDesc(
+      createDescWithDocs(
+        'Highlights the current timed event, or the immediate next timed event if none is active.',
+        [{ text: 'Display and behavior', path: 'user/settings/fc_config' }]
+      )
+    )
+    .addToggle(toggle => {
+      toggle.setValue(plugin.settings.highlightCurrentOrNextEvent ?? true);
+      toggle.onChange(async val => {
+        plugin.settings.highlightCurrentOrNextEvent = val;
+        await plugin.saveSettings();
+        rerender();
       });
     });
 }
