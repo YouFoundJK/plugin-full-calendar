@@ -16,7 +16,7 @@ import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { CalendarInfo, OFCEvent } from '../../types';
 import { AutocompleteInput } from '../components/forms/AutocompleteInput';
-import { constructTitle, parseSubcategoryTitle } from '../../features/category/categoryParser';
+import { parseSubcategoryTitle } from '../../features/category/categoryParser';
 import { t } from '../../features/i18n/i18n';
 
 interface DayChoiceProps {
@@ -143,11 +143,7 @@ export const EditEvent = ({
   const [endTime, setEndTime] = useState(
     initialEvent?.allDay === false ? initialEvent.endTime || '' : ''
   );
-  const [title, setTitle] = useState(
-    enableCategory
-      ? constructTitle(undefined, initialEvent?.subCategory, initialEvent?.title || '')
-      : initialEvent?.title || ''
-  );
+  const [title, setTitle] = useState(initialEvent?.title || '');
   const [category, setCategory] = useState(initialEvent?.category || '');
   // const [isRecurring, setIsRecurring] = useState(initialEvent?.type === 'recurring' || false);
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>(

@@ -113,7 +113,7 @@ describe('EventEnhancer.enhance', () => {
     const result = enhancer.enhance(mockEvent);
     expect(result).toEqual({
       ...mockEvent,
-      title: 'Meeting',
+      title: 'Important - Meeting',
       category: 'Work',
       subCategory: 'Important'
     });
@@ -128,6 +128,52 @@ describe('EventEnhancer.enhance', () => {
     const enhancer = new EventEnhancer(settings);
     const result = enhancer.enhance(mockEvent);
     expect(result).toEqual(mockEvent);
+  });
+});
+
+describe('EventEnhancer.prepareForStorage', () => {
+  const settings: FullCalendarSettings = {
+    ...DEFAULT_SETTINGS,
+    enableAdvancedCategorization: true,
+    categorySettings: [{ name: 'Wellness', color: 'green' }]
+  };
+
+  it('should preserve subcategory when storing a clean UI title', () => {
+    const event: OFCEvent = {
+      title: 'Call',
+      category: 'Wellness',
+      subCategory: 'Social',
+      type: 'single',
+      date: '2026-05-02',
+      endDate: null,
+      allDay: true
+    };
+
+    const enhancer = new EventEnhancer(settings);
+    const result = enhancer.prepareForStorage(event);
+
+    expect(result.title).toBe('Wellness - Social - Call');
+    expect(result.category).toBeUndefined();
+    expect(result.subCategory).toBeUndefined();
+  });
+
+  it('should not duplicate subcategory when the display title already includes it', () => {
+    const event: OFCEvent = {
+      title: 'Social - Call',
+      category: 'Wellness',
+      subCategory: 'Social',
+      type: 'single',
+      date: '2026-05-02',
+      endDate: null,
+      allDay: true
+    };
+
+    const enhancer = new EventEnhancer(settings);
+    const result = enhancer.prepareForStorage(event);
+
+    expect(result.title).toBe('Wellness - Social - Call');
+    expect(result.category).toBeUndefined();
+    expect(result.subCategory).toBeUndefined();
   });
 });
 

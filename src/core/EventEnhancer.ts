@@ -47,7 +47,7 @@ export class EventEnhancer {
       const { category, subCategory, title } = parseTitle(rawEvent.title, definedCategories);
       categorizedEvent = {
         ...rawEvent,
-        title,
+        title: subCategory ? `${subCategory} - ${title}` : title,
         category: category || rawEvent.category,
         subCategory: subCategory || rawEvent.subCategory
       };
@@ -90,11 +90,13 @@ export class EventEnhancer {
 
     // Create a new object for title construction to avoid mutating the one we just fixed.
     const finalEvent = { ...eventForStorage };
-    finalEvent.title = constructTitle(
-      finalEvent.category,
-      finalEvent.subCategory,
-      finalEvent.title
-    );
+    const subCategoryPrefix = finalEvent.subCategory ? `${finalEvent.subCategory} - ` : '';
+    const titleAlreadyIncludesSubCategory =
+      !!subCategoryPrefix && finalEvent.title.startsWith(subCategoryPrefix);
+
+    finalEvent.title = titleAlreadyIncludesSubCategory
+      ? constructTitle(finalEvent.category, undefined, finalEvent.title)
+      : constructTitle(finalEvent.category, finalEvent.subCategory, finalEvent.title);
 
     // Remove the separate category fields to avoid them being written to storage.
     delete finalEvent.category;

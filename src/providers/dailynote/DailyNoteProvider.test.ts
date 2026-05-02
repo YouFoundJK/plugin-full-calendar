@@ -81,7 +81,7 @@ describe('DailyNoteCalendar', () => {
       };
       const enhancer = new EventEnhancer(settingsWithCategory);
       const result = enhancer.enhance(rawEvent);
-      expect(result.title).toBe('Clean garage');
+      expect(result.title).toBe('Home - Clean garage');
       expect(result.category).toBe('Chores');
       expect(result.subCategory).toBe('Home');
     });
