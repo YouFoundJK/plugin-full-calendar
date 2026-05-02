@@ -4,6 +4,12 @@ This page highlights the latest major features and improvements to help you get 
 For a detailed version-by-version breakdown, see the [Changelog](changelog.md).
 
 
+## 📡 ActivityWatch Sync
+
+ActivityWatch now has a dedicated sync engine that can turn local activity data into calendar blocks with continuity-aware updates, auto-sync scheduling, and dynamic title templating.
+
+---
+
 ## 📅 CalDAV Two-Way Sync
 
 You asked, we delivered. CalDAV calendars now support full two-way synchronization. Create, modify, and delete events from your private iCloud, Fastmail, or self-hosted CalDAV servers directly within Obsidian.

@@ -59,7 +59,8 @@
     "revalidateRemote": "Revalidar calendarios remotos",
     "openCalendar": "Abrir calendario",
     "openChronoAnalyser": "Abrir Crono Analizador (Solo escritorio)",
-    "openSidebar": "Abrir en la barra lateral"
+    "openSidebar": "Abrir en la barra lateral",
+    "syncActivityWatch": "Sync ActivityWatch"
   },
   "notices": {
     "settingsUpdated": "Full Calendar ha actualizado la configuración de tu calendario a un nuevo formato.",

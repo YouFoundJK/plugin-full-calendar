@@ -9,9 +9,11 @@ With Full Calendar, you can connect to [local note-based calendars](user/calenda
 
 If you are new here or is looking for workflow guide head to [User Docs](user/index.md) / use the Search bar above (or press `S`), while if you are a veteran who wants to contribute or is just crazy to find joy in reading the core architecture jump to [Architecture Docs](architecture/system/index.md).
 
-The latest version 0.12.7 introduces **[Local ICS Support](user/calendars/ics.md)**, a dramatically improved **[Staged Loading Architecture](./architecture/dev-logs/devlog_calendar_load_profiling_2026-04-11.md){: target="_blank" rel="noopener" }** for lightning-fast startup, and completely rewritten **[Timezone & DST Hardening](user/events/timezones.md)** to ensure accurate events everywhere.
+The latest version 0.12.9 introduces **[ActivityWatch sync](user/features/activitywatch.md)**, continuity-aware and expanded **[Tasks integrations](user/calendars/tasks-plugin-integration.md)**. 
 
-Recent major releases have brought incredible features like **[Full CalDAV Two-Way Sync](user/calendars/caldav.md)**, **[Mobile Workspaces & Monthly Views](user/views/workspaces.md)**, **[Multi-Language (i18n) Support](user/features/i18n.md)**, a deeply integrated **[Tasks Provider](user/calendars/tasks-plugin-integration.md)** with drag-and-drop backlog, and powerful additions like the **[Chrono Analyser dashboard](user/chrono_analyser/introduction.md)** and **[Advanced Categories system](user/events/categories.md)**.
+Recent updates include **[Local ICS Support](user/calendars/ics.md)**, dramatically improved **[Staged Loading Architecture](./architecture/dev-logs/devlog_calendar_load_profiling_2026-04-11.md){: target="_blank" rel="noopener" }**, and completely rewritten **[Timezone & DST Hardening](user/events/timezones.md)** to ensure accurate events everywhere.
+
+Recent major releases have brought incredible features like **[Full CalDAV Two-Way Sync](user/calendars/caldav.md)**, **[Mobile Workspaces & Monthly Views](user/views/workspaces.md)**, **[Multi-Language (i18n) Support](user/features/i18n.md)**, a deeply integrated **[Tasks Provider](user/calendars/tasks-plugin-integration.md)** with drag-and-drop backlog, and powerful additions like the **[Chrono Analyser dashboard](user/chrono_analyser/introduction.md)**, **[Advanced Categories system](user/events/categories.md)**.
 
 
 This documentation site will guide you through setup and advanced features. If something is unclear, don't hesitate to [submit an issue on GitHub](https://github.com/YouFoundJK/plugin-full-calendar/issues).

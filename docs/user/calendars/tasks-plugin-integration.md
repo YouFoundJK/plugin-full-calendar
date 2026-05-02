@@ -6,10 +6,7 @@ Unlock powerful task management by integrating the [Obsidian Tasks](https://gith
     Users of the Obsidian Tasks plugin who want to visualize, schedule, and manage their tasks on a calendar. It's perfect for time-blocking and ensuring that important to-dos get the attention they deserve.
 
 !!! tip "Requires Obsidian Tasks Plugin"
-    This calendar source requires the [Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) plugin to be installed and enabled in your vault.
-
-!!! warn "Tested with Obsidian Tasks Plugin 7.21.0"
-    For best compactibility use this version. It is quite likely that the compactibility for newer tasks plugin version will break the existing features since most of the essential tasks integration is hardcoded due to lack of API - meaning its too expensive and time consuming to keep track of the changes in the Obsidian Tasks Plugin internal codebase!
+    This calendar source requires the [Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) plugin to be installed and **enabled in your vault**.
 
 ## Setup
 
@@ -18,6 +15,12 @@ Unlock powerful task management by integrating the [Obsidian Tasks](https://gith
 3.  Give the calendar a name (e.g., "My Tasks") and assign it a color.
 
 Once added, Full Calendar will automatically discover all tasks from your vault and display them.
+
+## Advanced Settings
+
+Access the tasks Plugin Integration specific settings at (only visible if the Tasks Calendar is added).
+
+> Settings -> Integrations -> Tasks Plugin Integration
 
 <!-- Image missing: ../../assets/calendars/tasks-integration.gif -->
 

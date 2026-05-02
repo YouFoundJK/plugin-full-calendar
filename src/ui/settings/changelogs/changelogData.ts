@@ -14,13 +14,37 @@ export interface Version {
 // Add new versions to the TOP of this array.
 export const changelogData: Version[] = [
   {
-    version: '0.12.8.5',
+    version: '0.12.9',
     changes: [
       {
         type: 'new',
-        title: 'Tasks Time Features',
+        title: 'ActivityWatch sync',
         description:
-          'Tasks can now have an optional time block. Drag and drop a task to a specific time or back to all-day to update it. (#227)'
+          'Added a dedicated ActivityWatch sync engine with continuity-aware ingestion, auto-sync scheduling, and title templating.'
+      },
+      {
+        type: 'improvement',
+        title: 'Tasks integrations',
+        description:
+          'Checkout [Tasks Integration docs](https://youfoundjk.github.io/plugin-full-calendar/user/calendars/tasks-plugin-integration/). Expanded Tasks backlog and display settings, plus payload handling and workflow improvements. ([#142](https://github.com/YouFoundJK/plugin-full-calendar/issues/142), [#166](https://github.com/YouFoundJK/plugin-full-calendar/issues/166), [#175](https://github.com/YouFoundJK/plugin-full-calendar/issues/175))'
+      },
+      {
+        type: 'improvement',
+        title: 'Core sync identity',
+        description:
+          'Switched sync handling to keyed identity diffs with reverse lookup maps and safer continuity replacement to reduce churn and duplicate blocks.'
+      },
+      {
+        type: 'improvement',
+        title: 'Settings and calendar UX',
+        description:
+          'Updated settings navigation, calendar interactions, search behavior, and mobile responsiveness.'
+      },
+      {
+        type: 'fix',
+        title: 'Build, docs, and i18n',
+        description:
+          'Reduced startup and bundle overhead, refreshed locale loading, and added ActivityWatch architecture documentation.'
       }
     ]
   },
@@ -131,41 +155,6 @@ export const changelogData: Version[] = [
         title: 'Google Calendar Credentials Menu',
         description:
           'Fixed an issue where the Google Calendar settings menu for credentials was not displaying correctly.'
-      }
-    ]
-  },
-  {
-    version: '0.12.5',
-    changes: [
-      {
-        type: 'new',
-        title: 'Obsidian Bases provider',
-        description:
-          'Add [Bases](https://youfoundjk.github.io/plugin-full-calendar/calendars/bases/) as a calendar source (BETA).'
-      },
-      {
-        type: 'improvement',
-        title: 'Provider initialization and cache resync',
-        description:
-          'Providers invoke initialize() after creation, load events into the cache with onAllComplete callbacks, adjust load priorities, and refresh event sources without full re-render when resyncing. (#173)'
-      },
-      {
-        type: 'improvement',
-        title: 'ChronoAnalyser data integrity',
-        description:
-          '[ChronoAnalyser](https://youfoundjk.github.io/plugin-full-calendar/chrono_analyser/introduction/) now pulls from the main EventStore and parses category/project/subproject hierarchies correctly for accurate analysis.'
-      },
-      {
-        type: 'fix',
-        title: 'CalDAV validation and parsing',
-        description:
-          '[CalDAVProvider](https://youfoundjk.github.io/plugin-full-calendar/calendars/caldav/) now validates calendar collections with PROPFIND, parses calendar-data via DOMParser, adds JSDOM-backed tests, and surfaces clearer errors when URLs are invalid. (#193)'
-      },
-      {
-        type: 'fix',
-        title: 'Google OAuth and recurring timezone handling',
-        description:
-          'Mobile OAuth opens windows synchronously to avoid popup blockers (#191); recurring Google events honor exdates and BYDAY across timezones, correctly hiding deleted instances and preserving durations. (#190, #94)'
       }
     ]
   }
