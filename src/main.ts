@@ -240,8 +240,7 @@ export default class FullCalendarPlugin extends Plugin {
     });
     this.addCommand({
       id: 'full-calendar-sync-activitywatch',
-      // eslint-disable-next-line obsidianmd/ui/sentence-case
-      name: 'Sync ActivityWatch', // Intentionally not using i18n for this specific new command as we didn't add it to en.json for brevity
+      name: t('commands.syncActivityWatch'),
       checkCallback: checking => {
         const isEnabled = this.settings.activityWatch.enabled;
         if (!isEnabled) {

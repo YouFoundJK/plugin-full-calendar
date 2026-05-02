@@ -6,11 +6,35 @@ Corresponds to
 -   **For Users**: [Releases](https://github.com/YouFoundJK/plugin-full-calendar/releases)  
 -   **For Dev**: `git tags` of the `main` branch
 
+
+
+## v0.12.9
+
+### New Features
+
+-   **ActivityWatch sync** ([#238](https://github.com/YouFoundJK/plugin-full-calendar/issues/238))  
+    _Added a dedicated ActivityWatch sync engine with continuity-aware ingestion, auto-sync scheduling, and title templating._
+
+-   **Tasks integrations** ([#142](https://github.com/YouFoundJK/plugin-full-calendar/issues/142), [#166](https://github.com/YouFoundJK/plugin-full-calendar/issues/166), [#175](https://github.com/YouFoundJK/plugin-full-calendar/issues/175))  
+    _Expanded Tasks backlog and display settings, plus payload handling and workflow improvements._
+
+### Improvements & Fixes
+
+-   **Core sync identity** ([#238](https://github.com/YouFoundJK/plugin-full-calendar/issues/238))  
+    _Switched sync handling to keyed identity diffs with reverse lookup maps and safer continuity replacement to reduce churn and duplicate blocks._
+
+-   **Settings and calendar UX**  
+    _Updated settings navigation, calendar interactions, search behavior, and mobile responsiveness._
+
+-   **Build, docs, and i18n**  
+    _Reduced startup and bundle overhead, refreshed locale loading, and added ActivityWatch architecture documentation._
+
+---
+
 ## v0.12.8
 
 Thanks to [@oskardotglobal](https://github.com/oskardotglobal) and [@rolfkleef](https://github.com/rolfkleef) for their contributions in this release!
 
-### New Features
 
 -   **Tasks Time Features** ([#227](https://github.com/YouFoundJK/plugin-full-calendar/issues/227))  
     _Tasks can now have an optional time block._
@@ -23,7 +47,6 @@ Thanks to [@oskardotglobal](https://github.com/oskardotglobal) and [@rolfkleef](
     _More robust advanced categorization workflows._
     -   Added "Disable without cleanup" option to advanced categorization modal.
 
-### Improvements & Fixes
 
 -   **Robust timezone handling for recurring/all-day events** ([#194](https://github.com/YouFoundJK/plugin-full-calendar/issues/194), [#223](https://github.com/YouFoundJK/plugin-full-calendar/issues/223), [#231](https://github.com/YouFoundJK/plugin-full-calendar/issues/231))  
     _Timezone handling has been further hardened._
