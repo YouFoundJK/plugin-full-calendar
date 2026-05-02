@@ -160,17 +160,22 @@ export async function getCalendarEventsInRange(
   const providerEvents = await calendarInstance.getEvents({ start: rangeStart, end: rangeEnd });
   const candidates: PriorCalendarEvent[] = [];
 
-  for (const [event] of providerEvents) {
+  for (const [rawEvent] of providerEvents) {
+    const globalIdentifier = plugin.providerRegistry.getGlobalIdentifier(
+      rawEvent,
+      targetCalendarId
+    );
+    const sessionId = globalIdentifier
+      ? await plugin.providerRegistry.getSessionId(globalIdentifier)
+      : null;
+    const cachedEvent = sessionId ? plugin.cache.store.getEventById(sessionId) : null;
+    const event = cachedEvent || plugin.cache.enhancer.enhance(rawEvent);
+
     const eventRange = parseTimedSingleEventRange(event);
     if (!eventRange) continue;
 
     if (eventRange.endMs < rangeStart.getTime() - CONTINUITY_BUFFER_MS) continue;
     if (eventRange.startMs > rangeEnd.getTime() + CONTINUITY_BUFFER_MS) continue;
-
-    const globalIdentifier = plugin.providerRegistry.getGlobalIdentifier(event, targetCalendarId);
-    const sessionId = globalIdentifier
-      ? await plugin.providerRegistry.getSessionId(globalIdentifier)
-      : null;
 
     candidates.push({
       sessionId,

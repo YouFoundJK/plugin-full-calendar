@@ -1,5 +1,33 @@
 import { __testing } from './sync';
 import { createContinuityBlocksAndReplacePriorEvent } from './sync-continuity';
+import { getCalendarEventsInRange } from './sync-utils';
+
+jest.mock('obsidian', () => {
+  const moment = (input?: string | number, _format?: string, _strict?: boolean) => {
+    const date =
+      typeof input === 'number'
+        ? new Date(input)
+        : typeof input === 'string'
+          ? new Date(input.replace(' ', 'T'))
+          : new Date();
+    return {
+      isValid: () => !Number.isNaN(date.getTime()),
+      valueOf: () => date.getTime(),
+      format: (pattern?: string) => {
+        const iso = date.toISOString();
+        if (pattern === 'YYYY-MM-DD') return iso.slice(0, 10);
+        if (pattern === 'HH:mm') return iso.slice(11, 16);
+        return iso;
+      }
+    };
+  };
+
+  return {
+    moment,
+    Notice: jest.fn(),
+    requestUrl: jest.fn()
+  };
+});
 
 describe('ActivityWatch continuity helpers', () => {
   const makePrior = (overrides: Partial<unknown> = {}) =>
@@ -204,5 +232,55 @@ describe('ActivityWatch continuity helpers', () => {
     } finally {
       consoleErrorSpy.mockRestore();
     }
+  });
+
+  it('uses the cached normalized event when provider range reads return raw daily-note events', async () => {
+    const rawDailyNoteEvent = {
+      type: 'single',
+      title: 'Focus Work',
+      uid: '1',
+      date: '2026-04-14',
+      endDate: null,
+      allDay: false,
+      startTime: '10:00',
+      endTime: '10:30',
+      display: 'auto'
+    };
+    const cachedActivityWatchEvent = {
+      ...rawDailyNoteEvent,
+      category: 'blue'
+    };
+    const enhance = jest.fn(() => ({
+      ...rawDailyNoteEvent,
+      category: 'should-not-be-used'
+    }));
+    const plugin = {
+      providerRegistry: {
+        getInstance: jest.fn(() => ({
+          getEvents: jest.fn(() => Promise.resolve([[rawDailyNoteEvent, null]]))
+        })),
+        getGlobalIdentifier: jest.fn(() => 'aw::2026-04-14::uid:1'),
+        getSessionId: jest.fn(() => Promise.resolve('session-1')),
+        getCanonicalTitle: jest.fn((event: typeof cachedActivityWatchEvent) => event.title)
+      },
+      cache: {
+        enhancer: { enhance },
+        store: {
+          getEventById: jest.fn(() => cachedActivityWatchEvent)
+        }
+      }
+    };
+
+    const events = await getCalendarEventsInRange(
+      plugin as never,
+      'aw',
+      new Date('2026-04-14T00:00:00Z'),
+      new Date('2026-04-15T00:00:00Z')
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0].sessionId).toBe('session-1');
+    expect(events[0].event.category).toBe('blue');
+    expect(enhance).not.toHaveBeenCalled();
   });
 });
