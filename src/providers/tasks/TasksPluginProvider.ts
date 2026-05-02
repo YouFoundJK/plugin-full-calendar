@@ -874,7 +874,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       canCreate: false, // Prevents UI creation and standard addEvent pathway.
       canEdit: true,
       canDelete: true,
-      hasCustomEditUI: true
+      hasCustomEditUI: true,
+      contextMenu: {
+        allowGenericTaskActions: false,
+        providesNativeTaskSemantics: true
+      }
     };
   }
 

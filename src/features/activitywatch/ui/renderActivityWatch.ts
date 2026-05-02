@@ -13,18 +13,14 @@ export function renderActivityWatchSettings(
   const awSettings = settings.activityWatch;
 
   new Setting(containerEl)
-    .setName(t('settings.activityWatch.title'))
-    .setHeading()
+    .setName(t('settings.activityWatch.enable.label'))
     .setDesc(
       createDescWithDocs(t('settings.activityWatch.enable.description'), [
         { text: 'ActivityWatch integration', path: 'user/features/activitywatch' },
         { text: 'Troubleshooting', path: 'user/guides/troubleshooting' }
       ])
-    );
-
-  new Setting(containerEl)
-    .setName(t('settings.activityWatch.enable.label'))
-    .setDesc(t('settings.activityWatch.enable.description'))
+    )
+    .setHeading()
     .addToggle(toggle => {
       toggle.setValue(awSettings.enabled).onChange(async value => {
         awSettings.enabled = value;

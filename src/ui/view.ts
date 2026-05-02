@@ -34,6 +34,7 @@ import { t } from '../features/i18n/i18n';
 import { dateEndpointsToFrontmatter, fromEventApi, toEventInput } from '../core/interop';
 import { ViewEnhancer } from '../core/ViewEnhancer';
 import { createDateNavigation, DateNavigation } from '../features/navigation/DateNavigation';
+import { openEventContextMenu } from './context/EventContextMenuBuilder';
 
 // Narrowed resource shape used for timeline views.
 interface ResourceItem {
@@ -1044,96 +1045,7 @@ export class CalendarView extends ItemView {
           }
         },
         openContextMenuForEvent: async (e, mouseEvent) => {
-          const menu = new Menu();
-          if (!this.plugin.cache) {
-            return;
-          }
-          const event = this.plugin.cache.getEventById(e.id);
-          if (!event) {
-            return;
-          }
-
-          if (this.plugin.cache.isEventEditable(e.id)) {
-            if (e.display === 'background') {
-              menu.addItem(item =>
-                item
-                  .setTitle(
-                    `${t('modals.editEvent.fields.display.label')}: ${t(
-                      'modals.editEvent.fields.display.options.auto'
-                    )}`
-                  )
-                  .setIcon('paintbrush')
-                  .onClick(async () => {
-                    await this.plugin.cache.processEvent(e.id, current => ({
-                      ...current,
-                      display: undefined
-                    }));
-                  })
-              );
-              menu.addSeparator();
-            }
-
-            const tasks = await import('../types/tasks');
-            if (!tasks.isTask(event)) {
-              menu.addItem(item =>
-                item
-                  .setTitle(t('ui.view.contextMenu.turnIntoTask'))
-                  .setIcon('check')
-                  .onClick(async () => {
-                    await this.plugin.cache.processEvent(e.id, e => tasks.toggleTask(e, false));
-                  })
-              );
-            } else {
-              menu.addItem(item =>
-                item
-                  .setTitle(t('ui.view.contextMenu.removeCheckbox'))
-                  .setIcon('x')
-                  .onClick(async () => {
-                    await this.plugin.cache.processEvent(e.id, tasks.unmakeTask);
-                  })
-              );
-            }
-            menu.addSeparator();
-            menu.addItem(item =>
-              item
-                .setTitle(t('ui.view.contextMenu.goToNote'))
-                .setIcon('file-text')
-                .onClick(() => {
-                  if (!this.plugin.cache) {
-                    return;
-                  }
-                  void import('../utils/eventActions').then(({ openFileForEvent }) =>
-                    openFileForEvent(this.plugin.cache, this.app, e.id)
-                  );
-                })
-            );
-            menu.addItem(item =>
-              item
-                .setTitle(t('ui.view.contextMenu.delete'))
-                .setIcon('trash-2')
-                .onClick(async () => {
-                  if (!this.plugin.cache) {
-                    return;
-                  }
-                  const event = this.plugin.cache.getEventById(e.id);
-                  // If this is a recurring event, offer to delete only this instance
-                  if (event && (event.type === 'recurring' || event.type === 'rrule') && e.start) {
-                    const instanceDate =
-                      e.start instanceof Date ? e.start.toISOString().slice(0, 10) : undefined;
-                    await this.plugin.cache.deleteEvent(e.id, { instanceDate });
-                  } else {
-                    await this.plugin.cache.deleteEvent(e.id);
-                  }
-                  new Notice(t('ui.view.success.deletedEvent', { title: e.title }));
-                })
-            );
-          } else {
-            menu.addItem(item => {
-              item.setTitle(t('ui.view.contextMenu.noActions')).setIcon('info').setDisabled(true);
-            });
-          }
-
-          menu.showAtMouseEvent(mouseEvent);
+          await openEventContextMenu(this.plugin, e, mouseEvent);
         },
         toggleTask: async (eventApi, isDone) => {
           const eventId = eventApi.id;

@@ -103,6 +103,10 @@ describe('TasksPluginProvider', () => {
       expect(capabilities.canCreate).toBe(false);
       expect(capabilities.canEdit).toBe(true);
       expect(capabilities.canDelete).toBe(true);
+      expect(capabilities.contextMenu).toMatchObject({
+        allowGenericTaskActions: false,
+        providesNativeTaskSemantics: true
+      });
     });
   });
 

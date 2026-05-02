@@ -7,6 +7,11 @@ export interface CalendarProviderCapabilities {
   canEdit: boolean;
   canDelete: boolean;
   hasCustomEditUI?: boolean; // This is the new capability
+  contextMenu?: {
+    allowGenericTaskActions?: boolean;
+    allowDisplayActions?: boolean;
+    providesNativeTaskSemantics?: boolean;
+  };
 }
 
 export class RecoverableProviderLoadError extends Error {
@@ -19,6 +24,26 @@ export class RecoverableProviderLoadError extends Error {
 export interface ProviderLoadRetryPolicy {
   retryDelayMs: number;
   maxAttempts?: number;
+}
+
+export interface ProviderEventContext {
+  eventId: string;
+  event: OFCEvent;
+  calendarId: string;
+  location: { path: string; lineNumber: number | undefined } | null;
+  display?: string;
+  title: string;
+  start?: Date | null;
+  plugin: FullCalendarPlugin;
+}
+
+export interface EventContextAction {
+  id: string;
+  title: string;
+  icon?: string;
+  disabled?: boolean;
+  visible?: boolean;
+  run(): Promise<void> | void;
 }
 
 export interface CalendarProvider<TConfig> {
@@ -82,6 +107,15 @@ export interface CalendarProvider<TConfig> {
    * @returns An object indicating if the action is valid and an optional reason for the user.
    */
   canBeScheduledAt?(event: OFCEvent, date: Date): Promise<{ isValid: boolean; reason?: string }>;
+
+  /**
+   * Optional provider-specific event context actions. Generic actions are
+   * contributed by the UI menu builder based on capabilities; providers can add
+   * actions here when their source has native semantics the UI should not guess.
+   */
+  getEventContextActions?(
+    context: ProviderEventContext
+  ): EventContextAction[] | Promise<EventContextAction[]>;
 
   getConfigurationComponent(): FCReactComponent<{
     plugin: FullCalendarPlugin;
