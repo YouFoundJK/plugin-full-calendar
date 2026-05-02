@@ -30,6 +30,14 @@ import React from 'react';
 import { ParsedUndatedTask } from './typesTask';
 import { DateTime } from 'luxon';
 import { t } from '../../features/i18n/i18n';
+import {
+  CalendarTask,
+  TasksCacheData,
+  TasksPluginTask,
+  tasksToCalendarTasks
+} from './taskPayloadAdapter';
+
+export { extractTimeFromTitle } from './taskPayloadAdapter';
 
 // CHANGE: Define Scheduled emoji instead of Due
 const getScheduledDateEmoji = (): string => '⏳';
@@ -42,7 +50,7 @@ const DEFAULT_TIMED_TASK_DURATION_MINUTES = 30;
  * Matches patterns like (18:00) or (18:00-20:00) anywhere in the title.
  * Returns { startTime, endTime, cleanTitle } where cleanTitle has the pattern removed.
  */
-export function extractTimeFromTitle(title: string): {
+function extractTimeFromTitleLocal(title: string): {
   startTime: string | null;
   endTime: string | null;
   cleanTitle: string;
@@ -150,41 +158,46 @@ function formatTimeToken(time: string, timeFormat24h: boolean): string {
   return parsed.isValid ? parsed.toFormat('h:mm a').toUpperCase() : time;
 }
 
-// This is our own internal, simplified interface for a task from the Tasks plugin's cache.
-// It prevents the need to import anything from the Tasks plugin itself.
-interface CalendarTask {
-  id: string; // A unique ID created by us, e.g., "filePath::lineNumber"
-  title: string;
-  startDate: Date | null;
-  dueDate: Date | null;
-  scheduledDate: Date | null;
-  originalMarkdown: string; // The full original line from the file.
-  filePath: string;
-  lineNumber: number; // 1-based line number.
-  isDone: boolean;
-  startTime: string | null; // HH:mm if a time pattern was found in the title
-  endTime: string | null; // HH:mm if a time range pattern was found in the title
-}
+function summarizeDebugValue(value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return value;
+  }
 
-interface TasksPluginTaskDate {
-  toDate(): Date;
-}
+  if (typeof value !== 'object') {
+    return value;
+  }
 
-interface TasksPluginTask {
-  path: string;
-  description: string;
-  taskLocation: { lineNumber: number };
-  startDate?: TasksPluginTaskDate;
-  dueDate?: TasksPluginTaskDate;
-  scheduledDate?: TasksPluginTaskDate;
-  originalMarkdown: string;
-  isDone?: boolean;
-  doneDatez?: unknown;
-}
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
 
-interface TasksCacheData {
-  state?: { name?: string } | string;
-  tasks?: TasksPluginTask[];
+  const valueWithMethods = value as {
+    constructor?: { name?: string };
+    toDate?: () => Date;
+    toString?: () => string;
+  };
+  const summary: Record<string, unknown> = {
+    type: valueWithMethods.constructor?.name,
+    keys: Object.keys(value as Record<string, unknown>)
+  };
+
+  if (typeof valueWithMethods.toDate === 'function') {
+    try {
+      summary.toDate = valueWithMethods.toDate().toISOString();
+    } catch (e) {
+      summary.toDateError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  if (typeof valueWithMethods.toString === 'function') {
+    try {
+      summary.stringValue = valueWithMethods.toString();
+    } catch (e) {
+      summary.toStringError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  return summary;
 }
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
@@ -328,6 +341,35 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     // No parser instantiation needed anymore.
   }
 
+  private debugTasksCachePayload(origin: string, cacheData: TasksCacheData): void {
+    const tasks = Array.isArray(cacheData.tasks) ? cacheData.tasks : [];
+    const taskKeyUnion = Array.from(
+      tasks.reduce((keys, task) => {
+        Object.keys(task as unknown as Record<string, unknown>).forEach(key => keys.add(key));
+        return keys;
+      }, new Set<string>())
+    ).sort();
+
+    console.debug('[Full Calendar][Tasks] cache payload received', {
+      origin,
+      sourceId: this.source.id,
+      state: cacheData.state,
+      taskCount: tasks.length,
+      taskKeyUnion,
+      sampleTasks: tasks.slice(0, 5).map((task, index) => {
+        const rawTask = task as unknown as Record<string, unknown>;
+        return {
+          index,
+          keys: Object.keys(rawTask).sort(),
+          values: Object.fromEntries(
+            Object.entries(rawTask).map(([key, value]) => [key, summarizeDebugValue(value)])
+          )
+        };
+      }),
+      rawPayload: cacheData
+    });
+  }
+
   /**
    * On-demand cache warming: requests initial data from the Tasks plugin and waits for response.
    */
@@ -342,6 +384,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     this.tasksPromise = new Promise((resolve, reject) => {
       const callback = (cacheData: TasksCacheData) => {
+        this.debugTasksCachePayload('request-cache-update', cacheData);
         if (
           cacheData &&
           ((typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
@@ -552,6 +595,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     };
 
     workspace.on('obsidian-tasks-plugin:cache-update', data => {
+      this.debugTasksCachePayload('cache-update', data);
       void handleLiveCacheUpdate(data);
     });
     this.isSubscribed = true;
@@ -561,30 +605,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
    * Parses the raw task data from the Tasks plugin into our internal, simplified CalendarTask format.
    */
   private parseTasksForCalendar(tasks: TasksPluginTask[]): CalendarTask[] {
-    if (!tasks) return [];
-
-    // FIX: Use the stable, nested line number from taskLocation and convert to 1-based index.
-    const calendarTasks = tasks.map((task, index) => {
-      const oneBasedLineNumber = task.taskLocation.lineNumber + 1;
-      const { startTime, endTime, cleanTitle } = extractTimeFromTitle(task.description);
-      return {
-        // The ID must be based on the 0-indexed number to match the live-update diffing logic.
-        id: `${task.path}::${task.taskLocation.lineNumber}`,
-        title: cleanTitle,
-        startDate: task.startDate ? task.startDate.toDate() : null,
-        dueDate: task.dueDate ? task.dueDate.toDate() : null,
-        scheduledDate: task.scheduledDate ? task.scheduledDate.toDate() : null,
-        originalMarkdown: task.originalMarkdown,
-        filePath: task.path,
-        // The internal lineNumber must be 1-based for surgical editing.
-        lineNumber: oneBasedLineNumber,
-        isDone: task.isDone || !!task.doneDatez,
-        startTime,
-        endTime
-      };
-    });
-
-    return calendarTasks;
+    return tasksToCalendarTasks(tasks);
   }
 
   // ====================================================================
