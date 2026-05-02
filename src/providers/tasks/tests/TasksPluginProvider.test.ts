@@ -28,7 +28,7 @@ type MockApp = {
 type MockPlugin = {
   app: {
     vault: { getMarkdownFiles: jest.Mock };
-    workspace: { trigger: jest.Mock };
+    workspace: { trigger: jest.Mock; on: jest.Mock };
     plugins?: {
       plugins?: Record<string, { apiV1?: { editTaskLineModal: jest.Mock } }>;
     };
@@ -64,6 +64,7 @@ describe('TasksPluginProvider', () => {
           getMarkdownFiles: jest.fn().mockReturnValue([])
         },
         workspace: {
+          on: jest.fn(),
           trigger: jest.fn((eventName: string, callback: (data: unknown) => void) => {
             if (eventName === 'obsidian-tasks-plugin:request-cache-update') {
               callback({ state: 'Warm', tasks: [] }); // MODIFIED: resolves cache warm promise
@@ -150,6 +151,46 @@ describe('TasksPluginProvider', () => {
         startTime: '09:00',
         endTime: '10:15'
       });
+    });
+
+    it('settles pending warm-up when the live cache event becomes warm after a cold request response', async () => {
+      let liveCacheUpdate: ((data: unknown) => void) | null = null;
+      mockPlugin.app.workspace.on.mockImplementation(
+        (eventName: string, callback: (data: unknown) => void) => {
+          if (eventName === 'obsidian-tasks-plugin:cache-update') {
+            liveCacheUpdate = callback;
+          }
+        }
+      );
+      mockPlugin.app.workspace.trigger.mockImplementation(
+        (eventName: string, callback: (data: unknown) => void) => {
+          if (eventName === 'obsidian-tasks-plugin:request-cache-update') {
+            callback({ state: 'Cold', tasks: [] });
+          }
+        }
+      );
+
+      provider.initialize();
+      const eventsPromise = provider.getEvents();
+
+      expect(liveCacheUpdate).toBeDefined();
+      const emitLiveCacheUpdate = liveCacheUpdate as unknown as (data: unknown) => void;
+      emitLiveCacheUpdate({
+        state: 'Warm',
+        tasks: [
+          {
+            path: 'Daily.md',
+            description: 'Recovered task',
+            taskLocation: { lineNumber: 0 },
+            scheduledDate: { toDate: () => new Date('2026-05-02T00:00:00') },
+            originalMarkdown: '- [ ] Recovered task ⏳ 2026-05-02',
+            isDone: false
+          }
+        ]
+      });
+
+      await expect(eventsPromise).resolves.toHaveLength(1);
+      expect(mockPlugin.providerRegistry.reloadProviderNow).toHaveBeenCalledWith('tasks_1');
     });
 
     it('gives single-time tasks a visible duration for week/time-grid views', async () => {

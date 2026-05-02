@@ -284,6 +284,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private isSubscribed = false;
   private isTasksCacheWarm = false;
   private tasksPromise: Promise<void> | null = null;
+  private tasksPromiseResolve: (() => void) | null = null;
+  private tasksCacheTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isProcessingUpdate = false; // Singleton guard for live update
 
   readonly type = 'tasks';
@@ -335,6 +337,41 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   /**
    * On-demand cache warming: requests initial data from the Tasks plugin and waits for response.
    */
+  private isWarmTasksCacheData(
+    cacheData: TasksCacheData
+  ): cacheData is TasksCacheData & { tasks: TasksPluginTask[] } {
+    return (
+      !!cacheData &&
+      ((typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
+        (typeof cacheData.state === 'object' && cacheData.state?.name === 'Warm')) &&
+      Array.isArray(cacheData.tasks)
+    );
+  }
+
+  private clearTasksCacheTimeout(): void {
+    if (this.tasksCacheTimeoutId) {
+      clearTimeout(this.tasksCacheTimeoutId);
+      this.tasksCacheTimeoutId = null;
+    }
+  }
+
+  private resolveTasksCacheWarm(cacheData: TasksCacheData): boolean {
+    if (!this.isWarmTasksCacheData(cacheData)) {
+      return false;
+    }
+
+    this.clearTasksCacheTimeout();
+    this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
+    this.isTasksCacheWarm = true;
+
+    const resolve = this.tasksPromiseResolve;
+    this.tasksPromise = null;
+    this.tasksPromiseResolve = null;
+    resolve?.();
+
+    return true;
+  }
+
   private _ensureTasksCacheIsWarm(): Promise<void> {
     if (this.isTasksCacheWarm) {
       return Promise.resolve();
@@ -343,40 +380,30 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       return this.tasksPromise;
     }
     let didTimeout = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     this.tasksPromise = new Promise((resolve, reject) => {
+      this.tasksPromiseResolve = resolve;
+
       const callback = (cacheData: TasksCacheData) => {
         // this.debugTasksCachePayload('request-cache-update', cacheData);
-        if (
-          cacheData &&
-          ((typeof cacheData.state === 'string' && cacheData.state === 'Warm') ||
-            (typeof cacheData.state === 'object' && cacheData.state?.name === 'Warm')) &&
-          cacheData.tasks
-        ) {
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-            timeoutId = null;
-          }
-          this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
-          this.isTasksCacheWarm = true;
-          this.tasksPromise = null;
+        if (this.resolveTasksCacheWarm(cacheData)) {
           if (didTimeout) {
             this.plugin.providerRegistry.reloadProviderNow(this.source.id);
           }
-          resolve();
         }
       };
       const workspace = this.plugin.app.workspace as unknown as {
         trigger: (event: string, callback: (data: TasksCacheData) => void) => void;
       };
 
-      timeoutId = setTimeout(() => {
+      this.tasksCacheTimeoutId = setTimeout(() => {
         if (!this.isTasksCacheWarm) {
           didTimeout = true;
           console.error(
             "Full Calendar: Timed out waiting for Tasks plugin's cache. The Tasks plugin may not be enabled or may have failed to load."
           );
+          this.clearTasksCacheTimeout();
           this.tasksPromise = null;
+          this.tasksPromiseResolve = null;
           reject(new RecoverableProviderLoadError("Timed out waiting for Tasks plugin's cache."));
         }
       }, TASKS_CACHE_TIMEOUT_MS);
@@ -467,9 +494,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       }
 
       if (!this.isTasksCacheWarm) {
-        this.allTasks = this.parseTasksForCalendar(cacheData.tasks);
-        this.isTasksCacheWarm = true;
-        this.tasksPromise = null;
+        this.resolveTasksCacheWarm(cacheData);
         this.plugin.providerRegistry.reloadProviderNow(this.source.id);
         return;
       }
