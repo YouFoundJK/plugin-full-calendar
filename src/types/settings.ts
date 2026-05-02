@@ -37,10 +37,13 @@ export interface ActivityWatchSettings {
   profiles: ContextProfile[];
 }
 
-export type TasksBacklogDateTarget = 'scheduledDate' | 'startDate' | 'dueDate';
+export type TasksDateTarget = 'scheduledDate' | 'startDate' | 'dueDate';
+
+export type TasksBacklogDateTarget = TasksDateTarget;
 
 export interface TasksIntegrationSettings {
   backlogDateTarget: TasksBacklogDateTarget;
+  calendarDisplayDateTarget: TasksDateTarget;
   openEditModalAfterBacklogDrop: boolean;
 }
 
@@ -188,6 +191,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   },
   tasksIntegration: {
     backlogDateTarget: 'scheduledDate',
+    calendarDisplayDateTarget: 'scheduledDate',
     openEditModalAfterBacklogDrop: false
   },
 

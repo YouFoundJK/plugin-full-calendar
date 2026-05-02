@@ -30,6 +30,13 @@ describe('updateTimeInLine (24h mode, default)', () => {
       const line = '- [ ] My task ^abc123';
       expect(updateTimeInLine(line, '14:00', null)).toBe('- [ ] My task (14:00) ^abc123');
     });
+
+    it('inserts a time block before the configured date marker', () => {
+      const dueLine = `- [ ] My task ${String.fromCodePoint(0x1f4c5)} 2024-06-15`;
+      expect(updateTimeInLine(dueLine, '9:00', null, true, String.fromCodePoint(0x1f4c5))).toBe(
+        `- [ ] My task (9:00) ${String.fromCodePoint(0x1f4c5)} 2024-06-15`
+      );
+    });
   });
 
   describe('updating an existing time block', () => {

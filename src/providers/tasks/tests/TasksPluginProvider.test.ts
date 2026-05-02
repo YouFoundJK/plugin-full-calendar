@@ -74,6 +74,7 @@ describe('TasksPluginProvider', () => {
       settings: {
         tasksIntegration: {
           backlogDateTarget: 'scheduledDate',
+          calendarDisplayDateTarget: 'scheduledDate',
           openEditModalAfterBacklogDrop: false
         }
       },
@@ -183,6 +184,50 @@ describe('TasksPluginProvider', () => {
       });
     });
 
+    it('shows Tasks events only on the configured calendar display date field', async () => {
+      mockPlugin.settings.tasksIntegration = {
+        backlogDateTarget: 'scheduledDate',
+        calendarDisplayDateTarget: 'dueDate',
+        openEditModalAfterBacklogDrop: false
+      };
+      mockPlugin.app.workspace.trigger.mockImplementation(
+        (eventName: string, callback: (data: unknown) => void) => {
+          if (eventName === 'obsidian-tasks-plugin:request-cache-update') {
+            callback({
+              state: 'Warm',
+              tasks: [
+                {
+                  path: 'Daily.md',
+                  description: 'Scheduled only',
+                  taskLocation: { lineNumber: 0 },
+                  scheduledDate: { toDate: () => new Date('2026-05-02T00:00:00') },
+                  originalMarkdown: '- [ ] Scheduled only ⏳ 2026-05-02',
+                  isDone: false
+                },
+                {
+                  path: 'Daily.md',
+                  description: 'Due task',
+                  taskLocation: { lineNumber: 1 },
+                  scheduledDate: { toDate: () => new Date('2026-05-02T00:00:00') },
+                  dueDate: { toDate: () => new Date('2026-05-04T00:00:00') },
+                  originalMarkdown: '- [ ] Due task ⏳ 2026-05-02 📅 2026-05-04',
+                  isDone: false
+                }
+              ]
+            });
+          }
+        }
+      );
+
+      const events = await provider.getEvents();
+
+      expect(events).toHaveLength(1);
+      expect(events[0][0]).toMatchObject({
+        title: 'Due task',
+        date: '2026-05-04'
+      });
+    });
+
     it('should reject creating events directly', async () => {
       const event = { title: 'Test Event', type: 'single', date: '2024-01-01' } as OFCEvent;
 
@@ -219,7 +264,7 @@ describe('TasksPluginProvider', () => {
       ).rejects.toThrow('Tasks provider does not support recurring event overrides.');
     });
 
-    it('schedules backlog drops using the configured Tasks date field', async () => {
+    it('schedules backlog drops using the configured calendar display date field', async () => {
       const file = { path: 'Daily.md' };
       mockApp.getFileByPath.mockReturnValue(file);
       mockApp.rewrite.mockImplementation((_file: unknown, update: (content: string) => string) => {
@@ -229,6 +274,7 @@ describe('TasksPluginProvider', () => {
       });
       mockPlugin.settings.tasksIntegration = {
         backlogDateTarget: 'dueDate',
+        calendarDisplayDateTarget: 'dueDate',
         openEditModalAfterBacklogDrop: false
       };
       const editTaskLineModal = jest.fn();
@@ -268,6 +314,7 @@ describe('TasksPluginProvider', () => {
     it('filters backlog tasks by the configured Tasks date field', async () => {
       mockPlugin.settings.tasksIntegration = {
         backlogDateTarget: 'dueDate',
+        calendarDisplayDateTarget: 'scheduledDate',
         openEditModalAfterBacklogDrop: false
       };
       mockPlugin.app.workspace.trigger.mockImplementation(
@@ -312,6 +359,7 @@ describe('TasksPluginProvider', () => {
       });
       mockPlugin.settings.tasksIntegration = {
         backlogDateTarget: 'scheduledDate',
+        calendarDisplayDateTarget: 'scheduledDate',
         openEditModalAfterBacklogDrop: true
       };
       const editTaskLineModal = jest.fn().mockResolvedValue('- [ ] Backlog task edited');
@@ -345,6 +393,54 @@ describe('TasksPluginProvider', () => {
       await provider.scheduleTask('Daily.md::0', new Date('2026-05-02T00:00:00'));
 
       expect(editTaskLineModal).toHaveBeenCalledWith('- [ ] Backlog task ⏳ 2026-05-02');
+    });
+
+    it('updates timed Tasks events against the configured calendar display date field', async () => {
+      const file = { path: 'Daily.md' };
+      mockApp.getFileByPath.mockReturnValue(file);
+      mockApp.rewrite.mockImplementation((_file: unknown, update: (content: string) => string) => {
+        const updated = update('- [ ] Due task 📅 2026-05-03');
+        expect(updated).toBe('- [ ] Due task (9:00-10:00) 📅 2026-05-05');
+        return Promise.resolve();
+      });
+      mockPlugin.settings.tasksIntegration = {
+        backlogDateTarget: 'scheduledDate',
+        calendarDisplayDateTarget: 'dueDate',
+        openEditModalAfterBacklogDrop: false
+      };
+      mockPlugin.app.workspace.trigger.mockImplementation(
+        (eventName: string, callback: (data: unknown) => void) => {
+          if (eventName === 'obsidian-tasks-plugin:request-cache-update') {
+            callback({
+              state: 'Warm',
+              tasks: [
+                {
+                  path: 'Daily.md',
+                  description: 'Due task',
+                  taskLocation: { lineNumber: 0 },
+                  dueDate: { toDate: () => new Date('2026-05-03T00:00:00') },
+                  originalMarkdown: '- [ ] Due task 📅 2026-05-03',
+                  isDone: false
+                }
+              ]
+            });
+          }
+        }
+      );
+
+      await provider.getEvents();
+      await provider.updateEvent(
+        { persistentId: 'Daily.md::0' },
+        { type: 'single', title: 'Due task', date: '2026-05-03' } as OFCEvent,
+        {
+          type: 'single',
+          title: 'Due task',
+          allDay: false,
+          date: '2026-05-05',
+          startTime: '09:00',
+          endTime: '10:00'
+        } as OFCEvent
+      );
     });
   });
 

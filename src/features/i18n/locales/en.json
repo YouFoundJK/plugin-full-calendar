@@ -444,11 +444,15 @@
         "title": "Tasks Integration"
       },
       "backlogDateTarget": {
-        "label": "Backlog drop date field",
-        "description": "Choose which Tasks date marker is written when dragging from backlog. The backlog shows tasks missing this selected date marker.",
+        "label": "Backlog filter date field",
+        "description": "Choose which Tasks date marker the backlog tracks. The backlog shows tasks missing this selected date marker.",
         "scheduled": "Scheduled date",
         "start": "Start date",
         "due": "Due date"
+      },
+      "calendarDisplayDateTarget": {
+        "label": "Calendar display date field",
+        "description": "Choose which Tasks date marker Full Calendar uses to display Tasks events. There is no fallback to other date markers. Restart Obsidian or reload the plugin for this change to fully take effect."
       },
       "openEditModalAfterBacklogDrop": {
         "label": "Open Tasks edit modal after backlog drop",

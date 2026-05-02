@@ -1,7 +1,7 @@
 import { Modal, Setting } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { t } from '../../features/i18n/i18n';
-import { TasksBacklogDateTarget } from '../../types/settings';
+import { TasksBacklogDateTarget, TasksDateTarget } from '../../types/settings';
 
 export class TasksIntegrationSettingsModal extends Modal {
   constructor(
@@ -30,6 +30,22 @@ export class TasksIntegrationSettingsModal extends Modal {
             settings.backlogDateTarget = value as TasksBacklogDateTarget;
             await this.plugin.saveSettings();
             this.plugin.providerRegistry.refreshBacklogViews();
+            this.onChange();
+          });
+      });
+
+    new Setting(this.contentEl)
+      .setName(t('settings.tasksIntegration.calendarDisplayDateTarget.label'))
+      .setDesc(t('settings.tasksIntegration.calendarDisplayDateTarget.description'))
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('scheduledDate', t('settings.tasksIntegration.backlogDateTarget.scheduled'))
+          .addOption('startDate', t('settings.tasksIntegration.backlogDateTarget.start'))
+          .addOption('dueDate', t('settings.tasksIntegration.backlogDateTarget.due'))
+          .setValue(settings.calendarDisplayDateTarget)
+          .onChange(async value => {
+            settings.calendarDisplayDateTarget = value as TasksDateTarget;
+            await this.plugin.saveSettings();
             this.onChange();
           });
       });

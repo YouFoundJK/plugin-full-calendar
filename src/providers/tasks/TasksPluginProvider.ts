@@ -36,6 +36,7 @@ import {
   TasksPluginTask,
   tasksToCalendarTasks
 } from './taskPayloadAdapter';
+import { TasksDateTarget } from '../../types/settings';
 
 export { extractTimeFromTitle } from './taskPayloadAdapter';
 
@@ -46,7 +47,6 @@ const getDueDateEmoji = (): string => '📅';
 const TASKS_CACHE_TIMEOUT_MS = 5000;
 const TASKS_CACHE_RETRY_DELAY_MS = 10000;
 const DEFAULT_TIMED_TASK_DURATION_MINUTES = 30;
-type TasksDateTarget = 'scheduledDate' | 'startDate' | 'dueDate';
 
 /**
  * Updates or removes the time block `(H:MM)` / `(H:MM AM)` or their range forms
@@ -66,7 +66,8 @@ export function updateTimeInLine(
   line: string,
   startTime: string | null,
   endTime: string | null,
-  timeFormat24h = true
+  timeFormat24h = true,
+  dateSymbol = getScheduledDateEmoji()
 ): string {
   // Strip any existing time block (24h or 12h) from the line.
   const timeBlockPattern =
@@ -79,8 +80,8 @@ export function updateTimeInLine(
     const fmtEnd = endTime && endTime !== startTime ? fmt(endTime) : null;
     const timeBlock = fmtEnd ? `(${fmtStart}-${fmtEnd})` : `(${fmtStart})`;
 
-    // Insert before the scheduled emoji ⏳ (guaranteed present after updateTaskLine).
-    const scheduledEmojiIdx = result.indexOf('⏳');
+    // Insert before the configured date marker (guaranteed present after updateTaskLine).
+    const scheduledEmojiIdx = result.indexOf(dateSymbol);
     if (scheduledEmojiIdx !== -1) {
       const before = result.slice(0, scheduledEmojiIdx).trimEnd();
       const after = result.slice(scheduledEmojiIdx);
@@ -401,14 +402,15 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   /**
    * Helper to convert a CalendarTask to an OFCEvent and EventLocation.
-   * This now prioritizes Scheduled Date and ensures tasks are single-day events.
+   * Uses the configured Tasks calendar display date field with no fallback.
    */
   private _taskToOFCEvent(task: CalendarTask): [OFCEvent, EventLocation | null] | null {
-    // NEW PRIORITY LOGIC: Scheduled > Due > Start
-    const primaryDate = task.scheduledDate || task.dueDate || task.startDate;
+    const displayDate = this.getTaskDateValue(
+      task,
+      this.plugin.settings.tasksIntegration.calendarDisplayDateTarget
+    );
 
-    // A task must have at least one of these dates to appear on the calendar.
-    if (!primaryDate) {
+    if (!displayDate) {
       return null;
     }
 
@@ -417,7 +419,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           type: 'single',
           title: task.title,
           allDay: false,
-          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'),
+          date: DateTime.fromJSDate(displayDate).toFormat('yyyy-MM-dd'),
           endDate: null,
           startTime: task.startTime,
           endTime: task.endTime ?? this.getDefaultEndTime(task.startTime),
@@ -428,7 +430,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           type: 'single',
           title: task.title,
           allDay: true,
-          date: DateTime.fromJSDate(primaryDate).toFormat('yyyy-MM-dd'),
+          date: DateTime.fromJSDate(displayDate).toFormat('yyyy-MM-dd'),
           endDate: null,
           completed: task.isDone ? DateTime.now().toISO() : false,
           uid: task.id
@@ -495,7 +497,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         // Find deletions
         for (const [id, oldTask] of oldTasksMap.entries()) {
           if (!newTasksMap.has(id)) {
-            if (oldTask.startDate || oldTask.scheduledDate || oldTask.dueDate) {
+            if (
+              this.getTaskDateValue(
+                oldTask,
+                this.plugin.settings.tasksIntegration.calendarDisplayDateTarget
+              )
+            ) {
               providerPayload.deletions.push(id);
             }
           }
@@ -505,7 +512,12 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         for (const [id, newTask] of newTasksMap.entries()) {
           const oldTask = oldTasksMap.get(id);
           const transformed = this._taskToOFCEvent(newTask);
-          const wasDated = !!(oldTask?.startDate || oldTask?.scheduledDate || oldTask?.dueDate);
+          const wasDated = oldTask
+            ? !!this.getTaskDateValue(
+                oldTask,
+                this.plugin.settings.tasksIntegration.calendarDisplayDateTarget
+              )
+            : false;
           const isDated = transformed !== null;
 
           if (!oldTask && isDated) {
@@ -661,16 +673,20 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
   }
 
-  private hasBacklogTargetDate(task: CalendarTask): boolean {
-    switch (this.plugin.settings.tasksIntegration.backlogDateTarget) {
+  private getTaskDateValue(task: CalendarTask, target: TasksDateTarget): Date | null {
+    switch (target) {
       case 'startDate':
-        return !!task.startDate;
+        return task.startDate;
       case 'dueDate':
-        return !!task.dueDate;
+        return task.dueDate;
       case 'scheduledDate':
       default:
-        return !!task.scheduledDate;
+        return task.scheduledDate;
     }
+  }
+
+  private hasBacklogTargetDate(task: CalendarTask): boolean {
+    return !!this.getTaskDateValue(task, this.plugin.settings.tasksIntegration.backlogDateTarget);
   }
 
   private updateTaskLine(
@@ -769,14 +785,21 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (!task) {
       throw new Error(`Cannot find original task with ID ${taskId} to update.`);
     }
-    let newLine = this.updateTaskLine(task.originalMarkdown, newDate, 'scheduledDate');
+    const dateTarget = this.plugin.settings.tasksIntegration.calendarDisplayDateTarget;
+    let newLine = this.updateTaskLine(task.originalMarkdown, newDate, dateTarget);
     // Only update the time block when explicitly provided (undefined = no change).
     if (startTime !== undefined) {
-      newLine = updateTimeInLine(newLine, startTime, endTime ?? null, timeFormat24h);
+      newLine = updateTimeInLine(
+        newLine,
+        startTime,
+        endTime ?? null,
+        timeFormat24h,
+        this.getDateTargetEmoji(dateTarget)
+      );
     }
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
     task.originalMarkdown = newLine;
-    task.scheduledDate = newDate;
+    this.setTaskDate(task, dateTarget, newDate);
     if (startTime !== undefined) {
       task.startTime = startTime;
       task.endTime = startTime ? (endTime ?? null) : null;
@@ -788,7 +811,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (!task) {
       throw new Error(`Cannot find original task to schedule at ${taskId}`);
     }
-    const dateTarget = this.plugin.settings.tasksIntegration.backlogDateTarget;
+    const dateTarget = this.plugin.settings.tasksIntegration.calendarDisplayDateTarget;
     const newLine = this.updateTaskLine(task.originalMarkdown, date, dateTarget);
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
     task.originalMarkdown = newLine;

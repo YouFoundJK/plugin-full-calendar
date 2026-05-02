@@ -37,24 +37,37 @@ Uses OAuth-backed authenticated requests, handles recurrence cancellation edge c
 
 Not a simple calendar source: it integrates with Tasks plugin cache, supports task-completion toggles, time-token parsing in task text, and surgical markdown line rewrites while preserving task metadata patterns.
 
-#### Tasks backlog integration contract
+#### Tasks date-field integration contract
 
-The Tasks backlog is controlled by `settings.tasksIntegration.backlogDateTarget`, not by a hardcoded definition of "undated." This setting is the single source of truth for both filtering and write-back:
+The Tasks integration has two explicit date-field settings:
 
-| Target          | Backlog filter                                   | Markdown write-back              |
-| --------------- | ------------------------------------------------ | -------------------------------- |
-| `scheduledDate` | Include incomplete tasks without `scheduledDate` | Write or replace `⏳ YYYY-MM-DD` |
-| `startDate`     | Include incomplete tasks without `startDate`     | Write or replace `🛫 YYYY-MM-DD` |
-| `dueDate`       | Include incomplete tasks without `dueDate`       | Write or replace `📅 YYYY-MM-DD` |
+- `settings.tasksIntegration.backlogDateTarget` controls which incomplete tasks appear in the Tasks Backlog.
+- `settings.tasksIntegration.calendarDisplayDateTarget` controls which Tasks date marker is used for calendar display and calendar/backlog write-back.
 
-Both UI entry points must use the same setting:
+Backlog filtering must use `backlogDateTarget`, not a hardcoded definition of "undated":
+
+| Target          | Backlog filter                                   |
+| --------------- | ------------------------------------------------ |
+| `scheduledDate` | Include incomplete tasks without `scheduledDate` |
+| `startDate`     | Include incomplete tasks without `startDate`     |
+| `dueDate`       | Include incomplete tasks without `dueDate`       |
+
+Calendar display and write-back must use `calendarDisplayDateTarget` with no fallback:
+
+| Target          | Calendar display                | Markdown write-back              |
+| --------------- | ------------------------------- | -------------------------------- |
+| `scheduledDate` | Only tasks with `scheduledDate` | Write or replace `⏳ YYYY-MM-DD` |
+| `startDate`     | Only tasks with `startDate`     | Write or replace `🛫 YYYY-MM-DD` |
+| `dueDate`       | Only tasks with `dueDate`       | Write or replace `📅 YYYY-MM-DD` |
+
+Backlog filter UI entry points must use the same `backlogDateTarget` setting:
 
 - Settings -> Integrations -> Obsidian Tasks Integration.
 - The dropdown in the Tasks Backlog view header.
 
 Changing the setting must save plugin settings and call `providerRegistry.refreshBacklogViews()` so all open backlog views re-query the provider. Backlog filtering belongs in `TasksPluginProvider.getUndatedTasks()` because the provider owns the Tasks cache shape and the date-field mapping. UI components should not duplicate that filtering logic.
 
-Calendar event drag/update behavior remains intentionally separate from backlog drag/drop behavior. Existing scheduled Tasks events continue to update `scheduledDate` when moved on the calendar; only backlog scheduling uses `tasksIntegration.backlogDateTarget`.
+Calendar event drag/update behavior and backlog drag/drop both write `calendarDisplayDateTarget`. `TasksPluginProvider._taskToOFCEvent()` must also read only `calendarDisplayDateTarget`; do not reintroduce scheduled/due/start fallback priority. Because event-cache contents are derived from the display field, changing `calendarDisplayDateTarget` may require an Obsidian restart or plugin reload for all open views to fully reflect the new policy.
 
 The `openEditModalAfterBacklogDrop` setting gates the Tasks plugin edit modal after backlog drops. Its default is `false`, so the normal drag/drop path stays fast and non-blocking unless the user explicitly opts into the modal.
 
