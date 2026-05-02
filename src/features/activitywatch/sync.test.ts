@@ -341,4 +341,81 @@ describe('ActivityWatch automatic sync backend gate', () => {
     expect(requestUrlMock).not.toHaveBeenCalled();
     expect(getInstanceMock).not.toHaveBeenCalled();
   });
+
+  const makeSyncContractPlugin = (
+    activityWatch: Partial<typeof DEFAULT_SETTINGS.activityWatch>
+  ): {
+    plugin: Parameters<typeof syncActivityWatch>[0];
+    saveSettingsMock: jest.Mock;
+  } => {
+    const saveSettingsMock = jest.fn(() => Promise.resolve());
+    const plugin = {
+      settings: {
+        ...DEFAULT_SETTINGS,
+        activityWatch: {
+          ...DEFAULT_SETTINGS.activityWatch,
+          enabled: true,
+          targetCalendarId: 'daily',
+          syncStrategy: 'auto',
+          autoSyncEnabled: false,
+          profiles: [],
+          ...activityWatch
+        }
+      },
+      providerRegistry: {
+        getInstance: jest.fn(() => ({
+          getCapabilities: jest.fn(() => ({
+            canCreate: true,
+            canEdit: true,
+            canDelete: true
+          }))
+        })),
+        buildMap: jest.fn()
+      },
+      cache: {
+        store: {
+          getAllEvents: jest.fn(() => [])
+        }
+      },
+      saveSettings: saveSettingsMock
+    } as unknown as Parameters<typeof syncActivityWatch>[0];
+
+    return { plugin, saveSettingsMock };
+  };
+
+  it('updates last checked time after a manual Sync from Last Checked run', async () => {
+    requestUrlMock.mockResolvedValue({
+      status: 200,
+      json: {},
+      text: '{}'
+    } as never);
+    const { plugin, saveSettingsMock } = makeSyncContractPlugin({
+      syncStrategy: 'auto',
+      lastSyncTime: 0
+    });
+
+    await syncActivityWatch(plugin, { suppressNotices: true });
+
+    expect(plugin.settings.activityWatch.lastSyncTime).toBeGreaterThan(0);
+    expect(saveSettingsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not update last checked time after a manual Custom Date Range run', async () => {
+    requestUrlMock.mockResolvedValue({
+      status: 200,
+      json: {},
+      text: '{}'
+    } as never);
+    const { plugin, saveSettingsMock } = makeSyncContractPlugin({
+      syncStrategy: 'custom',
+      lastSyncTime: 123,
+      customDateStart: '2026-05-01T00:00:00.000Z',
+      customDateEnd: '2026-05-02T00:00:00.000Z'
+    });
+
+    await syncActivityWatch(plugin, { suppressNotices: true });
+
+    expect(plugin.settings.activityWatch.lastSyncTime).toBe(123);
+    expect(saveSettingsMock).not.toHaveBeenCalled();
+  });
 });

@@ -737,17 +737,18 @@
       }
     },
     "activityWatchSetup": {
-      "title": "Configuración de ActivityWatch",
       "saved": "Configuración de ActivityWatch guardada",
       "strategy": {
         "title": "Estrategia de Sincronización",
         "auto": "Sincronizar desde la última comprobación",
         "custom": "Rango de fechas personalizado",
         "datePlaceholder": "Seleccionar fecha de inicio y fin",
-        "lastSynced": "Last synced",
-        "neverSynced": "Never synced",
+        "lastSynced": "Last checked",
+        "neverSynced": "Never checked",
         "autoSyncEnabled": "Enable automatic sync",
-        "autoSyncIntervalMins": "Auto-sync interval (minutes)"
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)",
+        "autoDescription": "Manual and automatic syncs update the last checked time.",
+        "customDescription": "Debug-only manual range. It never updates the last checked time and cannot run automatically."
       },
       "buttons": {
         "save": "Guardar",

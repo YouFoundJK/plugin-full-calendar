@@ -737,7 +737,6 @@
       }
     },
     "activityWatchSetup": {
-      "title": "ActivityWatch Configuration",
       "saved": "Activitywatch configuration saved",
       "apiUrl": "API URL",
       "targetCalendar": "Target Calendar",
@@ -747,10 +746,12 @@
         "auto": "Sync from Last Checked",
         "custom": "Custom Date Range",
         "datePlaceholder": "Select Start and End Date",
-        "lastSynced": "Last synced",
-        "neverSynced": "Never synced",
+        "lastSynced": "Last checked",
+        "neverSynced": "Never checked",
         "autoSyncEnabled": "Enable automatic sync",
-        "autoSyncIntervalMins": "Auto-sync interval (minutes)"
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)",
+        "autoDescription": "Manual and automatic syncs update the last checked time.",
+        "customDescription": "Debug-only manual range. It never updates the last checked time and cannot run automatically."
       },
       "profiles": {
         "title": "Context Profiles (Best-Fit FSM)",

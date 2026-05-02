@@ -212,22 +212,22 @@
         "slotMaxTime": {
           "label": "Späteste angezeigte Zeit",
           "description": "Setzen Sie die späteste Zeit in Zeitrasteransichten (Format: HH:mm)"
-          },
-          "allDaySlot": {
-            "label": "Ganztagszeile anzeigen (Woche/Tag)",
-            "description": "Aktivieren oder deaktivieren Sie die Ganztagszeile oben in den Wochen- und Tagesansichten."
-          },
-          "timeGridDayHeaderFormat": {
-            "label": "Datumsformat für Wochen-/Tagesüberschrift",
-            "description": "Wählen Sie, wie die Tagesbezeichnungen in Wochen- und Tagesansichten angezeigt werden.",
-            "options": {
-              "ddmmDay": "TT/MM Tag",
-              "mmddDay": "MM/TT Tag",
-              "dayDdmm": "Tag TT/MM",
-              "dayMmdd": "Tag MM/TT",
-              "ddmmyyyyDay": "TT/MM/JJJJ Tag",
-              "mmddyyyyDay": "MM/TT/JJJJ Tag"
-            }
+        },
+        "allDaySlot": {
+          "label": "Ganztagszeile anzeigen (Woche/Tag)",
+          "description": "Aktivieren oder deaktivieren Sie die Ganztagszeile oben in den Wochen- und Tagesansichten."
+        },
+        "timeGridDayHeaderFormat": {
+          "label": "Datumsformat für Wochen-/Tagesüberschrift",
+          "description": "Wählen Sie, wie die Tagesbezeichnungen in Wochen- und Tagesansichten angezeigt werden.",
+          "options": {
+            "ddmmDay": "TT/MM Tag",
+            "mmddDay": "MM/TT Tag",
+            "dayDdmm": "Tag TT/MM",
+            "dayMmdd": "Tag MM/TT",
+            "ddmmyyyyDay": "TT/MM/JJJJ Tag",
+            "mmddyyyyDay": "MM/TT/JJJJ Tag"
+          }
         }
       },
       "dayVisibility": {
@@ -737,17 +737,18 @@
       }
     },
     "activityWatchSetup": {
-      "title": "ActivityWatch-Konfiguration",
       "saved": "ActivityWatch-Konfiguration gespeichert",
       "strategy": {
         "title": "Synchronisierungsstrategie",
         "auto": "Seit der letzten Prüfung synchronisieren",
         "custom": "Benutzerdefinierter Datumsbereich",
         "datePlaceholder": "Start- und Enddatum auswählen",
-        "lastSynced": "Last synced",
-        "neverSynced": "Never synced",
+        "lastSynced": "Last checked",
+        "neverSynced": "Never checked",
         "autoSyncEnabled": "Enable automatic sync",
-        "autoSyncIntervalMins": "Auto-sync interval (minutes)"
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)",
+        "autoDescription": "Manual and automatic syncs update the last checked time.",
+        "customDescription": "Debug-only manual range. It never updates the last checked time and cannot run automatically."
       },
       "buttons": {
         "save": "Speichern",

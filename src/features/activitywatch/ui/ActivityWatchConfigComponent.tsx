@@ -5,6 +5,7 @@ import FullCalendarPlugin from '../../../main';
 import { t } from '../../i18n/i18n';
 import { ContextProfile, TriggerRule } from '../../../types/settings';
 import { createDatePicker } from '../../../ui/components/forms/DatePicker';
+import { toDocsUrl } from '../../../ui/settings/docsLinks';
 
 interface Props {
   plugin: FullCalendarPlugin;
@@ -18,7 +19,6 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
     supportingEvidenceRules: profile.supportingEvidenceRules || []
   }));
 
-  // Sync settings
   const [apiUrl, setApiUrl] = useState(settings.apiUrl);
   const [targetCalendarId, setTargetCalendarId] = useState(settings.targetCalendarId);
   const [syncStrategy, setSyncStrategy] = useState<'auto' | 'custom'>(settings.syncStrategy);
@@ -33,8 +33,6 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
     }
     return [];
   });
-
-  // FSM Profile settings
   const [profiles, setProfiles] = useState<ContextProfile[]>(normalizedProfiles);
 
   React.useEffect(() => {
@@ -52,7 +50,8 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
     plugin.settings.activityWatch.apiUrl = apiUrl;
     plugin.settings.activityWatch.targetCalendarId = targetCalendarId;
     plugin.settings.activityWatch.syncStrategy = syncStrategy;
-    plugin.settings.activityWatch.autoSyncEnabled = autoSyncEnabled;
+    plugin.settings.activityWatch.autoSyncEnabled =
+      syncStrategy === 'auto' ? autoSyncEnabled : false;
     plugin.settings.activityWatch.autoSyncIntervalMins = Math.max(1, autoSyncIntervalMins || 10);
     plugin.settings.activityWatch.customDateStart = dateRange[0] ? dateRange[0].toISOString() : '';
     plugin.settings.activityWatch.customDateEnd = dateRange[1] ? dateRange[1].toISOString() : '';
@@ -112,20 +111,18 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
     ? new Date(settings.lastSyncTime).toLocaleString()
     : t('modals.activityWatchSetup.strategy.neverSynced');
 
-  // Helper for rendering rule sub-lists
   const renderRuleList = (
     profile: ContextProfile,
     listType: 'primaryEvidenceRules' | 'supportingEvidenceRules' | 'hardBreakRules'
   ) => {
-    // Optional chaining because migrated profiles might crash if these arrays are missing
     const rules = profile[listType] || [];
     const setRules = (newRules: TriggerRule[]) =>
       updateProfile(profile.id, { [listType]: newRules });
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '5px' }}>
+      <div className="activitywatch-rule-list">
         {rules.map(rule => (
-          <div key={rule.id} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+          <div key={rule.id} className="activitywatch-rule-row">
             <input
               list={`buckets-${rule.id}`}
               type="text"
@@ -136,7 +133,6 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
                 )
               }
               placeholder={t('modals.activityWatchSetup.rules.bucketPlaceholder')}
-              style={{ width: '120px' }}
             />
             <datalist id={`buckets-${rule.id}`}>
               <option value="web" />
@@ -154,7 +150,6 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
                 )
               }
               placeholder={t('modals.activityWatchSetup.rules.fieldPlaceholder')}
-              style={{ width: '100px' }}
             />
             <datalist id={`fields-${rule.id}`}>
               {rule.bucketType === 'web' && (
@@ -174,6 +169,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
               )}
               {rule.bucketType === 'afk' && <option value="status" />}
             </datalist>
+
             <input
               type="text"
               value={rule.matchPattern}
@@ -183,9 +179,8 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
                 )
               }
               placeholder={t('modals.activityWatchSetup.rules.matchPatternPlaceholder')}
-              style={{ flexGrow: 1 }}
             />
-            <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <label className="activitywatch-rule-checkbox">
               <input
                 type="checkbox"
                 checked={rule.useRegex}
@@ -198,17 +193,18 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
               {t('modals.activityWatchSetup.rules.regex')}
             </label>
             <button
+              type="button"
               onClick={() => setRules(rules.filter(r => r.id !== rule.id))}
               className="mod-warning"
-              style={{ padding: '0 8px' }}
             >
-              ✕
+              x
             </button>
           </div>
         ))}
         <button
+          type="button"
+          className="activitywatch-inline-button"
           onClick={() => setRules([...rules, createEmptyRule()])}
-          style={{ alignSelf: 'flex-start' }}
         >
           {t('modals.activityWatchSetup.rules.btnAdd')}
         </button>
@@ -217,248 +213,226 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
   };
 
   return (
-    <div
-      className="fc-settings-modal"
-      style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}
-    >
-      <h2>{t('modals.activityWatchSetup.title')}</h2>
-
-      <div
-        style={{
-          border: '1px solid var(--background-modifier-border)',
-          padding: '15px',
-          borderRadius: '5px',
-          backgroundColor: 'var(--background-secondary)'
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>{t('modals.activityWatchSetup.strategy.title')}</h3>
-        <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <input
-              type="radio"
-              name="syncStrategy"
-              checked={syncStrategy === 'auto'}
-              onChange={() => setSyncStrategy('auto')}
-            />
-            {t('modals.activityWatchSetup.strategy.auto')}
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <input
-              type="radio"
-              name="syncStrategy"
-              checked={syncStrategy === 'custom'}
-              onChange={() => setSyncStrategy('custom')}
-            />
-            {t('modals.activityWatchSetup.strategy.custom')}
-          </label>
-        </div>
-        {syncStrategy === 'auto' && (
-          <div
-            style={{
-              fontSize: '0.9em',
-              color: 'var(--text-muted)',
-              marginBottom: '10px'
-            }}
-          >
-            {t('modals.activityWatchSetup.strategy.lastSynced')}: {lastSyncText}
+    <div className="activitywatch-settings-shell">
+      <div className="activitywatch-settings-body">
+        <section className="activitywatch-settings-heading setting-item">
+          <div className="setting-item-info">
+            <div className="setting-item-name">{t('settings.activityWatch.title')}</div>
+            <div className="setting-item-description">
+              {t('settings.activityWatch.enable.description')} Learn more:{' '}
+              <a href={toDocsUrl('user/features/activitywatch')}>ActivityWatch integration</a>
+              {' | '}
+              <a href={toDocsUrl('user/guides/troubleshooting')}>Troubleshooting</a>
+            </div>
           </div>
-        )}
-        {syncStrategy === 'custom' && (
-          <div>
-            <input
-              ref={dateInputRef}
-              type="text"
-              placeholder={t('modals.activityWatchSetup.strategy.datePlaceholder')}
-              style={{ width: '100%' }}
-            />
-          </div>
-        )}
+        </section>
 
-        <div
-          style={{
-            marginTop: '12px',
-            paddingTop: '12px',
-            borderTop: '1px solid var(--background-modifier-border)'
-          }}
-        >
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <input
-              type="checkbox"
-              checked={autoSyncEnabled}
-              onChange={e => setAutoSyncEnabled(e.target.checked)}
-            />
-            {t('modals.activityWatchSetup.strategy.autoSyncEnabled')}
-          </label>
-
-          <label
-            style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '260px' }}
-          >
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.9em' }}>
-              {t('modals.activityWatchSetup.strategy.autoSyncIntervalMins')}
-            </span>
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={autoSyncIntervalMins}
-              onChange={e => setAutoSyncIntervalMins(Math.max(1, parseInt(e.target.value) || 1))}
-              disabled={!autoSyncEnabled}
-            />
-          </label>
-        </div>
-      </div>
-
-      <div className="setting-item">
-        <div className="setting-item-info">
-          <div className="setting-item-name">{t('modals.activityWatchSetup.apiUrl')}</div>
-        </div>
-        <div className="setting-item-control">
-          <input
-            type="text"
-            value={apiUrl}
-            onChange={e => setApiUrl(e.target.value)}
-            spellCheck={false}
-          />
-        </div>
-      </div>
-
-      <div className="setting-item">
-        <div className="setting-item-info">
-          <div className="setting-item-name">{t('modals.activityWatchSetup.targetCalendar')}</div>
-        </div>
-        <div className="setting-item-control">
-          <select value={targetCalendarId} onChange={e => setTargetCalendarId(e.target.value)}>
-            <option value="">{t('modals.activityWatchSetup.unselected')}</option>
-            {availableProviders.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <h3>{t('modals.activityWatchSetup.profiles.title')}</h3>
-      <div
-        style={{
-          maxHeight: '500px',
-          overflowY: 'auto',
-          border: '1px solid var(--background-modifier-border)',
-          padding: '10px',
-          borderRadius: '5px'
-        }}
-      >
-        {profiles.map(profile => (
-          <div
-            key={profile.id}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              padding: '15px',
-              marginBottom: '15px',
-              backgroundColor: 'var(--background-secondary)',
-              borderRadius: '4px'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong>{t('modals.activityWatchSetup.profiles.config')}</strong>
-              <button onClick={() => deleteProfile(profile.id)} className="mod-warning">
-                {t('modals.activityWatchSetup.profiles.btnDelete')}
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <label>
-                {t('modals.activityWatchSetup.profiles.name')}
-                <input
-                  type="text"
-                  value={profile.name}
-                  onChange={e => updateProfile(profile.id, { name: e.target.value })}
-                  style={{ width: '100%', marginTop: '5px' }}
-                />
-              </label>
-              <label>
-                {t('modals.activityWatchSetup.profiles.category')}
-                <input
-                  type="text"
-                  value={profile.color}
-                  onChange={e => updateProfile(profile.id, { color: e.target.value })}
-                  style={{ width: '100%', marginTop: '5px' }}
-                />
-              </label>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <label>
-                {t('modals.activityWatchSetup.profiles.activationThreshold')}
-                <input
-                  type="number"
-                  min="0"
-                  value={profile.activationThresholdMins}
-                  onChange={e =>
-                    updateProfile(profile.id, {
-                      activationThresholdMins: parseInt(e.target.value) || 0
-                    })
-                  }
-                  style={{ width: '100%', marginTop: '5px' }}
-                />
-              </label>
-              <label>
-                {t('modals.activityWatchSetup.profiles.softBreakLimit')}
-                <input
-                  type="number"
-                  min="0"
-                  value={profile.softBreakLimitMins}
-                  onChange={e =>
-                    updateProfile(profile.id, { softBreakLimitMins: parseInt(e.target.value) || 0 })
-                  }
-                  style={{ width: '100%', marginTop: '5px' }}
-                />
-              </label>
-            </div>
-
+        <section className="activitywatch-settings-section">
+          <h3>{t('modals.activityWatchSetup.strategy.title')}</h3>
+          <div className="activitywatch-segmented-row">
             <label>
-              {t('modals.activityWatchSetup.profiles.titleTemplate')}
               <input
-                type="text"
-                value={profile.titleTemplate}
-                onChange={e => updateProfile(profile.id, { titleTemplate: e.target.value })}
-                style={{ width: '100%', marginTop: '5px' }}
-                placeholder={t('modals.activityWatchSetup.profiles.titleTemplatePlaceholder')}
+                type="radio"
+                name="syncStrategy"
+                checked={syncStrategy === 'auto'}
+                onChange={() => setSyncStrategy('auto')}
               />
+              {t('modals.activityWatchSetup.strategy.auto')}
             </label>
-
-            <div>
-              <strong>{t('modals.activityWatchSetup.profiles.primaryEvidenceRules')}</strong>
-              {renderRuleList(profile, 'primaryEvidenceRules')}
-            </div>
-
-            <div style={{ marginTop: '10px' }}>
-              <strong>{t('modals.activityWatchSetup.profiles.supportingEvidenceRules')}</strong>
-              {renderRuleList(profile, 'supportingEvidenceRules')}
-            </div>
-
-            <div style={{ marginTop: '10px' }}>
-              <strong>{t('modals.activityWatchSetup.profiles.hardBreakRules')}</strong>
-              {renderRuleList(profile, 'hardBreakRules')}
-            </div>
+            <label>
+              <input
+                type="radio"
+                name="syncStrategy"
+                checked={syncStrategy === 'custom'}
+                onChange={() => setSyncStrategy('custom')}
+              />
+              {t('modals.activityWatchSetup.strategy.custom')}
+            </label>
           </div>
-        ))}
-        <button onClick={addProfile}>
-          {t('modals.activityWatchSetup.profiles.btnAddProfile')}
-        </button>
+
+          {syncStrategy === 'auto' && (
+            <div className="activitywatch-muted-block">
+              {t('modals.activityWatchSetup.strategy.lastSynced')}: {lastSyncText}
+              <div>{t('modals.activityWatchSetup.strategy.autoDescription')}</div>
+            </div>
+          )}
+
+          {syncStrategy === 'custom' && (
+            <div className="activitywatch-custom-range">
+              <input
+                ref={dateInputRef}
+                type="text"
+                placeholder={t('modals.activityWatchSetup.strategy.datePlaceholder')}
+              />
+              <div className="activitywatch-muted-block">
+                {t('modals.activityWatchSetup.strategy.customDescription')}
+              </div>
+            </div>
+          )}
+
+          {syncStrategy === 'auto' && (
+            <div className="activitywatch-auto-sync-controls">
+              <label className="activitywatch-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={autoSyncEnabled}
+                  onChange={e => setAutoSyncEnabled(e.target.checked)}
+                />
+                {t('modals.activityWatchSetup.strategy.autoSyncEnabled')}
+              </label>
+
+              <label className="activitywatch-field-stack">
+                <span>{t('modals.activityWatchSetup.strategy.autoSyncIntervalMins')}</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={autoSyncIntervalMins}
+                  onChange={e =>
+                    setAutoSyncIntervalMins(Math.max(1, parseInt(e.target.value) || 1))
+                  }
+                  disabled={!autoSyncEnabled}
+                />
+              </label>
+            </div>
+          )}
+        </section>
+
+        <section className="setting-item">
+          <div className="setting-item-info">
+            <div className="setting-item-name">{t('modals.activityWatchSetup.apiUrl')}</div>
+          </div>
+          <div className="setting-item-control">
+            <input
+              type="text"
+              value={apiUrl}
+              onChange={e => setApiUrl(e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+        </section>
+
+        <section className="setting-item">
+          <div className="setting-item-info">
+            <div className="setting-item-name">{t('modals.activityWatchSetup.targetCalendar')}</div>
+          </div>
+          <div className="setting-item-control">
+            <select value={targetCalendarId} onChange={e => setTargetCalendarId(e.target.value)}>
+              <option value="">{t('modals.activityWatchSetup.unselected')}</option>
+              {availableProviders.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
+
+        <section className="activitywatch-settings-section">
+          <h3>{t('modals.activityWatchSetup.profiles.title')}</h3>
+          <div className="activitywatch-profile-list">
+            {profiles.map(profile => (
+              <div key={profile.id} className="activitywatch-profile">
+                <div className="activitywatch-profile-header">
+                  <strong>{t('modals.activityWatchSetup.profiles.config')}</strong>
+                  <button
+                    type="button"
+                    onClick={() => deleteProfile(profile.id)}
+                    className="mod-warning"
+                  >
+                    {t('modals.activityWatchSetup.profiles.btnDelete')}
+                  </button>
+                </div>
+
+                <div className="activitywatch-profile-grid">
+                  <label>
+                    {t('modals.activityWatchSetup.profiles.name')}
+                    <input
+                      type="text"
+                      value={profile.name}
+                      onChange={e => updateProfile(profile.id, { name: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    {t('modals.activityWatchSetup.profiles.category')}
+                    <input
+                      type="text"
+                      value={profile.color}
+                      onChange={e => updateProfile(profile.id, { color: e.target.value })}
+                    />
+                  </label>
+                </div>
+
+                <div className="activitywatch-profile-grid">
+                  <label>
+                    {t('modals.activityWatchSetup.profiles.activationThreshold')}
+                    <input
+                      type="number"
+                      min="0"
+                      value={profile.activationThresholdMins}
+                      onChange={e =>
+                        updateProfile(profile.id, {
+                          activationThresholdMins: parseInt(e.target.value) || 0
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    {t('modals.activityWatchSetup.profiles.softBreakLimit')}
+                    <input
+                      type="number"
+                      min="0"
+                      value={profile.softBreakLimitMins}
+                      onChange={e =>
+                        updateProfile(profile.id, {
+                          softBreakLimitMins: parseInt(e.target.value) || 0
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+
+                <label className="activitywatch-field-stack">
+                  <span>{t('modals.activityWatchSetup.profiles.titleTemplate')}</span>
+                  <input
+                    type="text"
+                    value={profile.titleTemplate}
+                    onChange={e => updateProfile(profile.id, { titleTemplate: e.target.value })}
+                    placeholder={t('modals.activityWatchSetup.profiles.titleTemplatePlaceholder')}
+                  />
+                </label>
+
+                <div>
+                  <strong>{t('modals.activityWatchSetup.profiles.primaryEvidenceRules')}</strong>
+                  {renderRuleList(profile, 'primaryEvidenceRules')}
+                </div>
+
+                <div>
+                  <strong>{t('modals.activityWatchSetup.profiles.supportingEvidenceRules')}</strong>
+                  {renderRuleList(profile, 'supportingEvidenceRules')}
+                </div>
+
+                <div>
+                  <strong>{t('modals.activityWatchSetup.profiles.hardBreakRules')}</strong>
+                  {renderRuleList(profile, 'hardBreakRules')}
+                </div>
+              </div>
+            ))}
+            <button type="button" className="activitywatch-inline-button" onClick={addProfile}>
+              {t('modals.activityWatchSetup.profiles.btnAddProfile')}
+            </button>
+          </div>
+        </section>
       </div>
 
-      <div
-        className="setting-item-control"
-        style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}
-      >
-        <button onClick={onClose}>{t('modals.activityWatchSetup.buttons.cancel')}</button>
-        <button className="mod-cta" onClick={() => void handleSave()}>
+      <footer className="activitywatch-settings-footer">
+        <button type="button" onClick={onClose}>
+          {t('modals.activityWatchSetup.buttons.cancel')}
+        </button>
+        <button type="button" className="mod-cta" onClick={() => void handleSave()}>
           {t('modals.activityWatchSetup.buttons.save')}
         </button>
-      </div>
+      </footer>
     </div>
   );
 };

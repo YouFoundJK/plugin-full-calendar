@@ -10,7 +10,7 @@
    - Phase 2: greedy best-fit overlap resolution
 4. Final blocks are converted into Full Calendar events.
 5. Sync applies one of two mutation paths:
-  - Continuity rewrite path (create-first, delete-later)
+  - Continuity rewrite path (delete matched ActivityWatch-owned events, then write rebuilt blocks)
   - Standard overlap path (ignore/extend/replace/create)
 
 ## Compound State Discretization
@@ -47,6 +47,23 @@ Behavioral invariants:
 - Session commits end at last evidence timestamp, not trailing mismatches.
 
 ## Sync-boundary methodology
+
+### Strategy contract
+
+ActivityWatch has two sync strategies:
+
+1. **Sync from Last Checked**
+   - Manual sync fetches from `lastSyncTime` to the current run's end time.
+   - Automatic sync uses the same strategy on the configured interval.
+   - After a successful non-custom sync, `lastSyncTime` is advanced to the run end time.
+   - Both manual and automatic syncs advance `lastSyncTime`.
+2. **Custom Date Range**
+   - Manual-only debug/backfill strategy.
+   - Uses the configured explicit start/end dates or explicit override dates.
+   - Never advances `lastSyncTime`.
+   - Automatic sync is disabled while this strategy is selected.
+
+These strategy rules are architectural invariants. UI, settings persistence, and backend sync must all preserve them.
 
 ### Problem being solved
 
@@ -101,10 +118,14 @@ If validated:
 
 1. Sync start is re-anchored to prior event start minus continuity buffer.
 2. Final blocks are rebuilt from anchor to sync end.
-3. New blocks are created first.
-4. Prior event is deleted only if created replacement blocks safely cover prior range.
+3. Existing ActivityWatch-owned events in the rebuilt range are resolved to cache session ids.
+4. Existing ActivityWatch-owned events are deleted from the configured provider.
+5. Rebuilt final blocks are written back into the configured provider.
+6. `lastSyncTime` advances to sync end after the non-custom sync finishes.
 
-If validation fails, source evidence is missing, or delete capability is unavailable, rewrite delete is skipped (add-only safety behavior).
+If validation fails, source evidence is missing, delete capability is unavailable, or an existing event cannot be resolved/deleted, the continuity rewrite must not create replacement blocks. Falling through to duplicate add-only behavior is a bug.
+
+Continuity and overlap checks must use normalized/cache-backed provider events. Raw provider reads are not sufficient because Daily Note and similar providers may store profile ownership in the title or in the cache-normalized event shape instead of inline category fields.
 
 ### Standard overlap path (fallback)
 

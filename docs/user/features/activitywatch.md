@@ -167,15 +167,15 @@ Available template variables depend on the watcher data. Common ones:
 
 | Strategy | Description |
 |---|---|
-| **Sync from Last Checked** | Automatically pulls all new data since the last sync. Also performs continuity ownership checks and can rebuild from the original continuity start when safe. |
-| **Custom Date Range** | Manually specify a start and end date. Useful for backfilling past data or testing. |
+| **Sync from Last Checked** | Pulls data from the last checked time to the current run. Manual syncs and automatic syncs both advance the last checked time after a successful run. Also performs continuity ownership checks and can rebuild from the original continuity start when safe. |
+| **Custom Date Range** | Debug-only manual range. It does not update the last checked time and it cannot run automatically. Useful for backfilling or testing a specific window. |
 
 !!! warning "Custom Date Range"
-    Ensure the start and end dates are different. Setting both to the same date results in a zero-width time window and no events will be fetched.
+    Custom Date Range is intentionally isolated from normal syncing. Ensure the start and end dates are different. Setting both to the same date results in a zero-width time window and no events will be fetched.
 
 ### Last Sync Visibility
 
-When using **Sync from Last Checked**, the configuration UI now shows the latest synced timestamp directly below that strategy option.
+When using **Sync from Last Checked**, the configuration UI shows the latest checked timestamp directly below that strategy option. Manual sync and automatic sync both update this timestamp. Custom Date Range never updates it.
 
 ### Continuity Rewrite Safety Rules
 
@@ -185,11 +185,9 @@ For auto sync, continuity rewrite runs only when all checks pass:
 2. Reconstructing ActivityWatch blocks for that event's exact prior range yields a matching normalized title.
 3. ActivityWatch still has source evidence near the prior event start (1-minute tolerance).
 
-If continuity is validated, sync anchors from the original continuity start (with a small buffer), rebuilds blocks through now, and creates replacement events first.
+If continuity is validated, sync anchors from the original continuity start (with a small buffer), rebuilds blocks through now, deletes the existing ActivityWatch-owned events in that rebuilt range, and writes the reconstructed blocks back into the configured provider.
 
-Only after replacement coverage safely spans the original prior range does the plugin delete the prior continuity event. If coverage is incomplete, source evidence is missing, or delete capability is unavailable, old data is kept and only new events are added.
-
-This behavior is intentionally safety-first to avoid accidental data loss.
+If coverage is incomplete, source evidence is missing, delete capability is unavailable, or an existing event cannot be resolved/deleted, the continuity rewrite is skipped instead of creating duplicates.
 
 ### Auto Sync
 
@@ -200,7 +198,7 @@ You can enable automatic ActivityWatch syncing from the configuration modal.
 | **Enable automatic sync** | Runs ActivityWatch sync on a timer without manually triggering the command. |
 | **Auto-sync interval (minutes)** | Interval between sync runs. Default is **10** minutes. |
 
-Auto-sync runs only for the **Sync from Last Checked** strategy.
+Auto-sync runs only for the **Sync from Last Checked** strategy. Selecting **Custom Date Range** disables automatic sync because custom ranges are manual debug/backfill runs and do not advance the last checked time.
 
 ## 6. Global Kill Switch Behavior
 

@@ -212,23 +212,23 @@
         "slotMaxTime": {
           "label": "Orario massimo da visualizzare",
           "description": "Imposta l'orario massimo visibile nelle viste a griglia (formato: HH:mm)"
-          },
-          "allDaySlot": {
-            "label": "Mostra riga tutto il giorno (settimana/giorno)",
-            "description": "Attiva o disattiva la riga tutto il giorno in alto nelle viste settimana e giorno."
-          },
-          "timeGridDayHeaderFormat": {
-            "label": "Formato data intestazione settimana/giorno",
-            "description": "Scegli come visualizzare le etichette dei giorni nelle viste settimana e giorno.",
-            "options": {
-              "ddmmDay": "GG/MM giorno",
-              "mmddDay": "MM/GG giorno",
-              "dayDdmm": "giorno GG/MM",
-              "dayMmdd": "giorno MM/GG",
-              "ddmmyyyyDay": "GG/MM/AAAA giorno",
-              "mmddyyyyDay": "MM/GG/AAAA giorno"
-            }
+        },
+        "allDaySlot": {
+          "label": "Mostra riga tutto il giorno (settimana/giorno)",
+          "description": "Attiva o disattiva la riga tutto il giorno in alto nelle viste settimana e giorno."
+        },
+        "timeGridDayHeaderFormat": {
+          "label": "Formato data intestazione settimana/giorno",
+          "description": "Scegli come visualizzare le etichette dei giorni nelle viste settimana e giorno.",
+          "options": {
+            "ddmmDay": "GG/MM giorno",
+            "mmddDay": "MM/GG giorno",
+            "dayDdmm": "giorno GG/MM",
+            "dayMmdd": "giorno MM/GG",
+            "ddmmyyyyDay": "GG/MM/AAAA giorno",
+            "mmddyyyyDay": "MM/GG/AAAA giorno"
           }
+        }
       },
       "dayVisibility": {
         "title": "Visibilità giorni",
@@ -737,17 +737,18 @@
       }
     },
     "activityWatchSetup": {
-      "title": "Configurazione ActivityWatch",
       "saved": "Configurazione ActivityWatch salvata",
       "strategy": {
         "title": "Strategia di sincronizzazione",
         "auto": "Sincronizza dall'ultimo controllo",
         "custom": "Intervallo di date personalizzato",
         "datePlaceholder": "Seleziona data di inizio e fine",
-        "lastSynced": "Last synced",
-        "neverSynced": "Never synced",
+        "lastSynced": "Last checked",
+        "neverSynced": "Never checked",
         "autoSyncEnabled": "Enable automatic sync",
-        "autoSyncIntervalMins": "Auto-sync interval (minutes)"
+        "autoSyncIntervalMins": "Auto-sync interval (minutes)",
+        "autoDescription": "Manual and automatic syncs update the last checked time.",
+        "customDescription": "Debug-only manual range. It never updates the last checked time and cannot run automatically."
       },
       "buttons": {
         "save": "Salva",
