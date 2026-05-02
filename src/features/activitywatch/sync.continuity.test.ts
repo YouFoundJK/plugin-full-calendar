@@ -1,4 +1,5 @@
 import { __testing } from './sync';
+import { createContinuityBlocksAndReplacePriorEvent } from './sync-continuity';
 
 describe('ActivityWatch continuity helpers', () => {
   const makePrior = (overrides: Partial<unknown> = {}) =>
@@ -122,5 +123,86 @@ describe('ActivityWatch continuity helpers', () => {
 
     const ok = __testing.coversPriorEventRange(blocks as never, prior, 1_000);
     expect(ok).toBe(false);
+  });
+
+  it('does not create replacement blocks when the provider cannot delete prior events', async () => {
+    const addEvent = jest.fn();
+    const deleteEvent = jest.fn();
+    const plugin = {
+      cache: {
+        addEvent,
+        deleteEvent
+      }
+    };
+    const prior = makePrior({ startMs: 10_000, endMs: 70_000 });
+    const blocks = [
+      {
+        startMs: 10_000,
+        endMs: 120_000,
+        title: 'Focus Work',
+        profileColor: 'blue',
+        profileName: 'Focus'
+      }
+    ];
+
+    const count = await createContinuityBlocksAndReplacePriorEvent(
+      plugin as never,
+      'aw',
+      new Map(),
+      blocks,
+      prior,
+      false,
+      [prior],
+      new Set(['blue'])
+    );
+
+    expect(count).toBe(0);
+    expect(addEvent).not.toHaveBeenCalled();
+    expect(deleteEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not create replacement blocks when the prior event session id cannot be resolved', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const addEvent = jest.fn();
+    const deleteEvent = jest.fn();
+    const plugin = {
+      cache: {
+        addEvent,
+        deleteEvent
+      }
+    };
+    const prior = makePrior({
+      sessionId: null,
+      startMs: 10_000,
+      endMs: 70_000
+    });
+    const blocks = [
+      {
+        startMs: 10_000,
+        endMs: 120_000,
+        title: 'Focus Work',
+        profileColor: 'blue',
+        profileName: 'Focus'
+      }
+    ];
+
+    try {
+      const count = await createContinuityBlocksAndReplacePriorEvent(
+        plugin as never,
+        'aw',
+        new Map(),
+        blocks,
+        prior,
+        true,
+        [prior],
+        new Set(['blue'])
+      );
+
+      expect(count).toBe(0);
+      expect(addEvent).not.toHaveBeenCalled();
+      expect(deleteEvent).not.toHaveBeenCalled();
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 });

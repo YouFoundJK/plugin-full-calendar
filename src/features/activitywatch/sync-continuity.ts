@@ -169,58 +169,75 @@ export async function createContinuityBlocksAndReplacePriorEvent(
 ): Promise<number> {
   const sortedBlocks = [...blocks].sort((a, b) => a.startMs - b.startMs);
 
+  if (!canDeleteExistingEvent) {
+    return 0;
+  }
+
   const hasSafeCoverage = coversPriorEventRange(sortedBlocks, priorEvent, CONTINUITY_BUFFER_MS);
   if (!hasSafeCoverage) {
     return 0;
   }
 
-  if (canDeleteExistingEvent) {
-    const startThreshold = priorEvent.startMs - CONTINUITY_BUFFER_MS;
-    const toDelete = existingOverlapEvents.filter(
-      existing =>
-        isKnownActivityWatchProfileEvent(existing, knownProfileSignatures) &&
-        existing.startMs >= startThreshold
-    );
+  const startThreshold = priorEvent.startMs - CONTINUITY_BUFFER_MS;
+  const toDelete = existingOverlapEvents.filter(
+    existing =>
+      isKnownActivityWatchProfileEvent(existing, knownProfileSignatures) &&
+      existing.startMs >= startThreshold
+  );
 
-    for (const existing of toDelete) {
-      let sessionId = existing.sessionId;
-      if (!sessionId) {
-        sessionId = recoverSessionIdForPriorEvent(sessionIndex, existing);
+  if (toDelete.length === 0) {
+    console.error(
+      'ActivityWatch continuity rewrite failed: detected a continuous session but found no prior ActivityWatch events to replace.',
+      {
+        priorEventTitle: priorEvent.event.title,
+        priorEventStartMs: priorEvent.startMs,
+        priorEventEndMs: priorEvent.endMs
       }
-      if (sessionId) {
-        try {
-          await plugin.cache.deleteEvent(sessionId, { force: true });
-        } catch (err) {
-          console.error(
-            'ActivityWatch continuity rewrite failed: detected a continuous session but could not delete the prior event before rewriting.',
-            {
-              sessionId,
-              title: existing.event.title,
-              category: existing.event.category,
-              startMs: existing.startMs,
-              endMs: existing.endMs,
-              priorEventTitle: priorEvent.event.title,
-              priorEventStartMs: priorEvent.startMs,
-              priorEventEndMs: priorEvent.endMs,
-              error: err
-            }
-          );
-          console.warn('ActivityWatch sync: failed to delete overlapping continuity event.', err);
+    );
+    return 0;
+  }
+
+  const resolvedDeletes: string[] = [];
+  for (const existing of toDelete) {
+    let sessionId = existing.sessionId;
+    if (!sessionId) {
+      sessionId = recoverSessionIdForPriorEvent(sessionIndex, existing);
+    }
+    if (sessionId) {
+      resolvedDeletes.push(sessionId);
+    } else {
+      console.error(
+        'ActivityWatch continuity rewrite failed: detected a continuous session but could not resolve the prior event to a deletable session id.',
+        {
+          title: existing.event.title,
+          category: existing.event.category,
+          startMs: existing.startMs,
+          endMs: existing.endMs,
+          priorEventTitle: priorEvent.event.title,
+          priorEventStartMs: priorEvent.startMs,
+          priorEventEndMs: priorEvent.endMs
         }
-      } else {
-        console.error(
-          'ActivityWatch continuity rewrite failed: detected a continuous session but could not resolve the prior event to a deletable session id.',
-          {
-            title: existing.event.title,
-            category: existing.event.category,
-            startMs: existing.startMs,
-            endMs: existing.endMs,
-            priorEventTitle: priorEvent.event.title,
-            priorEventStartMs: priorEvent.startMs,
-            priorEventEndMs: priorEvent.endMs
-          }
-        );
-      }
+      );
+      return 0;
+    }
+  }
+
+  for (const sessionId of resolvedDeletes) {
+    try {
+      await plugin.cache.deleteEvent(sessionId, { force: true });
+    } catch (err) {
+      console.error(
+        'ActivityWatch continuity rewrite failed: detected a continuous session but could not delete the prior event before rewriting.',
+        {
+          sessionId,
+          priorEventTitle: priorEvent.event.title,
+          priorEventStartMs: priorEvent.startMs,
+          priorEventEndMs: priorEvent.endMs,
+          error: err
+        }
+      );
+      console.warn('ActivityWatch sync: failed to delete overlapping continuity event.', err);
+      return 0;
     }
   }
 
