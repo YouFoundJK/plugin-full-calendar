@@ -37,6 +37,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from './PluginState';
 import { Notice } from 'obsidian';
 import { FullCalendarSettings } from '../types/settings';
 
@@ -112,7 +113,7 @@ export default class EventCache {
 
   constructor(plugin: FullCalendarPlugin) {
     this._plugin = plugin;
-    this.enhancer = new EventEnhancer(this.plugin.settings);
+    this.enhancer = new EventEnhancer(PluginState.getSettings());
     this.timeEngine = new TimeEngine(this);
     // REMOVE direct instantiation
     // this.recurringEventManager = new RecurringEventManager(this, this._plugin);
@@ -174,7 +175,7 @@ export default class EventCache {
   reset(): void {
     this.initialized = false;
     this.timeEngine.stop();
-    const infos = this.plugin.providerRegistry.getAllSources();
+    const infos = PluginState.getProviderRegistry().getAllSources();
     this.calendars.clear();
     this._store.clear();
     this.updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
@@ -187,7 +188,7 @@ export default class EventCache {
         return;
       }
       // CORRECTED: Get the pre-initialized INSTANCE for this source ID.
-      const instance = this.plugin.providerRegistry.getInstance(settingsId);
+      const instance = PluginState.getProviderRegistry().getInstance(settingsId);
       if (instance) {
         this.calendars.set(settingsId, instance);
       } else {
@@ -202,7 +203,7 @@ export default class EventCache {
    * Populate the cache with events from all sources.
    */
   async populate(): Promise<void> {
-    await this.plugin.providerRegistry.fetchAllByPriority(
+    await PluginState.getProviderRegistry().fetchAllByPriority(
       (calendarId, eventsForSync) => {
         this.syncCalendar(calendarId, eventsForSync);
       },
@@ -211,7 +212,7 @@ export default class EventCache {
         // We can trigger an initial sync/render here.
         void (async () => {
           this.initialized = true;
-          this.plugin.providerRegistry.buildMap(this._store);
+          PluginState.getProviderRegistry().buildMap(this._store);
           this.resync();
           await this.timeEngine.start();
         })();
@@ -225,15 +226,15 @@ export default class EventCache {
   // ====================================================================
 
   generateId(): string {
-    return this.plugin.providerRegistry.generateId();
+    return PluginState.getProviderRegistry().generateId();
   }
 
   public getGlobalIdentifier(event: OFCEvent, calendarId: string): string | null {
-    return this.plugin.providerRegistry.getGlobalIdentifier(event, calendarId);
+    return PluginState.getProviderRegistry().getGlobalIdentifier(event, calendarId);
   }
 
   public async getSessionId(globalIdentifier: string): Promise<string | null> {
-    return this.plugin.providerRegistry.getSessionId(globalIdentifier);
+    return PluginState.getProviderRegistry().getSessionId(globalIdentifier);
   }
 
   // ====================================================================
@@ -265,7 +266,7 @@ export default class EventCache {
     const eventsByCalendar = this._store.eventsByCalendar;
     for (const [calId, provider] of this.calendars.entries()) {
       const events = eventsByCalendar.get(calId) || [];
-      const calendarInfo = this.plugin.providerRegistry.getSource(calId);
+      const calendarInfo = PluginState.getProviderRegistry().getSource(calId);
       if (!calendarInfo) continue;
       const capabilities = provider.getCapabilities();
       const editable = capabilities.canCreate || capabilities.canEdit || capabilities.canDelete;
@@ -289,7 +290,7 @@ export default class EventCache {
     if (!details) return false;
     const provider = this.calendars.get(details.calendarId);
     if (!provider) return false;
-    const calendarInfo = this.plugin.providerRegistry.getSource(details.calendarId);
+    const calendarInfo = PluginState.getProviderRegistry().getSource(details.calendarId);
     if (!calendarInfo) return false;
     const capabilities = provider.getCapabilities();
     return capabilities.canCreate || capabilities.canEdit || capabilities.canDelete;
@@ -322,17 +323,18 @@ export default class EventCache {
     // display timezone to it so it is persisted correctly.
     if (!event.allDay && !event.timezone) {
       const displayTimezone =
-        this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        PluginState.getSettings().displayTimezone ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone;
       event.timezone = displayTimezone;
     }
     // Step 1: Get Provider, Config, and pre-flight checks
-    const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
+    const calendarInfo = PluginState.getProviderRegistry().getSource(calendarId);
     if (!calendarInfo) {
       new Notice(t('eventCache.calendarNotFound', { calendarId }));
       return false;
     }
     // CORRECTED: Check capabilities through the registry, not by getting a provider instance.
-    const capabilities = this.plugin.providerRegistry.getCapabilities(calendarId);
+    const capabilities = PluginState.getProviderRegistry().getCapabilities(calendarId);
     if (!capabilities) {
       new Notice(t('eventCache.providerNotFound', { type: calendarInfo.type }));
       return false;
@@ -353,7 +355,7 @@ export default class EventCache {
       id: optimisticId,
       event: optimisticEvent
     });
-    this.plugin.providerRegistry.addMapping(optimisticEvent, calendarId, optimisticId);
+    PluginState.getProviderRegistry().addMapping(optimisticEvent, calendarId, optimisticId);
 
     // Step 3: Immediate UI update
     const optimisticCacheEntry: CacheEntry = {
@@ -373,10 +375,8 @@ export default class EventCache {
       // Prepare the event for the provider (e.g., combine title and category)
       const eventForStorage = this.enhancer.prepareForStorage(event);
       // Delegate to ProviderRegistry
-      const [finalEvent, newLocation] = await this.plugin.providerRegistry.createEventInProvider(
-        calendarId,
-        eventForStorage
-      );
+      const [finalEvent, newLocation] =
+        await PluginState.getProviderRegistry().createEventInProvider(calendarId, eventForStorage);
 
       // SUCCESS: The I/O succeeded. Update the store with the authoritative event.
       // The `finalEvent` from the provider is the source of truth. It needs to be enhanced
@@ -393,8 +393,8 @@ export default class EventCache {
       });
 
       // Update ID mapping with the new authoritative data.
-      this.plugin.providerRegistry.removeMapping(optimisticId);
-      this.plugin.providerRegistry.addMapping(authoritativeEvent, calendarId, optimisticId);
+      PluginState.getProviderRegistry().removeMapping(optimisticId);
+      PluginState.getProviderRegistry().addMapping(authoritativeEvent, calendarId, optimisticId);
 
       // Flush this "correction" to the UI. The event is already visible,
       // but this updates its data to the final state from the server.
@@ -410,7 +410,7 @@ export default class EventCache {
       });
 
       // Roll back store and mappings
-      this.plugin.providerRegistry.removeMapping(optimisticId);
+      PluginState.getProviderRegistry().removeMapping(optimisticId);
       this._store.delete(optimisticId);
 
       // Roll back UI
@@ -461,7 +461,7 @@ export default class EventCache {
     const handle = provider.getEventHandle(event);
 
     // Step 3: Optimistic state mutation
-    this.plugin.providerRegistry.removeMapping(eventId);
+    PluginState.getProviderRegistry().removeMapping(eventId);
     this._store.delete(eventId);
 
     // Step 4: Immediate UI update
@@ -482,7 +482,7 @@ export default class EventCache {
     }
 
     try {
-      await this.plugin.providerRegistry.deleteEventInProvider(eventId, event, calendarId);
+      await PluginState.getProviderRegistry().deleteEventInProvider(eventId, event, calendarId);
       this.timeEngine.scheduleCacheRebuild();
       // SUCCESS: The external source is now in sync with the cache.
     } catch (e) {
@@ -508,7 +508,7 @@ export default class EventCache {
       });
 
       // Restore ID mapping
-      this.plugin.providerRegistry.addMapping(
+      PluginState.getProviderRegistry().addMapping(
         originalDetails.event,
         originalDetails.calendarId,
         originalDetails.id
@@ -552,7 +552,8 @@ export default class EventCache {
   ): Promise<boolean> {
     if (!newEvent.allDay && !newEvent.timezone) {
       const displayTimezone =
-        this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        PluginState.getSettings().displayTimezone ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone;
       newEvent.timezone = displayTimezone;
     }
 
@@ -590,7 +591,7 @@ export default class EventCache {
     try {
       // Step 3: Optimistic state mutation
       // Remove the old event and its mappings
-      this.plugin.providerRegistry.removeMapping(eventId);
+      PluginState.getProviderRegistry().removeMapping(eventId);
       this.store.delete(eventId);
 
       // Add the new event and its mappings, using the same session ID
@@ -610,7 +611,7 @@ export default class EventCache {
         id: eventId,
         event: newEventWithId
       });
-      this.plugin.providerRegistry.addMapping(newEventWithId, calendarId, eventId);
+      PluginState.getProviderRegistry().addMapping(newEventWithId, calendarId, eventId);
 
       // Step 4: Immediate UI update
       const newCacheEntry: CacheEntry = {
@@ -634,7 +635,7 @@ export default class EventCache {
         const preparedOldEvent = this.enhancer.prepareForStorage(oldEvent);
         const preparedNewEvent = this.enhancer.prepareForStorage(newEvent);
 
-        const updatedLocation = await this.plugin.providerRegistry.updateEventInProvider(
+        const updatedLocation = await PluginState.getProviderRegistry().updateEventInProvider(
           eventId,
           calendarId,
           preparedOldEvent,
@@ -644,7 +645,7 @@ export default class EventCache {
         const authoritativeUpdatedEvent = this.enhancer.enhance(preparedNewEvent);
 
         // Replace optimistic event with provider-authoritative event and refresh mapping.
-        this.plugin.providerRegistry.removeMapping(eventId);
+        PluginState.getProviderRegistry().removeMapping(eventId);
         this.store.delete(eventId);
 
         const finalLocation = updatedLocation || locationForStore;
@@ -654,7 +655,11 @@ export default class EventCache {
           id: eventId,
           event: authoritativeUpdatedEvent
         });
-        this.plugin.providerRegistry.addMapping(authoritativeUpdatedEvent, calendarId, eventId);
+        PluginState.getProviderRegistry().addMapping(
+          authoritativeUpdatedEvent,
+          calendarId,
+          eventId
+        );
 
         // SUCCESS: The I/O succeeded. Correct the location in the store if it changed.
         // This ensures our cache is perfectly in sync with the source of truth.
@@ -670,7 +675,7 @@ export default class EventCache {
         });
 
         // Roll back store and mappings to original state
-        this.plugin.providerRegistry.removeMapping(eventId);
+        PluginState.getProviderRegistry().removeMapping(eventId);
         this.store.delete(eventId);
 
         const locationForStore = originalDetails.location
@@ -686,7 +691,7 @@ export default class EventCache {
           id: originalDetails.id,
           event: originalDetails.event
         });
-        this.plugin.providerRegistry.addMapping(
+        PluginState.getProviderRegistry().addMapping(
           originalDetails.event,
           originalDetails.calendarId,
           originalDetails.id
@@ -836,7 +841,7 @@ export default class EventCache {
    */
   public async scheduleTask(taskId: string, date: Date): Promise<void> {
     // Find the Tasks provider instance
-    const tasksProvider = this.plugin.providerRegistry
+    const tasksProvider = PluginState.getProviderRegistry()
       .getActiveProviders()
       .find(provider => provider.type === 'tasks') as unknown as {
       scheduleTask: (taskId: string, date: Date) => Promise<void>;
@@ -868,7 +873,7 @@ export default class EventCache {
     date: Date
   ): Promise<{ isValid: boolean; reason?: string }> {
     // Find the Tasks provider instance. This assumes a single tasks provider for now.
-    const tasksProvider = this.plugin.providerRegistry
+    const tasksProvider = PluginState.getProviderRegistry()
       .getActiveProviders()
       .find(provider => provider.type === 'tasks');
 
@@ -1048,7 +1053,10 @@ export default class EventCache {
     // 3. Build keyed maps for old and new events using cheap sync keys (O(N), no I/O).
     const oldByKey = new Map<string, { event: OFCEvent; id: string; calendarId: string }>();
     for (const oldEvent of oldEventsInCalendar) {
-      const key = this.plugin.providerRegistry.computeSyncKeyForEvent(oldEvent.event, calendarId);
+      const key = PluginState.getProviderRegistry().computeSyncKeyForEvent(
+        oldEvent.event,
+        calendarId
+      );
       if (key) {
         oldByKey.set(key, oldEvent);
       }
@@ -1059,7 +1067,7 @@ export default class EventCache {
       { event: OFCEvent; location: EventLocation | null; calendarId: string }
     >();
     for (const newEvent of newEnhancedEvents) {
-      const key = this.plugin.providerRegistry.computeSyncKeyForEvent(
+      const key = PluginState.getProviderRegistry().computeSyncKeyForEvent(
         newEvent.event,
         newEvent.calendarId
       );
@@ -1082,7 +1090,7 @@ export default class EventCache {
     for (const [key, oldEvent] of oldByKey) {
       if (!newByKey.has(key)) {
         idsToRemove.push(oldEvent.id);
-        this.plugin.providerRegistry.removeMapping(oldEvent.id);
+        PluginState.getProviderRegistry().removeMapping(oldEvent.id);
         this.store.delete(oldEvent.id);
         hasChanges = true;
       }
@@ -1091,8 +1099,12 @@ export default class EventCache {
     // 4b. Added events: new keys not present in old set.
     for (const [key, newEvent] of newByKey) {
       if (!oldByKey.has(key)) {
-        const newSessionId = this.plugin.providerRegistry.generateId();
-        this.plugin.providerRegistry.addMapping(newEvent.event, newEvent.calendarId, newSessionId);
+        const newSessionId = PluginState.getProviderRegistry().generateId();
+        PluginState.getProviderRegistry().addMapping(
+          newEvent.event,
+          newEvent.calendarId,
+          newSessionId
+        );
         this.store.add({
           calendarId: newEvent.calendarId,
           location: newEvent.location,
@@ -1123,8 +1135,12 @@ export default class EventCache {
             event: newEvent.event
           });
           // Re-map in case the global identifier changed (e.g. title changed).
-          this.plugin.providerRegistry.removeMapping(oldEvent.id);
-          this.plugin.providerRegistry.addMapping(newEvent.event, newEvent.calendarId, oldEvent.id);
+          PluginState.getProviderRegistry().removeMapping(oldEvent.id);
+          PluginState.getProviderRegistry().addMapping(
+            newEvent.event,
+            newEvent.calendarId,
+            oldEvent.id
+          );
           // Queue UI update for this event (remove old rendering, add new).
           idsToRemove.push(oldEvent.id);
           eventsToAdd.push({
@@ -1181,7 +1197,7 @@ export default class EventCache {
       for (const sessionId of deletions) {
         const event = this.store.getEventById(sessionId);
         if (event) {
-          this.plugin.providerRegistry.removeMapping(sessionId);
+          PluginState.getProviderRegistry().removeMapping(sessionId);
           this.store.delete(sessionId);
           this.updateQueue.toRemove.add(sessionId);
         }
@@ -1192,7 +1208,7 @@ export default class EventCache {
         const event = this.enhancer.enhance(rawEvent);
         const newSessionId = this.generateId();
         this.store.add({ calendarId, location, id: newSessionId, event });
-        this.plugin.providerRegistry.addMapping(event, calendarId, newSessionId);
+        PluginState.getProviderRegistry().addMapping(event, calendarId, newSessionId);
         this.updateQueue.toAdd.set(newSessionId, { event, id: newSessionId, calendarId });
       }
 
@@ -1201,10 +1217,10 @@ export default class EventCache {
         const event = this.enhancer.enhance(rawEvent);
         const oldEvent = this.store.getEventById(sessionId);
         if (oldEvent) {
-          this.plugin.providerRegistry.removeMapping(sessionId);
+          PluginState.getProviderRegistry().removeMapping(sessionId);
           this.store.delete(sessionId);
           this.store.add({ calendarId, location, id: sessionId, event });
-          this.plugin.providerRegistry.addMapping(event, calendarId, sessionId);
+          PluginState.getProviderRegistry().addMapping(event, calendarId, sessionId);
         }
         // For FullCalendar's view, an update is a remove + add.
         this.updateQueue.toRemove.add(sessionId);
@@ -1248,7 +1264,7 @@ export default class EventCache {
     // 3. Build keyed maps for old and new events using cheap sync keys.
     const oldByKey = new Map<string, { event: OFCEvent; id: string; calendarId: string }>();
     for (const oldEvent of oldEventsInFile) {
-      const key = this.plugin.providerRegistry.computeSyncKeyForEvent(
+      const key = PluginState.getProviderRegistry().computeSyncKeyForEvent(
         oldEvent.event,
         oldEvent.calendarId
       );
@@ -1262,7 +1278,7 @@ export default class EventCache {
       { event: OFCEvent; location: EventLocation | null; calendarId: string }
     >();
     for (const newEvent of newEnhancedEvents) {
-      const key = this.plugin.providerRegistry.computeSyncKeyForEvent(
+      const key = PluginState.getProviderRegistry().computeSyncKeyForEvent(
         newEvent.event,
         newEvent.calendarId
       );
@@ -1285,7 +1301,7 @@ export default class EventCache {
     for (const [key, oldEvent] of oldByKey) {
       if (!newByKey.has(key)) {
         idsToRemove.push(oldEvent.id);
-        this.plugin.providerRegistry.removeMapping(oldEvent.id);
+        PluginState.getProviderRegistry().removeMapping(oldEvent.id);
         this.store.delete(oldEvent.id);
         hasChanges = true;
       }
@@ -1294,8 +1310,12 @@ export default class EventCache {
     // 4b. Added events.
     for (const [key, newEvent] of newByKey) {
       if (!oldByKey.has(key)) {
-        const newSessionId = this.plugin.providerRegistry.generateId();
-        this.plugin.providerRegistry.addMapping(newEvent.event, newEvent.calendarId, newSessionId);
+        const newSessionId = PluginState.getProviderRegistry().generateId();
+        PluginState.getProviderRegistry().addMapping(
+          newEvent.event,
+          newEvent.calendarId,
+          newSessionId
+        );
         this.store.add({
           calendarId: newEvent.calendarId,
           location: newEvent.location,
@@ -1324,8 +1344,12 @@ export default class EventCache {
             id: oldEvent.id,
             event: newEvent.event
           });
-          this.plugin.providerRegistry.removeMapping(oldEvent.id);
-          this.plugin.providerRegistry.addMapping(newEvent.event, newEvent.calendarId, oldEvent.id);
+          PluginState.getProviderRegistry().removeMapping(oldEvent.id);
+          PluginState.getProviderRegistry().addMapping(
+            newEvent.event,
+            newEvent.calendarId,
+            oldEvent.id
+          );
           idsToRemove.push(oldEvent.id);
           eventsToAdd.push({
             event: newEvent.event,
@@ -1364,7 +1388,7 @@ export default class EventCache {
     if (!provider) {
       throw new Error(`Provider for calendar ID ${calendarId} not found in cache map.`);
     }
-    const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
+    const calendarInfo = PluginState.getProviderRegistry().getSource(calendarId);
     if (!calendarInfo) {
       throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
     }

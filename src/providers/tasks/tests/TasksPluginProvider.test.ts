@@ -10,6 +10,10 @@ import { TasksProviderConfig } from '../typesTask';
 import type { OFCEvent } from '../../../types/schema';
 import type { ObsidianInterface } from '../../../ObsidianAdapter';
 import type FullCalendarPlugin from '../../../main';
+import { PluginState } from '../../../core/PluginState';
+import type EventCache from '../../../core/EventCache';
+import { DEFAULT_SETTINGS, FullCalendarSettings } from '../../../types/settings';
+import type { ProviderRegistry } from '../../ProviderRegistry';
 
 // Mock the dependencies
 jest.mock('../../../ObsidianAdapter');
@@ -33,10 +37,11 @@ type MockPlugin = {
       plugins?: Record<string, { apiV1?: { editTaskLineModal: jest.Mock } }>;
     };
   };
-  settings: Record<string, unknown>;
+  settings: FullCalendarSettings;
   providerRegistry: {
     refreshBacklogViews: jest.Mock;
     reloadProviderNow: jest.Mock;
+    processProviderUpdates: jest.Mock;
   };
 };
 
@@ -73,6 +78,8 @@ describe('TasksPluginProvider', () => {
         }
       },
       settings: {
+        ...DEFAULT_SETTINGS,
+        timeFormat24h: true,
         tasksIntegration: {
           backlogDateTarget: 'scheduledDate',
           calendarDisplayDateTarget: 'scheduledDate',
@@ -81,9 +88,14 @@ describe('TasksPluginProvider', () => {
       },
       providerRegistry: {
         refreshBacklogViews: jest.fn(),
-        reloadProviderNow: jest.fn()
+        reloadProviderNow: jest.fn(),
+        processProviderUpdates: jest.fn()
       }
     };
+
+    PluginState.setSettings(mockPlugin.settings);
+    PluginState.setProviderRegistry(mockPlugin.providerRegistry as unknown as ProviderRegistry);
+    PluginState.setCache({ getEventById: jest.fn() } as unknown as EventCache);
 
     const config: TasksProviderConfig = {
       id: 'tasks_1',

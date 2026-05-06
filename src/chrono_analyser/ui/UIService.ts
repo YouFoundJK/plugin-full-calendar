@@ -4,6 +4,7 @@
  * DOM manipulation away from the controller.
  */
 
+import { PluginState } from '../../core/PluginState';
 import { App, debounce } from 'obsidian';
 import flatpickr from 'flatpickr';
 import { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
@@ -131,7 +132,7 @@ export class UIService {
   }
 
   private loadInsightsConfig() {
-    this.insightsConfig = this.plugin.settings.chrono_analyser_config || null;
+    this.insightsConfig = PluginState.getSettings().chrono_analyser_config || null;
   }
 
   public setControlPanelState(payload: FilterPayload) {

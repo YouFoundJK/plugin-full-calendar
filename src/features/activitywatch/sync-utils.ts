@@ -1,3 +1,5 @@
+import { PluginState } from '../../core/PluginState';
+import { FullCalendarSettings } from '../../types/settings';
 import FullCalendarPlugin from '../../main';
 import { OFCEvent } from '../../types';
 import { moment as obsidianMoment } from 'obsidian';
@@ -38,7 +40,7 @@ export function parseTimedSingleEventRange(
 }
 
 export function computeLookbackDurationMs(
-  profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>
+  profiles: NonNullable<FullCalendarSettings['activityWatch']['profiles']>
 ): number {
   const maxActivationThresholdMins = profiles.reduce(
     (max, profile) => Math.max(max, profile.activationThresholdMins || 0),
@@ -99,8 +101,8 @@ export function pickBestReconstructedBlockForPriorEvent(
 }
 
 export function computeBoundedLookbackDurationMs(
-  profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>,
-  matchedProfile?: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>[number]
+  profiles: NonNullable<FullCalendarSettings['activityWatch']['profiles']>,
+  matchedProfile?: NonNullable<FullCalendarSettings['activityWatch']['profiles']>[number]
 ): number {
   const baseLookbackMs = matchedProfile
     ? (matchedProfile.activationThresholdMins +
@@ -154,22 +156,22 @@ export async function getCalendarEventsInRange(
 ): Promise<PriorCalendarEvent[]> {
   if (rangeEnd.getTime() <= rangeStart.getTime()) return [];
 
-  const calendarInstance = plugin.providerRegistry.getInstance(targetCalendarId);
+  const calendarInstance = PluginState.getProviderRegistry().getInstance(targetCalendarId);
   if (!calendarInstance) return [];
 
   const providerEvents = await calendarInstance.getEvents({ start: rangeStart, end: rangeEnd });
   const candidates: PriorCalendarEvent[] = [];
 
   for (const [rawEvent] of providerEvents) {
-    const globalIdentifier = plugin.providerRegistry.getGlobalIdentifier(
+    const globalIdentifier = PluginState.getProviderRegistry().getGlobalIdentifier(
       rawEvent,
       targetCalendarId
     );
     const sessionId = globalIdentifier
-      ? await plugin.providerRegistry.getSessionId(globalIdentifier)
+      ? await PluginState.getProviderRegistry().getSessionId(globalIdentifier)
       : null;
-    const cachedEvent = sessionId ? plugin.cache.store.getEventById(sessionId) : null;
-    const event = cachedEvent || plugin.cache.enhancer.enhance(rawEvent);
+    const cachedEvent = sessionId ? PluginState.getCache().store.getEventById(sessionId) : null;
+    const event = cachedEvent || PluginState.getCache().enhancer.enhance(rawEvent);
 
     const eventRange = parseTimedSingleEventRange(event);
     if (!eventRange) continue;
@@ -180,7 +182,7 @@ export async function getCalendarEventsInRange(
     candidates.push({
       sessionId,
       calendarId: targetCalendarId,
-      cleanTitle: plugin.providerRegistry.getCanonicalTitle(event, targetCalendarId),
+      cleanTitle: PluginState.getProviderRegistry().getCanonicalTitle(event, targetCalendarId),
       event,
       startMs: eventRange.startMs,
       endMs: eventRange.endMs
@@ -195,7 +197,7 @@ export async function extendEventEndIfNeeded(
   eventId: string,
   newEndMs: number
 ): Promise<boolean> {
-  const details = plugin.cache.store.getEventDetails(eventId);
+  const details = PluginState.getCache().store.getEventDetails(eventId);
   if (!details) return false;
 
   const existingRange = parseTimedSingleEventRange(details.event);
@@ -215,7 +217,7 @@ export async function extendEventEndIfNeeded(
     endDate: newEndDate !== event.date ? newEndDate : null
   };
 
-  return plugin.cache.updateEventWithId(eventId, updatedEvent);
+  return PluginState.getCache().updateEventWithId(eventId, updatedEvent);
 }
 
 export function findSwallowingExistingEvent(
@@ -274,7 +276,7 @@ export function buildSessionIndex(
 ): SessionIndex {
   const index = new Map<ProfileSignature, PriorCalendarEvent[]>();
 
-  const allEvents = plugin.cache.store.getAllEvents();
+  const allEvents = PluginState.getCache().store.getAllEvents();
   for (const stored of allEvents) {
     if (stored.calendarId !== targetCalendarId) continue;
 
@@ -292,7 +294,10 @@ export function buildSessionIndex(
     bucket.push({
       sessionId: stored.id,
       calendarId: targetCalendarId,
-      cleanTitle: plugin.providerRegistry.getCanonicalTitle(stored.event, targetCalendarId),
+      cleanTitle: PluginState.getProviderRegistry().getCanonicalTitle(
+        stored.event,
+        targetCalendarId
+      ),
       event: stored.event,
       startMs: range.startMs,
       endMs: range.endMs

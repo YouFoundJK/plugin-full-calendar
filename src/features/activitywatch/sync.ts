@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import FullCalendarPlugin from '../../main';
 import { Notice, requestUrl } from 'obsidian';
 import { t } from '../i18n/i18n';
@@ -15,6 +16,7 @@ import {
   buildSessionIndex
 } from './sync-utils';
 import { deriveActivityWatchBlocks } from './sync-derive';
+import { FullCalendarSettings } from '../../types/settings';
 import {
   findContinuityCandidate,
   findBoundaryOverlappingActivityWatchEvent,
@@ -24,7 +26,7 @@ import {
 } from './sync-continuity';
 
 function isActivityWatchSyncAllowed(
-  settings: FullCalendarPlugin['settings']['activityWatch'],
+  settings: FullCalendarSettings['activityWatch'],
   options?: SyncOptions
 ): boolean {
   if (!settings.enabled) return false;
@@ -38,7 +40,7 @@ export async function syncActivityWatch(
   plugin: FullCalendarPlugin,
   options?: SyncOptions
 ): Promise<void> {
-  const settings = plugin.settings.activityWatch;
+  const settings = PluginState.getSettings().activityWatch;
 
   if (!isActivityWatchSyncAllowed(settings, options)) return;
   if (!settings.targetCalendarId) {
@@ -46,7 +48,7 @@ export async function syncActivityWatch(
     return;
   }
 
-  const calendarInstance = plugin.providerRegistry.getInstance(settings.targetCalendarId);
+  const calendarInstance = PluginState.getProviderRegistry().getInstance(settings.targetCalendarId);
   if (!calendarInstance || !calendarInstance.getCapabilities()?.canCreate) {
     if (!options?.suppressNotices) {
       new Notice(
@@ -79,7 +81,7 @@ export async function syncActivityWatch(
       buckets = JSON.parse(bucketsResponse.text) as Record<string, AWBucket>;
     }
 
-    if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
+    if (!isActivityWatchSyncAllowed(PluginState.getSettings().activityWatch, options)) return;
 
     const bucketIdsToFetch = new Set<string>();
     for (const b of Object.values(buckets)) {
@@ -133,7 +135,7 @@ export async function syncActivityWatch(
 
     let seedStates: SeedState[] = [];
     let boundaryMatchedProfile:
-      | NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>[number]
+      | NonNullable<FullCalendarSettings['activityWatch']['profiles']>[number]
       | undefined;
     if (!isCustomStrategy && settings.lastSyncTime > 0) {
       const boundaryEvent = findBoundaryOverlappingActivityWatchEvent(sessionIndex, boundaryMs);
@@ -168,11 +170,11 @@ export async function syncActivityWatch(
       seedStates
     );
 
-    if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
+    if (!isActivityWatchSyncAllowed(PluginState.getSettings().activityWatch, options)) return;
 
     let existingOverlapEvents: PriorCalendarEvent[] = [];
     if (!isCustomStrategy && settings.lastSyncTime > 0) {
-      plugin.providerRegistry.buildMap(plugin.cache.store);
+      PluginState.getProviderRegistry().buildMap(PluginState.getCache().store);
       const overlapEnd = endTime;
       existingOverlapEvents = await getCalendarEventsInRange(
         plugin,
@@ -189,7 +191,7 @@ export async function syncActivityWatch(
 
     let addedCount = 0;
     if (continuityCandidate && !options?.overrideStart) {
-      if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
+      if (!isActivityWatchSyncAllowed(PluginState.getSettings().activityWatch, options)) return;
       addedCount += await createContinuityBlocksAndReplacePriorEvent(
         plugin,
         settings.targetCalendarId,
@@ -205,7 +207,7 @@ export async function syncActivityWatch(
       let lastYieldTime = Date.now();
 
       for (const block of sortedFinalBlocks) {
-        if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
+        if (!isActivityWatchSyncAllowed(PluginState.getSettings().activityWatch, options)) return;
         const action = await createOrUpdateBlock(
           plugin,
           settings.targetCalendarId,
@@ -228,9 +230,9 @@ export async function syncActivityWatch(
     }
 
     if (settings.syncStrategy !== 'custom') {
-      if (!isActivityWatchSyncAllowed(plugin.settings.activityWatch, options)) return;
+      if (!isActivityWatchSyncAllowed(PluginState.getSettings().activityWatch, options)) return;
       settings.lastSyncTime = endTime.getTime();
-      await plugin.saveSettings();
+      await PluginState.saveSettings();
     }
 
     if (!options?.suppressNotices) {

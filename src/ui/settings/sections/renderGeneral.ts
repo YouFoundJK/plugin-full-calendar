@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../../features/i18n/i18n';
@@ -30,7 +31,7 @@ export function renderGeneralSettings(
   rerender: () => void
 ): void {
   const desktopViewOptions: { [key: string]: string } = { ...INITIAL_VIEW_OPTIONS.DESKTOP };
-  if (plugin.settings.enableAdvancedCategorization) {
+  if (PluginState.getSettings().enableAdvancedCategorization) {
     desktopViewOptions['resourceTimelineWeek'] = 'settings.viewOptions.timelineWeek';
     desktopViewOptions['resourceTimelineDay'] = 'settings.viewOptions.timelineDay';
   }
@@ -47,10 +48,10 @@ export function renderGeneralSettings(
       Object.entries(desktopViewOptions).forEach(([value, labelKey]) => {
         dropdown.addOption(value, t(labelKey));
       });
-      dropdown.setValue(plugin.settings.initialView.desktop);
+      dropdown.setValue(PluginState.getSettings().initialView.desktop);
       dropdown.onChange(async initialView => {
-        plugin.settings.initialView.desktop = initialView;
-        await plugin.saveSettings();
+        PluginState.getSettings().initialView.desktop = initialView;
+        await PluginState.saveSettings();
       });
     });
 
@@ -66,10 +67,10 @@ export function renderGeneralSettings(
       Object.entries(INITIAL_VIEW_OPTIONS.MOBILE).forEach(([value, labelKey]) => {
         dropdown.addOption(value, t(labelKey));
       });
-      dropdown.setValue(plugin.settings.initialView.mobile);
+      dropdown.setValue(PluginState.getSettings().initialView.mobile);
       dropdown.onChange(async initialView => {
-        plugin.settings.initialView.mobile = initialView;
-        await plugin.saveSettings();
+        PluginState.getSettings().initialView.mobile = initialView;
+        await PluginState.saveSettings();
       });
     });
 
@@ -86,11 +87,12 @@ export function renderGeneralSettings(
         dropdown.addOption(tz, tz);
       });
       dropdown.setValue(
-        plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+        PluginState.getSettings().displayTimezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone
       );
       dropdown.onChange(async newTimezone => {
-        plugin.settings.displayTimezone = newTimezone;
-        await plugin.saveSettings();
+        PluginState.getSettings().displayTimezone = newTimezone;
+        await PluginState.saveSettings();
       });
     });
 
@@ -103,10 +105,10 @@ export function renderGeneralSettings(
       ])
     )
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.clickToCreateEventFromMonthView);
+      toggle.setValue(PluginState.getSettings().clickToCreateEventFromMonthView);
       toggle.onChange(async val => {
-        plugin.settings.clickToCreateEventFromMonthView = val;
-        await plugin.saveSettings();
+        PluginState.getSettings().clickToCreateEventFromMonthView = val;
+        await PluginState.saveSettings();
       });
     });
 }

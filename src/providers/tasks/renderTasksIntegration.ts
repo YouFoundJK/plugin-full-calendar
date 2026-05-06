@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { t } from '../../features/i18n/i18n';
@@ -9,7 +10,9 @@ export function renderTasksIntegrationSettings(
   plugin: FullCalendarPlugin,
   onChange: () => void
 ): void {
-  const hasTasksCalendar = plugin.settings.calendarSources.some(source => source.type === 'tasks');
+  const hasTasksCalendar = PluginState.getSettings().calendarSources.some(
+    source => source.type === 'tasks'
+  );
   if (!hasTasksCalendar) {
     return;
   }

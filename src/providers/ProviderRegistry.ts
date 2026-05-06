@@ -1,3 +1,4 @@
+import { PluginState } from '../core/PluginState';
 import { TFile, Notice } from 'obsidian';
 import {
   CalendarProvider,
@@ -193,7 +194,7 @@ export class ProviderRegistry {
     this.providerRetryTimers.clear();
     this.providerRetryAttempts.clear();
     this.instances.clear();
-    const sources = this.plugin.settings.calendarSources;
+    const sources = PluginState.getSettings().calendarSources;
 
     for (const source of sources) {
       const settingsId = source.id;

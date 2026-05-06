@@ -1,14 +1,4 @@
-// Global ambient declarations for window helpers used for debugging.
-// Keeping these here allows us to remove @ts-ignore directives where we attach
-// references for developer inspection.
-import type EventCache from '../core/EventCache';
-import type { Calendar } from '@fullcalendar/core';
-
 declare global {
-  interface Window {
-    cache?: EventCache;
-    fc?: Calendar; // FullCalendar instance (debug only)
-  }
   interface HTMLElement {
     // Obsidian adds helper methods at runtime; declare them here so we avoid 'any' casts.
     empty(): void;

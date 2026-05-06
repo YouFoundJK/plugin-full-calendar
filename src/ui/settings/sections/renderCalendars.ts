@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { Setting } from 'obsidian';
 import * as ReactDOM from 'react-dom/client';
 import React, { createElement, RefObject } from 'react';
@@ -34,12 +35,12 @@ export function renderCalendarManagement(
   root.render(
     createElement(CalendarSettings, {
       ref: calendarSettingsRef as React.Ref<CalendarSettings>,
-      sources: plugin.providerRegistry.getAllSources(),
+      sources: PluginState.getProviderRegistry().getAllSources(),
       plugin: plugin,
       submit: (settings: CalendarInfo[]): void => {
         void (async () => {
-          plugin.settings.calendarSources = settings;
-          await plugin.saveSettings();
+          PluginState.getSettings().calendarSources = settings;
+          await PluginState.saveSettings();
         })();
       }
     })

@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { Setting } from 'obsidian';
 import { changelogData } from './changelogData';
 import './changelog.css';
@@ -21,14 +22,14 @@ export function checkAndShowWhatsNew(plugin: FullCalendarPlugin): void {
   // Defer to onLayoutReady to ensure the UI is initialized before showing the modal
   plugin.app.workspace.onLayoutReady(async () => {
     if (
-      plugin.settings.currentVersion === null ||
-      plugin.settings.currentVersion !== latestVersion
+      PluginState.getSettings().currentVersion === null ||
+      PluginState.getSettings().currentVersion !== latestVersion
     ) {
       new WhatsNewModal(plugin.app, plugin).open();
 
       // Update the persisted version
-      plugin.settings.currentVersion = latestVersion;
-      await plugin.saveSettings();
+      PluginState.getSettings().currentVersion = latestVersion;
+      await PluginState.saveSettings();
     }
   });
 }

@@ -14,6 +14,7 @@ import type { ObsidianInterface } from '../../ObsidianAdapter';
 import type FullCalendarPlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../../types/settings';
 import type { OFCEvent } from '../../types';
+import { PluginState } from '../../core/PluginState';
 
 const moment = obsidianMoment as unknown as typeof import('moment');
 
@@ -77,10 +78,13 @@ jest.mock('obsidian-daily-notes-interface', () => ({
   getDateFromFile: jest.fn()
 }));
 
-const makePlugin = (): FullCalendarPlugin =>
-  ({
-    settings: { ...DEFAULT_SETTINGS }
-  }) as unknown as FullCalendarPlugin;
+const makePlugin = (): FullCalendarPlugin => {
+  const mergedSettings = { ...DEFAULT_SETTINGS };
+  PluginState.setSettings(mergedSettings as never);
+  return {
+    settings: mergedSettings
+  } as unknown as FullCalendarPlugin;
+};
 
 const makeFile = (path: string): TFile => {
   const file = new TFile();

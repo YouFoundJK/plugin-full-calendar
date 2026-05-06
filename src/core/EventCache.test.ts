@@ -1,10 +1,12 @@
+import { PluginState } from './PluginState';
 // src/core/EventCache.test.ts
 
 import { CalendarInfo, EventLocation, OFCEvent } from '../types';
 import { CalendarProvider } from '../providers/Provider';
-import { DEFAULT_SETTINGS } from '../types/settings';
+import { DEFAULT_SETTINGS, FullCalendarSettings } from '../types/settings';
 import EventCache, { CacheEntry, OFCEventSource, CachedEvent } from './EventCache';
 import type FullCalendarPlugin from '../main';
+import type { ProviderRegistry } from '../providers/ProviderRegistry';
 
 jest.mock(
   'obsidian',
@@ -65,6 +67,20 @@ const mockEvent = withCounter(
     }) as unknown as OFCEvent,
   'event'
 );
+
+const setPluginStateFromMock = (plugin: unknown) => {
+  const state = plugin as {
+    settings: FullCalendarSettings;
+    providerRegistry: ProviderRegistry;
+    cache?: EventCache;
+  };
+
+  PluginState.setSettings(state.settings);
+  PluginState.setProviderRegistry(state.providerRegistry);
+  if (state.cache) {
+    PluginState.setCache(state.cache);
+  }
+};
 
 // Replace the entire TestReadonlyCalendar class with this function:
 const makeCache = (events: OFCEvent[]) => {
@@ -145,6 +161,7 @@ const makeCache = (events: OFCEvent[]) => {
     }
   } as unknown as FullCalendarPlugin;
 
+  setPluginStateFromMock(mockPlugin);
   const cache = new EventCache(mockPlugin);
   cache.reset();
   return cache;
@@ -300,6 +317,7 @@ describe('event cache with readonly calendar', () => {
           `${calendarId}::${event.uid || event.title}`
       }
     } as unknown as FullCalendarPlugin;
+    setPluginStateFromMock(mockPlugin);
     const cache = new EventCache(mockPlugin);
     cache.reset();
 
@@ -465,6 +483,7 @@ const makeEditableCache = (events: EditableEventResponse[]) => {
         `${calendarId}::${event.uid || event.title}`
     }
   } as unknown as FullCalendarPlugin;
+  setPluginStateFromMock(mockPlugin);
   const cache = new EventCache(mockPlugin);
 
   // Ensure createEvent returns [event, location] as expected by addEvent, and adds the UID.
@@ -608,7 +627,7 @@ describe('editable calendars', () => {
   describe('delete events', () => {
     it('delete one', async () => {
       const event = mockEventResponse();
-      const [cache, , mockPlugin] = makeEditableCache([event]);
+      const [cache] = makeEditableCache([event]);
 
       await cache.populate();
 
@@ -625,7 +644,7 @@ describe('editable calendars', () => {
       await cache.deleteEvent(id);
 
       // Updated assertion to registry mock
-      const safeRegistry = mockPlugin.providerRegistry as unknown as {
+      const safeRegistry = PluginState.getProviderRegistry() as unknown as {
         deleteEventInProvider: jest.Mock;
       };
       const mockDelete = safeRegistry.deleteEventInProvider;
@@ -685,7 +704,7 @@ describe('editable calendars', () => {
         1 // The file count never changes.
       ]
     ])('%p', async (_, newLocation, fileDetails, expectedFileCount) => {
-      const [cache, calendar, mockPlugin] = makeEditableCache([oldEvent]);
+      const [cache, calendar] = makeEditableCache([oldEvent]);
       await cache.populate();
 
       assertCacheContentCounts(cache, { calendars: 1, files: 1, events: 1 });
@@ -697,7 +716,7 @@ describe('editable calendars', () => {
 
       await cache.updateEventWithId(id, newEvent);
 
-      const safeRegistry = mockPlugin.providerRegistry as unknown as {
+      const safeRegistry = PluginState.getProviderRegistry() as unknown as {
         updateEventInProvider: jest.Mock;
       };
       expect(safeRegistry.updateEventInProvider).toHaveBeenCalledTimes(1);
@@ -958,7 +977,7 @@ describe('editable calendars', () => {
             `${calendarId}::${event.uid || event.title}`
         }
       } as unknown as FullCalendarPlugin;
-
+      setPluginStateFromMock(mockPlugin);
       cache = new EventCache(mockPlugin);
       cache.reset();
       const syncCalendarSpy = jest.spyOn(cache, 'syncCalendar');
@@ -1092,7 +1111,7 @@ describe('editable calendars', () => {
           getSource: (id: string) => calendarSources.find(s => s.id === id)
         }
       } as unknown as FullCalendarPlugin;
-
+      setPluginStateFromMock(mockPlugin);
       cache = new EventCache(mockPlugin);
       cache.reset();
       jest.spyOn(cache, 'syncCalendar').mockImplementation(() => {});
@@ -1110,7 +1129,7 @@ describe('editable calendars', () => {
     describe('move event', () => {
       it('moves event from one calendar to another', async () => {
         const event = mockEventResponse();
-        const [cache, calendar, mockPlugin] = makeEditableCache([event]);
+        const [cache, calendar] = makeEditableCache([event]);
         await cache.populate();
 
         // Add a second calendar to move to
@@ -1123,7 +1142,7 @@ describe('editable calendars', () => {
         };
 
         // We need to patch the registry on the EXISTING mockPlugin
-        const { providerRegistry } = mockPlugin;
+        const providerRegistry = PluginState.getProviderRegistry();
         const originalGetSource = providerRegistry.getSource.bind(providerRegistry);
         const originalGetCapabilities = providerRegistry.getCapabilities.bind(providerRegistry);
 
@@ -1218,7 +1237,7 @@ describe('editable calendars', () => {
         } as OFCEvent;
         const childSource: EditableEventResponse = [childEvent, childTuple[1]];
 
-        const [cache, calendar, mockPlugin] = makeEditableCache([masterSource, childSource]);
+        const [cache, calendar] = makeEditableCache([masterSource, childSource]);
         await cache.populate();
 
         // Setup Destination Calendar
@@ -1247,7 +1266,8 @@ describe('editable calendars', () => {
           };
         };
 
-        const providerRegistry = mockPlugin.providerRegistry as unknown as MutableProviderRegistry;
+        const providerRegistry =
+          PluginState.getProviderRegistry() as unknown as MutableProviderRegistry;
         const originalGetSource = providerRegistry.getSource;
         providerRegistry.getProvider = (id: string) => (id === 'cal2' ? calendar2 : calendar);
         providerRegistry.getInstance = (id: string) => (id === 'cal2' ? calendar2 : calendar);
@@ -1322,10 +1342,10 @@ describe('editable calendars', () => {
         } as OFCEvent;
         const childSource: EditableEventResponse = [childEvent, childTuple[1]];
 
-        const [cache, , mockPlugin] = makeEditableCache([masterSource, childSource]);
+        const [cache] = makeEditableCache([masterSource, childSource]);
         await cache.populate();
 
-        const { providerRegistry } = mockPlugin;
+        const providerRegistry = PluginState.getProviderRegistry();
         const deleteSpy = jest.spyOn(providerRegistry, 'deleteEventInProvider');
 
         // Get Child ID

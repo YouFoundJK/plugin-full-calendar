@@ -1,7 +1,10 @@
+import { PluginState } from '../../core/PluginState';
 import { executeFSM, CompoundEvent } from './fsm';
 import { requestUrl } from 'obsidian';
-import { DEFAULT_SETTINGS } from '../../types/settings';
+import { DEFAULT_SETTINGS, FullCalendarSettings } from '../../types/settings';
 import { syncActivityWatch } from './sync';
+import type { ProviderRegistry } from '../../providers/ProviderRegistry';
+import type EventCache from '../../core/EventCache';
 
 jest.mock('obsidian', () => ({
   Notice: jest.fn(),
@@ -9,6 +12,26 @@ jest.mock('obsidian', () => ({
 }));
 
 const requestUrlMock = requestUrl as jest.MockedFunction<typeof requestUrl>;
+
+const setPluginStateFromMock = (plugin: unknown) => {
+  const state = plugin as {
+    settings: FullCalendarSettings;
+    providerRegistry?: ProviderRegistry;
+    cache?: EventCache;
+    saveSettings?: () => Promise<void>;
+  };
+
+  PluginState.setSettings(state.settings);
+  if (state.providerRegistry) {
+    PluginState.setProviderRegistry(state.providerRegistry);
+  }
+  if (state.cache) {
+    PluginState.setCache(state.cache);
+  }
+  if (state.saveSettings) {
+    PluginState.setSaveSettings(state.saveSettings);
+  }
+};
 
 describe('ActivityWatch FSM Best-Fit Integration', () => {
   it('Should properly execute Phase 1/Phase 2 slice and overlap resolution for the Obsidian/Browser/Zotero workflow', () => {
@@ -317,7 +340,7 @@ describe('ActivityWatch automatic sync backend gate', () => {
         getInstance: getInstanceMock
       }
     } as unknown as Parameters<typeof syncActivityWatch>[0];
-
+    setPluginStateFromMock(plugin);
     return { plugin, getInstanceMock };
   };
 
@@ -379,7 +402,7 @@ describe('ActivityWatch automatic sync backend gate', () => {
       },
       saveSettings: saveSettingsMock
     } as unknown as Parameters<typeof syncActivityWatch>[0];
-
+    setPluginStateFromMock(plugin);
     return { plugin, saveSettingsMock };
   };
 
@@ -396,7 +419,7 @@ describe('ActivityWatch automatic sync backend gate', () => {
 
     await syncActivityWatch(plugin, { suppressNotices: true });
 
-    expect(plugin.settings.activityWatch.lastSyncTime).toBeGreaterThan(0);
+    expect(PluginState.getSettings().activityWatch.lastSyncTime).toBeGreaterThan(0);
     expect(saveSettingsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -415,7 +438,7 @@ describe('ActivityWatch automatic sync backend gate', () => {
 
     await syncActivityWatch(plugin, { suppressNotices: true });
 
-    expect(plugin.settings.activityWatch.lastSyncTime).toBe(123);
+    expect(PluginState.getSettings().activityWatch.lastSyncTime).toBe(123);
     expect(saveSettingsMock).not.toHaveBeenCalled();
   });
 });

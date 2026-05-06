@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { GoogleAuthManager } from '../auth/GoogleAuthManager';
@@ -37,22 +38,22 @@ export function renderGoogleSettings(
       ])
     )
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.useCustomGoogleClient).onChange(async value => {
-        plugin.settings.useCustomGoogleClient = value;
-        await plugin.saveSettings();
+      toggle.setValue(PluginState.getSettings().useCustomGoogleClient).onChange(async value => {
+        PluginState.getSettings().useCustomGoogleClient = value;
+        await PluginState.saveSettings();
         rerender();
       });
     });
 
   // Custom credentials inputs (only shown when toggle is enabled)
-  if (plugin.settings.useCustomGoogleClient) {
+  if (PluginState.getSettings().useCustomGoogleClient) {
     new Setting(containerEl)
       .setName(t('google.customCredentials.clientId.label'))
       .setDesc(t('google.customCredentials.clientId.description'))
       .addText(text => {
-        text.setValue(plugin.settings.googleClientId).onChange(async value => {
-          plugin.settings.googleClientId = value;
-          await plugin.saveSettings();
+        text.setValue(PluginState.getSettings().googleClientId).onChange(async value => {
+          PluginState.getSettings().googleClientId = value;
+          await PluginState.saveSettings();
         });
       });
 
@@ -61,14 +62,14 @@ export function renderGoogleSettings(
       .setDesc(t('google.customCredentials.clientSecret.description'))
       .addText(text => {
         text.inputEl.type = 'password';
-        text.setValue(plugin.settings.googleClientSecret).onChange(async value => {
-          plugin.settings.googleClientSecret = value;
-          await plugin.saveSettings();
+        text.setValue(PluginState.getSettings().googleClientSecret).onChange(async value => {
+          PluginState.getSettings().googleClientSecret = value;
+          await PluginState.saveSettings();
         });
       });
   }
 
-  const accounts = plugin.settings.googleAccounts || [];
+  const accounts = PluginState.getSettings().googleAccounts || [];
 
   if (accounts.length === 0) {
     containerEl.createEl('p', {

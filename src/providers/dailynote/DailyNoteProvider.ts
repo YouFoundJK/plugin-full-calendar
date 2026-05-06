@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import { CachedMetadata, moment as obsidianMoment, TFile } from 'obsidian';
 import * as React from 'react';
 import {
@@ -319,7 +320,7 @@ export class DailyNoteProvider
       const { page, lineNumber } = addToHeading(
         contents,
         { heading: headingInfo, item: eventToStore, headingText: this.source.heading },
-        this.plugin.settings
+        PluginState.getSettings()
       );
       return [page, lineNumber] as [string, number];
     });
@@ -380,7 +381,7 @@ export class DailyNoteProvider
         const { page, lineNumber } = addToHeading(
           newFileContents,
           { heading: headingInfo, item: eventToStore, headingText: this.source.heading },
-          this.plugin.settings
+          PluginState.getSettings()
         );
         return [page, lineNumber] as [string, number];
       });
@@ -394,7 +395,7 @@ export class DailyNoteProvider
       Object.assign(newEventData, eventToStore);
       await this.app.rewrite(file, (contents: string) => {
         const lines = contents.split('\n');
-        const newLine = modifyListItem(lines[lineNumber], eventToStore, this.plugin.settings);
+        const newLine = modifyListItem(lines[lineNumber], eventToStore, PluginState.getSettings());
         if (!newLine) throw new Error('Did not successfully update line.');
         lines[lineNumber] = newLine;
         return lines.join('\n');

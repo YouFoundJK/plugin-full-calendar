@@ -16,6 +16,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../core/PluginState';
 import { DateTime } from 'luxon';
 
 import { ItemView, Menu, Notice, WorkspaceLeaf } from 'obsidian';
@@ -182,8 +183,8 @@ export class CalendarView extends ItemView {
       return;
     }
 
-    this.viewEnhancer.updateSettings(this.plugin.settings);
-    const allCachedSources = this.plugin.cache.getAllEvents();
+    this.viewEnhancer.updateSettings(PluginState.getSettings());
+    const allCachedSources = PluginState.getCache().getAllEvents();
     const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
 
     this.fullCalendarView.removeAllEventSources();
@@ -282,7 +283,7 @@ export class CalendarView extends ItemView {
   }
 
   private buildEventSearchHaystack(eventId: string): string {
-    const details = this.plugin.cache.store.getEventDetails(eventId);
+    const details = PluginState.getCache().store.getEventDetails(eventId);
     const title = details?.event.title || '';
     const category = details?.event.category || '';
     const subCategory = details?.event.subCategory || '';
@@ -447,8 +448,8 @@ export class CalendarView extends ItemView {
     if (this.workspaceSwitchTimeout) {
       clearTimeout(this.workspaceSwitchTimeout);
     }
-    this.plugin.settings.activeWorkspace = workspaceId;
-    await this.plugin.saveSettings();
+    PluginState.getSettings().activeWorkspace = workspaceId;
+    await PluginState.saveSettings();
     // Debounce re-render to avoid redundant reloads
     this.workspaceSwitchTimeout = setTimeout(() => {
       void this.onOpen(); // Re-render the calendar with new settings
@@ -469,7 +470,7 @@ export class CalendarView extends ItemView {
 
     // Truncate long workspace names for UI
     // Use shorter truncation on mobile
-    const maxLength = this.plugin.isMobile ? 8 : 12;
+    const maxLength = PluginState.isMobile() ? 8 : 12;
     const name =
       activeWorkspace.name.length > maxLength
         ? activeWorkspace.name.substring(0, maxLength) + '...'
@@ -488,21 +489,21 @@ export class CalendarView extends ItemView {
     menu.addItem(item => {
       item
         .setTitle(t('ui.view.buttons.defaultView'))
-        .setIcon(this.plugin.settings.activeWorkspace === null ? 'check' : '')
+        .setIcon(PluginState.getSettings().activeWorkspace === null ? 'check' : '')
         .onClick(async () => {
           await this.switchToWorkspace(null);
         });
     });
 
-    if (this.plugin.settings.workspaces.length > 0) {
+    if (PluginState.getSettings().workspaces.length > 0) {
       menu.addSeparator();
 
       // Workspace options
-      this.plugin.settings.workspaces.forEach(workspace => {
+      PluginState.getSettings().workspaces.forEach(workspace => {
         menu.addItem(item => {
           item
             .setTitle(workspace.name)
-            .setIcon(this.plugin.settings.activeWorkspace === workspace.id ? 'check' : '')
+            .setIcon(PluginState.getSettings().activeWorkspace === workspace.id ? 'check' : '')
             .onClick(async () => {
               await this.switchToWorkspace(workspace.id);
             });
@@ -533,7 +534,7 @@ export class CalendarView extends ItemView {
     const shadowEvents: EventInput[] = [];
 
     // Only generate shadow events if advanced categorization is enabled
-    if (!this.plugin.settings.enableAdvancedCategorization) {
+    if (!PluginState.getSettings().enableAdvancedCategorization) {
       return shadowEvents;
     }
 
@@ -573,18 +574,20 @@ export class CalendarView extends ItemView {
    * Adds shadow events to the current view (for timeline views)
    */
   addShadowEventsToView() {
-    if (!this.plugin.settings.enableAdvancedCategorization || !this.fullCalendarView) {
+    if (!PluginState.getSettings().enableAdvancedCategorization || !this.fullCalendarView) {
       return;
     }
 
     // Get all events from each source and generate shadow events
     for (const source of this.fullCalendarView.getEventSources()) {
       const calendarId = source.id;
-      const cachedSource = this.plugin.cache.getAllEvents().find(s => s.id === calendarId);
+      const cachedSource = PluginState.getCache()
+        .getAllEvents()
+        .find(s => s.id === calendarId);
       if (!cachedSource) continue;
 
       const { events } = cachedSource;
-      const settings = this.plugin.settings;
+      const settings = PluginState.getSettings();
 
       const mainEvents = events
         .map((e: CachedEvent) => toEventInput(e.id, e.event, settings))
@@ -612,15 +615,15 @@ export class CalendarView extends ItemView {
    */
   private buildTimelineResources(): ResourceItem[] {
     const resources: ResourceItem[] = [];
-    if (!this.plugin.settings.enableAdvancedCategorization) {
+    if (!PluginState.getSettings().enableAdvancedCategorization) {
       return resources;
     }
 
-    const categorySettings = this.plugin.settings.categorySettings || [];
+    const categorySettings = PluginState.getSettings().categorySettings || [];
     if (!this.viewEnhancer) {
       return resources;
     }
-    const allCachedSources = this.plugin.cache.getAllEvents();
+    const allCachedSources = PluginState.getCache().getAllEvents();
     const allSources = this.viewEnhancer.getFilteredSources(allCachedSources);
     const workspace = this.viewEnhancer?.getActiveWorkspace(); // You can now safely get the active workspace if needed for other logic.
 
@@ -702,16 +705,16 @@ export class CalendarView extends ItemView {
    */
   onOpen(): Promise<void> {
     return (async () => {
-      await this.plugin.loadSettings();
-      if (!this.plugin.cache) {
+      await PluginState.loadSettings();
+      if (!PluginState.getCache()) {
         new Notice(t('ui.view.errors.cacheNotLoaded'));
         return;
       }
-      if (!this.plugin.cache.initialized) {
-        await this.plugin.cache.populate();
+      if (!PluginState.getCache().initialized) {
+        await PluginState.getCache().populate();
       }
 
-      this.viewEnhancer = new ViewEnhancer(this.plugin.settings);
+      this.viewEnhancer = new ViewEnhancer(PluginState.getSettings());
 
       const container = this.contentEl;
       container.empty();
@@ -728,8 +731,9 @@ export class CalendarView extends ItemView {
       );
 
       if (
-        this.plugin.settings.calendarSources.filter((s: CalendarInfo) => s.type !== 'FOR_TEST_ONLY')
-          .length === 0
+        PluginState.getSettings().calendarSources.filter(
+          (s: CalendarInfo) => s.type !== 'FOR_TEST_ONLY'
+        ).length === 0
       ) {
         renderOnboarding(this.plugin, calendarEl);
         return;
@@ -740,7 +744,7 @@ export class CalendarView extends ItemView {
         new Notice(t('ui.view.errors.viewEnhancerNotInitialized'));
         return;
       }
-      const allSources = this.plugin.cache.getAllEvents();
+      const allSources = PluginState.getCache().getAllEvents();
       const { sources, config: calendarConfig } = this.viewEnhancer.getEnhancedData(allSources);
 
       if (this.fullCalendarView) {
@@ -790,15 +794,17 @@ export class CalendarView extends ItemView {
 
       this.fullCalendarView = await renderCalendar(calendarEl, sources, {
         timeZone:
-          this.plugin.settings.displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          PluginState.getSettings().displayTimezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone,
         forceNarrow: this.inSidebar,
         // resources added lazily when entering timeline view
-        enableAdvancedCategorization: this.plugin.settings.enableAdvancedCategorization,
+        enableAdvancedCategorization: PluginState.getSettings().enableAdvancedCategorization,
         onViewChange: handleViewChange,
         initialView: calendarConfig.initialView, // Use workspace-aware initial view
         businessHours: (() => {
           // Use workspace business hours if set, otherwise use global settings
-          const businessHours = calendarConfig.businessHours || this.plugin.settings.businessHours;
+          const businessHours =
+            calendarConfig.businessHours || PluginState.getSettings().businessHours;
           return businessHours.enabled
             ? {
                 daysOfWeek: businessHours.daysOfWeek,
@@ -817,7 +823,7 @@ export class CalendarView extends ItemView {
         weekends: calendarConfig.weekends,
         hiddenDays: calendarConfig.hiddenDays,
         dayMaxEvents: calendarConfig.dayMaxEvents,
-        highlightCurrentOrNextEvent: this.plugin.settings.highlightCurrentOrNextEvent,
+        highlightCurrentOrNextEvent: PluginState.getSettings().highlightCurrentOrNextEvent,
         initialSearchQuery: this.eventSearchQuery,
         onSearchQueryChange: (query: string) => {
           this.eventSearchQuery = query;
@@ -838,7 +844,7 @@ export class CalendarView extends ItemView {
             text: t('ui.view.buttons.analysis'),
             click: () => {
               void (async () => {
-                if (this.plugin.isMobile) {
+                if (PluginState.isMobile()) {
                   new Notice(t('ui.view.errors.chronoAnalyserDesktopOnly'));
                   return;
                 }
@@ -862,26 +868,26 @@ export class CalendarView extends ItemView {
                 info.jsEvent.getModifierState('Meta')
               ) {
                 const { openFileForEvent } = await import('../utils/eventActions');
-                await openFileForEvent(this.plugin.cache, this.app, info.event.id);
+                await openFileForEvent(PluginState.getCache(), this.app, info.event.id);
                 return;
               }
 
-              if (!this.plugin.cache.isEventEditable(info.event.id)) {
+              if (!PluginState.getCache().isEventEditable(info.event.id)) {
                 const { launchEventDetailsModal } = await import('./modals/event_modal');
                 launchEventDetailsModal(this.plugin, info.event.id);
                 return;
               }
 
               // THE NEW DISPATCHING LOGIC
-              const eventDetails = this.plugin.cache.store.getEventDetails(info.event.id);
+              const eventDetails = PluginState.getCache().store.getEventDetails(info.event.id);
               if (!eventDetails) return;
 
               const { calendarId } = eventDetails;
-              const capabilities = this.plugin.providerRegistry.getCapabilities(calendarId);
+              const capabilities = PluginState.getProviderRegistry().getCapabilities(calendarId);
 
               // Check the new capability flag.
               if (capabilities?.hasCustomEditUI) {
-                const provider = this.plugin.providerRegistry.getInstance(calendarId);
+                const provider = PluginState.getProviderRegistry().getInstance(calendarId);
                 if (
                   provider &&
                   'editInProviderUI' in provider &&
@@ -922,12 +928,12 @@ export class CalendarView extends ItemView {
             end.setDate(end.getDate() - 1);
           }
           const displayZone =
-            this.plugin.settings.displayTimezone ||
+            PluginState.getSettings().displayTimezone ||
             Intl.DateTimeFormat().resolvedOptions().timeZone;
           const partialEvent = dateEndpointsToFrontmatter(start, end, allDay, displayZone);
           try {
             if (
-              this.plugin.settings.clickToCreateEventFromMonthView ||
+              PluginState.getSettings().clickToCreateEventFromMonthView ||
               viewType !== 'dayGridMonth'
             ) {
               const { launchCreateModal } = await import('./modals/event_modal');
@@ -945,7 +951,7 @@ export class CalendarView extends ItemView {
         },
         modifyEvent: async (newEvent, oldEvent, newResource) => {
           try {
-            const originalEvent = this.plugin.cache.getEventById(oldEvent.id);
+            const originalEvent = PluginState.getCache().getEventById(oldEvent.id);
             if (!originalEvent) {
               throw new Error('Original event not found in cache.');
             }
@@ -998,9 +1004,9 @@ export class CalendarView extends ItemView {
                 throw new Error('Could not determine instance date from recurring event.');
               }
 
-              const modifiedEvent = fromEventApi(newEvent, this.plugin.settings, newResource);
+              const modifiedEvent = fromEventApi(newEvent, PluginState.getSettings(), newResource);
 
-              await this.plugin.cache.modifyRecurringInstance(
+              await PluginState.getCache().modifyRecurringInstance(
                 oldEvent.id,
                 instanceDate,
                 modifiedEvent
@@ -1010,9 +1016,9 @@ export class CalendarView extends ItemView {
             } else {
               // This is a standard single event or an existing override.
               // Let it update normally.
-              const didModify = await this.plugin.cache.updateEventWithId(
+              const didModify = await PluginState.getCache().updateEventWithId(
                 oldEvent.id,
-                fromEventApi(newEvent, this.plugin.settings, newResource)
+                fromEventApi(newEvent, PluginState.getSettings(), newResource)
               );
               return !!didModify;
             }
@@ -1029,7 +1035,7 @@ export class CalendarView extends ItemView {
 
         eventMouseEnter: info => {
           try {
-            const location = this.plugin.cache.store.getEventDetails(info.event.id)?.location;
+            const location = PluginState.getCache().store.getEventDetails(info.event.id)?.location;
             if (location) {
               this.app.workspace.trigger('hover-link', {
                 event: info.jsEvent,
@@ -1049,11 +1055,11 @@ export class CalendarView extends ItemView {
         },
         toggleTask: async (eventApi, isDone) => {
           const eventId = eventApi.id;
-          const eventDetails = this.plugin.cache.store.getEventDetails(eventId);
+          const eventDetails = PluginState.getCache().store.getEventDetails(eventId);
           if (!eventDetails) return false;
 
           const { event, calendarId } = eventDetails;
-          const provider = this.plugin.providerRegistry.getInstance(calendarId);
+          const provider = PluginState.getProviderRegistry().getInstance(calendarId);
 
           if (provider && provider.toggleComplete) {
             // Provider has its own logic for toggling tasks.
@@ -1066,7 +1072,7 @@ export class CalendarView extends ItemView {
 
           if (!isRecurringSystem) {
             const { toggleTask } = await import('../types/tasks');
-            await this.plugin.cache.updateEventWithId(eventId, toggleTask(event, isDone));
+            await PluginState.getCache().updateEventWithId(eventId, toggleTask(event, isDone));
             return true;
           }
 
@@ -1076,7 +1082,7 @@ export class CalendarView extends ItemView {
           if (!instanceDate) return false;
 
           try {
-            await this.plugin.cache.toggleRecurringInstance(eventId, instanceDate, isDone);
+            await PluginState.getCache().toggleRecurringInstance(eventId, instanceDate, isDone);
             return true;
           } catch (e) {
             if (e instanceof Error) {
@@ -1102,18 +1108,18 @@ export class CalendarView extends ItemView {
         // Enable drag-and-drop from Tasks Backlog
         drop: async (taskId: string, date: Date) => {
           try {
-            if (!this.plugin.cache) {
+            if (!PluginState.getCache()) {
               throw new Error('Event cache not available');
             }
 
             // Guardrail: Validate before scheduling
-            const validation = await this.plugin.cache.validateTaskSchedule(taskId, date);
+            const validation = await PluginState.getCache().validateTaskSchedule(taskId, date);
             if (!validation.isValid) {
               new Notice(validation.reason || 'This task cannot be scheduled on this date.');
               return;
             }
 
-            await this.plugin.cache.scheduleTask(taskId, date);
+            await PluginState.getCache().scheduleTask(taskId, date);
             new Notice(t('ui.view.success.taskScheduled'));
 
             // Refresh the backlog view to remove the newly scheduled task
@@ -1152,8 +1158,7 @@ export class CalendarView extends ItemView {
 
       this.scheduleApplyEventSearchFilter();
 
-      window.fc = this.fullCalendarView ?? undefined;
-      this.plugin.api.registerView(this);
+      PluginState.getInternalAPI().registerView(this);
 
       // Initialize date navigation for the "Go To" button
       if (this.fullCalendarView && !this.dateNavigation) {
@@ -1161,16 +1166,16 @@ export class CalendarView extends ItemView {
       }
 
       this.registerDomEvent(this.containerEl, 'mouseenter', () => {
-        this.plugin.providerRegistry.revalidateRemoteCalendars();
+        PluginState.getProviderRegistry().revalidateRemoteCalendars();
       });
 
       if (this.callback) {
-        this.plugin.cache.off('update', this.callback);
+        PluginState.getCache().off('update', this.callback);
         this.callback = null;
       }
 
       // MODIFY THE CALLBACK:
-      this.callback = this.plugin.cache.on('update', info => {
+      this.callback = PluginState.getCache().on('update', info => {
         if (!this.viewEnhancer || !this.fullCalendarView) {
           return;
         }
@@ -1184,9 +1189,9 @@ export class CalendarView extends ItemView {
         }
 
         // 1. Update manager with latest settings in case they changed.
-        this.viewEnhancer.updateSettings(this.plugin.settings);
+        this.viewEnhancer.updateSettings(PluginState.getSettings());
         // 2. Get fresh, fully-filtered sources from the manager.
-        const allCachedSources = this.plugin.cache.getAllEvents();
+        const allCachedSources = PluginState.getCache().getAllEvents();
         const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
 
         // 3. Resync the entire calendar view or partially update it.
@@ -1248,7 +1253,7 @@ export class CalendarView extends ItemView {
   }
 
   onunload(): void {
-    this.plugin.api.unregisterView(this);
+    PluginState.getInternalAPI().unregisterView(this);
     if (this.pendingSearchApplyFrame !== null) {
       cancelAnimationFrame(this.pendingSearchApplyFrame);
       this.pendingSearchApplyFrame = null;
@@ -1264,7 +1269,7 @@ export class CalendarView extends ItemView {
       this.dateNavigation = null;
     }
     if (this.callback) {
-      this.plugin.cache.off('update', this.callback);
+      PluginState.getCache().off('update', this.callback);
       this.callback = null;
     }
   }

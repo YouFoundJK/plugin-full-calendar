@@ -10,6 +10,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../core/PluginState';
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 import { Draggable } from '@fullcalendar/interaction';
 import FullCalendarPlugin from '../../main';
@@ -74,7 +75,7 @@ export class TasksBacklogView extends ItemView {
    * Finds the active TasksPluginProvider instance from the registry.
    */
   private findTasksProvider(): TasksPluginProvider | null {
-    for (const provider of this.plugin.providerRegistry.getActiveProviders()) {
+    for (const provider of PluginState.getProviderRegistry().getActiveProviders()) {
       if (provider.type === 'tasks') {
         return provider as unknown as TasksPluginProvider;
       }
@@ -193,14 +194,14 @@ export class TasksBacklogView extends ItemView {
       'dueDate',
       t('settings.tasksIntegration.backlogDateTarget.due')
     );
-    select.value = this.plugin.settings.tasksIntegration.backlogDateTarget;
+    select.value = PluginState.getSettings().tasksIntegration.backlogDateTarget;
 
     select.addEventListener('change', () => {
-      this.plugin.settings.tasksIntegration.backlogDateTarget =
+      PluginState.getSettings().tasksIntegration.backlogDateTarget =
         select.value as TasksBacklogDateTarget;
       this.currentPage = 1;
-      void this.plugin.saveSettings().then(() => {
-        this.plugin.providerRegistry.refreshBacklogViews();
+      void PluginState.saveSettings().then(() => {
+        PluginState.getProviderRegistry().refreshBacklogViews();
       });
     });
   }
@@ -214,7 +215,7 @@ export class TasksBacklogView extends ItemView {
   }
 
   private getBacklogDateTargetLabel(): string {
-    switch (this.plugin.settings.tasksIntegration.backlogDateTarget) {
+    switch (PluginState.getSettings().tasksIntegration.backlogDateTarget) {
       case 'startDate':
         return t('settings.tasksIntegration.backlogDateTarget.start').toLowerCase();
       case 'dueDate':

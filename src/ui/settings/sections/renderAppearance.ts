@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../../features/i18n/i18n';
@@ -45,10 +46,10 @@ export function renderAppearanceSettings(
       WEEKDAYS_KEYS.forEach((dayKey, code) => {
         dropdown.addOption(code.toString(), t(dayKey));
       });
-      dropdown.setValue(plugin.settings.firstDay.toString());
+      dropdown.setValue(PluginState.getSettings().firstDay.toString());
       dropdown.onChange(async codeAsString => {
-        plugin.settings.firstDay = Number(codeAsString);
-        await plugin.saveSettings();
+        PluginState.getSettings().firstDay = Number(codeAsString);
+        await PluginState.saveSettings();
       });
     });
 
@@ -60,10 +61,10 @@ export function renderAppearanceSettings(
       ])
     )
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.timeFormat24h);
+      toggle.setValue(PluginState.getSettings().timeFormat24h);
       toggle.onChange(async val => {
-        plugin.settings.timeFormat24h = val;
-        await plugin.saveSettings();
+        PluginState.getSettings().timeFormat24h = val;
+        await PluginState.saveSettings();
       });
     });
 
@@ -76,15 +77,15 @@ export function renderAppearanceSettings(
       ])
     )
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.businessHours.enabled);
+      toggle.setValue(PluginState.getSettings().businessHours.enabled);
       toggle.onChange(async val => {
-        plugin.settings.businessHours.enabled = val;
-        await plugin.saveSettings();
+        PluginState.getSettings().businessHours.enabled = val;
+        await PluginState.saveSettings();
         rerender(); // This will show/hide the indented settings
       });
     });
 
-  if (plugin.settings.businessHours.enabled) {
+  if (PluginState.getSettings().businessHours.enabled) {
     new Setting(containerEl)
       .setName(t('settings.appearance.businessHours.days.label'))
       .setDesc(t('settings.appearance.businessHours.days.description'))
@@ -95,11 +96,11 @@ export function renderAppearanceSettings(
           .addOption('1,2,3,4', t('settings.appearance.businessHours.options.mondayThursday'))
           .addOption('2,3,4,5,6', t('settings.appearance.businessHours.options.tuesdaySaturday'));
 
-        const currentDays = plugin.settings.businessHours.daysOfWeek.join(',');
+        const currentDays = PluginState.getSettings().businessHours.daysOfWeek.join(',');
         dropdown.setValue(currentDays);
         dropdown.onChange(async value => {
-          plugin.settings.businessHours.daysOfWeek = value.split(',').map(Number);
-          await plugin.saveSettings();
+          PluginState.getSettings().businessHours.daysOfWeek = value.split(',').map(Number);
+          await PluginState.saveSettings();
         });
       })
       .settingEl.addClass('fc-indented-setting');
@@ -108,12 +109,12 @@ export function renderAppearanceSettings(
       .setName(t('settings.appearance.businessHours.startTime.label'))
       .setDesc(t('settings.appearance.businessHours.startTime.description'))
       .addText(text => {
-        text.setValue(plugin.settings.businessHours.startTime);
+        text.setValue(PluginState.getSettings().businessHours.startTime);
         text.onChange(async value => {
           // Basic validation for time format
           if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
-            plugin.settings.businessHours.startTime = value;
-            await plugin.saveSettings();
+            PluginState.getSettings().businessHours.startTime = value;
+            await PluginState.saveSettings();
           }
         });
       })
@@ -123,12 +124,12 @@ export function renderAppearanceSettings(
       .setName(t('settings.appearance.businessHours.endTime.label'))
       .setDesc(t('settings.appearance.businessHours.endTime.description'))
       .addText(text => {
-        text.setValue(plugin.settings.businessHours.endTime);
+        text.setValue(PluginState.getSettings().businessHours.endTime);
         text.onChange(async value => {
           // Basic validation for time format
           if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
-            plugin.settings.businessHours.endTime = value;
-            await plugin.saveSettings();
+            PluginState.getSettings().businessHours.endTime = value;
+            await PluginState.saveSettings();
           }
         });
       })
@@ -147,12 +148,12 @@ export function renderAppearanceSettings(
     .setName(t('settings.appearance.viewTimeRange.slotMinTime.label'))
     .setDesc(t('settings.appearance.viewTimeRange.slotMinTime.description'))
     .addText(text => {
-      text.setValue(plugin.settings.slotMinTime || '00:00');
+      text.setValue(PluginState.getSettings().slotMinTime || '00:00');
       text.onChange(async value => {
         // Basic validation for time format
         if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
-          plugin.settings.slotMinTime = value;
-          await plugin.saveSettings();
+          PluginState.getSettings().slotMinTime = value;
+          await PluginState.saveSettings();
         }
       });
     });
@@ -161,12 +162,12 @@ export function renderAppearanceSettings(
     .setName(t('settings.appearance.viewTimeRange.slotMaxTime.label'))
     .setDesc(t('settings.appearance.viewTimeRange.slotMaxTime.description'))
     .addText(text => {
-      text.setValue(plugin.settings.slotMaxTime || '24:00');
+      text.setValue(PluginState.getSettings().slotMaxTime || '24:00');
       text.onChange(async value => {
         // Basic validation for time format (allow 24:00)
         if (/^([01]?[0-9]|2[0-4]):[0-5][0-9]$/.test(value)) {
-          plugin.settings.slotMaxTime = value;
-          await plugin.saveSettings();
+          PluginState.getSettings().slotMaxTime = value;
+          await PluginState.saveSettings();
         }
       });
     });
@@ -175,10 +176,10 @@ export function renderAppearanceSettings(
     .setName(t('settings.appearance.viewTimeRange.allDaySlot.label'))
     .setDesc(t('settings.appearance.viewTimeRange.allDaySlot.description'))
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.allDaySlot ?? true);
+      toggle.setValue(PluginState.getSettings().allDaySlot ?? true);
       toggle.onChange(async val => {
-        plugin.settings.allDaySlot = val;
-        await plugin.saveSettings();
+        PluginState.getSettings().allDaySlot = val;
+        await PluginState.saveSettings();
         rerender();
       });
     });
@@ -212,10 +213,10 @@ export function renderAppearanceSettings(
         t('settings.appearance.viewTimeRange.timeGridDayHeaderFormat.options.mmddyyyyDay')
       );
 
-      dropdown.setValue(plugin.settings.timeGridDayHeaderFormat || 'day-mmdd');
+      dropdown.setValue(PluginState.getSettings().timeGridDayHeaderFormat || 'day-mmdd');
       dropdown.onChange(async value => {
-        plugin.settings.timeGridDayHeaderFormat = value;
-        await plugin.saveSettings();
+        PluginState.getSettings().timeGridDayHeaderFormat = value;
+        await PluginState.saveSettings();
         rerender();
       });
     });
@@ -231,10 +232,10 @@ export function renderAppearanceSettings(
     .setName(t('settings.appearance.dayVisibility.weekends.label'))
     .setDesc(t('settings.appearance.dayVisibility.weekends.description'))
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.weekends ?? true);
+      toggle.setValue(PluginState.getSettings().weekends ?? true);
       toggle.onChange(async val => {
-        plugin.settings.weekends = val;
-        await plugin.saveSettings();
+        PluginState.getSettings().weekends = val;
+        await PluginState.saveSettings();
       });
     });
 
@@ -276,12 +277,12 @@ export function renderAppearanceSettings(
         t('settings.appearance.dayVisibility.hiddenDays.options.hideFriday')
       );
 
-      const currentValue = JSON.stringify(plugin.settings.hiddenDays || []);
+      const currentValue = JSON.stringify(PluginState.getSettings().hiddenDays || []);
       dropdown.setValue(currentValue);
       dropdown.onChange(async value => {
         try {
-          plugin.settings.hiddenDays = JSON.parse(value) as number[];
-          await plugin.saveSettings();
+          PluginState.getSettings().hiddenDays = JSON.parse(value) as number[];
+          await PluginState.saveSettings();
         } catch {
           // Invalid JSON, keep current value
         }
@@ -305,17 +306,17 @@ export function renderAppearanceSettings(
       dropdown.addOption('5', t('settings.appearance.dayMaxEvents.options.five'));
       dropdown.addOption('10', t('settings.appearance.dayMaxEvents.options.ten'));
 
-      const currentValue = (plugin.settings.dayMaxEvents ?? false).toString();
+      const currentValue = (PluginState.getSettings().dayMaxEvents ?? false).toString();
       dropdown.setValue(currentValue);
       dropdown.onChange(async value => {
         if (value === 'true') {
-          plugin.settings.dayMaxEvents = true;
+          PluginState.getSettings().dayMaxEvents = true;
         } else if (value === 'false') {
-          plugin.settings.dayMaxEvents = false;
+          PluginState.getSettings().dayMaxEvents = false;
         } else {
-          plugin.settings.dayMaxEvents = parseInt(value);
+          PluginState.getSettings().dayMaxEvents = parseInt(value);
         }
-        await plugin.saveSettings();
+        await PluginState.saveSettings();
       });
     });
 
@@ -327,10 +328,10 @@ export function renderAppearanceSettings(
       ])
     )
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.enableBackgroundEvents);
+      toggle.setValue(PluginState.getSettings().enableBackgroundEvents);
       toggle.onChange(async val => {
-        plugin.settings.enableBackgroundEvents = val;
-        await plugin.saveSettings();
+        PluginState.getSettings().enableBackgroundEvents = val;
+        await PluginState.saveSettings();
       });
     });
 
@@ -343,10 +344,10 @@ export function renderAppearanceSettings(
       ])
     )
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.showEventInStatusBar);
+      toggle.setValue(PluginState.getSettings().showEventInStatusBar);
       toggle.onChange(async val => {
-        plugin.settings.showEventInStatusBar = val;
-        await plugin.saveSettings();
+        PluginState.getSettings().showEventInStatusBar = val;
+        await PluginState.saveSettings();
       });
     });
 
@@ -358,10 +359,10 @@ export function renderAppearanceSettings(
       ])
     )
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.highlightCurrentOrNextEvent ?? true);
+      toggle.setValue(PluginState.getSettings().highlightCurrentOrNextEvent ?? true);
       toggle.onChange(async val => {
-        plugin.settings.highlightCurrentOrNextEvent = val;
-        await plugin.saveSettings();
+        PluginState.getSettings().highlightCurrentOrNextEvent = val;
+        await PluginState.saveSettings();
         rerender();
       });
     });

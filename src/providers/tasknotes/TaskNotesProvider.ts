@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import React from 'react';
 import { DateTime } from 'luxon';
 import {
@@ -112,7 +113,7 @@ export class TaskNotesProvider
 
     this.reloadTimer = setTimeout(() => {
       this.reloadTimer = null;
-      this.plugin.providerRegistry.reloadProviderNow(this.source.id);
+      PluginState.getProviderRegistry().reloadProviderNow(this.source.id);
     }, delayMs);
   }
 
@@ -275,8 +276,8 @@ export class TaskNotesProvider
     updates: { persistentId: string; event: OFCEvent; location: EventLocation | null }[];
     deletions: string[];
   }): Promise<void> {
-    if (!this.plugin.cache) return;
-    await this.plugin.providerRegistry.processProviderUpdates(this.source.id, payload);
+    if (!PluginState.getCache()) return;
+    await PluginState.getProviderRegistry().processProviderUpdates(this.source.id, payload);
   }
 
   private async handleTaskUpdated(path: string, payloadTask?: TaskNotesTask): Promise<void> {
@@ -290,7 +291,8 @@ export class TaskNotesProvider
       }
 
       const globalIdentifier = `${this.source.id}::${path}`;
-      const existingSessionId = await this.plugin.providerRegistry.getSessionId(globalIdentifier);
+      const existingSessionId =
+        await PluginState.getProviderRegistry().getSessionId(globalIdentifier);
       if (!task) {
         if (existingSessionId) {
           this.scheduleReload();
@@ -325,10 +327,11 @@ export class TaskNotesProvider
   }
 
   private async handleTaskDeleted(path: string): Promise<void> {
-    if (!this.plugin.cache) return;
+    if (!PluginState.getCache()) return;
 
     const globalIdentifier = `${this.source.id}::${path}`;
-    const existingSessionId = await this.plugin.providerRegistry.getSessionId(globalIdentifier);
+    const existingSessionId =
+      await PluginState.getProviderRegistry().getSessionId(globalIdentifier);
     if (!existingSessionId) return;
 
     this.tasksById.delete(path);
@@ -550,7 +553,7 @@ export class TaskNotesProvider
         return false;
       }
 
-      const event = this.plugin.cache?.getEventById(eventId);
+      const event = PluginState.getCache()?.getEventById(eventId);
       if (!event?.uid) {
         return false;
       }
@@ -578,7 +581,7 @@ export class TaskNotesProvider
       return;
     }
 
-    const event = this.plugin.cache?.getEventById(eventId);
+    const event = PluginState.getCache()?.getEventById(eventId);
     if (!event?.uid) {
       return;
     }

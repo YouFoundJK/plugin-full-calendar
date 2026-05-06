@@ -133,6 +133,7 @@ export interface FullCalendarSettings {
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
   activityWatch: ActivityWatchSettings;
   tasksIntegration: TasksIntegrationSettings;
+  authorizedTokens?: Record<string, { pluginId: string; reason: string; grantedAt: number }>;
 
   currentVersion: string | null;
 }
@@ -194,6 +195,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     calendarDisplayDateTarget: 'scheduledDate',
     openEditModalAfterBacklogDrop: false
   },
+  authorizedTokens: {},
 
   enableDefaultReminder: true,
   defaultReminderMinutes: 10,

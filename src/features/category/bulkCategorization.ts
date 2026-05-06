@@ -12,17 +12,19 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../core/PluginState';
 import { Notice, TFile, TFolder } from 'obsidian';
 import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
 
 import FullCalendarPlugin from '../../main';
 import { OFCEvent } from '../../types';
 import {
-  getInlineEventFromLine,
   getListsUnderHeading,
-  modifyListItem
+  modifyListItem,
+  getInlineEventFromLine
 } from '../../providers/dailynote/parser_dailyN';
 import { constructTitle, parseTitle } from './categoryParser';
+import { FullCalendarSettings } from '../../types/settings';
 import { shouldSkipBulkCategorization } from './categorizationWorkflow';
 import { validateEvent } from '../../types/schema';
 import { t } from '../i18n/i18n';
@@ -36,8 +38,8 @@ function getFilesToProcess(plugin: FullCalendarPlugin): TFile[] {
   const files = new Set<TFile>();
 
   // 1. Get files from 'local' (Full Note) providers
-  const localSources = plugin.settings.calendarSources.filter(
-    (s): s is Extract<(typeof plugin.settings.calendarSources)[number], { type: 'local' }> =>
+  const localSources = PluginState.getSettings().calendarSources.filter(
+    (s): s is Extract<FullCalendarSettings['calendarSources'][number], { type: 'local' }> =>
       s.type === 'local'
   );
   for (const source of localSources) {
@@ -57,7 +59,9 @@ function getFilesToProcess(plugin: FullCalendarPlugin): TFile[] {
   }
 
   // 2. Get files from 'dailynote' providers
-  const dailyNoteSources = plugin.settings.calendarSources.filter(s => s.type === 'dailynote');
+  const dailyNoteSources = PluginState.getSettings().calendarSources.filter(
+    s => s.type === 'dailynote'
+  );
   if (dailyNoteSources.length > 0) {
     const { folder } = getDailyNoteSettings();
     if (folder) {
@@ -124,7 +128,9 @@ export async function bulkUpdateCategories(
 
   // Processor for Daily Note calendars
   const dailyNoteProcessor = async (file: TFile) => {
-    const dailyNoteSources = plugin.settings.calendarSources.filter(s => s.type === 'dailynote');
+    const dailyNoteSources = PluginState.getSettings().calendarSources.filter(
+      s => s.type === 'dailynote'
+    );
     await plugin.app.vault.process(file, content => {
       const metadata = plugin.app.metadataCache.getFileCache(file);
       if (!metadata) return content;
@@ -164,7 +170,7 @@ export async function bulkUpdateCategories(
             subCategory: undefined
           };
 
-          const newLine = modifyListItem(line, eventWithNewCategory, plugin.settings);
+          const newLine = modifyListItem(line, eventWithNewCategory, PluginState.getSettings());
           if (newLine) {
             lines[lineNumber] = newLine;
             modified = true;
@@ -181,7 +187,7 @@ export async function bulkUpdateCategories(
     await dailyNoteProcessor(file);
   };
 
-  await plugin.nonBlockingProcess(files, combinedProcessor, 'Categorizing event notes');
+  await PluginState.nonBlockingProcess(files, combinedProcessor, 'Categorizing event notes');
   new Notice(t('notices.bulkCategorization.complete'));
 }
 
@@ -190,7 +196,7 @@ export async function bulkUpdateCategories(
  */
 export async function bulkRemoveCategories(plugin: FullCalendarPlugin): Promise<void> {
   const knownCategories = new Set<string>(
-    plugin.settings.categorySettings.map((s: { name: string }) => s.name)
+    PluginState.getSettings().categorySettings.map((s: { name: string }) => s.name)
   );
   const files = getFilesToProcess(plugin);
   if (files.length === 0) {
@@ -226,7 +232,9 @@ export async function bulkRemoveCategories(plugin: FullCalendarPlugin): Promise<
       .pop();
     if (parentDir) knownCategories.add(parentDir);
 
-    const dailyNoteSources = plugin.settings.calendarSources.filter(s => s.type === 'dailynote');
+    const dailyNoteSources = PluginState.getSettings().calendarSources.filter(
+      s => s.type === 'dailynote'
+    );
     await plugin.app.vault.process(file, content => {
       const metadata = plugin.app.metadataCache.getFileCache(file);
       if (!metadata) return content;
@@ -255,7 +263,7 @@ export async function bulkRemoveCategories(plugin: FullCalendarPlugin): Promise<
             title: cleanTitle,
             category: undefined
           };
-          const newLine = modifyListItem(line, eventWithoutCategory, plugin.settings);
+          const newLine = modifyListItem(line, eventWithoutCategory, PluginState.getSettings());
 
           if (newLine && newLine !== line) {
             lines[lineNumber] = newLine;
@@ -273,6 +281,6 @@ export async function bulkRemoveCategories(plugin: FullCalendarPlugin): Promise<
     await dailyNoteProcessor(file);
   };
 
-  await plugin.nonBlockingProcess(files, combinedProcessor, 'De-categorizing event notes');
+  await PluginState.nonBlockingProcess(files, combinedProcessor, 'De-categorizing event notes');
   new Notice(t('notices.bulkDecategorization.complete'));
 }

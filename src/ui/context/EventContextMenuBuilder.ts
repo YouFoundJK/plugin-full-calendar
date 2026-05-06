@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import { EventApi } from '@fullcalendar/core';
 import { Menu, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../main';
@@ -62,18 +63,18 @@ export async function openEventContextMenu(
   mouseEvent: MouseEvent
 ): Promise<void> {
   const menu = new Menu();
-  if (!plugin.cache) {
+  if (!PluginState.getCache()) {
     return;
   }
 
-  const eventDetails = plugin.cache.store.getEventDetails(eventApi.id);
+  const eventDetails = PluginState.getCache().store.getEventDetails(eventApi.id);
   if (!eventDetails) {
     return;
   }
 
   const { event, calendarId, location } = eventDetails;
-  const provider = plugin.providerRegistry.getInstance(calendarId);
-  const capabilities = plugin.providerRegistry.getCapabilities(calendarId);
+  const provider = PluginState.getProviderRegistry().getInstance(calendarId);
+  const capabilities = PluginState.getProviderRegistry().getCapabilities(calendarId);
 
   if (!provider || !capabilities) {
     return;
@@ -92,7 +93,7 @@ export async function openEventContextMenu(
 
   const hasPriorItems = { value: false };
 
-  if (plugin.cache.isEventEditable(eventApi.id)) {
+  if (PluginState.getCache().isEventEditable(eventApi.id)) {
     const menuCapabilities = getContextMenuCapabilities(capabilities);
 
     addActionGroup(menu, buildDisplayActions(plugin, eventApi, menuCapabilities), hasPriorItems);
@@ -132,7 +133,7 @@ function buildDisplayActions(
       )}`,
       icon: 'paintbrush',
       run: async () => {
-        await plugin.cache.processEvent(eventApi.id, current => ({
+        await PluginState.getCache().processEvent(eventApi.id, current => ({
           ...current,
           display: undefined
         }));
@@ -158,7 +159,9 @@ async function buildGenericTaskActions(
         title: t('ui.view.contextMenu.turnIntoTask'),
         icon: 'check',
         run: async () => {
-          await plugin.cache.processEvent(context.eventId, event => tasks.toggleTask(event, false));
+          await PluginState.getCache().processEvent(context.eventId, event =>
+            tasks.toggleTask(event, false)
+          );
         }
       }
     ];
@@ -170,7 +173,7 @@ async function buildGenericTaskActions(
       title: t('ui.view.contextMenu.removeCheckbox'),
       icon: 'x',
       run: async () => {
-        await plugin.cache.processEvent(context.eventId, tasks.unmakeTask);
+        await PluginState.getCache().processEvent(context.eventId, tasks.unmakeTask);
       }
     }
   ];
@@ -193,11 +196,11 @@ function buildNavigationActions(
       title: t('ui.view.contextMenu.goToNote'),
       icon: 'file-text',
       run: () => {
-        if (!plugin.cache) {
+        if (!PluginState.getCache()) {
           return;
         }
         void import('../../utils/eventActions').then(({ openFileForEvent }) =>
-          openFileForEvent(plugin.cache, plugin.app, context.eventId)
+          openFileForEvent(PluginState.getCache(), plugin.app, context.eventId)
         );
       }
     }
@@ -208,7 +211,7 @@ function buildDeleteActions(
   plugin: FullCalendarPlugin,
   context: ProviderEventContext
 ): ActionGroup {
-  const capabilities = plugin.providerRegistry.getCapabilities(context.calendarId);
+  const capabilities = PluginState.getProviderRegistry().getCapabilities(context.calendarId);
   if (!capabilities?.canDelete) {
     return [];
   }
@@ -219,7 +222,7 @@ function buildDeleteActions(
       title: t('ui.view.contextMenu.delete'),
       icon: 'trash-2',
       run: async () => {
-        if (!plugin.cache) {
+        if (!PluginState.getCache()) {
           return;
         }
 
@@ -229,9 +232,9 @@ function buildDeleteActions(
         ) {
           const instanceDate =
             context.start instanceof Date ? context.start.toISOString().slice(0, 10) : undefined;
-          await plugin.cache.deleteEvent(context.eventId, { instanceDate });
+          await PluginState.getCache().deleteEvent(context.eventId, { instanceDate });
         } else {
-          await plugin.cache.deleteEvent(context.eventId);
+          await PluginState.getCache().deleteEvent(context.eventId);
         }
 
         new Notice(t('ui.view.success.deletedEvent', { title: context.title }));

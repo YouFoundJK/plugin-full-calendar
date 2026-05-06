@@ -1,3 +1,4 @@
+import { PluginState } from '../../../core/PluginState';
 import * as React from 'react';
 import { useState } from 'react';
 import { Notice } from 'obsidian';
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose }) => {
-  const settings = plugin.settings.activityWatch;
+  const settings = PluginState.getSettings().activityWatch;
   const normalizedProfiles = (settings.profiles || []).map(profile => ({
     ...profile,
     supportingEvidenceRules: profile.supportingEvidenceRules || []
@@ -47,17 +48,24 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
   }, [syncStrategy]);
 
   const handleSave = async () => {
-    plugin.settings.activityWatch.apiUrl = apiUrl;
-    plugin.settings.activityWatch.targetCalendarId = targetCalendarId;
-    plugin.settings.activityWatch.syncStrategy = syncStrategy;
-    plugin.settings.activityWatch.autoSyncEnabled =
+    PluginState.getSettings().activityWatch.apiUrl = apiUrl;
+    PluginState.getSettings().activityWatch.targetCalendarId = targetCalendarId;
+    PluginState.getSettings().activityWatch.syncStrategy = syncStrategy;
+    PluginState.getSettings().activityWatch.autoSyncEnabled =
       syncStrategy === 'auto' ? autoSyncEnabled : false;
-    plugin.settings.activityWatch.autoSyncIntervalMins = Math.max(1, autoSyncIntervalMins || 10);
-    plugin.settings.activityWatch.customDateStart = dateRange[0] ? dateRange[0].toISOString() : '';
-    plugin.settings.activityWatch.customDateEnd = dateRange[1] ? dateRange[1].toISOString() : '';
-    plugin.settings.activityWatch.profiles = profiles;
+    PluginState.getSettings().activityWatch.autoSyncIntervalMins = Math.max(
+      1,
+      autoSyncIntervalMins || 10
+    );
+    PluginState.getSettings().activityWatch.customDateStart = dateRange[0]
+      ? dateRange[0].toISOString()
+      : '';
+    PluginState.getSettings().activityWatch.customDateEnd = dateRange[1]
+      ? dateRange[1].toISOString()
+      : '';
+    PluginState.getSettings().activityWatch.profiles = profiles;
 
-    await plugin.saveSettings();
+    await PluginState.saveSettings();
     new Notice(t('modals.activityWatchSetup.saved'));
     onClose();
   };
@@ -95,10 +103,10 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
     useRegex: false
   });
 
-  const availableProviders = plugin.providerRegistry
+  const availableProviders = PluginState.getProviderRegistry()
     .getAllSources()
     .map(s => {
-      const instance = plugin.providerRegistry.getInstance(s.id);
+      const instance = PluginState.getProviderRegistry().getInstance(s.id);
       return {
         id: s.id,
         name: s.name || s.type,

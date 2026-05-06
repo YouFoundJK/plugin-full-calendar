@@ -12,83 +12,51 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from './core/PluginState';
 import { NotificationManager } from './features/notifications/NotificationManager';
 import { StatusBarManager } from './features/statusbar/StatusBarManager';
 import { LazySettingsTab } from './ui/settings/LazySettingsTab';
 import { ensureCalendarIds, migrateAndSanitizeSettings } from './ui/settings/utilsSettings';
 import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
-import { toEventInput } from './core/interop';
 import { manageTimezone } from './features/timezone/Timezone';
 import { Notice, Plugin, TFile, App, EventRef } from 'obsidian';
 import type { Workspace } from 'obsidian';
 import { initializeI18n, t } from './features/i18n/i18n';
 import './styles.css';
 
-// Heavy calendar classes are loaded lazily in the initializer map below
-import type { CalendarView } from './ui/view';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
 import { ProviderRegistry } from './providers/ProviderRegistry';
-import { FullCalendarAPI } from './api/FullCalendarAPI';
+import { PublicAPI, InternalAPI } from './api/FullCalendarAPI';
 
 // Inline the view type constants to avoid loading the heavy view module at startup
 const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
 const FULL_CALENDAR_SIDEBAR_VIEW_TYPE = 'full-calendar-sidebar-view';
 
 export default class FullCalendarPlugin extends Plugin {
-  private _settings: FullCalendarSettings = DEFAULT_SETTINGS;
-  private activityWatchAutoSyncTimer: number | null = null;
-  private activityWatchAutoSyncInFlight = false;
+  #activityWatchAutoSyncTimer: number | null = null;
+  #activityWatchAutoSyncInFlight = false;
 
-  notificationManager!: NotificationManager;
-  statusBarManager!: StatusBarManager;
+  #notificationManager!: NotificationManager;
+  #statusBarManager!: StatusBarManager;
 
-  get settings(): FullCalendarSettings {
-    return this._settings;
-  }
-
-  set settings(newSettings: FullCalendarSettings) {
-    this._settings = newSettings;
-    // ALWAYS keep the provider registry in sync.
-    if (this.providerRegistry) {
-      this.providerRegistry.updateSources(this._settings.calendarSources);
-    }
-  }
-
-  isMobile: boolean = false;
-  settingsTab?: LazySettingsTab;
-  providerRegistry!: ProviderRegistry;
-  api!: FullCalendarAPI;
-
-  // To parse `data.json` file.`
-  cache: EventCache = new EventCache(this);
+  #isMobile: boolean = false;
+  #settingsTab?: LazySettingsTab;
+  api!: PublicAPI;
 
   // Keep a snapshot of the last saved settings to detect changes reliable
-  private _loadedSettings: string = '';
+  #loadedSettings: string = '';
 
-  processFrontmatter = toEventInput;
+  loadData(): Promise<unknown> {
+    return Promise.reject(
+      new Error('Full Calendar: direct data access is not exposed. Use the authorized API.')
+    );
+  }
 
-  /**
-   * Activates the Full Calendar view.
-   * If a calendar view is already open in a main tab, it focuses that view.
-   * Otherwise, it opens a new calendar view in a new tab.
-   * This prevents opening multiple duplicate calendar tabs.
-   */
-  async activateView() {
-    const leaves = this.app.workspace
-      .getLeavesOfType(FULL_CALENDAR_VIEW_TYPE)
-      .filter(l => (l.view as CalendarView).inSidebar === false);
-    if (leaves.length === 0) {
-      // if not open in main view, open a new one
-      const leaf = this.app.workspace.getLeaf('tab');
-      await leaf.setViewState({
-        type: FULL_CALENDAR_VIEW_TYPE,
-        active: true
-      });
-    } else {
-      // if already open, just focus it
-      await Promise.all(leaves.map(l => (l.view as CalendarView).onOpen()));
-    }
+  saveData(_data: unknown): Promise<void> {
+    return Promise.reject(
+      new Error('Full Calendar: direct data writes are not exposed. Use the authorized API.')
+    );
   }
 
   /**
@@ -102,36 +70,50 @@ export default class FullCalendarPlugin extends Plugin {
     // Initialize i18n system first, before any UI is rendered
     await initializeI18n(this.app, this.manifest.id);
 
-    this.isMobile = (this.app as App & { isMobile: boolean }).isMobile;
-    this.providerRegistry = new ProviderRegistry(this);
-    this.api = new FullCalendarAPI(this);
+    this.#isMobile = (this.app as App & { isMobile: boolean }).isMobile;
+
+    PluginState.setPlugin(this);
+    PluginState.setSettings(DEFAULT_SETTINGS);
+    PluginState.setCache(new EventCache(this));
+    PluginState.setProviderRegistry(new ProviderRegistry(this));
+    PluginState.setInternalAPI(new InternalAPI());
+    PluginState.setSaveSettings(() => this.#saveSettings());
+    PluginState.setLoadSettings(() => this.#loadSettings());
+    PluginState.setNonBlockingProcess((files, processor, description) =>
+      this.#nonBlockingProcess(files, processor, description)
+    );
+    PluginState.setDisplaySettingsTab(() => this.#settingsTab?.display());
+    PluginState.setShowChangelog(() => this.#settingsTab?.showChangelog());
+    PluginState.setIsMobile(() => this.#isMobile);
+
+    this.api = new PublicAPI(this);
 
     // Register all built-in providers in one call
-    this.providerRegistry.registerBuiltInProviders();
+    PluginState.getProviderRegistry().registerBuiltInProviders();
 
-    await this.loadSettings(); // This now handles setting and syncing
+    await this.#loadSettings(); // This now handles setting and syncing
 
-    await this.providerRegistry.initializeInstances();
+    await PluginState.getProviderRegistry().initializeInstances();
 
-    this.setupActivityWatchAutoSync();
+    this.#setupActivityWatchAutoSync();
 
     // Ensure Tasks Backlog view is available immediately if a Tasks calendar exists
-    this.providerRegistry.syncBacklogManagerLifecycle();
+    PluginState.getProviderRegistry().syncBacklogManagerLifecycle();
 
     await manageTimezone(this);
 
     // Link the two singletons.
-    this.providerRegistry.setCache(this.cache);
-    this.providerRegistry.listenForSourceChanges();
+    PluginState.getProviderRegistry().setCache(PluginState.getCache());
+    PluginState.getProviderRegistry().listenForSourceChanges();
 
-    this.cache.reset();
-    this.cache.listenForSettingsChanges(this.app.workspace);
+    PluginState.getCache().reset();
+    PluginState.getCache().listenForSettingsChanges(this.app.workspace);
 
     // Start NotificationManager after providerRegistry is initialized
-    this.notificationManager = new NotificationManager(this);
-    this.notificationManager.update(this.settings);
-    this.statusBarManager = new StatusBarManager(this);
-    this.statusBarManager.update(this.settings);
+    this.#notificationManager = new NotificationManager(this);
+    this.#notificationManager.update(PluginState.getSettings());
+    this.#statusBarManager = new StatusBarManager(this);
+    this.#statusBarManager.update(PluginState.getSettings());
     type WorkspaceEvents = Workspace & {
       on: Workspace['on'] &
         ((
@@ -148,26 +130,26 @@ export default class FullCalendarPlugin extends Plugin {
     this.registerEvent(
       workspaceEvents.on(
         'full-calendar:settings-updated',
-        this.notificationManager.update.bind(this.notificationManager)
+        this.#notificationManager.update.bind(this.#notificationManager)
       )
     );
     this.registerEvent(
       workspaceEvents.on(
         'full-calendar:settings-updated',
-        this.statusBarManager.update.bind(this.statusBarManager)
+        this.#statusBarManager.update.bind(this.#statusBarManager)
       )
     );
     this.registerEvent(
       workspaceEvents.on(
         'full-calendar:settings-updated',
-        this.cache.updateSettings.bind(this.cache)
+        PluginState.getCache().updateSettings.bind(PluginState.getCache())
       )
     );
 
     // Respond to obsidian events
     this.registerEvent(
       this.app.metadataCache.on('changed', file => {
-        void this.providerRegistry.handleFileUpdate(file);
+        void PluginState.getProviderRegistry().handleFileUpdate(file);
       })
     );
     this.registerEvent(
@@ -175,19 +157,17 @@ export default class FullCalendarPlugin extends Plugin {
         if (file instanceof TFile) {
           // A rename is a delete at the old path.
           // The 'changed' event will pick up the creation at the new path.
-          void this.providerRegistry.handleFileDelete(oldPath);
+          void PluginState.getProviderRegistry().handleFileDelete(oldPath);
         }
       })
     );
     this.registerEvent(
       this.app.vault.on('delete', file => {
         if (file instanceof TFile) {
-          void this.providerRegistry.handleFileDelete(file.path);
+          void PluginState.getProviderRegistry().handleFileDelete(file.path);
         }
       })
     );
-
-    window.cache = this.cache;
 
     const { CalendarView } = await import('./ui/view');
 
@@ -195,7 +175,7 @@ export default class FullCalendarPlugin extends Plugin {
 
     this.registerView(FULL_CALENDAR_SIDEBAR_VIEW_TYPE, leaf => new CalendarView(leaf, this, true));
 
-    if (!this.isMobile) {
+    if (!this.#isMobile) {
       // Lazily import the view to avoid loading plotly on mobile.
       import('./chrono_analyser/AnalysisView')
         .then(({ AnalysisView, ANALYSIS_VIEW_TYPE }) => {
@@ -209,25 +189,25 @@ export default class FullCalendarPlugin extends Plugin {
 
     // Register the calendar icon on left-side bar
     this.addRibbonIcon('calendar-glyph', t('ribbon.openCalendar'), async (_: MouseEvent) => {
-      await this.activateView();
+      await PluginState.getInternalAPI().openCalendar();
     });
 
-    this.settingsTab = new LazySettingsTab(this.app, this, this.providerRegistry);
-    this.addSettingTab(this.settingsTab);
+    this.#settingsTab = new LazySettingsTab(this.app, this, PluginState.getProviderRegistry());
+    this.addSettingTab(this.#settingsTab);
 
     // Commands visible in the command palette
     this.addCommand({
       id: 'full-calendar-new-event',
       name: t('commands.newEvent'),
       callback: () => {
-        this.api.openCreateModal();
+        PluginState.getInternalAPI().openCreateModal();
       }
     });
     this.addCommand({
       id: 'full-calendar-reset',
       name: t('commands.resetCache'),
       callback: () => {
-        this.cache.reset();
+        PluginState.getCache().reset();
         this.app.workspace.detachLeavesOfType(FULL_CALENDAR_VIEW_TYPE);
         this.app.workspace.detachLeavesOfType(FULL_CALENDAR_SIDEBAR_VIEW_TYPE);
         new Notice(t('notices.cacheReset'));
@@ -237,14 +217,14 @@ export default class FullCalendarPlugin extends Plugin {
       id: 'full-calendar-revalidate',
       name: t('commands.revalidateRemote'),
       callback: () => {
-        this.providerRegistry.revalidateRemoteCalendars(true);
+        PluginState.getProviderRegistry().revalidateRemoteCalendars(true);
       }
     });
     this.addCommand({
       id: 'full-calendar-sync-activitywatch',
       name: t('commands.syncActivityWatch'),
       checkCallback: checking => {
-        const isEnabled = this.settings.activityWatch.enabled;
+        const isEnabled = PluginState.getSettings().activityWatch.enabled;
         if (!isEnabled) {
           return false;
         }
@@ -261,11 +241,11 @@ export default class FullCalendarPlugin extends Plugin {
       id: 'full-calendar-open',
       name: t('commands.openCalendar'),
       callback: () => {
-        void this.api.openCalendar();
+        void PluginState.getInternalAPI().openCalendar();
       }
     });
 
-    if (this.isMobile) {
+    if (this.#isMobile) {
       this.addCommand({
         id: 'full-calendar-open-analysis-mobile-disabled',
         name: t('commands.openChronoAnalyser'),
@@ -279,7 +259,7 @@ export default class FullCalendarPlugin extends Plugin {
       id: 'full-calendar-open-sidebar',
       name: t('commands.openSidebar'),
       callback: () => {
-        void this.api.openSidebar();
+        void PluginState.getInternalAPI().openSidebar();
       }
     });
 
@@ -293,9 +273,7 @@ export default class FullCalendarPlugin extends Plugin {
       if (params.code && params.state) {
         const { exchangeCodeForToken } = await import('./providers/google/auth/auth');
         await exchangeCodeForToken(params.code, params.state, this);
-        if (this.settingsTab) {
-          this.settingsTab.display();
-        }
+        this.#settingsTab?.display();
       } else {
         new Notice(t('notices.googleAuthFailed'));
         console.error('Google Auth Callback Error: Missing code or state.', params);
@@ -309,19 +287,16 @@ export default class FullCalendarPlugin extends Plugin {
    * It cleans up by detaching all calendar and sidebar views.
    */
   onunload() {
-    this.clearActivityWatchAutoSync();
-    if (this.notificationManager) {
-      this.notificationManager.unload();
+    this.#clearActivityWatchAutoSync();
+    if (this.#notificationManager) {
+      this.#notificationManager.unload();
     }
-    if (this.statusBarManager) {
-      this.statusBarManager.unload();
+    if (this.#statusBarManager) {
+      this.#statusBarManager.unload();
     }
-    if (this.providerRegistry) {
-      this.providerRegistry.stopListening();
-    }
-    if (this.cache) {
-      this.cache.stopListening();
-    }
+    PluginState.getProviderRegistry().stopListening();
+    PluginState.getCache().stopListening();
+    PluginState.clear();
     // NOTE: Per Obsidian plugin guidelines, do NOT detach leaves of custom views here.
     // Obsidian will handle stale views; detaching in onunload is considered an anti-pattern.
   }
@@ -329,20 +304,20 @@ export default class FullCalendarPlugin extends Plugin {
   /**
    * Loads plugin settings from disk, merging them with default values.
    */
-  async loadSettings() {
-    const loadedData = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as unknown);
+  async #loadSettings() {
+    const loadedData = Object.assign({}, DEFAULT_SETTINGS, (await super.loadData()) as unknown);
 
     // All migration and sanitization logic is now encapsulated in this utility function.
     const { settings: migratedSettings, needsSave } = migrateAndSanitizeSettings(loadedData);
 
-    this.settings = migratedSettings;
-    this._loadedSettings = JSON.stringify(this.settings);
-    this.cache.enhancer.updateSettings(this.settings);
+    PluginState.setSettings(migratedSettings);
+    this.#loadedSettings = JSON.stringify(PluginState.getSettings());
+    PluginState.getCache().enhancer.updateSettings(PluginState.getSettings());
 
     // Save back to disk if any migration or sanitization occurred.
     if (needsSave) {
       new Notice(t('notices.settingsUpdated'));
-      await this.saveData(this.settings);
+      await super.saveData(PluginState.getSettings());
     }
 
     // Check if we need to show the changelog
@@ -355,34 +330,35 @@ export default class FullCalendarPlugin extends Plugin {
    * After saving, it triggers a reset and repopulation of the event cache
    * to ensure all calendars are using the new settings.
    */
-  async saveSettings() {
+  async #saveSettings() {
     // Deep copy of settings BEFORE any modifications.
-    const oldSettings = JSON.parse(JSON.stringify(this.settings)) as FullCalendarSettings;
+    const oldSettings = JSON.parse(
+      JSON.stringify(PluginState.getSettings())
+    ) as FullCalendarSettings;
 
     // Create a mutable copy to work with.
-    const newSettings = { ...this.settings };
+    const newSettings = { ...PluginState.getSettings() };
 
     // Sanitize calendar sources before saving to ensure all have IDs.
     const { sources } = ensureCalendarIds(newSettings.calendarSources);
     newSettings.calendarSources = sources;
 
     // Now, assign the fully-corrected settings object in one go.
-    // This triggers the setter ONCE with the final, valid data.
-    this.settings = newSettings;
+    PluginState.setSettings(newSettings);
 
-    await this.saveData(this.settings);
+    await super.saveData(PluginState.getSettings());
 
     // Publish general settings update event for all subscribers
-    this.app.workspace.trigger('full-calendar:settings-updated', this.settings);
+    this.app.workspace.trigger('full-calendar:settings-updated', PluginState.getSettings());
 
     // Compare old and new settings to determine which specific events to publish.
-    const newSettingsString = JSON.stringify(this.settings);
+    const newSettingsString = JSON.stringify(PluginState.getSettings());
 
     // Parse both to objects to compare specific fields without worrying about property order
-    const oldSettingsObj: FullCalendarSettings = this._loadedSettings
-      ? (JSON.parse(this._loadedSettings) as FullCalendarSettings)
+    const oldSettingsObj: FullCalendarSettings = this.#loadedSettings
+      ? (JSON.parse(this.#loadedSettings) as FullCalendarSettings)
       : oldSettings;
-    const newSettingsObj = this.settings;
+    const newSettingsObj = PluginState.getSettings();
 
     const newSourcesString = JSON.stringify(newSettingsObj.calendarSources);
     const oldSourcesString = JSON.stringify(oldSettingsObj.calendarSources);
@@ -408,26 +384,26 @@ export default class FullCalendarPlugin extends Plugin {
     }
 
     // Update the snapshot
-    this._loadedSettings = newSettingsString;
-    this.setupActivityWatchAutoSync();
+    this.#loadedSettings = newSettingsString;
+    this.#setupActivityWatchAutoSync();
 
     // This manual call is now redundant and will be removed.
     // if (this.notificationManager) {
-    //   this.notificationManager.update(this.settings);
+    //   this.notificationManager.update(PluginState.getSettings());
     // }
   }
 
-  private clearActivityWatchAutoSync(): void {
-    if (this.activityWatchAutoSyncTimer !== null) {
-      window.clearInterval(this.activityWatchAutoSyncTimer);
-      this.activityWatchAutoSyncTimer = null;
+  #clearActivityWatchAutoSync(): void {
+    if (this.#activityWatchAutoSyncTimer !== null) {
+      window.clearInterval(this.#activityWatchAutoSyncTimer);
+      this.#activityWatchAutoSyncTimer = null;
     }
   }
 
-  private setupActivityWatchAutoSync(): void {
-    this.clearActivityWatchAutoSync();
+  #setupActivityWatchAutoSync(): void {
+    this.#clearActivityWatchAutoSync();
 
-    const aw = this.settings.activityWatch;
+    const aw = PluginState.getSettings().activityWatch;
     if (!aw.enabled || !aw.autoSyncEnabled || aw.syncStrategy !== 'auto') {
       return;
     }
@@ -435,30 +411,30 @@ export default class FullCalendarPlugin extends Plugin {
     const intervalMinutes = Math.max(1, aw.autoSyncIntervalMins || 10);
     const intervalMs = intervalMinutes * 60 * 1000;
 
-    this.activityWatchAutoSyncTimer = window.setInterval(() => {
-      void this.runActivityWatchAutoSyncTick();
+    this.#activityWatchAutoSyncTimer = window.setInterval(() => {
+      void this.#runActivityWatchAutoSyncTick();
     }, intervalMs);
-    this.registerInterval(this.activityWatchAutoSyncTimer);
+    this.registerInterval(this.#activityWatchAutoSyncTimer);
   }
 
-  private async runActivityWatchAutoSyncTick(): Promise<void> {
-    if (this.activityWatchAutoSyncInFlight) {
+  async #runActivityWatchAutoSyncTick(): Promise<void> {
+    if (this.#activityWatchAutoSyncInFlight) {
       return;
     }
 
-    const aw = this.settings.activityWatch;
+    const aw = PluginState.getSettings().activityWatch;
     if (!aw.enabled || !aw.autoSyncEnabled || aw.syncStrategy !== 'auto') {
       return;
     }
 
-    this.activityWatchAutoSyncInFlight = true;
+    this.#activityWatchAutoSyncInFlight = true;
     try {
       const { syncActivityWatch } = await import('./features/activitywatch/sync');
       await syncActivityWatch(this, { suppressNotices: true, trigger: 'auto' });
     } catch (error) {
       console.error('ActivityWatch auto-sync failed:', error);
     } finally {
-      this.activityWatchAutoSyncInFlight = false;
+      this.#activityWatchAutoSyncInFlight = false;
     }
   }
 
@@ -469,7 +445,7 @@ export default class FullCalendarPlugin extends Plugin {
    * @param processor The async function to apply to each file.
    * @param description A description of the operation for the notice.
    */
-  nonBlockingProcess(
+  #nonBlockingProcess(
     files: TFile[],
     processor: (file: TFile) => Promise<void>,
     description: string
