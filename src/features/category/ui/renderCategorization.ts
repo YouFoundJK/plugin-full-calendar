@@ -22,7 +22,7 @@ export function renderCategorizationSettings(
     .setName(t('settings.categorization.title'))
     .setHeading()
     .setDesc(
-      createDescWithDocs(t('settings.categorization.learnMore'), [
+      createDescWithDocs(t('global.learnMore'), [
         { text: t('settings.categorization.learnMoreLink'), path: 'user/events/categories' },
         { text: 'Event management', path: 'user/events/manage' },
         { text: 'Tasks and categories', path: 'user/events/tasks' }

@@ -311,7 +311,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     const shellEl = this.containerEl.createDiv('full-calendar-settings-shell');
     const headerEl = shellEl.createDiv('full-calendar-settings-header');
     headerEl.createEl('p', {
-      text: 'Switch between focused setting groups to keep configuration lighter and easier to scan.'
+      text: t('global.settingsHeader')
     });
 
     const tabsRowEl = shellEl.createDiv('full-calendar-settings-tabs-row');

@@ -274,7 +274,9 @@
       "showEventInStatusBar": {
         "label": "Aktuelles Ereignis in der Statusleiste anzeigen",
         "description": "Zeigt den Titel des aktuell laufenden Ereignisses in der Obsidian-Statusleiste an."
-      }
+      },
+      "highlightCurrentOrNextEvent": "Highlight current or next event",
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active."
     },
     "calendars": {
       "title": "Kalender verwalten",
@@ -364,8 +366,6 @@
     },
     "categorization": {
       "title": "Erweiterte Kategorisierung und Zeitachse",
-      "learnMore": "Mehr erfahren",
-      "learnMoreLink": "hier",
       "enable": {
         "label": "Erweiterte Kategorisierung aktivieren (titelbasiert)",
         "description": "Aktivieren Sie die kategoriebasierte Farbgebung und schalten Sie Zeitachsenansichten frei. Dies ändert die Titel der Ereignisnotizen und ermöglicht die Zeitachsenvisualisierung nach Kategorie."
@@ -376,7 +376,8 @@
         "buttonDisableWithoutCleanup": "Ohne Bereinigung deaktivieren",
         "buttonDisable": "Deaktivieren und Notizen bereinigen",
         "buttonCancel": "Abbrechen"
-      }
+      },
+      "learnMoreLink": "here"
     },
     "workspaces": {
       "title": "Arbeitsbereiche",
@@ -918,5 +919,9 @@
     "inMinutes": "(In {{mins}} Minuten)",
     "failed": "Full Calendar: Desktop-Benachrichtigung konnte nicht erstellt werden.",
     "errorBody": "Full Calendar: Desktop-Benachrichtigung konnte nicht angezeigt werden. Überprüfen Sie die Konsole auf Fehler."
+  },
+  "global": {
+    "learnMore": "Learn more",
+    "settingsHeader": "Switch between focused setting groups to keep configuration lighter and easier to scan."
   }
 }

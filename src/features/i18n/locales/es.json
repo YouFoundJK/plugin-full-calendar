@@ -274,7 +274,9 @@
       "showEventInStatusBar": {
         "label": "Mostrar evento actual en la barra de estado",
         "description": "Mostrar el título del evento en curso en la barra de estado de Obsidian."
-      }
+      },
+      "highlightCurrentOrNextEvent": "Highlight current or next event",
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active."
     },
     "calendars": {
       "title": "Gestionar calendarios",
@@ -364,8 +366,6 @@
     },
     "categorization": {
       "title": "Categorización avanzada y línea de tiempo",
-      "learnMore": "Aprende más",
-      "learnMoreLink": "aquí",
       "enable": {
         "label": "Habilitar categorización avanzada (basada en título)",
         "description": "Habilita el coloreo por categoría y desbloquea vistas de línea de tiempo. Esto modificará los títulos de las notas de eventos y permitirá la visualización por categoría."
@@ -376,7 +376,8 @@
         "buttonDisableWithoutCleanup": "Deshabilitar sin limpieza",
         "buttonDisable": "Deshabilitar y limpiar notas",
         "buttonCancel": "Cancelar"
-      }
+      },
+      "learnMoreLink": "here"
     },
     "workspaces": {
       "title": "Espacios de trabajo",
@@ -918,5 +919,9 @@
     "inMinutes": "(En {{mins}} minutos)",
     "failed": "Full Calendar: Falló al crear la notificación de escritorio.",
     "errorBody": "Full Calendar: No se pudo mostrar la notificación de escritorio. Revisa la consola para ver errores."
+  },
+  "global": {
+    "learnMore": "Learn more",
+    "settingsHeader": "Switch between focused setting groups to keep configuration lighter and easier to scan."
   }
 }

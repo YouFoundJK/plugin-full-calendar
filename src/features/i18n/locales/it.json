@@ -274,7 +274,9 @@
       "showEventInStatusBar": {
         "label": "Mostra evento corrente nella barra di stato",
         "description": "Visualizza il titolo dell'evento in corso nella barra di stato di Obsidian."
-      }
+      },
+      "highlightCurrentOrNextEvent": "Highlight current or next event",
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active."
     },
     "calendars": {
       "title": "Gestisci calendari",
@@ -364,8 +366,6 @@
     },
     "categorization": {
       "title": "Categorizzazione avanzata e Timeline",
-      "learnMore": "Scopri di più",
-      "learnMoreLink": "qui",
       "enable": {
         "label": "Abilita categorizzazione avanzata (basata sul titolo)",
         "description": "Abilita la colorazione per categoria e sblocca le viste timeline. Questo modificherà i titoli delle note evento e permetterà la visualizzazione timeline per categoria."
@@ -376,7 +376,8 @@
         "buttonDisableWithoutCleanup": "Disabilita senza pulizia",
         "buttonDisable": "Disabilita e pulisci note",
         "buttonCancel": "Annulla"
-      }
+      },
+      "learnMoreLink": "here"
     },
     "workspaces": {
       "title": "Workspace",
@@ -918,5 +919,9 @@
     "inMinutes": "(Tra {{mins}} minuti)",
     "failed": "Full Calendar: Impossibile creare la notifica desktop.",
     "errorBody": "Full Calendar: Impossibile mostrare la notifica desktop. Controlla la console per errori."
+  },
+  "global": {
+    "learnMore": "Learn more",
+    "settingsHeader": "Switch between focused setting groups to keep configuration lighter and easier to scan."
   }
 }

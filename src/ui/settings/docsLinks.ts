@@ -4,6 +4,8 @@
  * @license See LICENSE.md
  */
 
+import { t } from '../../features/i18n/i18n';
+
 export interface DocsLink {
   text: string;
   path: string;
@@ -17,7 +19,7 @@ export function toDocsUrl(path: string): string {
 
 export function createDocsLinksFragment(
   links: DocsLink[],
-  prefix = 'Learn more: '
+  prefix = t('global.learnMore')
 ): DocumentFragment {
   const fragment = document.createDocumentFragment();
   if (links.length === 0) {

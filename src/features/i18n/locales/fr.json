@@ -274,7 +274,9 @@
       "showEventInStatusBar": {
         "label": "Afficher l'événement en cours dans la barre d'état",
         "description": "Afficher le titre de l'événement en cours dans la barre d'état d'Obsidian."
-      }
+      },
+      "highlightCurrentOrNextEvent": "Highlight current or next event",
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active."
     },
     "calendars": {
       "title": "Gérer les calendriers",
@@ -364,8 +366,6 @@
     },
     "categorization": {
       "title": "Catégorisation avancée et Timeline",
-      "learnMore": "En savoir plus",
-      "learnMoreLink": "ici",
       "enable": {
         "label": "Activer la catégorisation avancée (basée sur le titre)",
         "description": "Activer la coloration par catégorie et débloquer les vues timeline. Cela modifiera les titres des notes d'événement et permettra la visualisation timeline par catégorie."
@@ -376,7 +376,8 @@
         "buttonDisableWithoutCleanup": "Désactiver sans nettoyage",
         "buttonDisable": "Désactiver et nettoyer les notes",
         "buttonCancel": "Annuler"
-      }
+      },
+      "learnMoreLink": "here"
     },
     "workspaces": {
       "title": "Espaces de travail",
@@ -918,5 +919,9 @@
     "inMinutes": "(Dans {{mins}} minutes)",
     "failed": "Full Calendar : Échec de la création de la notification de bureau.",
     "errorBody": "Full Calendar : Impossible d'afficher la notification de bureau. Vérifiez la console pour les erreurs."
+  },
+  "global": {
+    "learnMore": "Learn more",
+    "settingsHeader": "Switch between focused setting groups to keep configuration lighter and easier to scan."
   }
 }

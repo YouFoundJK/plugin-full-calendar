@@ -351,12 +351,11 @@ export function renderAppearanceSettings(
     });
 
   new Setting(containerEl)
-    .setName('Highlight current or next event')
+    .setName(t('settings.appearance.highlightCurrentOrNextEvent'))
     .setDesc(
-      createDescWithDocs(
-        'Highlights the current timed event, or the immediate next timed event if none is active.',
-        [{ text: 'Display and behavior', path: 'user/settings/fc_config' }]
-      )
+      createDescWithDocs(t('settings.appearance.highlightCurrentOrNextEventDesc'), [
+        { text: 'Display and behavior', path: 'user/settings/fc_config' }
+      ])
     )
     .addToggle(toggle => {
       toggle.setValue(plugin.settings.highlightCurrentOrNextEvent ?? true);

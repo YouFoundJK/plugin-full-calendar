@@ -1,4 +1,8 @@
 {
+  "global": {
+    "learnMore": "Learn more: ",
+    "settingsHeader": "Switch between focused setting groups to keep configuration lighter and easier to scan."
+  },
   "chrono": {
     "ui": {
       "title": "Configure Insight Groups",
@@ -172,6 +176,8 @@
     },
     "appearance": {
       "title": "Appearance",
+      "highlightCurrentOrNextEvent": "Highlight current or next event",
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active.",
       "firstDay": {
         "label": "Starting day of the week",
         "description": "Choose what day of the week to start."
@@ -364,7 +370,6 @@
     },
     "categorization": {
       "title": "Advanced categorization and Timeline",
-      "learnMore": "Learn more",
       "learnMoreLink": "here",
       "enable": {
         "label": "Enable advanced categorization (Title-based)",
