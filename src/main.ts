@@ -29,6 +29,7 @@ import './styles.css';
 import type { CalendarView } from './ui/view';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
 import { ProviderRegistry } from './providers/ProviderRegistry';
+import { FullCalendarAPI } from './api/FullCalendarAPI';
 
 // Inline the view type constants to avoid loading the heavy view module at startup
 const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
@@ -57,6 +58,7 @@ export default class FullCalendarPlugin extends Plugin {
   isMobile: boolean = false;
   settingsTab?: LazySettingsTab;
   providerRegistry!: ProviderRegistry;
+  api!: FullCalendarAPI;
 
   // To parse `data.json` file.`
   cache: EventCache = new EventCache(this);
@@ -102,6 +104,7 @@ export default class FullCalendarPlugin extends Plugin {
 
     this.isMobile = (this.app as App & { isMobile: boolean }).isMobile;
     this.providerRegistry = new ProviderRegistry(this);
+    this.api = new FullCalendarAPI(this);
 
     // Register all built-in providers in one call
     this.providerRegistry.registerBuiltInProviders();
@@ -216,9 +219,8 @@ export default class FullCalendarPlugin extends Plugin {
     this.addCommand({
       id: 'full-calendar-new-event',
       name: t('commands.newEvent'),
-      callback: async () => {
-        const { launchCreateModal } = await import('./ui/modals/event_modal');
-        launchCreateModal(this, {});
+      callback: () => {
+        this.api.openCreateModal();
       }
     });
     this.addCommand({
@@ -259,7 +261,7 @@ export default class FullCalendarPlugin extends Plugin {
       id: 'full-calendar-open',
       name: t('commands.openCalendar'),
       callback: () => {
-        void this.activateView();
+        void this.api.openCalendar();
       }
     });
 
@@ -277,18 +279,7 @@ export default class FullCalendarPlugin extends Plugin {
       id: 'full-calendar-open-sidebar',
       name: t('commands.openSidebar'),
       callback: () => {
-        if (this.app.workspace.getLeavesOfType(FULL_CALENDAR_SIDEBAR_VIEW_TYPE).length) {
-          return;
-        }
-        const targetLeaf = this.app.workspace.getRightLeaf(false);
-        if (targetLeaf) {
-          void targetLeaf.setViewState({
-            type: FULL_CALENDAR_SIDEBAR_VIEW_TYPE
-          });
-          void this.app.workspace.revealLeaf(targetLeaf);
-        } else {
-          console.warn('Right leaf not found for calendar view!');
-        }
+        void this.api.openSidebar();
       }
     });
 

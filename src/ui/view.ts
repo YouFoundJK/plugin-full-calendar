@@ -1153,6 +1153,7 @@ export class CalendarView extends ItemView {
       this.scheduleApplyEventSearchFilter();
 
       window.fc = this.fullCalendarView ?? undefined;
+      this.plugin.api.registerView(this);
 
       // Initialize date navigation for the "Go To" button
       if (this.fullCalendarView && !this.dateNavigation) {
@@ -1247,6 +1248,7 @@ export class CalendarView extends ItemView {
   }
 
   onunload(): void {
+    this.plugin.api.unregisterView(this);
     if (this.pendingSearchApplyFrame !== null) {
       cancelAnimationFrame(this.pendingSearchApplyFrame);
       this.pendingSearchApplyFrame = null;
