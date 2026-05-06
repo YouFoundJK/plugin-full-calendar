@@ -1,0 +1,906 @@
+{
+  "chrono": {
+    "ui": {
+      "title": "配置数据分析组",
+      "description": "创建分组来分类您的活动。引擎将使用这些规则来生成个性化分析。",
+      "save": "保存配置",
+      "cancel": "取消",
+      "addGroup": "添加新数据分析组",
+      "groupName": "组名称",
+      "groupNamePlaceholder": "例如：工作",
+      "deleteGroup": "删除此组",
+      "persona": {
+        "name": "作为角色分析",
+        "desc": "选择要应用于此组的分析模型。",
+        "productivity": "🎯 生产力",
+        "wellness": "❤️ 健康与日常",
+        "none": "⚪ (在仪表板中忽略)"
+      },
+      "hierarchies": {
+        "name": "匹配层级",
+        "desc": "例如：工作日历、个人日历",
+        "add": "添加层级..."
+      },
+      "projects": {
+        "name": "匹配项目",
+        "desc": "例如：凤凰计划、Q4报告",
+        "add": "添加项目..."
+      },
+      "mutedProjects": {
+        "name": "排除项目",
+        "desc": "排除特定项目（区分大小写，精确匹配），将其排除在习惯一致性检查之外。",
+        "add": "添加排除项目..."
+      },
+      "subprojectKeywords": {
+        "name": "匹配子项目关键词",
+        "desc": "添加关键词，如果在子项目中任何位置找到将匹配。",
+        "placeholder": "例如：设计\n研究\n会议"
+      },
+      "mutedSubprojectKeywords": {
+        "name": "排除子项目关键词",
+        "desc": "通过关键词排除活动。如果子项目包含以下任何关键词（不区分大小写），则将其排除在习惯一致性检查之外。",
+        "placeholder": "例如：已完成\n归档\n旧"
+      },
+      "unsavedChanges": {
+        "title": "未保存的更改",
+        "message": "您有未保存的更改。关闭前是否保存？",
+        "saveAndClose": "保存并关闭",
+        "discard": "放弃更改"
+      },
+      "folderSelectPlaceholder": "选择一个包含时间追踪文件的文件夹...",
+      "errors": {
+        "groupExists": "组名称\"{{name}}\"已存在。"
+      }
+
+    }
+  },
+  "commands": {
+    "newEvent": "新建事件",
+    "resetCache": "重置事件缓存",
+    "revalidateRemote": "重新验证远程日历",
+    "openCalendar": "打开日历",
+    "openChronoAnalyser": "打开数据分析器（仅桌面版）",
+    "openSidebar": "在侧边栏打开",
+    "syncActivityWatch": "同步 ActivityWatch"
+  },
+  "notices": {
+    "settingsUpdated": "日历已将您的日历设置更新为新格式。",
+    "cacheReset": "日历已重置。",
+    "chronoAnalyserMobileDisabled": "数据分析功能仅在 Obsidian 桌面版中可用。",
+    "chronoAnalyserInitializing": "数据分析器：正在初始化事件缓存...",
+    "chronoAnalyserLoadFailed": "加载数据分析器失败。请检查控制台。",
+    "chronoAnalyserConfigureFirst": "请先使用 ⚙️ 图标配置您的数据分析组。",
+    "chronoAnalyserGeneratingInsights": "正在生成分析（这可能需要一些时间）...",
+    "chronoAnalyserInsightsFailed": "生成分析失败。请检查开发者控制台获取错误信息。",
+    "chronoAnalyserInsightsSaved": "分析配置已保存！",
+    "googleAuthFailed": "Google 认证失败。请重试。",
+    "bulkUpdateError": "批量更新时出错。请检查控制台获取详情。",
+    "providerNotRegistered": "{{providerType}} 提供者未注册。",
+    "timezoneChanged": "系统时区已更改为 {{timezone}}。日历视图已更新。",
+    "revalidatingRemotes": "正在重新验证远程日历...",
+    "revalidationFailed": "一个或多个远程日历加载失败。请检查控制台获取详情。",
+    "revalidationSuccess": "远程日历已重新验证。",
+    "cannotOpenRemote": "无法打开远程事件的笔记。",
+    "bulkCategorization": {
+      "noNotesFound": "未找到可分类的本地事件笔记。",
+      "complete": "批量分类完成。"
+    },
+    "bulkDecategorization": {
+      "noNotesFound": "未找到可取消分类的本地事件笔记。",
+      "complete": "批量取消分类完成。"
+    },
+    "tasks": {
+      "createViaPlugin": "使用 Tasks 插件界面创建新任务。",
+      "defaultValidation": "此任务无法安排在此日期。",
+      "scheduledNoModal": "任务已安排，但无法打开 Tasks 编辑弹窗。",
+      "apiUnavailable": "Obsidian Tasks 插件 API 不可用。"
+    }
+  },
+  "eventCache": {
+    "calendarNotFound": "无法添加事件：未找到 ID 为 {{calendarId}} 的日历。",
+    "providerNotFound": "无法添加事件：未找到类型为 {{type}} 的提供者。",
+    "readOnly": "无法向只读日历添加事件。",
+    "createFailed": "创建事件失败。更改已撤销。",
+    "deleteFailed": "删除事件失败。更改已撤销。",
+    "updateFailed": "更新事件失败。更改已撤销。",
+    "movePartialSuccess": "事件移动成功，但部分子事件可能未移动。"
+  },
+  "recurEvents": {
+    "promotingChildren": "正在提升 {{count}} 个子事件。",
+    "deletedAndPromoted": "重复事件已删除，子事件已提升。",
+    "deletingWithChildren": "正在删除重复事件及其 {{count}} 个子覆盖事件...",
+    "deletedAll": "成功删除重复事件及所有子事件。",
+    "preservingTiming": "保留修改的事件时间并取消完成任务。",
+    "revertingControl": "将控制权归还主重复事件序列。",
+    "updatingChildren": "正在更新 {{count}} 个子事件以匹配新的父事件标题。",
+    "updateError": "更新重复事件时出错。部分子事件可能未更新。",
+    "movingChildren": "正在将 {{count}} 个子事件移动到新日历。"
+  },
+  "ribbon": {
+    "openCalendar": "打开日历"
+  },
+  "settings": {
+    "categories": {
+      "general": {
+        "label": "通用",
+        "description": "通用行为、提醒和最近更新。"
+      },
+      "appearance": {
+        "label": "外观",
+        "description": "自定义日历外观、时间格式和可见性。"
+      },
+      "calendars": {
+        "label": "日历",
+        "description": "管理日历来源和提供者特定配置。"
+      },
+      "organization": {
+        "label": "组织",
+        "description": "使用工作区和事件分类组织视图。"
+      },
+      "integrations": {
+        "label": "集成",
+        "description": "连接外部服务如 Google 和 ActivityWatch。"
+      }
+    },
+    "general": {
+      "desktopInitialView": {
+        "label": "桌面端初始视图",
+        "description": "选择桌面设备上的初始视图范围。"
+      },
+      "mobileInitialView": {
+        "label": "移动端初始视图",
+        "description": "选择移动设备上的初始视图范围。"
+      },
+      "displayTimezone": {
+        "label": "显示时区",
+        "description": "选择显示事件的时区。默认为系统时区。更改此设置将重新加载日历。"
+      },
+      "clickToCreateEvent": {
+        "label": "在月视图中点击日期创建事件",
+        "description": "关闭此选项则点击时打开日视图。"
+      }
+    },
+    "reminders": {
+      "title": "提醒",
+      "enableDefault": {
+        "label": "启用默认提醒",
+        "description": "自动为新事件添加提醒。"
+      },
+      "defaultTime": {
+        "label": "默认提醒时间",
+        "description": "事件前提醒分钟数（默认：10）"
+      }
+    },
+    "appearance": {
+      "title": "外观",
+      "firstDay": {
+        "label": "每周起始日",
+        "description": "选择每周从哪一天开始。"
+      },
+      "timeFormat24h": {
+        "label": "24小时制",
+        "description": "以24小时制显示时间。"
+      },
+      "businessHours": {
+        "enable": {
+          "label": "启用工作时间",
+          "description": "在时间网格视图中突出显示您的工作时间，以区分工作时间和个人时间。"
+        },
+        "days": {
+          "label": "工作日",
+          "description": "选择一周中的工作日。"
+        },
+        "startTime": {
+          "label": "工作时间开始时间",
+          "description": "工作日开始时间（格式：HH:mm）"
+        },
+        "endTime": {
+          "label": "工作时间结束时间",
+          "description": "工作日结束时间（格式：HH:mm）"
+        },
+        "options": {
+          "mondayFriday": "周一至周五",
+          "everyDay": "每天",
+          "mondayThursday": "周一至周四",
+          "tuesdaySaturday": "周二至周六"
+        }
+      },
+      "viewTimeRange": {
+        "title": "视图时间范围",
+        "slotMinTime": {
+          "label": "最早显示时间",
+          "description": "设置时间网格视图中可见的最早时间（格式：HH:mm）"
+        },
+        "slotMaxTime": {
+          "label": "最晚显示时间",
+          "description": "设置时间网格视图中可见的最晚时间（格式：HH:mm）"
+        },
+        "allDaySlot": {
+          "label": "显示全天行（周/日视图）",
+          "description": "在周和日时间网格视图顶部切换全天行。"
+        },
+        "timeGridDayHeaderFormat": {
+          "label": "周/日头部日期格式",
+          "description": "选择周和日视图中日期标签的显示方式。",
+          "options": {
+            "ddmmDay": "DD/MM 日",
+            "mmddDay": "MM/DD 日",
+            "dayDdmm": "日 DD/MM",
+            "dayMmdd": "日 MM/DD",
+            "ddmmyyyyDay": "DD/MM/YYYY 日",
+            "mmddyyyyDay": "MM/DD/YYYY 日"
+          }
+        }
+      },
+      "dayVisibility": {
+        "title": "日期可见性",
+        "weekends": {
+          "label": "显示周末",
+          "description": "是否在日历中显示周末（周六和周日）"
+        },
+        "hiddenDays": {
+          "label": "隐藏日期",
+          "description": "选择要从日历中隐藏的星期几",
+          "options": {
+            "showAll": "显示所有日期",
+            "hideWeekends": "隐藏周末（周日、周六）",
+            "hideSunday": "仅隐藏周日",
+            "hideSaturday": "仅隐藏周六",
+            "hideMonday": "隐藏周一",
+            "hideTuesday": "隐藏周二",
+            "hideWednesday": "隐藏周三",
+            "hideThursday": "隐藏周四",
+            "hideFriday": "隐藏周五"
+          }
+        }
+      },
+      "dayMaxEvents": {
+        "label": "每日最大事件数（月视图）",
+        "description": "限制月视图中每天显示的事件数量",
+        "options": {
+          "default": "使用默认限制",
+          "unlimited": "无限制（显示全部）",
+          "one": "最多1个事件",
+          "two": "最多2个事件",
+          "three": "最多3个事件",
+          "four": "最多4个事件",
+          "five": "最多5个事件",
+          "ten": "最多10个事件"
+        }
+      },
+      "enableBackgroundEvents": {
+        "label": "启用背景事件",
+        "description": "允许将事件显示为背景元素，如假期、专注时间或课程表。"
+      },
+      "showEventInStatusBar": {
+        "label": "在状态栏显示当前事件",
+        "description": "在 Obsidian 状态栏显示当前正在运行的事件标题。"
+      }
+    },
+    "calendars": {
+      "title": "管理日历",
+      "addCalendar": "添加日历",
+      "addCalendarTooltip": "添加日历",
+      "defaults": {
+        "iCloud": "iCloud 日历",
+        "new": "新建 {{type}} 日历"
+      },
+      "types": {
+        "local": "完整笔记",
+        "dailynote": "日记",
+        "icloud": "iCloud",
+        "caldav": "CalDAV",
+        "ical": "ICS",
+        "google": "Google 日历",
+        "tasks": "Obsidian Tasks",
+        "bases": "Obsidian Bases"
+      },
+      "fullNote": {
+        "directory": {
+          "label": "目录",
+          "description": "存储事件笔记的目录"
+        }
+      },
+      "dailyNote": {
+        "heading": {
+          "label": "标题",
+          "description": "日记中存储事件的标题。"
+        }
+      },
+      "ics": {
+        "url": {
+          "label": "URL",
+          "description": ".ics 文件的 URL"
+        }
+      },
+      "caldav": {
+        "url": {
+          "label": "集合 URL",
+          "description": "粘贴您的日历集合 URL（例如 https://calendar.zoho.in/caldav/<id>/events/）"
+        },
+        "username": {
+          "label": "用户名",
+          "description": "账户用户名"
+        },
+        "password": {
+          "label": "密码",
+          "description": "账户密码"
+        },
+        "importButton": "导入日历",
+        "importing": "正在导入..."
+      },
+      "tasks": {
+        "zeroConfig": {
+          "label": "无需配置",
+          "description": "此提供者自动读取您现有的 Obsidian Tasks 插件设置。所有带有截止日期的任务将作为只读事件显示在日历上。"
+        },
+        "calendarName": {
+          "label": "日历名称",
+          "description": "此日历的显示名称"
+        },
+        "readOnly": {
+          "label": "事件",
+          "description": "事件编辑直接在 Tasks 模型中进行，而不是在日历编辑弹窗中。"
+        },
+        "adding": "正在添加...",
+        "cancel": "取消"
+      }
+    },
+    "categorization": {
+      "title": "高级分类与时间线",
+      "learnMore": "了解更多",
+      "learnMoreLink": "这里",
+      "enable": {
+        "label": "启用高级分类（基于标题）",
+        "description": "启用基于分类的着色并解锁时间线视图。这将修改事件笔记标题，并允许按分类进行时间线可视化。"
+      },
+      "disable": {
+        "modalTitle": "⚠️ 禁用高级分类",
+        "modalDescription": "选择如何禁用此功能。您可以禁用而不清理以保留事件标题和保存的分类设置，或禁用并清理以移除已知的分类前缀和保存的分类颜色。",
+        "buttonDisableWithoutCleanup": "禁用但不清理",
+        "buttonDisable": "禁用并清理笔记",
+        "buttonCancel": "取消"
+      }
+    },
+    "workspaces": {
+      "title": "工作区",
+      "description": "创建和管理日历工作区。每个工作区可以有自己的视图设置、可见日历和过滤器。",
+      "addNew": {
+        "label": "添加新工作区",
+        "description": "创建新的日历工作区"
+      },
+      "buttons": {
+        "new": "新建工作区",
+        "edit": "编辑",
+        "duplicate": "复制",
+        "activate": "激活",
+        "active": "已激活",
+        "delete": "删除"
+      },
+      "defaultName": "新工作区",
+      "copyName": "{{name}} 副本"
+    },
+    "quickStart": {
+      "description": "要开始，请使用 \"Manage calendars\" 部分中的 \"+\" 按钮添加日历来源。"
+    },
+    "viewOptions": {
+      "day": "日",
+      "week": "周",
+      "month": "月",
+      "list": "列表",
+      "threeDays": "3天",
+      "timelineWeek": "时间线周",
+      "timelineDay": "时间线日"
+    },
+    "weekdays": {
+      "sunday": "周日",
+      "monday": "周一",
+      "tuesday": "周二",
+      "wednesday": "周三",
+      "thursday": "周四",
+      "friday": "周五",
+      "saturday": "周六"
+    },
+    "changelog": {
+      "title": "更新日志",
+      "whatsNew": "新功能",
+      "viewFull": "查看完整更新日志",
+      "versionWithNumber": "版本 {{version}}",
+      "whatsNewPageLink": "新功能页面",
+      "changelogPageLink": "更新日志",
+      "loadOlder": {
+        "button": "加载更早版本",
+        "loading": "加载中...",
+        "errorOffline": "加载更早版本失败。您可能处于离线状态。"
+      }
+    },
+    "utils": {
+      "timelineDisabled": "时间线视图已禁用。将桌面默认视图重置为 \"Week\"。"
+    },
+    "warnings": {
+      "oneDailyNote": "只允许一个日记。"
+    },
+    "activityWatch": {
+      "title": "ActivityWatch 集成",
+      "enable": {
+        "label": "启用 ActivityWatch 同步",
+        "description": "定期从您的本地 ActivityWatch 实例拉取数据。"
+      },
+      "configButton": "⚙️ 配置 ActivityWatch",
+      "sync": {
+        "targetNotSet": "Activitywatch 同步：未设置目标日历。请在设置中配置。",
+        "targetNotFoundOrReadOnly": "Activitywatch 同步：目标日历 ({{calendarId}}) 未找到或为只读。",
+        "fetchingData": "Activitywatch 同步：正在获取数据...",
+        "failedFetchBuckets": "获取 buckets 失败。状态：{{status}}",
+        "addedEvents": "ActivityWatch 同步：添加了 {{count}} 个事件！",
+        "failedWithError": "ActivityWatch 同步失败：{{message}}",
+        "failed": "ActivityWatch 同步失败。",
+        "enabledPrompt": "Activitywatch 已启用。请点击齿轮图标配置目标日历。"
+      }
+    },
+    "tasksIntegration": {
+      "title": "Obsidian Tasks 集成",
+      "description": "配置日历如何从 Tasks 待办列表安排任务。",
+      "configButton": "配置 Tasks 集成",
+      "modal": {
+        "title": "Tasks 集成"
+      },
+      "backlogDateTarget": {
+        "label": "待办列表筛选日期字段",
+        "description": "选择待办列表跟踪的 Tasks 日期标记。待办列表显示缺少此选定日期标记的任务。",
+        "scheduled": "计划日期",
+        "start": "开始日期",
+        "due": "截止日期"
+      },
+      "calendarDisplayDateTarget": {
+        "label": "日历显示日期字段",
+        "description": "选择日历用于显示 Tasks 事件的 Tasks 日期标记。没有回退到其他日期标记的选项。重启 Obsidian 或重新加载插件以使此更改完全生效。"
+      },
+      "openEditModalAfterBacklogDrop": {
+        "label": "从待办列表拖放后打开 Tasks 编辑弹窗",
+        "description": "将任务从待办列表拖放到日历后立即打开 Obsidian Tasks 编辑弹窗。"
+      }
+    }
+  },
+  "modals": {
+    "reminder": {
+      "snoozeFor": "稍后提醒",
+      "dismiss": "关闭",
+      "openNote": "打开笔记",
+      "snooze": "稍后提醒",
+      "snoozeWarningTitle": "⚠️ 稍后提醒将移动事件",
+      "snoozeWarningBody": "这是一个默认提醒。稍后提醒将把事件开始时间向前移动。",
+      "presets": {
+        "5m": "5 分钟",
+        "10m": "10 分钟",
+        "15m": "15 分钟",
+        "30m": "30 分钟",
+        "1h": "1 小时"
+      }
+    },
+    "editEvent": {
+      "title": {
+        "new": "新建事件",
+        "edit": "编辑事件"
+      },
+      "buttons": {
+        "openNote": "打开笔记"
+      },
+      "errors": {
+        "createNoCalendars": "无法创建事件：没有可写的日历。",
+        "createError": "创建事件时出错：{{message}}",
+        "eventNotFound": "未找到事件。",
+        "detailsNotFound": "未找到事件详情。",
+        "parentNotFound": "无法找到父重复事件。",
+        "updateError": "更新事件时出错：{{message}}",
+        "deleteError": "删除事件时出错：{{message}}"
+      },
+      "confirmations": {
+        "editParentTitle": "编辑父事件？",
+        "editParentMessage": "此属性继承自父重复事件。是否要打开父事件进行修改？"
+      },
+      "misc": {
+        "unknownCalendar": "未知日历"
+      },
+      "fields": {
+        "title": {
+          "label": "标题",
+          "placeholder": "事件标题"
+        },
+        "category": {
+          "label": "分类",
+          "placeholder": "分类（可选）"
+        },
+        "display": {
+          "label": "显示",
+          "options": {
+            "auto": "普通事件",
+            "background": "背景事件",
+            "none": "隐藏"
+          }
+        },
+        "inCalendar": {
+          "label": "在日历中"
+        },
+        "date": {
+          "label": "日期"
+        },
+        "time": {
+          "label": "时间"
+        },
+        "options": {
+          "label": "选项",
+          "allDay": "全天",
+          "isTask": "是任务",
+          "completed": "已完成"
+        },
+        "notification": {
+          "label": "通知：",
+          "mins": "分钟",
+          "select": "选择...",
+          "presets": {
+            "30m": "30 分钟",
+            "1h": "1 小时",
+            "6h": "6 小时",
+            "12h": "12 小时",
+            "24h": "24 小时"
+          }
+        },
+        "repeats": {
+          "label": "重复",
+          "options": {
+            "none": "无",
+            "weekly": "每周",
+            "monthly": "每月",
+            "yearly": "每年"
+          },
+          "repeatEvery": "每",
+          "week": "周",
+          "weeks": "周",
+          "month": "月",
+          "months": "月",
+          "year": "年",
+          "years": "年",
+          "repeatOn": "重复于",
+          "onDay": "在第 {{day}} 天",
+          "onThe": "在",
+          "ordinal": {
+            "first": "第一",
+            "second": "第二",
+            "third": "第三",
+            "fourth": "第四",
+            "last": "最后"
+          },
+          "yearlyText": "每年在 {{date}} 重复。",
+          "endRepeat": "结束重复"
+        }
+      },
+      "tooltips": {
+        "recurringTaskCompletion": "重复任务的完成状态可以在日历视图中切换单个实例。",
+        "dailyNoteRecurring": "日记不支持重复事件。请改用 \"Full Note\" 日历。"
+      }
+    },
+    "deleteRecurring": {
+      "title": "删除重复事件",
+      "description": "这是一个重复事件。您想如何处理它的所有未来 \"override\" 实例（即您已拖动或修改的事件）？",
+      "deleteInstance": {
+        "name": "仅删除此实例",
+        "description": "仅删除 {{date}} 的实例。这将跳过此日期的重复。",
+        "button": "删除此实例"
+      },
+      "promoteChildren": {
+        "name": "提升子事件",
+        "description": "将所有覆盖事件（如果有的话）转换为独立的单一事件。它们将不再与此重复系列关联。",
+        "button": "提升子事件"
+      },
+      "deleteAll": {
+        "name": "删除子事件",
+        "description": "删除与此重复系列关联的所有未来覆盖事件。此操作无法撤销。",
+        "button": "全部删除"
+      },
+      "cancel": "取消"
+    },
+    "workspace": {
+      "title": {
+        "create": "创建工作区",
+        "edit": "编辑工作区"
+      },
+      "sections": {
+        "general": "通用",
+        "viewConfiguration": "视图配置",
+        "calendarFilters": "日历过滤器",
+        "categoryFilters": "分类过滤器",
+        "appearanceOverrides": "外观覆盖",
+        "viewClipping": "视图裁剪和时间范围"
+      },
+      "fields": {
+        "name": {
+          "label": "名称",
+          "description": "此工作区的唯一名称",
+          "placeholder": "例如：工作专注、家庭计划"
+        },
+        "desktopView": {
+          "label": "桌面视图",
+          "description": "桌面设备的默认视图"
+        },
+        "mobileView": {
+          "label": "移动视图",
+          "description": "移动设备的默认视图"
+        },
+        "defaultDate": {
+          "label": "默认日期（可选）",
+          "description": "激活工作区时跳转的日期（例如：\"today\"、\"2024-01-01\"）",
+          "placeholder": "today, next-week, 2024-01-01"
+        },
+        "visibleCalendars": {
+          "label": "可见日历",
+          "description": "选择要显示的日历（留空则显示全部）",
+          "noCalendars": "未配置日历。请先在主设置中配置日历。"
+        },
+        "categoryFilterMode": {
+          "label": "分类过滤模式",
+          "description": "选择如何过滤分类",
+          "options": {
+            "showOnly": "仅显示选中的分类",
+            "hide": "隐藏选中的分类"
+          }
+        },
+        "categories": {
+          "label": "分类",
+          "description": "选择要包含/排除的分类（留空则显示全部）",
+          "noCategories": "未配置分类。请在分类设置中配置分类。",
+          "requiresAdvanced": "分类过滤需要先在主设置中启用高级分类。"
+        },
+        "notices": {
+          "enableBases": "请先启用 Obsidian Bases 插件。"
+        },
+        "overrideBusinessHours": {
+          "label": "覆盖工作时间",
+          "description": "为此工作区启用自定义工作时间"
+        },
+        "enableBusinessHours": {
+          "label": "启用工作时间",
+          "description": "在此工作区显示工作时间高亮"
+        },
+        "businessDays": {
+          "label": "工作日",
+          "description": "选择一周中的工作日"
+        },
+        "businessHoursStart": {
+          "label": "工作时间开始时间",
+          "description": "工作日开始时间（格式：HH:mm）"
+        },
+        "businessHoursEnd": {
+          "label": "工作时间结束时间",
+          "description": "工作日结束时间（格式：HH:mm）"
+        },
+        "timelineCategories": {
+          "label": "时间线分类",
+          "description": "时间线分类组的默认状态",
+          "options": {
+            "useDefault": "使用默认设置",
+            "expanded": "默认展开",
+            "collapsed": "默认折叠"
+          }
+        },
+        "slotMinTime": {
+          "label": "最早显示时间",
+          "description": "覆盖时间网格视图中的最早可见时间（格式：HH:mm）",
+          "placeholder": "使用全局默认"
+        },
+        "slotMaxTime": {
+          "label": "最晚显示时间",
+          "description": "覆盖时间网格视图中的最晚可见时间（格式：HH:mm）"
+        },
+        "weekendDisplay": {
+          "label": "周末显示",
+          "description": "覆盖是否在日历中显示周末",
+          "options": {
+            "show": "显示周末",
+            "hide": "隐藏周末"
+          }
+        },
+        "hiddenDays": {
+          "label": "隐藏日期",
+          "description": "覆盖要从日历中隐藏的日期",
+          "options": {
+            "showAll": "显示所有日期",
+            "hideWeekends": "隐藏周末（周日、周六）",
+            "hideSunday": "隐藏周日",
+            "hideSaturday": "隐藏周六",
+            "hideMonday": "隐藏周一",
+            "hideFriday": "隐藏周五"
+          }
+        },
+        "dayMaxEvents": {
+          "label": "每日最大事件数（月视图）",
+          "description": "覆盖月视图中每天显示的最大事件数",
+          "options": {
+            "useDefault": "使用默认限制",
+            "noLimit": "无限制",
+            "one": "1 个事件",
+            "two": "2 个事件",
+            "three": "3 个事件",
+            "four": "4 个事件",
+            "five": "5 个事件",
+            "ten": "10 个事件"
+          }
+        }
+      },
+      "calendarTypes": {
+        "local": "本地：",
+        "dailyNotes": "日记：",
+        "ics": "ICS：",
+        "caldav": "CalDAV：",
+        "google": "Google："
+      },
+      "buttons": {
+        "save": "保存",
+        "create": "创建",
+        "cancel": "取消"
+      }
+    },
+    "bulkCategorize": {
+      "title": "选择批量更新方法",
+      "description": "您想如何自动分类本地日历中现有的事件？请注意，这是一次性操作，将修改您的事件笔记以匹配所需格式。",
+      "smartFolder": {
+        "name": "使用父文件夹（智能）",
+        "description": "使用父文件夹名称作为未分类事件的分类。已格式化为 \"分类 - 标题\" 的事件将被跳过。",
+        "button": "运行智能更新"
+      },
+      "forcedFolder": {
+        "name": "使用父文件夹（强制）",
+        "description": "将父文件夹名称前置到所有事件标题，即使它们已有分类。警告：这将创建嵌套分类。",
+        "button": "运行强制更新"
+      },
+      "forcedDefault": {
+        "name": "强制默认更新",
+        "description": "将您提供的分类前置到所有事件标题。如果已存在分类，新分类将添加在前面（例如：\"新 - 旧 - 标题\"）。",
+        "placeholder": "输入默认分类",
+        "button": "设置默认值",
+        "errorEmpty": "请输入分类名称。"
+      }
+    },
+    "activityWatchSetup": {
+      "saved": "Activitywatch 配置已保存",
+      "apiUrl": "API URL",
+      "targetCalendar": "目标日历",
+      "unselected": "未选择",
+      "strategy": {
+        "title": "同步策略",
+        "auto": "从上次检查同步",
+        "custom": "自定义日期范围",
+        "datePlaceholder": "选择开始和结束日期",
+        "lastSynced": "上次检查",
+        "neverSynced": "从未检查",
+        "autoSyncEnabled": "启用自动同步",
+        "autoSyncIntervalMins": "自动同步间隔（分钟）",
+        "autoDescription": "手动和自动同步都会更新上次检查时间。",
+        "customDescription": "仅调试用的手动范围。它不会更新上次检查时间，也无法自动运行。"
+      },
+      "profiles": {
+        "title": "上下文配置（最佳拟合 FSM）",
+        "config": "配置配置",
+        "btnDelete": "删除",
+        "name": "配置名称",
+        "category": "分类（颜色标签）",
+        "activationThreshold": "激活阈值（分钟）",
+        "softBreakLimit": "软休息限制（分钟）",
+        "titleTemplate": "标题模板",
+        "titleTemplatePlaceholder": "例如：工作 - {app}",
+        "primaryEvidenceRules": "主要证据规则（可以开始和维持会话）",
+        "supportingEvidenceRules": "支持证据规则（可以维持，但不能开始）",
+        "hardBreakRules": "硬中断规则（立即结束会话）",
+        "btnAddProfile": "+ 添加上下文配置"
+      },
+      "rules": {
+        "bucketPlaceholder": "Bucket（例如：window）",
+        "fieldPlaceholder": "字段（例如：app）",
+        "matchPatternPlaceholder": "匹配模式",
+        "regex": "正则表达式",
+        "btnAdd": "+ 添加规则"
+      },
+      "buttons": {
+        "save": "保存",
+        "cancel": "取消"
+      }
+    }
+  },
+  "google": {
+    "auth": {
+      "expired": "Google 认证已过期。请重新连接您的账户。",
+      "authFailed": "无法认证日历。请尝试在设置中重新添加。",
+      "popupBlocked": "弹窗被阻止。请允许 Obsidian 的弹窗。",
+      "customCredsMissing": "必须在插件设置中设置自定义 Google Client ID 和 Secret。",
+      "stateMismatch": "Google 认证失败。状态不匹配。",
+      "success": "成功连接 Google 账户！",
+      "failed": "连接 Google 账户失败。请检查开发者控制台获取详情。"
+    },
+    "title": "Google 账户",
+    "customCredentials": {
+      "enable": {
+        "label": "使用自定义 Google Cloud 凭据",
+        "description": "使用您自己的 OAuth Client ID 和 Secret 代替默认值。插件目前已通过 Google 验证，但您仍可使用此选项。"
+      },
+      "clientId": {
+        "label": "Client ID",
+        "description": "您的 Google OAuth 2.0 Client ID"
+      },
+      "clientSecret": {
+        "label": "Client Secret",
+        "description": "您的 Google OAuth 2.0 Client Secret"
+      }
+    },
+    "noAccounts": "未连接 Google 账户。请在日历部分添加 Google 日历以连接账户。",
+    "accountDescription": "已连接账户。ID：{{id}}",
+    "buttons": {
+      "disconnect": "断开连接",
+      "selectCalendars": "选择日历",
+      "connectAccount": "连接 Google 账户",
+      "backToAccounts": "返回账户",
+      "addCalendars": "添加 {{count}} 个日历",
+      "addCalendarsPlural": "添加 {{count}} 个日历"
+    },
+    "selectAccount": {
+      "title": "连接 Google 账户"
+    },
+    "selectCalendars": {
+      "title": "从 {{email}} 选择日历",
+      "noCalendars": "未找到新日历，或此账户的所有日历均已添加。",
+      "description": "选择要添加到 Obsidian 的日历。"
+    },
+    "loading": "加载中..."
+  },
+  "ui": {
+    "view": {
+      "errors": {
+        "cacheNotLoaded": "日历事件缓存未加载。",
+        "viewEnhancerNotInitialized": "日历视图增强器未初始化。",
+        "chronoAnalyserDesktopOnly": "数据分析器仅在桌面版可用。",
+        "chronoAnalyserFailed": "打开数据分析器失败。请检查控制台。",
+        "modifyEventFailed": "修改事件失败。",
+        "taskScheduleFailed": "安排任务失败：{{message}}",
+        "moveRecurringDayError": "无法将重复实例移动到不同日期。请仅修改时间或编辑主重复事件。",
+        "moveRecurringInstanceError": "无法将重复实例移动到不同日期。您只能修改时间。"
+      },
+      "success": {
+        "deletedEvent": "已删除事件 \"{{title}}\"。",
+        "taskScheduled": "任务安排成功"
+      },
+      "workspace": {
+        "switcherLabel": "工作区"
+      },
+      "buttons": {
+        "analysis": "分析",
+        "defaultView": "默认视图"
+      },
+      "contextMenu": {
+        "turnIntoTask": "转换为任务",
+        "removeCheckbox": "移除复选框",
+        "goToNote": "转到笔记",
+        "delete": "删除",
+        "noActions": "远程事件没有可用操作"
+      }
+    },
+    "buttons": {
+      "addCalendar": "添加日历"
+    },
+    "navigation": {
+      "thisMonth": "本月",
+      "thisWeek": "本周",
+      "customDate": "自定义日期...",
+      "viewMonth": "月视图",
+      "viewWeek": "周视图",
+      "viewDay": "日视图"
+    }
+  },
+  "notifications": {
+    "eventStarting": {
+      "title": "事件即将开始"
+    },
+    "allDaySuffix": "（全天）",
+    "inMinutes": "（{{mins}} 分钟后）",
+    "failed": "日历：创建桌面通知失败。",
+    "errorBody": "日历：无法显示桌面通知。请检查控制台获取错误。"
+  }
+}
