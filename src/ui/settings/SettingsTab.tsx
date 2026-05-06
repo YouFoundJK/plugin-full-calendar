@@ -118,6 +118,7 @@ export function addCalendarButton(
           ical: t('settings.calendars.types.ical'),
           google: t('settings.calendars.types.google'),
           tasks: t('settings.calendars.types.tasks'),
+          tasknotes: t('settings.calendars.types.tasknotes'),
           bases: t('settings.calendars.types.bases')
         }))
     )

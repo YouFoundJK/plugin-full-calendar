@@ -70,6 +70,7 @@ export class ProviderRegistry {
     this.register('caldav', () => import('./caldav/CalDAVProvider'));
     this.register('google', () => import('./google/GoogleProvider'));
     this.register('tasks', () => import('./tasks/TasksPluginProvider'));
+    this.register('tasknotes', () => import('./tasknotes/TaskNotesProvider'));
     this.register('bases', () => import('./bases/BasesProvider'));
   }
 
@@ -818,6 +819,10 @@ export class ProviderRegistry {
           event: update.event,
           location: update.location
         });
+      } else {
+        console.warn(
+          `[ProviderRegistry] Dropping update for ${globalIdentifier} because no sessionId was found.`
+        );
       }
     }
 

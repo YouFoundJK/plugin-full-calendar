@@ -1202,10 +1202,10 @@ export default class EventCache {
         const oldEvent = this.store.getEventById(sessionId);
         if (oldEvent) {
           this.plugin.providerRegistry.removeMapping(sessionId);
+          this.store.delete(sessionId);
+          this.store.add({ calendarId, location, id: sessionId, event });
+          this.plugin.providerRegistry.addMapping(event, calendarId, sessionId);
         }
-        this.store.delete(sessionId);
-        this.store.add({ calendarId, location, id: sessionId, event });
-        this.plugin.providerRegistry.addMapping(event, calendarId, sessionId);
         // For FullCalendar's view, an update is a remove + add.
         this.updateQueue.toRemove.add(sessionId);
         this.updateQueue.toAdd.set(sessionId, { event, id: sessionId, calendarId });

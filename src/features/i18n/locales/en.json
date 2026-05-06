@@ -292,6 +292,7 @@
         "ical": "ICS",
         "google": "Google Calendar",
         "tasks": "Obsidian Tasks",
+        "tasknotes": "TaskNotes",
         "bases": "Obsidian Bases"
       },
       "fullNote": {
@@ -340,6 +341,22 @@
         "readOnly": {
           "label": "Events",
           "description": "Event Edits happen directly in the Tasks Model and not the Full Calendar Edit Modal."
+        },
+        "adding": "Adding...",
+        "cancel": "Cancel"
+      },
+      "tasknotes": {
+        "zeroConfig": {
+          "label": "Zero Configuration Required",
+          "description": "This provider reads TaskNotes tasks directly from your vault and maps scheduled tasks to calendar events."
+        },
+        "calendarName": {
+          "label": "Calendar Name",
+          "description": "Display name for this calendar"
+        },
+        "readOnly": {
+          "label": "Events",
+          "description": "Event edits open the TaskNotes editor. Drag-and-drop updates scheduled date and duration without showing a modal."
         },
         "adding": "Adding...",
         "cancel": "Cancel"

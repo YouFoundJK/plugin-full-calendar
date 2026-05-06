@@ -44,6 +44,11 @@ const calendarOptionsSchema = z.discriminatedUnion('type', [
     name: z.string()
   }),
   z.object({
+    type: z.literal('tasknotes'),
+    id: z.string(),
+    name: z.string()
+  }),
+  z.object({
     type: z.literal('bases'),
     id: z.string(),
     name: z.string(),
