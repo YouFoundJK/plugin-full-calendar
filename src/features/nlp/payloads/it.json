@@ -87,6 +87,24 @@
       "actions": ["NEXT_WEEKDAY($1)"]
     },
     {
+      "name": "next_occurring_day",
+      "regex": "\\bil\\s+(\\d{1,2})\\b",
+      "flags": "i",
+      "actions": ["SET_NEXT_OCCURRING_DAY($1)"]
+    },
+    {
+      "name": "duration_hrs",
+      "regex": "\\bper\\s+(\\d+)\\s+ore?\\b",
+      "flags": "i",
+      "actions": ["ADD_DURATION($1,0)"]
+    },
+    {
+      "name": "duration_mins",
+      "regex": "\\bper\\s+(\\d+)\\s+minuti?\\b",
+      "flags": "i",
+      "actions": ["ADD_DURATION(0,$1)"]
+    },
+    {
       "name": "time_noon",
       "regex": "\\ba\\s+mezzogiorno\\b",
       "flags": "i",

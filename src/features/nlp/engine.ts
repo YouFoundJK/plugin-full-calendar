@@ -225,6 +225,23 @@ function executeCommand(command: string, captures: string[], context: NLPExecuti
       setRecurrence(context, rawArgs[0] ?? 'DAILY', rawArgs[1] ?? '1', rawArgs[2]);
       return;
     }
+    case 'SET_NEXT_OCCURRING_DAY': {
+      const targetDay = toNumber(rawArgs[0], 1);
+      const currentDay = context.date.getDate();
+
+      if (targetDay <= currentDay) {
+        // Move to the next month
+        context.date.setMonth(context.date.getMonth() + 1);
+      }
+      // Set to the target day. Date() handles month rollover if targetDay > days in month.
+      context.date.setDate(targetDay);
+      return;
+    }
+    case 'ADD_DURATION': {
+      context.durationHours = toNumber(rawArgs[0], 0);
+      context.durationMinutes = toNumber(rawArgs[1], 0);
+      return;
+    }
     default:
       return;
   }
@@ -268,6 +285,8 @@ export function processNaturalLanguage(
 ): NLPActionObject {
   const context: NLPExecutionContext = {
     date: new Date(now.getTime()),
+    durationHours: null,
+    durationMinutes: null,
     intent: 'CREATE_EVENT',
     targetCalendar: null,
     recurrence: null,
@@ -283,6 +302,17 @@ export function processNaturalLanguage(
     }
   }
 
+  // Finalize end time if duration was specified
+  let endHours: number | null = null;
+  let endMinutes: number | null = null;
+  if (context.durationHours !== null || context.durationMinutes !== null) {
+    const endDate = new Date(context.date.getTime());
+    endDate.setHours(endDate.getHours() + (context.durationHours ?? 0));
+    endDate.setMinutes(endDate.getMinutes() + (context.durationMinutes ?? 0));
+    endHours = endDate.getHours();
+    endMinutes = endDate.getMinutes();
+  }
+
   const fallbackTitle =
     context.intent === 'CREATE_EVENT' ? context.strippedTitle || rawInput.trim() : '';
 
@@ -292,6 +322,8 @@ export function processNaturalLanguage(
     date: toDateOnlyIso(context.date),
     hours: context.date.getHours(),
     minutes: context.date.getMinutes(),
+    endHours,
+    endMinutes,
     targetCalendar: context.targetCalendar,
     recurrence: context.recurrence,
     matchedRules: context.matchedRules

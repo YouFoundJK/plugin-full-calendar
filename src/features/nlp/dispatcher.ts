@@ -68,14 +68,16 @@ function buildPartialEvent(action: NLPActionObject): Partial<OFCEvent> {
   const timed = hasExplicitTime(action);
 
   if (timed) {
-    const endHour = action.hours + 1;
+    const endHour = action.endHours !== null ? action.endHours : (action.hours + 1) % 24;
+    const endMinute = action.endMinutes !== null ? action.endMinutes : action.minutes;
+
     return {
       title: action.title,
       type: 'single',
       date: action.date,
       allDay: false,
       startTime: `${pad(action.hours)}:${pad(action.minutes)}`,
-      endTime: `${pad(endHour % 24)}:${pad(action.minutes)}`
+      endTime: `${pad(endHour)}:${pad(endMinute)}`
     };
   }
 

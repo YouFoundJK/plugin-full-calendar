@@ -28,6 +28,8 @@ export type NLPActionObject = {
   date: string;
   hours: number;
   minutes: number;
+  endHours: number | null;
+  endMinutes: number | null;
   targetCalendar: string | null;
   recurrence: NLPRecurrence | null;
   matchedRules: string[];
@@ -48,6 +50,8 @@ export type NLPPayload = {
 
 export type NLPExecutionContext = {
   date: Date;
+  durationHours: number | null;
+  durationMinutes: number | null;
   intent: NLPIntent;
   targetCalendar: string | null;
   recurrence: NLPRecurrence | null;

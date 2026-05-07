@@ -15,6 +15,20 @@ describe('NLP engine', () => {
       expect(result.title).toBe('Meeting');
     });
 
+    it('handles "working in team stand up on 4th at 3 pm for 7 hrs"', () => {
+      const now = new Date('2026-05-01T09:00:00');
+      const result = processNaturalLanguage(
+        'working in team stand up on 4th at 3 pm for 7 hrs',
+        payloadEn,
+        now
+      );
+
+      expect(result.date).toBe('2026-05-04');
+      expect(result.hours).toBe(15);
+      expect(result.endHours).toBe(22);
+      expect(result.title).toBe('working in team stand up');
+    });
+
     it('converts 12 am to 00:00 (midnight)', () => {
       const now = new Date('2026-05-07T09:00:00');
       const result = processNaturalLanguage('Backup at 12 am', payloadEn, now);
@@ -480,6 +494,8 @@ describe('Smart calendar resolution', () => {
     date: '2026-05-08',
     hours: 16,
     minutes: 0,
+    endHours: null,
+    endMinutes: null,
     targetCalendar: null,
     recurrence: null,
     matchedRules: ['tomorrow', 'time_exact_ampm']

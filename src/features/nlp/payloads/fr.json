@@ -82,9 +82,27 @@
     },
     {
       "name": "next_weekday",
-      "regex": "\\blundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche\\s+prochain\\b",
+      "regex": "\\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\\s+prochain\\b",
       "flags": "i",
       "actions": ["NEXT_WEEKDAY($1)"]
+    },
+    {
+      "name": "next_occurring_day",
+      "regex": "\\ble\\s+(\\d{1,2})\\b",
+      "flags": "i",
+      "actions": ["SET_NEXT_OCCURRING_DAY($1)"]
+    },
+    {
+      "name": "duration_hrs",
+      "regex": "\\b(?:pendant|pour)\\s+(\\d+)\\s+heures?\\b",
+      "flags": "i",
+      "actions": ["ADD_DURATION($1,0)"]
+    },
+    {
+      "name": "duration_mins",
+      "regex": "\\b(?:pendant|pour)\\s+(\\d+)\\s+minutes?\\b",
+      "flags": "i",
+      "actions": ["ADD_DURATION(0,$1)"]
     },
     {
       "name": "time_noon",

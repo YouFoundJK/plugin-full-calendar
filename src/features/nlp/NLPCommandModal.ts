@@ -270,10 +270,11 @@ export class NLPCommandModal extends Modal {
     if (hasExplicitTime(action)) {
       const timeRow = card.createDiv({ cls: 'ofc-nlp-preview-row' });
       timeRow.createSpan({ cls: 'ofc-nlp-preview-label', text: t('nlp.preview.time') });
-      const endHour = (action.hours + 1) % 24;
+      const endHour = action.endHours !== null ? action.endHours : (action.hours + 1) % 24;
+      const endMinute = action.endMinutes !== null ? action.endMinutes : action.minutes;
       timeRow.createSpan({
         cls: 'ofc-nlp-preview-value',
-        text: `${formatTime(action.hours, action.minutes)} → ${formatTime(endHour, action.minutes)}`
+        text: `${formatTime(action.hours, action.minutes)} → ${formatTime(endHour, endMinute)}`
       });
     } else {
       const timeRow = card.createDiv({ cls: 'ofc-nlp-preview-row' });
