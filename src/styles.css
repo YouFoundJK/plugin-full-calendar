@@ -409,6 +409,12 @@
   color: var(--text-faint);
 }
 
+.ofc-nlp-preview-description {
+  color: var(--text-muted);
+  font-size: 0.88em;
+  margin-bottom: 4px;
+}
+
 .ofc-nlp-buttons {
   display: flex;
   justify-content: flex-end;

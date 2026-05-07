@@ -264,7 +264,7 @@ export default class FullCalendarPlugin extends Plugin {
       }
     });
 
-    // Register NLP Quick Add command
+    // Register FCR Command (Natural Language Orchestrator)
     registerNLPCommand(this);
 
     // Register view content on hover

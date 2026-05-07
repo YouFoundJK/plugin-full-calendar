@@ -193,11 +193,9 @@ function executeCommand(command: string, captures: string[], context: NLPExecuti
     case 'SET_INTENT': {
       const intent = (rawArgs[0] ?? 'CREATE_EVENT') as NLPIntent;
       context.intent = intent;
-      if (
-        intent.startsWith('NAVIGATE_') ||
-        intent === 'OPEN_CALENDAR' ||
-        intent === 'OPEN_SIDEBAR'
-      ) {
+      // GOTO_DATE must NOT short-circuit so date-modifying rules can still run.
+      // CREATE_EVENT is the default and also must not short-circuit.
+      if (intent !== 'CREATE_EVENT' && intent !== 'GOTO_DATE') {
         context.shortCircuit = true;
       }
       return;

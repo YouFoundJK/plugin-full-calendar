@@ -1,6 +1,7 @@
 import payloadEnRaw from './payloads/en.json';
 import { processNaturalLanguage } from './engine';
-import type { NLPPayload } from './types';
+import type { NLPPayload, NLPActionObject } from './types';
+import { resolveSmartCalendar } from './smartCalendar';
 
 const payloadEn = payloadEnRaw as NLPPayload;
 describe('NLP engine', () => {
@@ -334,5 +335,201 @@ describe('NLP engine', () => {
       expect(result.date).toBe('2026-06-06');
       expect(result.title).toBe('Review');
     });
+  });
+
+  describe('orchestrator intents', () => {
+    it('short-circuits on OPEN_SETTINGS', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('open settings', payloadEn, now);
+
+      expect(result.intent).toBe('OPEN_SETTINGS');
+      expect(result.title).toBe('');
+      expect(result.matchedRules).toEqual(['open_settings']);
+    });
+
+    it('short-circuits on OPEN_CHRONO', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('open chrono', payloadEn, now);
+
+      expect(result.intent).toBe('OPEN_CHRONO');
+      expect(result.title).toBe('');
+    });
+
+    it('recognizes "show analyser"', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('show analyser', payloadEn, now);
+
+      expect(result.intent).toBe('OPEN_CHRONO');
+    });
+
+    it('short-circuits on SHOW_CHANGELOG', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('show changelog', payloadEn, now);
+
+      expect(result.intent).toBe('SHOW_CHANGELOG');
+      expect(result.title).toBe('');
+    });
+
+    it('recognizes "show whats new"', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('show whats new', payloadEn, now);
+
+      expect(result.intent).toBe('SHOW_CHANGELOG');
+    });
+
+    it('short-circuits on RESET_CACHE', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('reset cache', payloadEn, now);
+
+      expect(result.intent).toBe('RESET_CACHE');
+      expect(result.title).toBe('');
+    });
+
+    it('recognizes "clear event cache"', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('clear event cache', payloadEn, now);
+
+      expect(result.intent).toBe('RESET_CACHE');
+    });
+
+    it('short-circuits on REVALIDATE_REMOTE', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('revalidate remote calendars', payloadEn, now);
+
+      expect(result.intent).toBe('REVALIDATE_REMOTE');
+      expect(result.title).toBe('');
+    });
+
+    it('recognizes "refresh calendars"', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('refresh calendars', payloadEn, now);
+
+      expect(result.intent).toBe('REVALIDATE_REMOTE');
+    });
+
+    it('short-circuits on SYNC_ACTIVITYWATCH', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('sync activitywatch', payloadEn, now);
+
+      expect(result.intent).toBe('SYNC_ACTIVITYWATCH');
+      expect(result.title).toBe('');
+    });
+
+    it('recognizes "sync aw"', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('sync aw', payloadEn, now);
+
+      expect(result.intent).toBe('SYNC_ACTIVITYWATCH');
+    });
+  });
+
+  describe('GOTO_DATE (non-short-circuiting)', () => {
+    it('"go to tomorrow" sets intent and advances date', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('go to tomorrow', payloadEn, now);
+
+      expect(result.intent).toBe('GOTO_DATE');
+      expect(result.date).toBe('2026-05-08');
+      expect(result.matchedRules).toContain('goto_date');
+      expect(result.matchedRules).toContain('tomorrow');
+    });
+
+    it('"goto next tuesday" advances to next Tuesday', () => {
+      const now = new Date('2026-05-07T10:00:00'); // Thursday
+      const result = processNaturalLanguage('goto next tuesday', payloadEn, now);
+
+      expect(result.intent).toBe('GOTO_DATE');
+      expect(result.date).toBe('2026-05-12');
+    });
+
+    it('"jump to next week" advances by 7 days', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('jump to next week', payloadEn, now);
+
+      expect(result.intent).toBe('GOTO_DATE');
+      expect(result.date).toBe('2026-05-14');
+    });
+  });
+
+  describe('new event prefix strip', () => {
+    it('"new event tomorrow Dentist" strips prefix and keeps title', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('new event tomorrow Dentist', payloadEn, now);
+
+      expect(result.intent).toBe('CREATE_EVENT');
+      expect(result.date).toBe('2026-05-08');
+      expect(result.title).toBe('Dentist');
+      expect(result.matchedRules).toContain('new_event');
+    });
+
+    it('"create an event at 3 pm Meeting" strips prefix', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('create an event at 3 pm Meeting', payloadEn, now);
+
+      expect(result.intent).toBe('CREATE_EVENT');
+      expect(result.hours).toBe(15);
+      expect(result.title).toBe('Meeting');
+    });
+  });
+});
+
+describe('Smart calendar resolution', () => {
+  const baseAction: NLPActionObject = {
+    intent: 'CREATE_EVENT',
+    title: 'Matthews 2 in daily1',
+    date: '2026-05-08',
+    hours: 16,
+    minutes: 0,
+    targetCalendar: null,
+    recurrence: null,
+    matchedRules: ['tomorrow', 'time_exact_ampm']
+  };
+
+  it('strips calendar name from title when it matches a configured calendar', () => {
+    const result = resolveSmartCalendar(baseAction, ['daily1', 'Work', 'Personal']);
+
+    expect(result.title).toBe('Matthews 2');
+    expect(result.targetCalendar).toBe('daily1');
+    expect(result.matchedRules).toContain('smart_calendar');
+  });
+
+  it('preserves title unchanged when no calendar matches', () => {
+    const result = resolveSmartCalendar(baseAction, ['Work', 'Personal']);
+
+    expect(result.title).toBe('Matthews 2 in daily1');
+    expect(result.targetCalendar).toBeNull();
+  });
+
+  it('is case-insensitive', () => {
+    const action = { ...baseAction, title: 'Meeting in WORK' };
+    const result = resolveSmartCalendar(action, ['work', 'Personal']);
+
+    expect(result.title).toBe('Meeting');
+    expect(result.targetCalendar).toBe('work');
+  });
+
+  it('skips if targetCalendar is already set by explicit rule', () => {
+    const action = { ...baseAction, targetCalendar: 'ExplicitCal' };
+    const result = resolveSmartCalendar(action, ['daily1']);
+
+    expect(result.targetCalendar).toBe('ExplicitCal');
+    expect(result.title).toBe('Matthews 2 in daily1');
+  });
+
+  it('skips for non-CREATE_EVENT intents', () => {
+    const action = { ...baseAction, intent: 'NAVIGATE_WEEK' as const };
+    const result = resolveSmartCalendar(action, ['daily1']);
+
+    expect(result.title).toBe('Matthews 2 in daily1');
+    expect(result.targetCalendar).toBeNull();
+  });
+
+  it('handles "Meeting in London in daily1" correctly (matches last "in")', () => {
+    const action = { ...baseAction, title: 'Meeting in London in daily1' };
+    const result = resolveSmartCalendar(action, ['daily1', 'London']);
+
+    // Should match the LAST "in <name>" that resolves to a calendar
+    expect(result.title).toBe('Meeting in London');
+    expect(result.targetCalendar).toBe('daily1');
   });
 });

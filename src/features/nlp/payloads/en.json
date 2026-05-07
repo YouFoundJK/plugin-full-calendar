@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "locale": "en",
   "rules": [
     {
@@ -31,6 +31,54 @@
       "regex": "^(?:open|show)\\s+(?:the\\s+)?sidebar\\b",
       "flags": "i",
       "actions": ["SET_INTENT(OPEN_SIDEBAR)"]
+    },
+    {
+      "name": "open_settings",
+      "regex": "^(?:open|show)\\s+(?:the\\s+)?settings\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(OPEN_SETTINGS)"]
+    },
+    {
+      "name": "open_chrono",
+      "regex": "^(?:open|show|launch)\\s+(?:the\\s+)?(?:chrono|analyser|analyzer|analysis|insights)\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(OPEN_CHRONO)"]
+    },
+    {
+      "name": "show_changelog",
+      "regex": "^(?:show|open|view)\\s+(?:the\\s+)?(?:changelog|what'?s\\s+new|release\\s+notes)\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(SHOW_CHANGELOG)"]
+    },
+    {
+      "name": "reset_cache",
+      "regex": "^(?:reset|clear|flush)\\s+(?:the\\s+)?(?:event\\s+)?cache\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(RESET_CACHE)"]
+    },
+    {
+      "name": "revalidate_remote",
+      "regex": "^(?:revalidate|refresh|reload|re-sync)\\s+(?:the\\s+)?(?:remote\\s+)?calendars?\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(REVALIDATE_REMOTE)"]
+    },
+    {
+      "name": "sync_activitywatch",
+      "regex": "^(?:sync|run)\\s+(?:activitywatch|activity\\s+watch|aw)\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(SYNC_ACTIVITYWATCH)"]
+    },
+    {
+      "name": "goto_date",
+      "regex": "^(?:go\\s+to|goto|jump\\s+to|navigate\\s+to)\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(GOTO_DATE)"]
+    },
+    {
+      "name": "new_event",
+      "regex": "^(?:new|create)\\s+(?:an?\\s+)?event\\b",
+      "flags": "i",
+      "actions": []
     },
     {
       "name": "next_weekday",

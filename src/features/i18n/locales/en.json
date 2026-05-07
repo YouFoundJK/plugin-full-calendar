@@ -65,7 +65,7 @@
     "openChronoAnalyser": "Open Chrono Analyser (Desktop Only)",
     "openSidebar": "Open in sidebar",
     "syncActivityWatch": "Sync ActivityWatch",
-    "nlpQuickAdd": "Quick add event (Natural Language)"
+    "nlpQuickAdd": "FCR Command"
   },
   "notices": {
     "settingsUpdated": "Full Calendar has updated your calendar settings to a new format.",
@@ -945,13 +945,13 @@
     }
   },
   "nlp": {
-    "modalTitle": "Quick Add Event",
-    "placeholder": "e.g., next Tuesday at 4 pm Team standup",
-    "submit": "Add",
+    "modalTitle": "FCR Command",
+    "placeholder": "e.g., tomorrow at 4pm Team standup, open settings, go to next tuesday",
+    "submit": "Run",
     "cancel": "Cancel",
-    "previewHint": "Start typing to see a live preview of your event.",
+    "previewHint": "Type a command — create events, navigate views, open settings, and more.",
     "noCalendars": "No writable calendars available. Please add a calendar first.",
-    "parseSuccess": "Event pre-filled from your input.",
+    "parseSuccess": "Command executed.",
     "navigating": "Navigating to {{view}} view."
   }
 }

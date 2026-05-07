@@ -17,4 +17,5 @@ export { processNaturalLanguage } from './engine';
 export { loadNLPPayload } from './loader';
 export { dispatchNLPAction } from './dispatcher';
 export { registerNLPCommand } from './registerNLPCommand';
+export { resolveSmartCalendar } from './smartCalendar';
 export type { NLPActionObject, NLPPayload, NLPRule, NLPIntent } from './types';

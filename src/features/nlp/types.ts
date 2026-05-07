@@ -4,7 +4,15 @@ export type NLPIntent =
   | 'NAVIGATE_WEEK'
   | 'NAVIGATE_MONTH'
   | 'OPEN_CALENDAR'
-  | 'OPEN_SIDEBAR';
+  | 'OPEN_SIDEBAR'
+  | 'OPEN_SETTINGS'
+  | 'OPEN_CHRONO'
+  | 'SHOW_CHANGELOG'
+  | 'RESET_CACHE'
+  | 'REVALIDATE_REMOTE'
+  | 'SYNC_ACTIVITYWATCH'
+  | 'GOTO_DATE'
+  | 'NEW_EVENT';
 
 export type NLPSupportedLanguage = 'en' | 'de' | 'fr' | 'it' | 'es';
 

@@ -12,7 +12,7 @@
 | Recurrence | Instance overrides and parent-child lifecycle semantics. | `EventCache`, provider mutation paths |
 | Workspaces | View-level filtering and setting overrides for presentation segmentation. | `ViewEnhancer`, settings |
 | Category | Parsing, normalization, and bulk categorization workflows. | `EventEnhancer`, settings, UI controls |
-| NLP | Data-driven natural language parsing engine with DSL-based rule execution. | Payload loader, `InternalAPI`, event creation modal |
+| NLP (FCR Command) | Universal orchestrator: NL event creation, view navigation, settings, cache, sync. | `smartCalendar`, `InternalAPI`, `PluginState`, event modal |
 
 ## Architecture rule
 
