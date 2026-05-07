@@ -101,6 +101,8 @@ nav:
                 - EventCache Contract: architecture/system/eventcache.md
                 - Event Storage and Identifiers: architecture/system/event-storage.md
                 - FullCalendar Interop: architecture/system/interop.md
+                - API Architecture: architecture/system/api-architecture.md
+                - API Integration Blueprint: architecture/system/api-integration-blueprint.md
                 - Data Flow: architecture/system/data-flow.md
                 - Core Systems: architecture/system/core-systems.md
                 - Extending the Plugin: architecture/system/extending.md

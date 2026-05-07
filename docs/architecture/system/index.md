@@ -15,6 +15,7 @@
 |---|---|---|
 | Where does canonical state live and mutate? | [EventCache Contract](eventcache.md) | [Event Storage and Identifiers](event-storage.md) |
 | How are internal events translated to FullCalendar? | [FullCalendar Interop](interop.md) | [Data Flow](data-flow.md) |
+| How do external plugins get safe access? | [API Architecture](api-architecture.md) | [API Integration Blueprint](api-integration-blueprint.md) |
 | How is provider behavior structured and extended? | [Provider Architecture](../calendars/architecture.md) | [Provider Blueprint](../calendars/provider-blueprint.md) |
 | Where are feature-level policies documented? | [Features Architecture](features/index.md) | [Timezone Architecture](features/timezone-architecture.md) |
 | How does ActivityWatch infer and persist intent blocks? | [ActivityWatch Architecture](../activitywatch/index.md) | [ActivityWatch Implementation](../activitywatch/implementation.md) |
@@ -32,4 +33,4 @@ Normalization pipeline: `src/core/EventEnhancer.ts`
 Provider contract and routing: `src/providers/Provider.ts`, `src/providers/ProviderRegistry.ts`  
 View integration: `src/ui/view.ts`
 
-Compact index: [Overview](overview.md) · [EventCache](eventcache.md) · [Storage](event-storage.md) · [Interop](interop.md) · [Data Flow](data-flow.md) · [Core Systems](core-systems.md) · [Features](features/index.md) · [ActivityWatch](../activitywatch/index.md) · [Providers](../calendars/architecture.md) · [Chrono](../chrono_analyser/architecture.md)
+Compact index: [Overview](overview.md) · [EventCache](eventcache.md) · [Storage](event-storage.md) · [Interop](interop.md) · [API Architecture](api-architecture.md) · [API Blueprint](api-integration-blueprint.md) · [Data Flow](data-flow.md) · [Core Systems](core-systems.md) · [Features](features/index.md) · [ActivityWatch](../activitywatch/index.md) · [Providers](../calendars/architecture.md) · [Chrono](../chrono_analyser/architecture.md)
