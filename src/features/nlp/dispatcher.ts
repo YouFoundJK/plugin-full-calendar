@@ -232,5 +232,5 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
   }
 
   const partialEvent = buildPartialEvent(resolved);
-  launchCreateModal(PluginState.getPlugin(), partialEvent);
+  launchCreateModal(PluginState.getPlugin(), partialEvent, calendarId);
 }

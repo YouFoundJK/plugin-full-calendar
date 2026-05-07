@@ -88,6 +88,7 @@ interface EditEventProps {
   open?: () => Promise<void>;
   deleteEvent?: () => Promise<void>;
   onAttemptEditInherited?: () => void;
+  mode: 'create' | 'edit';
 }
 
 function getInitialRecurrenceType(event?: Partial<OFCEvent>): RecurrenceType {
@@ -117,7 +118,8 @@ export const EditEvent = ({
   enableCategory,
   enableBackgroundEvents = false,
   enableReminders, // ADD THIS
-  onAttemptEditInherited
+  onAttemptEditInherited,
+  mode
 }: EditEventProps) => {
   const isChildOverride = !!initialEvent?.recurringEventId;
 
@@ -300,9 +302,7 @@ export const EditEvent = ({
       <form onSubmit={e => void handleSubmit(e)}>
         <div className="modal-header">
           <h2>
-            {initialEvent?.title
-              ? t('modals.editEvent.title.edit')
-              : t('modals.editEvent.title.new')}
+            {mode === 'edit' ? t('modals.editEvent.title.edit') : t('modals.editEvent.title.new')}
           </h2>
           {open && (
             <button type="button" className="mod-subtle" onClick={() => void open()}>

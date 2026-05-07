@@ -31,6 +31,7 @@ const EventModal = ({ initialEvent }: { initialEvent: Partial<OFCEvent> | undefi
         initialEvent={initialEvent}
         enableCategory={true}
         enableReminders={true}
+        mode={initialEvent ? 'edit' : 'create'}
       ></EditEvent>
     </div>
   </div>

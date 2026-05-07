@@ -76,7 +76,7 @@
     },
     {
       "name": "new_event",
-      "regex": "^(?:new|create)\\s+(?:an?\\s+)?event\\b",
+      "regex": "^(?:new|create|add)\\s+(?:an?\\s+)?event\\b",
       "flags": "i",
       "actions": []
     },

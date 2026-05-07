@@ -31,7 +31,11 @@ import { ConfirmModal } from './ConfirmModal';
 import { openFileForEvent } from '../../utils/eventActions';
 import { t } from '../../features/i18n/i18n';
 
-export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Partial<OFCEvent>) {
+export function launchCreateModal(
+  plugin: FullCalendarPlugin,
+  partialEvent: Partial<OFCEvent>,
+  defaultCalendarId?: string | null
+) {
   const calendars = PluginState.getProviderRegistry()
     .getAllSources()
     .filter(s => s.type !== 'FOR_TEST_ONLY')
@@ -54,6 +58,9 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
     return;
   }
 
+  const calIdx = defaultCalendarId ? calendars.findIndex(({ id }) => id === defaultCalendarId) : 0;
+  const finalCalIdx = calIdx === -1 ? 0 : calIdx;
+
   // MODIFICATION: Get available categories
   const availableCategories = PluginState.getCache().getAllCategories();
 
@@ -62,7 +69,7 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
       React.createElement(EditEvent, {
         initialEvent: partialEvent,
         calendars,
-        defaultCalendarIndex: 0,
+        defaultCalendarIndex: finalCalIdx,
         availableCategories,
         enableCategory: PluginState.getSettings().enableAdvancedCategorization,
         enableBackgroundEvents: PluginState.getSettings().enableBackgroundEvents,
@@ -80,7 +87,8 @@ export function launchCreateModal(plugin: FullCalendarPlugin, partialEvent: Part
             }
           }
           closeModal();
-        }
+        },
+        mode: 'create'
       })
     )
   ).open();
@@ -194,7 +202,8 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
             }
           }
         },
-        onAttemptEditInherited // Pass the new handler as a prop
+        onAttemptEditInherited, // Pass the new handler as a prop
+        mode: 'edit'
       })
     );
   }).open();
