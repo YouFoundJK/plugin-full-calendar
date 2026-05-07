@@ -64,7 +64,8 @@
     "openCalendar": "Open Calendar",
     "openChronoAnalyser": "Open Chrono Analyser (Desktop Only)",
     "openSidebar": "Open in sidebar",
-    "syncActivityWatch": "Sync ActivityWatch"
+    "syncActivityWatch": "Sync ActivityWatch",
+    "nlpQuickAdd": "Quick add event (Natural Language)"
   },
   "notices": {
     "settingsUpdated": "Full Calendar has updated your calendar settings to a new format.",
@@ -942,5 +943,15 @@
       "cancel": "Cancel",
       "save": "Save"
     }
+  },
+  "nlp": {
+    "modalTitle": "Quick Add Event",
+    "placeholder": "e.g., next Tuesday at 4 pm Team standup",
+    "submit": "Add",
+    "cancel": "Cancel",
+    "previewHint": "Start typing to see a live preview of your event.",
+    "noCalendars": "No writable calendars available. Please add a calendar first.",
+    "parseSuccess": "Event pre-filled from your input.",
+    "navigating": "Navigating to {{view}} view."
   }
 }

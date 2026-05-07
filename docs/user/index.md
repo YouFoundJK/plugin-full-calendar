@@ -15,6 +15,7 @@ Here are some handy **Guides** ([Onboarding and Daily Use](guides/index.md), [Co
 | Configure behavior and display | [Settings](./settings/index.md) | [Calendar Sources](./settings/sources.md), [Display and Behavior](./settings/fc_config.md) |
 | Improve planning and reporting workflow | [Views](./views/index.md) | [Workspaces](./views/workspaces.md), [Timeline View](./views/timeline_view.md), [Chrono Analyser](./chrono_analyser/introduction.md) |
 | Fix issues fast | [Troubleshooting](guides/troubleshooting.md) | [Timezone Support](./events/timezones.md), [Reminders](guides/reminders.md), [Calendar Sources](./settings/sources.md) |
+| Create events with natural language | [NLP Quick Add](./features/nlp.md) | [Commands and Shortcuts](guides/commands-and-shortcuts.md), [i18n](./features/i18n.md) |
 
 ## Principle
 

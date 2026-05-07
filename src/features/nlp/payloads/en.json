@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "locale": "en",
+  "rules": [
+    {
+      "name": "navigate_week",
+      "regex": "^(?:open|view|show)\\s+(?:the\\s+)?(?:weekly|week)\\s+view\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(NAVIGATE_WEEK)"]
+    },
+    {
+      "name": "navigate_month",
+      "regex": "^(?:open|view|show)\\s+(?:the\\s+)?(?:monthly|month)\\s+view\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(NAVIGATE_MONTH)"]
+    },
+    {
+      "name": "navigate_day",
+      "regex": "^(?:open|view|show)\\s+(?:the\\s+)?(?:daily|day)\\s+view\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(NAVIGATE_DAY)"]
+    },
+    {
+      "name": "navigate_calendar",
+      "regex": "^(?:open|show)\\s+(?:the\\s+)?calendar\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(OPEN_CALENDAR)"]
+    },
+    {
+      "name": "navigate_sidebar",
+      "regex": "^(?:open|show)\\s+(?:the\\s+)?sidebar\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(OPEN_SIDEBAR)"]
+    },
+    {
+      "name": "next_weekday",
+      "regex": "\\bnext\\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b",
+      "flags": "i",
+      "actions": ["NEXT_WEEKDAY($1)"]
+    },
+    {
+      "name": "time_noon",
+      "regex": "\\bat\\s+noon\\b",
+      "flags": "i",
+      "actions": ["SET_TIME(12,0,\"\")"]
+    },
+    {
+      "name": "time_midnight",
+      "regex": "\\bat\\s+midnight\\b",
+      "flags": "i",
+      "actions": ["SET_TIME(0,0,\"\")"]
+    },
+    {
+      "name": "in_minutes",
+      "regex": "\\bin\\s+(\\d+)\\s+minutes?\\b",
+      "flags": "i",
+      "actions": ["ADD_MINUTES($1)"]
+    },
+    {
+      "name": "in_hours",
+      "regex": "\\bin\\s+(\\d+)\\s+hours?\\b",
+      "flags": "i",
+      "actions": ["ADD_HOURS($1)"]
+    },
+    {
+      "name": "in_days",
+      "regex": "\\bin\\s+(\\d+)\\s+days?\\b",
+      "flags": "i",
+      "actions": ["ADD_DAYS($1)"]
+    },
+    {
+      "name": "in_weeks",
+      "regex": "\\bin\\s+(\\d+)\\s+weeks?\\b",
+      "flags": "i",
+      "actions": ["ADD_WEEKS($1)"]
+    },
+    {
+      "name": "time_exact_ampm",
+      "regex": "(?:\\bat\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?\\b",
+      "flags": "i",
+      "actions": ["SET_TIME($1,$2,$3)"]
+    },
+    {
+      "name": "next_week",
+      "regex": "\\bnext\\s+week\\b",
+      "flags": "i",
+      "actions": ["ADD_DAYS(7)"]
+    },
+    {
+      "name": "next_month",
+      "regex": "\\bnext\\s+month\\b",
+      "flags": "i",
+      "actions": ["ADD_DAYS(30)"]
+    },
+    {
+      "name": "day_after_tomorrow",
+      "regex": "\\bday\\s+after\\s+tomorrow\\b",
+      "flags": "i",
+      "actions": ["ADD_DAYS(2)"]
+    },
+    {
+      "name": "tomorrow",
+      "regex": "\\b(tomorrow)\\b",
+      "flags": "i",
+      "actions": ["ADD_DAYS(1)"]
+    },
+    {
+      "name": "today",
+      "regex": "\\b(today)\\b",
+      "flags": "i",
+      "actions": ["ADD_DAYS(0)"]
+    },
+    {
+      "name": "yesterday",
+      "regex": "\\b(yesterday)\\b",
+      "flags": "i",
+      "actions": ["SUBTRACT_DAYS(1)"]
+    },
+    {
+      "name": "target_calendar",
+      "regex": "\\bin\\s+([\\w\\-\\/ ]{2,50})\\s+calendar\\b",
+      "flags": "i",
+      "actions": ["SET_TARGET($1)"]
+    },
+    {
+      "name": "recur_daily",
+      "regex": "\\b(?:every\\s+day|daily)\\b",
+      "flags": "i",
+      "actions": ["SET_RECURRENCE(DAILY,1)"]
+    },
+    {
+      "name": "recur_weekly_weekday",
+      "regex": "\\bevery\\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b",
+      "flags": "i",
+      "actions": ["SET_RECURRENCE(WEEKLY,1,$1)"]
+    }
+  ]
+}

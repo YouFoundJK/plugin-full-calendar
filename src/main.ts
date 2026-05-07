@@ -28,6 +28,7 @@ import './styles.css';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { PublicAPI, InternalAPI } from './api/FullCalendarAPI';
+import { registerNLPCommand } from './features/nlp/registerNLPCommand';
 
 // Inline the view type constants to avoid loading the heavy view module at startup
 const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
@@ -262,6 +263,9 @@ export default class FullCalendarPlugin extends Plugin {
         void PluginState.getInternalAPI().openSidebar();
       }
     });
+
+    // Register NLP Quick Add command
+    registerNLPCommand(this);
 
     // Register view content on hover
     workspaceEvents.registerHoverLinkSource?.(PLUGIN_SLUG, {
