@@ -9,6 +9,7 @@ import type { CalendarInfo } from '../types/calendar_settings';
 import { EventLocation, OFCEvent } from '../types';
 import type { ApiScope, ApiTokenRecord, FullCalendarSettings } from '../types/settings';
 import { launchCreateModal } from '../ui/modals/event_modal';
+import { t } from '../features/i18n/i18n';
 import {
   FULL_ACCESS_SCOPE,
   getScopeDefinition,
@@ -423,19 +424,19 @@ class AuthorizationModal extends Modal {
 
   onOpen() {
     const { contentEl, titleEl } = this;
-    titleEl.setText('Authorization request');
+    titleEl.setText(t('api.authorization.title'));
 
     contentEl.createEl('p', {
-      text: `The plugin "${this.pluginId}" is requesting access to Full Calendar.`
+      text: t('api.authorization.requestingPluginMessage', { pluginId: this.pluginId })
     });
 
     contentEl.createEl('p', {
-      text: `Reason: ${this.reason}`,
+      text: t('api.authorization.reasonLabel', { reason: this.reason }),
       cls: 'ofc-auth-reason'
     });
 
     contentEl.createEl('p', {
-      text: `Select which permissions to grant. You can change these later in settings.`
+      text: t('api.authorization.permissionsLabel')
     });
 
     const scopesContainer = contentEl.createDiv({ cls: 'ofc-auth-scopes' });
@@ -479,13 +480,18 @@ class AuthorizationModal extends Modal {
 
     const buttonContainer = contentEl.createEl('div', { cls: 'ofc-auth-buttons' });
 
-    const denyBtn = buttonContainer.createEl('button', { text: 'Deny' });
+    const denyBtn = buttonContainer.createEl('button', {
+      text: t('api.authorization.deny')
+    });
     denyBtn.onclick = () => {
       this.onResolve({ approved: false, grantedScopes: [] });
       this.close();
     };
 
-    approveBtn = buttonContainer.createEl('button', { text: 'Approve', cls: 'mod-cta' });
+    approveBtn = buttonContainer.createEl('button', {
+      text: t('api.authorization.approve'),
+      cls: 'mod-cta'
+    });
 
     updateApproveState();
 

@@ -923,5 +923,24 @@
   "global": {
     "learnMore": "Learn more",
     "settingsHeader": "Switch between focused setting groups to keep configuration lighter and easier to scan."
+  },
+  "api": {
+    "authorization": {
+      "title": "Autorisierungsanfrage",
+      "requestingPluginMessage": "Das Plugin \"{{pluginId}}\" fordert Zugriff auf Full Calendar an.",
+      "reasonLabel": "Grund: {{reason}}",
+      "permissionsLabel": "Wählen Sie aus, welche Berechtigungen Sie gewähren möchten. Sie können dies später in den Einstellungen ändern.",
+      "approve": "Genehmigen",
+      "deny": "Ablehnen"
+    },
+    "settings": {
+      "title": "API-Zugriff",
+      "managePermissions": "Berechtigungen für \"{{pluginId}}\" verwalten.",
+      "noAuthorizedPlugins": "Keine externen Plugins sind autorisiert.",
+      "editAccess": "Zugriff bearbeiten",
+      "revoke": "Widerrufen",
+      "cancel": "Abbrechen",
+      "save": "Speichern"
+    }
   }
 }

@@ -923,5 +923,24 @@
   "global": {
     "learnMore": "Learn more",
     "settingsHeader": "Switch between focused setting groups to keep configuration lighter and easier to scan."
+  },
+  "api": {
+    "authorization": {
+      "title": "Demande d'autorisation",
+      "requestingPluginMessage": "Le plugin \"{{pluginId}}\" demande l'accès à Full Calendar.",
+      "reasonLabel": "Raison : {{reason}}",
+      "permissionsLabel": "Sélectionnez les autorisations à accorder. Vous pouvez les modifier plus tard dans les paramètres.",
+      "approve": "Approuver",
+      "deny": "Refuser"
+    },
+    "settings": {
+      "title": "Accès à l'API",
+      "managePermissions": "Gérer les autorisations pour \"{{pluginId}}\".",
+      "noAuthorizedPlugins": "Aucun plugin externe n'est autorisé.",
+      "editAccess": "Modifier l'accès",
+      "revoke": "Révoquer",
+      "cancel": "Annuler",
+      "save": "Enregistrer"
+    }
   }
 }

@@ -923,5 +923,24 @@
     "inMinutes": "(In {{mins}} minutes)",
     "failed": "Full Calendar: Failed to create desktop notification.",
     "errorBody": "Full Calendar: Could not show desktop notification. Check console for errors."
+  },
+  "api": {
+    "authorization": {
+      "title": "Authorization request",
+      "requestingPluginMessage": "The plugin \"{{pluginId}}\" is requesting access to Full Calendar.",
+      "reasonLabel": "Reason: {{reason}}",
+      "permissionsLabel": "Select which permissions to grant. You can change these later in settings.",
+      "approve": "Approve",
+      "deny": "Deny"
+    },
+    "settings": {
+      "title": "API access",
+      "managePermissions": "Manage permissions for \"{{pluginId}}\".",
+      "noAuthorizedPlugins": "No external plugins are authorized.",
+      "editAccess": "Edit access",
+      "revoke": "Revoke",
+      "cancel": "Cancel",
+      "save": "Save"
+    }
   }
 }

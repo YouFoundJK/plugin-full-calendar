@@ -3,6 +3,7 @@ import { PluginState } from '../../../core/PluginState';
 import type FullCalendarPlugin from '../../../main';
 import type { ApiScope, ApiTokenRecord } from '../../../types/settings';
 import { API_SCOPES, FULL_ACCESS_SCOPE } from '../../../api/apiScopes';
+import { t } from '../../../features/i18n/i18n';
 
 type TokenEntry = [string, ApiTokenRecord];
 
@@ -54,10 +55,10 @@ class ApiAccessModal extends Modal {
 
   onOpen() {
     const { contentEl, titleEl } = this;
-    titleEl.setText('API access');
+    titleEl.setText(t('api.settings.title'));
 
     contentEl.createEl('p', {
-      text: `Manage permissions for "${this.pluginId}".`
+      text: t('api.settings.managePermissions', { pluginId: this.pluginId })
     });
 
     const scopesContainer = contentEl.createDiv({ cls: 'ofc-auth-scopes' });
@@ -85,10 +86,13 @@ class ApiAccessModal extends Modal {
     });
 
     const buttonContainer = contentEl.createEl('div', { cls: 'ofc-auth-buttons' });
-    const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+    const cancelBtn = buttonContainer.createEl('button', { text: t('api.settings.cancel') });
     cancelBtn.onclick = () => this.close();
 
-    const saveBtn = buttonContainer.createEl('button', { text: 'Save', cls: 'mod-cta' });
+    const saveBtn = buttonContainer.createEl('button', {
+      text: t('api.settings.save'),
+      cls: 'mod-cta'
+    });
     const updateSaveState = () => {
       saveBtn.disabled = this.grantedScopes.size === 0;
     };
@@ -114,14 +118,14 @@ export function renderApiAccessSettings(
   plugin: FullCalendarPlugin,
   onChange: () => void
 ): void {
-  new Setting(containerEl).setName('API access').setHeading();
+  new Setting(containerEl).setName(t('api.settings.title')).setHeading();
 
   const tokenStore = PluginState.getSettings().apiTokens || {};
   const tokenEntries = Object.entries(tokenStore) as TokenEntry[];
 
   if (tokenEntries.length === 0) {
     containerEl.createEl('p', {
-      text: 'No external plugins are authorized.'
+      text: t('api.settings.noAuthorizedPlugins')
     });
     return;
   }
@@ -138,7 +142,7 @@ export function renderApiAccessSettings(
       .setName(pluginId)
       .setDesc([scopeSummary, reasonSummary].filter(Boolean).join(' · '))
       .addButton(btn => {
-        btn.setButtonText('Edit access').onClick(() => {
+        btn.setButtonText(t('api.settings.editAccess')).onClick(() => {
           const modal = new ApiAccessModal(plugin.app, pluginId, grantedScopes, scopes => {
             entries.forEach(([token, record]) => {
               tokenStore[token] = {
@@ -155,7 +159,7 @@ export function renderApiAccessSettings(
       })
       .addButton(btn => {
         btn
-          .setButtonText('Revoke')
+          .setButtonText(t('api.settings.revoke'))
           .setWarning()
           .onClick(async () => {
             entries.forEach(([token]) => {
