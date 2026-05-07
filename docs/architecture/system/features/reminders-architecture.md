@@ -1,37 +1,32 @@
-# Reminders Architecture
+# Reminders & Notifications Architecture
 
-!!! abstract "Reminder model"
-    Reminder delivery is a time-driven policy layer built on top of canonical event state. It is intentionally decoupled from provider I/O and depends on `time-tick` events from the core time engine.
+!!! abstract "State Contract"
+    The notification system is a reactive consumer of the `EventCache`'s `time-tick` stream. It maintains zero persistent state of its own, relying entirely on the canonical event data and runtime deduplication.
 
-## Runtime pipeline
+## The Notification Pipeline
 
-1. `TimeEngine` emits `time-tick` state.
-2. `NotificationManager` receives current/upcoming occurrences.
-3. Reminder policy evaluates custom reminder first, then default reminder fallback.
-4. Deduplication guard suppresses duplicate notifications per session-trigger instance.
-5. Notification click actions route to reminder modal follow-up UX.
+1.  **Subscription**: The `NotificationManager` subscribes to the high-frequency `time-tick` event from the `EventCache`.
+2.  **Lookahead Filtering**: On every tick, the manager filters the cache for events starting within the next 48 hours to minimize processing overhead.
+3.  **Trigger Evaluation**:
+    *   **Custom Priority**: If an event has a `notify` property in its metadata, the manager calculates a trigger point based on that value.
+    *   **Default Fallback**: If no custom value exists, the manager uses the global `defaultReminderMinutes` setting.
+4.  **Deduplication**: To prevent "notification storms" (especially during startup or timezone shifts), every triggered notification is keyed by `sessionId::type::triggerTime`. Once a key is added to the runtime `notifiedEvents` set, it cannot trigger again in the current session.
 
-## Trigger policy
+## Destructive Snooze Implementation
 
-- Custom reminder value takes priority when present.
-- Default reminder value is applied only when custom reminder is absent and default reminders are enabled.
-- Recency cutoff prevents stale notifications from firing on startup.
-- Lookahead window limits work and avoids scanning distant occurrences.
+The decision to use a destructive snooze (modifying source data) rather than a runtime-only snooze was made to solve the **Multi-Device Conflict** problem.
 
-## Failure and UX behavior
+### Rationale
+If snooze was runtime-only, snoozing on a Desktop would not prevent a mobile device (or a Google Calendar notification) from firing at the original time. By modifying the source YAML or Google Event, the "snooze" state is synchronized across the entire ecosystem.
 
-Notification dispatch failures are logged and surfaced with Obsidian notices. The model favors graceful degradation over silent failure.
+### Logic
+*   **Time Shift**: For events without custom `notify` values, the `startTime` is incremented.
+*   **Threshold Shift**: For events with `notify` values, the `notify` integer is decremented.
 
-## Invariants for contributors
+## Startup Safety (Recency Cutoff)
 
-- Do not bypass `time-tick` for reminder scheduling.
-- Preserve deduplication key semantics (`sessionId::type::triggerTime`).
-- Keep reminder logic deterministic across startup and cache repopulation.
-- Any reminder policy change requires docs and tests alignment.
+The manager implements a **5-minute recency cutoff**. If a reminder's trigger point was more than 5 minutes in the past (e.g., you open Obsidian at 14:05 for a 14:00 event with a 10-minute reminder), the notification is suppressed. This prevents a "spam" of missed notifications when starting the app after a long break.
 
-## Integration anchors
+---
 
-- `src/features/notifications/NotificationManager.ts`
-- `src/features/notifications/ui/reminder_modal.ts`
-- `src/core/TimeEngine.ts`
-- `src/core/EventCache.ts`
+[Event Cache](../../system/eventcache.md) · [Timezone Architecture](../../system/features/timezone-architecture.md) · [API Architecture](../../system/api-architecture.md)

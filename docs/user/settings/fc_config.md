@@ -1,40 +1,42 @@
 # Display & Behavior Settings
 
-Configure the appearance and behavior of the FullCalendar view to match your workflow.
+!!! abstract "Philosophy"
+    Tune the visual experience and interaction logic of your calendar. These settings impact how time is represented and how you interact with the calendar grid.
 
 ![Settings screenshot](../../assets/settings/settings.png)
 
-## First Day of Week
-The first day of the week defaults to Sunday, but you can change it to Monday or any other day.
+## Time & Dates
 
-![Change First Day of Week](../../assets/settings/change-week-start.gif)
+*   **24-Hour Time**: Toggle between AM/PM and 24h military time.
+*   **First Day of Week**: Choose which day (Sunday, Monday, etc.) starts your week view.
 
-## Default Calendar Views
-Choose the initial view that Full Calendar will open to on desktop and mobile devices.
+    ![Change First Day of Week](../../assets/settings/change-week-start.gif)
 
-## 24-Hour Time
-Display all times in a 24-hour format instead of AM/PM.
+*   **Display Timezone**: Anchor the entire calendar to a specific timezone. Defaults to your system timezone. See [Timezone Support](../events/timezones.md).
 
-## Week/Day All-Day Row
-You can show or hide the all-day row at the top of Week and Day views.
+## View Constraints & Limits
 
-- Setting path: Appearance -> View Time Range -> Show all-day row (week/day views)
-- When off: the all-day row is hidden, giving more vertical space to timed events.
+These settings allow you to focus on your active hours and clean up the UI:
 
-## Week/Day Header Date Format
-You can choose how dates are shown at the top of Week and Day views.
+*   **Slot Min/Max Time**: Set the start and end of the visible day (e.g., `08:00` to `20:00`).
+*   **Show Weekends**: Toggle the visibility of Saturday and Sunday.
+*   **Hidden Days**: Precisely hide specific days of the week (0=Sun, 1=Mon, etc.).
+*   **Show All-Day Slot**: Toggle the all-day event row in week/day views.
+*   **Day Max Events**: In Month view, limit the number of events shown per day before showing a "+ more" link.
 
-- Setting path: Appearance -> View Time Range -> Week/day header date format
-- Available formats include:
-	- 9/4 Wed (DD/MM day)
-	- 4/9 Wed (MM/DD day)
-	- Wed 9/4 (day DD/MM)
-	- Wed 4/9 (day MM/DD)
-	- 09/04/2026 Wed (DD/MM/YYYY day)
-	- 04/09/2026 Wed (MM/DD/YYYY day)
+## Interaction & UI
 
-## Timezone Settings
-Manage how event times are displayed. See the dedicated [Timezone Support](../events/timezones.md) page for a full explanation.
+*   **Click to Create Event (Month View)**: If enabled, clicking an empty date cell in month view immediately opens the [event creation modal](../events/manage.md).
+*   **Initial View (Desktop/Mobile)**: Define which [view mode](../views/index.md) (e.g., `timeGridWeek`, `listMonth`) the plugin opens by default on different devices.
+*   **Show Event in Status Bar**: Display the current or upcoming event in the Obsidian status bar. See: [Reminders](reminders.md).
+*   **Highlight Current/Next Event**: Visually emphasize the event happening now or starting soon.
+*   **Header Date Format**: Choose from several presets for how dates appear in column headers (e.g., `Wed 4/9`).
 
-## Category Coloring
-Enable and manage colors for event categories. See the dedicated [Category Coloring](../events/categories.md) page for details.
+## Global Overrides
+
+*   **Business Hours**: Define your working hours and days. If enabled, non-business hours will be visually dimmed in the calendar grid.
+*   **Background Events**: Enable or disable the rendering of background-style events (e.g., from ActivityWatch).
+
+---
+
+[Calendar Sources](sources.md) · [Advanced Categorization](categories.md) · [Back to Index](index.md)

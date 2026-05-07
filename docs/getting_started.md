@@ -1,19 +1,35 @@
 # Getting Started
 
+Fast track through [Installation](#installation) · [First-Time Setup](#first-time-setup) · [Opening the Calendar](#opening-the-calendar)  
+[Sidebar Calendar](#sidebar-calendar) · [Troubleshooting](user/guides/troubleshooting.md)  
+See recommended productivity tips [here](#recommended-workflow).
+
+## Installation
+
+### Option 1: BRAT (Recommended for Beta Updates)
+1. Install the **[BRAT](https://obsidian.md/plugins?search=brat)** plugin from the Obsidian Community Plugins store.
+2. Open the command palette (`Ctrl/Cmd + P`) and run `BRAT: Add a beta plugin for testing`.
+3. Enter the repository URL: `https://github.com/YouFoundJK/obsidian-full-calendar`
+4. Click **Add Plugin**.
+5. Enable **Full Calendar** in your Community Plugins settings.
+
+### Option 2: Manual Installation
+1. Go to the [latest release](https://github.com/YouFoundJK/obsidian-full-calendar/releases/latest) on GitHub.
+2. Download `main.js`, `manifest.json`, and `styles.css`.
+3. In your Obsidian vault, navigate to `.obsidian/plugins/` and create a folder named `obsidian-full-calendar`.
+4. Move the downloaded files into that folder.
+5. Restart Obsidian or go to **Settings > Community Plugins** and click the **Reload** icon.
+6. Enable **Full Calendar**.
+
 ## First-Time Setup
 
-When you open Full Calendar for the first time, you'll be prompted to add your first calendar source.
+When you open Full Calendar for the first time, you'll be prompted to add your first [calendar source](user/calendars/index.md).
 
-It's recommended to start with a local calendar type, as these are editable directly from the plugin.
+It's recommended to start with a [local calendar type](user/calendars/index.md), as these are editable directly from the plugin.
 
 -   **[Full Note Calendar](user/calendars/local.md):** The most powerful option. Each event is a separate note in your vault.
 
 -   **[Daily Note Calendar](user/calendars/dailynote.md):** Store events as checklist items in your daily notes, in a efficient and compact way.
-
-Remote calendars (ICS/CalDAV) are read-only.
-
-!!! tip
-    Use a combination for Full Note (for recurring and other detailed events) and Daily Note Calender (daily events stored compactly). Also check out [Advanced Categorization](user/events/categories.md) and its **event naming convention**, to unleash the full power of this plugin and supercharge your workflow!
 
 ![Welcome page](assets/settings/welcome-settings.gif)
 
@@ -21,19 +37,21 @@ Remote calendars (ICS/CalDAV) are read-only.
 
 You can open the main calendar view in two ways:
 1.  Click the **Calendar icon** in the Obsidian ribbon (the left-hand bar).
-2.  Run the command `Full Calendar: Open Calendar` from the command palette (`Ctrl/Cmd + P`).
+2.  Run the command [`Full Calendar: Open Calendar`](user/guides/commands-and-shortcuts.md) from the command palette (`Ctrl/Cmd + P`).
 
 ![Open calendar](assets/guides/open-calendar.gif)
 
 ## Sidebar Calendar
 
-For quick reference, you can open a more compact version of the calendar in the sidebar. Run the command `Full Calendar: Open in sidebar`.
+For quick reference, you can open a more compact version of the calendar in the sidebar. Run the command [`Full Calendar: Open in sidebar`](user/guides/commands-and-shortcuts.md).
 
 ![Sidebar calendar](assets/guides/sidebar.gif)
 
-## Troubleshooting
+## Recommended Workflow
 
-If something is not working as expected, the first thing to try is resetting the event cache.
--   Run the command `Full Calendar: Reset Event Cache`.
+!!! tip "Hybrid Calendar Model"
+    Use a combination for [Full Note](user/calendars/local.md) (for [recurring](user/events/recurring.md) and other detailed events) and [Daily Note Calender](user/calendars/dailynote.md) (daily events stored compactly). Also check out [Advanced Categorization](user/events/categories.md) and its **event naming convention**, to unleash the full power of this plugin and supercharge your workflow!
 
-This forces the plugin to re-read all events from all your sources. If this doesn't fix the problem, please [submit an issue on GitHub](https://github.com/YouFoundJK/plugin-full-calendar/issues).
+!!! tip "Master the FCR Command"
+    For the fastest experience, skip the buttons and use the **[FCR Command (NLP Orchestrator)](user/features/nlp.md)**. Open it with `Ctrl/Cmd + P` (or add custom keyboard shortcut) and type naturally: *"Team sync tomorrow at 3pm"* or *"go to next week"*. It's the "brain" of the plugin and the most efficient way to work.
+

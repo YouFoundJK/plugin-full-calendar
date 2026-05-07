@@ -24,4 +24,6 @@ Architecture: [Architecture](../../architecture/chrono_analyser/architecture.md)
 - [Events](../events/index.md)
 - [System Architecture](../../architecture/system/index.md)
 
-Compact index: [Introduction](introduction.md) · [Use Cases](usecases.md) · [FAQ](faq.md) · [Architecture](../../architecture/chrono_analyser/architecture.md)
+---
+
+[Introduction](introduction.md) · [Use Cases](usecases.md) · [FAQ](faq.md) · [Architecture](../../architecture/chrono_analyser/architecture.md)

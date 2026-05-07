@@ -20,4 +20,4 @@ This page describes how settings are modeled and applied.
 
 - [Calendar Sources](../../user/settings/sources.md)
 - [Display and Behavior](../../user/settings/fc_config.md)
-- [Reminders and Notifications](../../user/guides/reminders.md)
+- [Reminders and Notifications](../../user/features/reminders.md)

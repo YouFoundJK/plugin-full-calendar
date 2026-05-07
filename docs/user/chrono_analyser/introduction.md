@@ -51,7 +51,7 @@ This is the intelligent core of the analyser. Instead of forcing you to hunt for
 
 **How it Works:**
 
-1.  **Configure (`⚙️` icon):** The first step is to teach the engine about your life. Click the `⚙️` icon to open the configuration wizard.
+1.  **Configure ([Settings Guide](settings.md)):** The first step is to teach the engine about your life. Click the `⚙️` icon to open the configuration wizard.
 2.  **Create Insight Groups:** Define your own custom groups, like "Client Work," "Study," "Fitness," or "Family Time." For each group, you create simple rules based on your existing hierarchies (categories or folders), projects, and keywords.
 3.  **Generate Insights:** Click the **"Generate Insights"** button. The engine will perform a non-blocking analysis of your data in the background.
 4.  **Get Actionable Results:** The panel will populate with easy-to-read cards, highlighting trends, inconsistencies, and important summaries.

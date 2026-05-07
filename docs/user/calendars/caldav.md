@@ -7,6 +7,9 @@ You can add any calendar that supports CalDAV over HTTPS basic authentication wi
 
 Calendars are automatically re-fetched from their source at most every five minutes. If you would like to revalidate remote calendars directly, you can run the command `Full Calendar: Revalidate remote calendars`.
 
+!!! tip "Power Up with Categories"
+    CalDAV calendars also support **[Advanced Categories](../events/categories.md)**. You can add a category to your external events (e.g., `Personal - Dentist`) to color-code them across all your synced devices.
+
 ---
 
 ## Two-Way Sync and Timezone Behavior
@@ -15,11 +18,7 @@ Calendars are automatically re-fetched from their source at most every five minu
 - **Timezones:** Events are parsed with their source timezone and converted to your Display Timezone for viewing.
 - **Cancellations:** Cancellations/exceptions present on the server are respected.
 
-## Using with Advanced Categories
 
-CalDAV calendars are fully compatible with the **[Advanced Categories feature](../events/categories.md)**.
-
-If an event from your CalDAV source has a title like `Personal - Doctor's Appointment`, the plugin will automatically parse "Personal" as the category and apply any custom color you have configured in the settings. This helps you visually organize events from all your devices.
 
 ---
 

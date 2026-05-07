@@ -13,7 +13,7 @@
 |---|---|---|
 | Local | Full Note, Daily Note | Vault-backed parsing and write paths with file/location identity. |
 | Remote | Google, CalDAV, ICS | Network-backed ingestion and protocol/auth handling. |
-| Integration | Tasks, Bases | Plugin-integrated sources with custom semantics beyond plain calendar files. |
+| Integration | [Tasks](tasks-integration.md), TaskNotes, Bases | Plugin-integrated sources with custom semantics beyond plain calendar files. |
 
 ## Runtime flow (provider perspective)
 
@@ -28,7 +28,7 @@ Important implementation-specific behavior is documented in the implementation d
 
 - ICS hybrid behavior (remote URL and local file support in one read-only provider).
 - CalDAV defensive REPORT/GET retrieval and XML namespace fallback handling.
-- Tasks provider surgical markdown updates and custom completion scheduling semantics.
+- [Tasks provider](tasks-integration.md) surgical markdown updates and custom completion scheduling semantics.
 - Provider load-priority tuning for staged startup behavior.
 
 See: [Provider Implementations and Patches](provider-implementations.md)

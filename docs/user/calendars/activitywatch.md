@@ -4,8 +4,8 @@ Full Calendar integrates deeply with [ActivityWatch](https://activitywatch.net/)
 
 The engine uses a deeply mathematical **Best-Fit [Finite State Machine (FSM)](https://en.wikipedia.org/wiki/Finite-state_machine){: target="_blank" rel="noopener" }**. Instead of mapping one event to one block, it evaluates your timeline using "Context Profiles" to generate optimal sessions that reflect what you were *actually* doing, automatically filtering out minor distractions.
 
-!!! tip "Recommended"
-    For best experience use it together with [Advanced Categories](../events/categories.md){: target="_blank" rel="noopener" } feature, allowing you to color-code your events and organize them for [Timeline](../views/timeline_view.md){: target="_blank" rel="noopener" } and Advanced analysis via [ChronoAnalyser](../chrono_analyser/index.md){: target="_blank" rel="noopener" }. It's **highly recommended**!
+!!! tip "Power Up with Categories"
+    ActivityWatch integration works best with **[Advanced Categories](../events/categories.md)**. You can map your "Context Profiles" directly to Category colors, ensuring that your automated timeline is perfectly organized and color-coded.
 
 
 ---

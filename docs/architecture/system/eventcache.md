@@ -13,7 +13,7 @@
 |---|---|
 | Staged population | Calls `ProviderRegistry.fetchAllByPriority()` and progressively syncs provider results. |
 | State ownership | Persists canonical event state in `EventStore` and exposes query APIs for views/features. |
-| Mutation orchestration | Executes optimistic add/update/delete, then commits or rolls back based on provider result. |
+| Mutation orchestration | Executes optimistic add/update/delete, then commits or rolls back based on provider result (e.g., [Tasks Optimistic Flow](../calendars/tasks-integration.md#optimistic-ui-updates)). |
 | Publish/subscribe hub | Emits `update` payloads (`events`, `calendar`, `resync`) and `time-tick` state for reminder/time UI flows. |
 | Identifier bridge | Uses `ProviderRegistry` to map persistent provider identifiers to session IDs used by the UI. |
 

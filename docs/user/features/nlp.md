@@ -1,6 +1,6 @@
 # FCR Command — Natural Language Orchestrator
 
-The **FCR Command** is your single point of control for Full Calendar Remastered. Open it from the **Command Palette** (`Ctrl/Cmd + P → "FCR Command"`) and use natural language to do anything: create events, navigate views, open settings, sync data, and more.
+The **FCR Command** is your single point of control for Full Calendar Remastered. Open it from the [Command Palette](../guides/commands-and-shortcuts.md) (`Ctrl/Cmd + P → "FCR Command"`) and use natural language to do anything: [create events](../events/manage.md), [navigate views](../views/index.md), [open settings](../settings/index.md), [sync data](../reference/data_integrity.md), and more.
 
 ---
 
@@ -29,17 +29,19 @@ The **FCR Command** is your single point of control for Full Calendar Remastered
 | `Meeting in Work calendar` | Creates "Meeting" in the "Work" calendar (explicit match) |
 | `every monday Standup at 9 am` | Creates recurring "Standup" every Monday |
 | `daily Standup` | Creates "Standup" repeating every day |
-| `new event tomorrow Dentist` | Strips "new event" prefix, creates "Dentist" tomorrow |
+| `on 9th at 3 pm for 7 hrs Working` | Creates "Working" on the upcoming 9th, lasting 7 hours |
+| `add event tomorrow Dentist` | Strips "add event" prefix, creates "Dentist" tomorrow |
+| `create event Lunch for 30 mins` | Strips "create event" prefix, sets duration to 30 mins |
 
 ### 🧭 Navigate Views
 
 | What you type | What happens |
 |---|---|
-| `open weekly view` | Switches to the week view |
-| `show month view` | Switches to the month view |
-| `view day view` | Switches to the day view |
-| `open calendar` | Opens the main calendar tab |
-| `open sidebar` | Opens the calendar sidebar |
+| `open weekly view` | Switches to the [week view](../views/index.md) |
+| `show month view` | Switches to the [month view](../views/index.md) |
+| `view day view` | Switches to the [day view](../views/index.md) |
+| `open calendar` | Opens the main [calendar tab](../views/index.md) |
+| `open sidebar` | Opens the [calendar sidebar](../views/index.md) |
 
 ### 📆 Go to Date
 
@@ -53,18 +55,18 @@ The **FCR Command** is your single point of control for Full Calendar Remastered
 
 | What you type | What happens |
 |---|---|
-| `open settings` | Opens Full Calendar settings tab |
-| `open chrono` / `show analyser` | Opens the Chrono Analyser dashboard |
-| `show changelog` / `show whats new` | Displays the changelog |
-| `reset cache` / `clear event cache` | Clears and rebuilds the event cache |
-| `refresh calendars` / `revalidate remote calendars` | Resyncs all remote calendars |
-| `sync activitywatch` / `sync aw` | Pulls latest data from ActivityWatch |
+| `open settings` | Opens Full Calendar [settings tab](../settings/index.md) |
+| `open chrono` / `show analyser` | Opens the [Chrono Analyser](../chrono_analyser/introduction.md) dashboard ([Config](../chrono_analyser/settings.md)) |
+| `show changelog` / `show whats new` | Displays the [changelog](../../whats_new.md) |
+| `reset cache` / `clear event cache` | Clears and rebuilds the [event cache](../reference/data_integrity.md) |
+| `refresh calendars` / `revalidate remote calendars` | Resyncs all [remote calendars](../calendars/index.md) |
+| `sync activitywatch` / `sync aw` | Pulls latest data from [ActivityWatch](../calendars/activitywatch.md) / [TaskNotes](../calendars/tasknotes.md) |
 
 ---
 
 ## Smart Calendar Matching
 
-When you type `in <name>` at the end of your input, the system checks if `<name>` matches any of your configured calendars (case-insensitive). If it does, the event is routed to that calendar and the `in <name>` is stripped from the title.
+When you type `in <name>` at the end of your input, the system checks if `<name>` matches any of your [configured calendars](../settings/sources.md) (case-insensitive). If it does, the event is routed to that calendar and the `in <name>` is stripped from the title.
 
 > **Input:** `Tomorrow at 4pm Matthews 2 in daily1`
 >
@@ -98,6 +100,14 @@ You can also use the explicit form `in Work calendar` which always works regardl
 | `next month` | 30 days from now |
 | `in 3 days` | 3 days from now |
 | `in 2 weeks` | 14 days from now |
+| `on 9th` / `on 4th` | The upcoming 9th/4th of the month (rolls to next month if day passed) |
+
+## Duration References
+
+| Phrase | Meaning |
+|---|---|
+| `for 1 hr` / `for 7 hrs` | Sets event duration to 1 or 7 hours |
+| `for 30 mins` / `for 5 min` | Sets event duration to 30 or 5 minutes |
 
 ---
 
@@ -113,9 +123,10 @@ You can combine multiple phrases in a single input. The engine processes them le
 
 ## Supported Languages
 
-The FCR Command follows the same internationalization pipeline as the rest of the plugin:
+The FCR Command follows the same [internationalization pipeline](i18n.md) as the rest of the plugin:
 
-- English (`en`), French (`fr`), German (`de`), Spanish (`es`), Italian (`it`)
+- Maximal support: **English**
+- Basic support: French, German, Spanish, Italian (_help improve it on [Github](https://github.com/YouFoundJK/plugin-full-calendar)_)
 
 The language is automatically detected from your Obsidian language setting. Non-English payloads are fetched on first use and cached locally.
 
@@ -126,14 +137,12 @@ The language is automatically detected from your Obsidian language setting. Non-
 - **Title placement**: Put the event title anywhere — the engine strips matched patterns and uses whatever's left
 - **Live preview is your safety net**: Always check the preview card before running — it shows exactly what will happen
 - **"in" calendar smart matching**: Type `in <calendar_name>` at the end without needing to write "calendar"
+- **Relative date rollover**: "on 9th" will resolve to this month if it's the 7th, but next month if it's already the 10th
 - **No match is safe**: If the engine doesn't recognize any patterns, the entire input becomes the event title
-- **Rollover works**: "in 3 hours" at 10 PM correctly creates at 1 AM the next day
+- **Time math works**: "for 7 hrs" at 3 PM correctly sets the end time to 10 PM
 
 ---
 
 ## Troubleshooting
 
-- **Command not found**: Make sure the plugin is up to date. Search for "FCR Command" in the command palette
-- **Wrong date**: "next \<weekday\>" always advances forward, never backward. "Next Wednesday" on a Wednesday means one week later
-- **Phrase conflicts**: Rules are ordered by specificity — "in 3 hours" will not accidentally match "in Work calendar"
-- **Calendar not matched**: Smart matching is case-insensitive. Check that the name exactly matches your calendar's display name in settings
+See the **[Central Troubleshooting Guide](../guides/troubleshooting.md#fcr-command-nlp)** for help with command recognition, date resolution, and calendar matching.

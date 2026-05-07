@@ -2,6 +2,11 @@
 
 Use your Obsidian **Bases** tables as a read-only calendar source. This provider reads a `.base` file, applies the Base filters to your vault, and turns matching notes into calendar events.
 
+
+!!! tip "Power Up with Categories"
+    Bases calendars also support **[Advanced Categories](../events/categories.md)**. You can add a `category` key to your note frontmatter to automatically color-code it based on your plugin settings.
+
+
 ---
 
 ## Requirements

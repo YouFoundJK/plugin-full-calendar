@@ -1,27 +1,40 @@
 # Settings and Customization
 
 !!! info "Configuration Control Router"
-    Use this page when you need to change behavior quickly: source wiring, display behavior, reminder defaults, or timezone-facing settings.
+    Use this page to navigate all plugin settings. Full Calendar is highly configurable, allowing you to tune everything from data sources to granular view behaviors and automated reminders.
 
 ## Configuration Matrix
 
-| Goal | Start Here | Typical Follow-up |
+| Goal | Start Here | High-Value Next Stop |
 |---|---|---|
 | Add/remove/reprioritize calendar sources | [Calendar Sources](sources.md) | [Calendars](../calendars/index.md) |
-| Adjust display and behavior controls | [Display and Behavior](fc_config.md) | [Views](../views/index.md) |
-| Tune reminder behavior | [Reminders and Notifications](../guides/reminders.md) | [Events](../events/index.md) |
-| Resolve timezone display expectations | [Timezone Support](../events/timezones.md) | [Display and Behavior](fc_config.md) |
+| Adjust display, timezones, and view limits | [Display and Behavior](fc_config.md) | [Views](../views/index.md) |
+| Manage colors and smart tagging | [Advanced Categorization](categories.md) | [Event Management](../events/manage.md) |
+| Save view/filter presets | [Workspaces](workspaces.md) | [Timeline View Usage](../views/timeline_view.md) |
+| Tune reminder and notification behavior | [Reminders](reminders.md) | [Feature: Reminders](../features/reminders.md) |
+| Grant access to third-party plugins | [API and Security](api.md) | [Architecture: API](../../architecture/system/api-architecture.md) |
 
 ## Settings Surface
 
-Source management: [Calendar Sources](sources.md)  
-Behavior and display: [Display and Behavior](fc_config.md)  
-Operational references: [Commands and Shortcuts](../guides/commands-and-shortcuts.md), [Interactions and Gestures](../guides/interactions.md)
+### Infrastructure
+- [Calendar Sources](sources.md): Local Vault, Google Calendar, CalDAV, ICS, Tasks, ActivityWatch.
+- [API and Security](api.md): Token management and cross-plugin authorization.
+
+### Experience
+- [Display and Behavior](fc_config.md): 24h time, timezones, weekends, business hours, and view constraints.
+- [Advanced Categorization](categories.md): Category names, color palettes, and smart matching rules.
+- [Reminders](reminders.md): Default reminder offsets and system notification toggles.
+
+### Power Features
+- [Workspaces](workspaces.md): Creating, switching, and overriding settings per workspace.
+- [Chrono Analyser Configuration](../chrono_analyser/settings.md): Setup for rule-based time distribution analytics.
 
 ## Related Sections
 
-- [Reminders and Notifications](../guides/reminders.md)
-- [Timezone Support](../events/timezones.md)
+- [Getting Started](../../getting_started.md)
 - [Troubleshooting](../guides/troubleshooting.md)
+- [Architecture Docs](../../architecture/settings/architecture.md)
 
-Compact index: [Calendar Sources](sources.md) · [Display and Behavior](fc_config.md) · [Reminders](../guides/reminders.md) · [Timezone Support](../events/timezones.md) · [Architecture](../../architecture/settings/architecture.md)
+---
+
+[Calendar Sources](sources.md) · [Display and Behavior](fc_config.md) · [Advanced Categorization](categories.md) · [Workspaces](workspaces.md) · [Reminders](reminders.md) · [API](api.md)

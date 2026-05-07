@@ -8,10 +8,10 @@
 | Component | Responsibility | Must Not Own |
 |---|---|---|
 | `PublicAPI` | Bouncer surface on `app.plugins.plugins['full-calendar'].api`. Handles authorization and token exchange. | Event state or provider I/O. |
-| `InternalAPI` | Executes actions (open views, change view, read cached events) using `PluginState`. | Direct exposure to third-party callers. |
+| `InternalAPI` | Executes actions (open views, change view, read cached events) using **[`PluginState`](core-systems.md)**. | Direct exposure to third-party callers. |
 | `PluginState` | Runtime singleton for settings, cache, provider registry, and utility hooks. | Alternative state sources. |
-| `EventCache` | Canonical event state and mutation authority. | UI or provider-specific policy. |
-| `ProviderRegistry` | Provider I/O routing and ID mapping. | UI decisions. |
+| **[`EventCache`](eventcache.md)** | Canonical event state and mutation authority. | UI or provider-specific policy. |
+| **[`ProviderRegistry`](../calendars/architecture.md)** | Provider I/O routing and ID mapping. | UI decisions. |
 
 ## Authorization and Token Storage
 
@@ -26,16 +26,42 @@ The API is scope-gated. Each method requires a scope (e.g. `events:read`, `event
 
 ## API Surface (AuthorizedAPI)
 
-The authorized surface is intentionally small and read/UX focused:
+The authorized surface provides granular control over the calendar system, gated by permission scopes:
 
-- `openCalendar()`
-- `openSidebar()`
-- `changeView(viewName)`
-- `openCreateModal(initialData?)`
-- `getAllEvents()`
-- `getEventById(id)`
+### UI & Interaction (`ui:*`)
+- `openCalendar()`: Focus or open the main view.
+- `openSidebar()`: Reveal the calendar sidebar.
+- `changeView(viewName)`: Switch to `timeGridWeek`, `listMonth`, etc.
+- `openCreateModal(initialData?)`: Launch the event creation UI.
 
-Direct data access via `loadData()` or `saveData()` is blocked at the plugin level to prevent bypassing `EventCache` and settings validation.
+### Event Management (`events:*`)
+- `getAllEvents()`: Retrieve all enhanced events from the cache.
+- `getEventById(id)`: Fetch a specific event.
+- `getEventDetails(id)`: Access metadata like source location.
+- `createEvent(calendarId, event, options?)`: Persist a new event.
+- `updateEvent(eventId, event, options?)`: Modify an existing event.
+- `deleteEvent(eventId, options?)`: Remove or override an instance.
+- `moveEvent(eventId, targetCalendarId)`: Migrate an event between sources.
+- `processEvent(eventId, processor)`: Atomic read-modify-write for event data.
+
+### Recurring & Tasks
+- `toggleRecurringInstance(...)`: Mark a specific recurrence as done.
+- `modifyRecurringInstance(...)`: Create an exception for one instance.
+- `scheduleTask(taskId, date)`: Map a task to a specific calendar date.
+- `validateTaskSchedule(taskId, date)`: Verify if a task can be scheduled.
+
+### Provider & Settings (`providers:*`, `settings:*`)
+- `getCalendarSources()`: List all configured sources.
+- `revalidateRemoteCalendars(force?)`: Refresh GCal/CalDAV/ICS feeds.
+- `reloadProviderNow(calendarId)`: Force deep sync for one provider.
+- `getSettings()` / `updateSettings(...)`: Read and write plugin configuration.
+
+### System Access (`system:full-access`)
+- `getInternalState()`: Unsafe access to `plugin`, `cache`, and `registry` instances.
+
+---
+
+Direct data access via `loadData()` or `saveData()` remains blocked to enforce the `EventCache` as the single source of truth.
 
 ## Data Flow
 

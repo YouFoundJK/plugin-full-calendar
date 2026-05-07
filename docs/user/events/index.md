@@ -28,4 +28,6 @@ Time/context actions: [Timezones](timezones.md), [Hover & Context](hover_context
 - [Views and Analysis](../views/index.md)
 - [Troubleshooting](../guides/troubleshooting.md)
 
-Compact index: [Manage](manage.md) · [Recurring](recurring.md) · [Tasks](tasks.md) · [Categories](categories.md) · [Timezones](timezones.md) · [Hover & Context](hover_context.md) · [Architecture](../../architecture/events/architecture.md)
+---
+
+[Manage](manage.md) · [Recurring](recurring.md) · [Tasks](tasks.md) · [Categories](categories.md) · [Timezones](timezones.md) · [Hover & Context](hover_context.md) · [Architecture](../../architecture/events/architecture.md)
