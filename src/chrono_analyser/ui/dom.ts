@@ -1,4 +1,5 @@
 import { setIcon } from 'obsidian';
+import { t } from '../../features/i18n/i18n';
 
 const setCssProps = (element: HTMLElement, props: Record<string, string>): void => {
   Object.entries(props).forEach(([key, value]) => {
@@ -18,8 +19,8 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   const container = rootEl.createDiv({ cls: 'container' });
 
   const header = container.createDiv({ cls: 'header' });
-  header.createEl('h1', { text: '📊 chronoanalyser' });
-  header.createEl('p', { text: 'Interactive analysis of your time tracking data' });
+  header.createEl('h1', { text: t('chrono.analyser.header') });
+  header.createEl('p', { text: t('chrono.analyser.subtitle') });
 
   const insightsPanel = container.createDiv({
     cls: 'insights-panel',
@@ -28,24 +29,24 @@ export function createDOMStructure(rootEl: HTMLElement): void {
 
   const proTipsPanel = insightsPanel.createDiv({
     cls: 'pro-tips-panel',
-    attr: { id: 'proTipsPanel', title: 'Click to see the next tip' }
+    attr: { id: 'proTipsPanel', title: t('chrono.analyser.clickNextTip') }
   });
   const proTipsContent = proTipsPanel.createDiv({ cls: 'pro-tips-content' });
-  proTipsContent.createEl('span', { cls: 'pro-tips-title', text: 'Pro tip' });
+  proTipsContent.createEl('span', { cls: 'pro-tips-title', text: t('chrono.analyser.proTip') });
   proTipsContent.createEl('p', { attr: { id: 'proTipText' } });
   proTipsPanel.createDiv({ cls: 'pro-tips-nav', text: '›' });
 
   const insightsHeader = insightsPanel.createDiv({ cls: 'insights-header' });
-  insightsHeader.createDiv({ cls: 'insights-title', text: '💡 Insights' });
+  insightsHeader.createDiv({ cls: 'insights-title', text: t('chrono.analyser.insights.title') });
   const insightsActions = insightsHeader.createDiv({ cls: 'insights-actions' });
   insightsActions.createEl('button', {
     cls: 'mod-cta',
     attr: { id: 'generateInsightsBtn' },
-    text: 'Generate insights'
+    text: t('chrono.analyser.insights.generate')
   });
   const configureBtn = insightsActions.createEl('button', {
     cls: 'clickable-icon',
-    attr: { id: 'configureInsightsBtn', 'aria-label': 'Configure insights' }
+    attr: { id: 'configureInsightsBtn', 'aria-label': t('chrono.analyser.insights.configure') }
   });
   setIcon(configureBtn, 'settings');
 
@@ -55,7 +56,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   insightsBody.createDiv({
     cls: 'insights-placeholder',
-    text: 'Click "Generate Insights" to analyze your data.'
+    text: t('chrono.analyser.insights.placeholder')
   });
 
   const controls = container.createDiv({ cls: 'controls' });
@@ -64,28 +65,28 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   const hierarchyItem = filterGroup.createDiv({ cls: 'control-item' });
   hierarchyItem.createEl('label', {
     attr: { for: 'hierarchyFilterInput' },
-    text: '📂 filter by hierarchy (calendar source)'
+    text: t('chrono.analyser.filters.hierarchy')
   });
   const hierarchyWrapper = hierarchyItem.createDiv({ cls: 'autocomplete-wrapper' });
   hierarchyWrapper.createEl('input', {
     attr: {
       id: 'hierarchyFilterInput',
       type: 'text',
-      placeholder: 'All hierarchies (type to filter...)'
+      placeholder: t('chrono.analyser.filters.hierarchyPlaceholder')
     }
   });
 
   const projectItem = filterGroup.createDiv({ cls: 'control-item' });
   projectItem.createEl('label', {
     attr: { for: 'projectFilterInput' },
-    text: '📋 filter by project'
+    text: t('chrono.analyser.filters.project')
   });
   const projectWrapper = projectItem.createDiv({ cls: 'autocomplete-wrapper' });
   projectWrapper.createEl('input', {
     attr: {
       id: 'projectFilterInput',
       type: 'text',
-      placeholder: 'All projects (type to filter...)'
+      placeholder: t('chrono.analyser.filters.projectPlaceholder')
     }
   });
 
@@ -95,46 +96,74 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   categoryItem.createEl('label', {
     attr: { for: 'patternInput' },
-    text: '🔍 filter by category (e.g., keyword -exclude)'
+    text: t('chrono.analyser.filters.category')
   });
   categoryItem.createEl('input', {
-    attr: { id: 'patternInput', type: 'text', placeholder: 'E.g., task.* -review' }
+    attr: {
+      id: 'patternInput',
+      type: 'text',
+      placeholder: t('chrono.analyser.filters.categoryPlaceholder')
+    }
   });
 
   const dateGroup = controls.createDiv({ cls: 'control-group' });
   const dateItem = dateGroup.createDiv({ cls: 'control-item' });
-  dateItem.createEl('label', { attr: { for: 'dateRangePicker' }, text: '📅 date range' });
+  dateItem.createEl('label', {
+    attr: { for: 'dateRangePicker' },
+    text: t('chrono.analyser.filters.dateRange')
+  });
   dateItem.createEl('input', {
     attr: {
       id: 'dateRangePicker',
       type: 'text',
-      placeholder: 'Select date range (yyyy-mm-dd to yyyy-mm-dd)'
+      placeholder: t('chrono.analyser.filters.dateRangePlaceholder')
     }
   });
   const presetButtons = dateItem.createDiv({ cls: 'date-preset-buttons' });
   setCssProps(presetButtons, { marginTop: '10px' });
-  presetButtons.createEl('button', { attr: { id: 'setTodayBtn' }, text: 'Today' });
-  presetButtons.createEl('button', { attr: { id: 'setYesterdayBtn' }, text: 'Yesterday' });
-  presetButtons.createEl('button', { attr: { id: 'setThisWeekBtn' }, text: 'This week' });
-  presetButtons.createEl('button', { attr: { id: 'setThisMonthBtn' }, text: 'This month' });
+  presetButtons.createEl('button', {
+    attr: { id: 'setTodayBtn' },
+    text: t('chrono.analyser.filters.today')
+  });
+  presetButtons.createEl('button', {
+    attr: { id: 'setYesterdayBtn' },
+    text: t('chrono.analyser.filters.yesterday')
+  });
+  presetButtons.createEl('button', {
+    attr: { id: 'setThisWeekBtn' },
+    text: t('chrono.analyser.filters.thisWeek')
+  });
+  presetButtons.createEl('button', {
+    attr: { id: 'setThisMonthBtn' },
+    text: t('chrono.analyser.filters.thisMonth')
+  });
   presetButtons.createEl('button', {
     cls: 'clear-dates-btn',
-    attr: { id: 'clearDatesBtn', title: 'Clear date filters' },
-    text: '🗑️ clear dates'
+    attr: { id: 'clearDatesBtn', title: t('chrono.analyser.filters.clearDatesTooltip') },
+    text: t('chrono.analyser.filters.clearDates')
   });
 
   const analysisGroup = controls.createDiv({ cls: 'control-group analysis-config-group' });
 
   const metricItem = analysisGroup.createDiv({ cls: 'control-item' });
-  metricItem.createEl('label', { attr: { for: 'metricSelect' }, text: '📏 metric' });
+  metricItem.createEl('label', {
+    attr: { for: 'metricSelect' },
+    text: t('chrono.analyser.config.metric')
+  });
   const metricSelect = metricItem.createEl('select', { attr: { id: 'metricSelect' } });
-  metricSelect.createEl('option', { attr: { value: 'duration' }, text: 'Duration (hours)' });
-  metricSelect.createEl('option', { attr: { value: 'count' }, text: 'Event count' });
+  metricSelect.createEl('option', {
+    attr: { value: 'duration' },
+    text: t('chrono.analyser.config.duration')
+  });
+  metricSelect.createEl('option', {
+    attr: { value: 'count' },
+    text: t('chrono.analyser.config.count')
+  });
 
   const analysisTypeItem = analysisGroup.createDiv({ cls: 'control-item' });
   analysisTypeItem.createEl('label', {
     attr: { for: 'analysisTypeSelect' },
-    text: '🎯 analysis type'
+    text: t('chrono.analyser.config.analysisType')
   });
   const analysisTypeSelect = analysisTypeItem.createEl('select', {
     attr: { id: 'analysisTypeSelect' }
@@ -142,49 +171,64 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   analysisTypeSelect.createEl('option', {
     attr: {
       value: 'pie',
-      title: 'Visualize how time is distributed across different categories.'
+      title: t('chrono.analyser.config.tooltips.categorywise')
     },
-    text: 'Categorywise (pie)'
+    text: t('chrono.analyser.config.pie')
   });
   analysisTypeSelect.createEl('option', {
     attr: {
       value: 'sunburst',
-      title: 'Visualize how time is distributed across different categories.'
+      title: t('chrono.analyser.config.tooltips.categorywise')
     },
-    text: 'Categorywise (sunburst)'
+    text: t('chrono.analyser.config.sunburst')
   });
   analysisTypeSelect.createEl('option', {
-    attr: { value: 'time-series', title: 'Visualize how time spent changes over a period.' },
-    text: 'Time-series trend'
+    attr: { value: 'time-series', title: t('chrono.analyser.config.tooltips.timeSeries') },
+    text: t('chrono.analyser.config.timeSeries')
   });
   analysisTypeSelect.createEl('option', {
-    attr: { value: 'activity', title: 'Identify patterns in when tasks are typically performed.' },
-    text: 'Activity patterns'
+    attr: { value: 'activity', title: t('chrono.analyser.config.tooltips.activity') },
+    text: t('chrono.analyser.config.activity')
   });
 
   const pieContainer = analysisGroup.createDiv({
     cls: 'control-item hidden-controls',
     attr: { id: 'pieBreakdownLevelContainer' }
   });
-  pieContainer.createEl('label', { attr: { for: 'levelSelect_pie' }, text: '📈 breakdown level' });
+  pieContainer.createEl('label', {
+    attr: { for: 'levelSelect_pie' },
+    text: t('chrono.analyser.config.breakdownLevel')
+  });
   const pieSelect = pieContainer.createEl('select', { attr: { id: 'levelSelect_pie' } });
-  pieSelect.createEl('option', { attr: { value: 'hierarchy' }, text: 'Hierarchy' });
-  pieSelect.createEl('option', { attr: { value: 'project' }, text: 'Project' });
-  pieSelect.createEl('option', { attr: { value: 'subproject' }, text: 'Sub-project' });
+  pieSelect.createEl('option', {
+    attr: { value: 'hierarchy' },
+    text: t('chrono.analyser.config.hierarchy')
+  });
+  pieSelect.createEl('option', {
+    attr: { value: 'project' },
+    text: t('chrono.analyser.config.project')
+  });
+  pieSelect.createEl('option', {
+    attr: { value: 'subproject' },
+    text: t('chrono.analyser.config.subproject')
+  });
 
   const sunburstContainer = analysisGroup.createDiv({
     cls: 'control-item hidden-controls',
     attr: { id: 'sunburstBreakdownLevelContainer' }
   });
-  sunburstContainer.createEl('label', { attr: { for: 'levelSelect' }, text: '📈 breakdown level' });
+  sunburstContainer.createEl('label', {
+    attr: { for: 'levelSelect' },
+    text: t('chrono.analyser.config.breakdownLevel')
+  });
   const sunburstSelect = sunburstContainer.createEl('select', { attr: { id: 'levelSelect' } });
   sunburstSelect.createEl('option', {
     attr: { value: 'project' },
-    text: 'Projects by hierarchy'
+    text: t('chrono.analyser.config.projectsByHierarchy')
   });
   sunburstSelect.createEl('option', {
     attr: { value: 'subproject' },
-    text: 'Sub-projects by project'
+    text: t('chrono.analyser.config.subprojectsByProject')
   });
 
   const timeSeriesGranularityContainer = analysisGroup.createDiv({
@@ -193,14 +237,23 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   timeSeriesGranularityContainer.createEl('label', {
     attr: { for: 'timeSeriesGranularitySelect' },
-    text: '🕒 granularity'
+    text: t('chrono.analyser.config.granularity')
   });
   const timeSeriesGranularitySelect = timeSeriesGranularityContainer.createEl('select', {
     attr: { id: 'timeSeriesGranularitySelect' }
   });
-  timeSeriesGranularitySelect.createEl('option', { attr: { value: 'daily' }, text: 'Daily' });
-  timeSeriesGranularitySelect.createEl('option', { attr: { value: 'weekly' }, text: 'Weekly' });
-  timeSeriesGranularitySelect.createEl('option', { attr: { value: 'monthly' }, text: 'Monthly' });
+  timeSeriesGranularitySelect.createEl('option', {
+    attr: { value: 'daily' },
+    text: t('chrono.analyser.config.daily')
+  });
+  timeSeriesGranularitySelect.createEl('option', {
+    attr: { value: 'weekly' },
+    text: t('chrono.analyser.config.weekly')
+  });
+  timeSeriesGranularitySelect.createEl('option', {
+    attr: { value: 'monthly' },
+    text: t('chrono.analyser.config.monthly')
+  });
 
   const timeSeriesTypeContainer = analysisGroup.createDiv({
     cls: 'control-item hidden-controls',
@@ -208,15 +261,18 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   timeSeriesTypeContainer.createEl('label', {
     attr: { for: 'timeSeriesTypeSelect' },
-    text: '📊 chart type'
+    text: t('chrono.analyser.config.chartType')
   });
   const timeSeriesTypeSelect = timeSeriesTypeContainer.createEl('select', {
     attr: { id: 'timeSeriesTypeSelect' }
   });
-  timeSeriesTypeSelect.createEl('option', { attr: { value: 'line' }, text: 'Overall trend' });
+  timeSeriesTypeSelect.createEl('option', {
+    attr: { value: 'line' },
+    text: t('chrono.analyser.config.overallTrend')
+  });
   timeSeriesTypeSelect.createEl('option', {
     attr: { value: 'stackedArea' },
-    text: 'Stacked by category'
+    text: t('chrono.analyser.config.stackedByCategory')
   });
 
   const timeSeriesStackingLevelContainer = analysisGroup.createDiv({
@@ -225,19 +281,22 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   timeSeriesStackingLevelContainer.createEl('label', {
     attr: { for: 'timeSeriesStackingLevelSelect' },
-    text: '📚 stack by'
+    text: t('chrono.analyser.config.stackBy')
   });
   const timeSeriesStackingLevelSelect = timeSeriesStackingLevelContainer.createEl('select', {
     attr: { id: 'timeSeriesStackingLevelSelect' }
   });
   timeSeriesStackingLevelSelect.createEl('option', {
     attr: { value: 'hierarchy' },
-    text: 'Hierarchy'
+    text: t('chrono.analyser.config.hierarchy')
   });
-  timeSeriesStackingLevelSelect.createEl('option', { attr: { value: 'project' }, text: 'Project' });
+  timeSeriesStackingLevelSelect.createEl('option', {
+    attr: { value: 'project' },
+    text: t('chrono.analyser.config.project')
+  });
   timeSeriesStackingLevelSelect.createEl('option', {
     attr: { value: 'subproject' },
-    text: 'Sub-project'
+    text: t('chrono.analyser.config.subproject')
   });
 
   const activityPatternContainer = analysisGroup.createDiv({
@@ -246,7 +305,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   activityPatternContainer.createEl('label', {
     attr: { for: 'activityPatternTypeSelect' },
-    text: '📅 analyze by'
+    text: t('chrono.analyser.config.analyzeBy')
   });
   const activityPatternTypeSelect = activityPatternContainer.createEl('select', {
     attr: { id: 'activityPatternTypeSelect' }
@@ -254,25 +313,23 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   activityPatternTypeSelect.createEl('option', {
     attr: {
       value: 'dayOfWeek',
-      title: 'Displays a bar chart showing the total hours spent on each day of the week.'
+      title: t('chrono.analyser.config.tooltips.dayOfWeek')
     },
-    text: 'Day of week'
+    text: t('chrono.analyser.config.dayOfWeek')
   });
   activityPatternTypeSelect.createEl('option', {
     attr: {
       value: 'hourOfDay',
-      title:
-        'Displays a bar chart showing the total hours associated with tasks that start in each hour of the day.'
+      title: t('chrono.analyser.config.tooltips.hourOfDay')
     },
-    text: 'Hour of day (task start)'
+    text: t('chrono.analyser.config.hourOfDay')
   });
   activityPatternTypeSelect.createEl('option', {
     attr: {
       value: 'heatmapDOWvsHOD',
-      title:
-        'Displays a heatmap where rows are days of the week, columns are hours of the day, and the color intensity of each cell represents the total hours for tasks starting at that specific day/hour combination.'
+      title: t('chrono.analyser.config.tooltips.heatmap')
     },
-    text: 'Heatmap (day vs hour)'
+    text: t('chrono.analyser.config.heatmap')
   });
 
   const dashboardLayout = container.createDiv({ cls: 'dashboard-layout-container' });
@@ -282,11 +339,11 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   const totalHoursCard = statsGrid.createDiv({ cls: 'stat-card' });
   totalHoursCard.createDiv({ cls: 'stat-value', attr: { id: 'totalHours' }, text: '0' });
-  totalHoursCard.createDiv({ cls: 'stat-label', text: 'Total Hours (Filtered)' });
+  totalHoursCard.createDiv({ cls: 'stat-label', text: t('chrono.analyser.stats.totalHours') });
 
   const totalFilesCard = statsGrid.createDiv({ cls: 'stat-card' });
   totalFilesCard.createDiv({ cls: 'stat-value', attr: { id: 'totalFiles' }, text: '0' });
-  totalFilesCard.createDiv({ cls: 'stat-label', text: 'Files in Filter' });
+  totalFilesCard.createDiv({ cls: 'stat-label', text: t('chrono.analyser.stats.filesInFilter') });
 
   const analysisTypeCard = statsGrid.createDiv({ cls: 'stat-card' });
   analysisTypeCard.createDiv({
@@ -294,7 +351,10 @@ export function createDOMStructure(rootEl: HTMLElement): void {
     attr: { id: 'currentAnalysisTypeStat' },
     text: 'N/A'
   });
-  analysisTypeCard.createDiv({ cls: 'stat-label', text: 'Active Analysis' });
+  analysisTypeCard.createDiv({
+    cls: 'stat-label',
+    text: t('chrono.analyser.stats.activeAnalysis')
+  });
 
   const mainChartContainer = dashboardLayout.createDiv({
     cls: 'main-chart-container hidden-controls',
@@ -306,7 +366,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
     cls: 'log-container hidden-controls',
     attr: { id: 'errorLogContainer' }
   });
-  logContainer.createEl('h2', { text: '📋 processing log & issues' });
+  logContainer.createEl('h2', { text: t('chrono.analyser.log.title') });
   logContainer.createDiv({
     cls: 'log-summary hidden-controls',
     attr: { id: 'cacheStatusDisplay' }
@@ -314,7 +374,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   logContainer.createDiv({
     cls: 'log-summary',
     attr: { id: 'errorLogSummary' },
-    text: 'No issues found.'
+    text: t('chrono.analyser.log.noIssues')
   });
   logContainer.createDiv({ attr: { id: 'errorLogEntries' } });
 
@@ -324,11 +384,11 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   popupHeader.createEl('h2', {
     cls: 'popup-title',
     attr: { id: 'popupTitle' },
-    text: 'Category details'
+    text: t('chrono.analyser.details.title')
   });
   popupHeader.createEl('button', {
     cls: 'close-btn',
-    attr: { id: 'popupCloseBtn', title: 'Close' },
+    attr: { id: 'popupCloseBtn', title: t('chrono.analyser.details.close') },
     text: '×'
   });
   const popupBody = detailPopup.createDiv({ cls: 'popup-body' });
@@ -340,10 +400,10 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   });
   const tableHead = detailTable.createEl('thead');
   const tableHeaderRow = tableHead.createEl('tr');
-  tableHeaderRow.createEl('th', { text: 'Project' });
-  tableHeaderRow.createEl('th', { text: 'Sub-project (full)' });
-  tableHeaderRow.createEl('th', { text: 'Duration (hrs)' });
-  tableHeaderRow.createEl('th', { text: 'Date' });
-  tableHeaderRow.createEl('th', { text: 'File path' });
+  tableHeaderRow.createEl('th', { text: t('chrono.analyser.details.project') });
+  tableHeaderRow.createEl('th', { text: t('chrono.analyser.details.subproject') });
+  tableHeaderRow.createEl('th', { text: t('chrono.analyser.details.duration') });
+  tableHeaderRow.createEl('th', { text: t('chrono.analyser.details.date') });
+  tableHeaderRow.createEl('th', { text: t('chrono.analyser.details.filePath') });
   detailTable.createEl('tbody', { attr: { id: 'popupTableBody' } });
 }

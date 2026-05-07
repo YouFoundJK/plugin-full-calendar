@@ -55,6 +55,88 @@
       "errors": {
         "groupExists": "Group name \"{{name}}\" already exists."
       }
+    },
+    "analyser": {
+      "header": "📊 ChronoAnalyser",
+      "subtitle": "Interactive analysis of your time tracking data",
+      "proTip": "Pro tip",
+      "clickNextTip": "Click to see the next tip",
+      "insights": {
+        "title": "💡 Insights",
+        "generate": "Generate insights",
+        "configure": "Configure insights",
+        "placeholder": "Click \"Generate Insights\" to analyze your data."
+      },
+      "filters": {
+        "hierarchy": "📂 Filter by hierarchy (calendar source)",
+        "hierarchyPlaceholder": "All hierarchies (type to filter...)",
+        "project": "📋 Filter by project",
+        "projectPlaceholder": "All projects (type to filter...)",
+        "category": "🔍 Filter by category (e.g., keyword -exclude)",
+        "categoryPlaceholder": "E.g., task.* -review",
+        "dateRange": "📅 Date range",
+        "dateRangePlaceholder": "Select date range (yyyy-mm-dd to yyyy-mm-dd)",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This week",
+        "thisMonth": "This month",
+        "clearDates": "🗑️ Clear dates",
+        "clearDatesTooltip": "Clear date filters"
+      },
+      "config": {
+        "metric": "📏 Metric",
+        "duration": "Duration (hours)",
+        "count": "Event count",
+        "analysisType": "🎯 Analysis type",
+        "pie": "Categorywise (pie)",
+        "sunburst": "Categorywise (sunburst)",
+        "timeSeries": "Time-series trend",
+        "activity": "Activity patterns",
+        "breakdownLevel": "📈 Breakdown level",
+        "hierarchy": "Hierarchy",
+        "project": "Project",
+        "subproject": "Sub-project",
+        "projectsByHierarchy": "Projects by hierarchy",
+        "subprojectsByProject": "Sub-projects by project",
+        "granularity": "🕒 Granularity",
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "chartType": "📊 Chart type",
+        "overallTrend": "Overall trend",
+        "stackedByCategory": "Stacked by category",
+        "stackBy": "📚 Stack by",
+        "analyzeBy": "📅 Analyze by",
+        "dayOfWeek": "Day of week",
+        "hourOfDay": "Hour of day (task start)",
+        "heatmap": "Heatmap (day vs hour)",
+        "tooltips": {
+          "categorywise": "Visualize how time is distributed across different categories.",
+          "timeSeries": "Visualize how time spent changes over a period.",
+          "activity": "Identify patterns in when tasks are typically performed.",
+          "dayOfWeek": "Displays a bar chart showing the total hours spent on each day of the week.",
+          "hourOfDay": "Displays a bar chart showing the total hours associated with tasks that start in each hour of the day.",
+          "heatmap": "Displays a heatmap where rows are days of the week, columns are hours of the day, and the color intensity of each cell represents the total hours for tasks starting at that specific day/hour combination."
+        }
+      },
+      "stats": {
+        "totalHours": "Total Hours (Filtered)",
+        "filesInFilter": "Files in Filter",
+        "activeAnalysis": "Active Analysis"
+      },
+      "log": {
+        "title": "📋 Processing log & issues",
+        "noIssues": "No issues found."
+      },
+      "details": {
+        "title": "Category details",
+        "close": "Close",
+        "project": "Project",
+        "subproject": "Sub-project (full)",
+        "duration": "Duration (hrs)",
+        "date": "Date",
+        "filePath": "File path"
+      }
     }
   },
   "commands": {
@@ -62,7 +144,7 @@
     "resetCache": "Reset Event Cache",
     "revalidateRemote": "Revalidate remote calendars",
     "openCalendar": "Open Calendar",
-    "openChronoAnalyser": "Open Chrono Analyser (Desktop Only)",
+    "openChronoAnalyser": "Open ChronoAnalyser (Desktop Only)",
     "openSidebar": "Open in sidebar",
     "syncActivityWatch": "Sync ActivityWatch",
     "nlpQuickAdd": "FCR Command"
@@ -70,9 +152,9 @@
   "notices": {
     "settingsUpdated": "Full Calendar has updated your calendar settings to a new format.",
     "cacheReset": "Full Calendar has been reset.",
-    "chronoAnalyserMobileDisabled": "The Chrono Analyser feature is only available on the desktop version of Obsidian.",
-    "chronoAnalyserInitializing": "Chrono Analyser: Initializing event cache...",
-    "chronoAnalyserLoadFailed": "Failed to load Chrono Analyser. Please check the console.",
+    "chronoAnalyserMobileDisabled": "The ChronoAnalyser feature is only available on the desktop version of Obsidian.",
+    "chronoAnalyserInitializing": "ChronoAnalyser: Initializing event cache...",
+    "chronoAnalyserLoadFailed": "Failed to load ChronoAnalyser. Please check the console.",
     "chronoAnalyserConfigureFirst": "Please configure your Insight Groups first using the ⚙️ icon.",
     "chronoAnalyserGeneratingInsights": "Generating insights (this may take a moment)...",
     "chronoAnalyserInsightsFailed": "Failed to generate insights. Check the developer console for errors.",
@@ -878,8 +960,8 @@
       "errors": {
         "cacheNotLoaded": "Full Calendar event cache not loaded.",
         "viewEnhancerNotInitialized": "Full Calendar view enhancer not initialized.",
-        "chronoAnalyserDesktopOnly": "The Chrono Analyser is only available on desktop.",
-        "chronoAnalyserFailed": "Failed to open Chrono Analyser. Please check the console.",
+        "chronoAnalyserDesktopOnly": "The ChronoAnalyser is only available on desktop.",
+        "chronoAnalyserFailed": "Failed to open ChronoAnalyser. Please check the console.",
         "modifyEventFailed": "Failed to modify event.",
         "taskScheduleFailed": "Failed to schedule task: {{message}}",
         "moveRecurringDayError": "Cannot move a recurring instance to a different day. Modify the time only or edit the main recurring event.",
@@ -952,6 +1034,45 @@
     "previewHint": "Type a command — create events, navigate views, open settings, and more.",
     "noCalendars": "No writable calendars available. Please add a calendar first.",
     "parseSuccess": "Command executed.",
-    "navigating": "Navigating to {{view}} view."
+    "navigating": "Navigating to {{view}} view.",
+    "intents": {
+      "CREATE_EVENT": "📅 Create Event",
+      "NEW_EVENT": "📅 New Event (blank)",
+      "NAVIGATE_DAY": "🧭 Navigate → Day View",
+      "NAVIGATE_WEEK": "🧭 Navigate → Week View",
+      "NAVIGATE_MONTH": "🧭 Navigate → Month View",
+      "OPEN_CALENDAR": "📖 Open Calendar",
+      "OPEN_SIDEBAR": "📖 Open Sidebar",
+      "OPEN_SETTINGS": "⚙️ Open Settings",
+      "OPEN_CHRONO": "📊 Open ChronoAnalyser",
+      "SHOW_CHANGELOG": "📋 Show Changelog",
+      "RESET_CACHE": "🗑️ Reset Event Cache",
+      "REVALIDATE_REMOTE": "🔄 Revalidate Remote Calendars",
+      "SYNC_ACTIVITYWATCH": "⏱️ Sync ActivityWatch",
+      "GOTO_DATE": "📆 Go to Date"
+    },
+    "descriptions": {
+      "OPEN_SETTINGS": "Opens the Full Calendar settings tab.",
+      "OPEN_CHRONO": "Launches the ChronoAnalyser dashboard.",
+      "SHOW_CHANGELOG": "Displays the latest release notes.",
+      "RESET_CACHE": "Clears and rebuilds the event cache.",
+      "REVALIDATE_REMOTE": "Forces a fresh sync of all remote calendars.",
+      "SYNC_ACTIVITYWATCH": "Pulls latest data from ActivityWatch."
+    },
+    "preview": {
+      "target": "Target",
+      "title": "Title",
+      "date": "Date",
+      "time": "Time",
+      "allDay": "All day",
+      "calendar": "Calendar",
+      "recurrence": "Recurrence",
+      "every": "Every",
+      "patternsMatched": "✓ {{count}} pattern matched"
+    },
+    "notices": {
+      "cacheReset": "Event cache has been reset.",
+      "awNotEnabled": "ActivityWatch is not enabled. Enable it in settings first."
+    }
   }
 }

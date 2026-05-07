@@ -49,7 +49,89 @@
       },
       "folderSelectPlaceholder": "Sélectionnez un dossier avec vos fichiers de suivi du temps...",
       "errors": {
-        "groupExists": "Le nom de groupe \"{{name}}\" existe déjà."
+        "groupExists": "Le nom du groupe \"{{name}}\" existe déjà."
+      }
+    },
+    "analyser": {
+      "header": "📊 ChronoAnalyser",
+      "subtitle": "Analyse interactive de vos données de suivi du temps",
+      "proTip": "Astuce de pro",
+      "clickNextTip": "Cliquez pour voir l'astuce suivante",
+      "insights": {
+        "title": "💡 Aperçus",
+        "generate": "Générer des aperçus",
+        "configure": "Configurer les aperçus",
+        "placeholder": "Cliquez sur \"Générer des aperçus\" pour analyser vos données."
+      },
+      "filters": {
+        "hierarchy": "📂 filtrer par hiérarchie (source de calendrier)",
+        "hierarchyPlaceholder": "Toutes les hiérarchies (tapez pour filtrer...)",
+        "project": "📋 filtrer par projet",
+        "projectPlaceholder": "Tous les projets (tapez pour filtrer...)",
+        "category": "🔍 filtrer par catégorie (ex: mot-clé -exclusion)",
+        "categoryPlaceholder": "Ex: tâche.* -review",
+        "dateRange": "📅 période",
+        "dateRangePlaceholder": "Sélectionner une période (aaaa-mm-jj au aaaa-mm-jj)",
+        "today": "Aujourd'hui",
+        "yesterday": "Hier",
+        "thisWeek": "Cette semaine",
+        "thisMonth": "Ce mois-ci",
+        "clearDates": "🗑️ effacer les dates",
+        "clearDatesTooltip": "Effacer les filtres de date"
+      },
+      "config": {
+        "metric": "📏 métrique",
+        "duration": "Durée (heures)",
+        "count": "Nombre d'événements",
+        "analysisType": "🎯 type d'analyse",
+        "pie": "Par catégorie (secteurs)",
+        "sunburst": "Par catégorie (sunburst)",
+        "timeSeries": "Tendance temporelle",
+        "activity": "Modèles d'activité",
+        "breakdownLevel": "📈 niveau de détail",
+        "hierarchy": "Hiérarchie",
+        "project": "Projet",
+        "subproject": "Sous-projet",
+        "projectsByHierarchy": "Projets par hiérarchie",
+        "subprojectsByProject": "Sous-projets par projet",
+        "granularity": "🕒 granularité",
+        "daily": "Quotidien",
+        "weekly": "Hebdomadaire",
+        "monthly": "Mensuel",
+        "chartType": "📊 type de graphique",
+        "overallTrend": "Tendance générale",
+        "stackedByCategory": "Empilé par catégorie",
+        "stackBy": "📚 empiler par",
+        "analyzeBy": "📅 analyser par",
+        "dayOfWeek": "Jour de la semaine",
+        "hourOfDay": "Heure du jour (début de tâche)",
+        "heatmap": "Carte thermique (jour vs heure)",
+        "tooltips": {
+          "categorywise": "Visualisez comment le temps est réparti entre les différentes catégories.",
+          "timeSeries": "Visualisez comment le temps passé évolue sur une période.",
+          "activity": "Identifiez les modèles indiquant quand les tâches sont généralement effectuées.",
+          "dayOfWeek": "Affiche un graphique à barres montrant le nombre total d'heures passées chaque jour de la semaine.",
+          "hourOfDay": "Affiche un graphique à barres montrant le nombre total d'heures associées aux tâches qui commencent à chaque heure de la journée.",
+          "heatmap": "Affiche une carte thermique où les lignes sont les jours de la semaine et les colonnes les heures de la journée."
+        }
+      },
+      "stats": {
+        "totalHours": "Heures totales (filtrées)",
+        "filesInFilter": "Fichiers dans le filtre",
+        "activeAnalysis": "Analyse active"
+      },
+      "log": {
+        "title": "📋 journal de traitement & problèmes",
+        "noIssues": "Aucun problème trouvé."
+      },
+      "details": {
+        "title": "Détails de la catégorie",
+        "close": "Fermer",
+        "project": "Projet",
+        "subproject": "Sous-projet (complet)",
+        "duration": "Durée (h)",
+        "date": "Date",
+        "filePath": "Chemin du fichier"
       }
     }
   },
@@ -60,7 +142,8 @@
     "openCalendar": "Ouvrir le calendrier",
     "openChronoAnalyser": "Ouvrir Chrono Analyser (Desktop uniquement)",
     "openSidebar": "Ouvrir dans la barre latérale",
-    "syncActivityWatch": "Synchroniser ActivityWatch"
+    "syncActivityWatch": "Synchroniser ActivityWatch",
+    "nlpQuickAdd": "FCR Command"
   },
   "notices": {
     "settingsUpdated": "Full Calendar a mis à jour vos paramètres de calendrier vers un nouveau format.",
@@ -941,6 +1024,55 @@
       "revoke": "Révoquer",
       "cancel": "Annuler",
       "save": "Enregistrer"
+    }
+  },
+  "nlp": {
+    "modalTitle": "Commande FCR",
+    "placeholder": "ex : demain à 16h standup d'équipe, ouvrir les paramètres, aller au mardi prochain",
+    "submit": "Exécuter",
+    "cancel": "Annuler",
+    "previewHint": "Tapez une commande — créer des événements, naviguer dans les vues, ouvrir les paramètres, etc.",
+    "noCalendars": "Aucun calendrier modifiable disponible. Veuillez d'abord ajouter un calendrier.",
+    "parseSuccess": "Commande exécutée.",
+    "navigating": "Navigation vers la vue {{view}}.",
+    "intents": {
+      "CREATE_EVENT": "📅 Créer un événement",
+      "NEW_EVENT": "📅 Nouvel événement (vide)",
+      "NAVIGATE_DAY": "🧭 Naviguer → Vue Jour",
+      "NAVIGATE_WEEK": "🧭 Naviguer → Vue Semaine",
+      "NAVIGATE_MONTH": "🧭 Naviguer → Vue Mois",
+      "OPEN_CALENDAR": "📖 Ouvrir le calendrier",
+      "OPEN_SIDEBAR": "📖 Ouvrir la barre latérale",
+      "OPEN_SETTINGS": "⚙️ Ouvrir les paramètres",
+      "OPEN_CHRONO": "📊 Ouvrir l'Analyseur Chrono",
+      "SHOW_CHANGELOG": "📋 Afficher le journal des modifications",
+      "RESET_CACHE": "🗑️ Réinitialiser le cache des événements",
+      "REVALIDATE_REMOTE": "🔄 Réactualiser les calendriers distants",
+      "SYNC_ACTIVITYWATCH": "⏱️ Synchroniser ActivityWatch",
+      "GOTO_DATE": "📆 Aller à la date"
+    },
+    "descriptions": {
+      "OPEN_SETTINGS": "Ouvre l'onglet des paramètres de Full Calendar.",
+      "OPEN_CHRONO": "Lance le tableau de bord de l'Analyseur Chrono.",
+      "SHOW_CHANGELOG": "Affiche les dernières notes de mise à jour.",
+      "RESET_CACHE": "Efface et reconstruit le cache des événements.",
+      "REVALIDATE_REMOTE": "Force une nouvelle synchronisation de tous les calendriers distants.",
+      "SYNC_ACTIVITYWATCH": "Récupère les dernières données d'ActivityWatch."
+    },
+    "preview": {
+      "target": "Cible",
+      "title": "Titre",
+      "date": "Date",
+      "time": "Heure",
+      "allDay": "Toute la journée",
+      "calendar": "Calendrier",
+      "recurrence": "Récurrence",
+      "every": "Tous les",
+      "patternsMatched": "✓ {{count}} motif trouvé"
+    },
+    "notices": {
+      "cacheReset": "Le cache des événements a été réinitialisé.",
+      "awNotEnabled": "ActivityWatch n'est pas activé. Activez-le d'abord dans les paramètres."
     }
   }
 }

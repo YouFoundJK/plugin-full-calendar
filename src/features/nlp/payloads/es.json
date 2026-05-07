@@ -1,184 +1,166 @@
 {
   "version": 2,
-  "locale": "en",
+  "locale": "es",
   "rules": [
     {
       "name": "navigate_week",
-      "regex": "^(?:open|view|show)\\s+(?:the\\s+)?(?:weekly|week)\\s+view\\b",
+      "regex": "^(?:abrir|ver|mostrar)\\s+(?:la\\s+)?vista\\s+(?:semanal|semana)\\b",
       "flags": "i",
       "actions": ["SET_INTENT(NAVIGATE_WEEK)"]
     },
     {
       "name": "navigate_month",
-      "regex": "^(?:open|view|show)\\s+(?:the\\s+)?(?:monthly|month)\\s+view\\b",
+      "regex": "^(?:abrir|ver|mostrar)\\s+(?:la\\s+)?vista\\s+(?:mensual|mes)\\b",
       "flags": "i",
       "actions": ["SET_INTENT(NAVIGATE_MONTH)"]
     },
     {
       "name": "navigate_day",
-      "regex": "^(?:open|view|show)\\s+(?:the\\s+)?(?:daily|day)\\s+view\\b",
+      "regex": "^(?:abrir|ver|mostrar)\\s+(?:la\\s+)?vista\\s+(?:diaria|día)\\b",
       "flags": "i",
       "actions": ["SET_INTENT(NAVIGATE_DAY)"]
     },
     {
       "name": "navigate_calendar",
-      "regex": "^(?:open|show)\\s+(?:the\\s+)?calendars?\\b",
+      "regex": "^(?:abrir|mostrar)\\s+(?:el\\s+)?calendario\\b",
       "flags": "i",
       "actions": ["SET_INTENT(OPEN_CALENDAR)"]
     },
     {
       "name": "navigate_sidebar",
-      "regex": "^(?:open|show)\\s+(?:the\\s+)?sidebars?\\b",
+      "regex": "^(?:abrir|mostrar)\\s+(?:la\\s+)?barra\\s+lateral\\b",
       "flags": "i",
       "actions": ["SET_INTENT(OPEN_SIDEBAR)"]
     },
     {
       "name": "open_settings",
-      "regex": "^(?:open|show)\\s+(?:the\\s+)?settings?\\b",
+      "regex": "^(?:abrir|mostrar)\\s+(?:los\\s+)?ajustes\\b",
       "flags": "i",
       "actions": ["SET_INTENT(OPEN_SETTINGS)"]
     },
     {
       "name": "open_chrono",
-      "regex": "^(?:open|show|launch)\\s+(?:the\\s+)?(?:chrono|analyser|analyzer|analysis|insights)\\b",
+      "regex": "^(?:abrir|mostrar|lanzar)\\s+(?:el\\s+)?(?:chrono|analizador|analyzer|análisis|insights)\\b",
       "flags": "i",
       "actions": ["SET_INTENT(OPEN_CHRONO)"]
     },
     {
       "name": "show_changelog",
-      "regex": "^(?:show|open|view)\\s+(?:the\\s+)?(?:changelog|what'?s\\s+new|release\\s+notes)\\b",
+      "regex": "^(?:mostrar|abrir|ver)\\s+(?:el\\s+)?(?:registro\\s+de\\s+cambios|changelog|qué\\s+hay\\s+de\\s+nuevo|notas\\s+de\\s+la\\s+versión)\\b",
       "flags": "i",
       "actions": ["SET_INTENT(SHOW_CHANGELOG)"]
     },
     {
       "name": "reset_cache",
-      "regex": "^(?:reset|clear|flush)\\s+(?:the\\s+)?(?:event\\s+)?cache\\b",
+      "regex": "^(?:restablecer|limpiar|vaciar)\\s+(?:el\\s+)?cache\\b",
       "flags": "i",
       "actions": ["SET_INTENT(RESET_CACHE)"]
     },
     {
       "name": "revalidate_remote",
-      "regex": "^(?:revalidate|refresh|reload|re-sync)\\s+(?:the\\s+)?(?:remote\\s+)?calendars?\\b",
+      "regex": "^(?:revalidar|actualizar|recargar|sincronizar)\\s+(?:los\\s+)?calendarios\\b",
       "flags": "i",
       "actions": ["SET_INTENT(REVALIDATE_REMOTE)"]
     },
     {
       "name": "sync_activitywatch",
-      "regex": "^(?:sync|run)\\s+(?:activitywatch|activity\\s+watch|aw)\\b",
+      "regex": "^(?:sincronizar|lanzar|run)\\s+(?:activitywatch|activity\\s+watch|aw)\\b",
       "flags": "i",
       "actions": ["SET_INTENT(SYNC_ACTIVITYWATCH)"]
     },
     {
       "name": "goto_date",
-      "regex": "^(?:go\\s+to|goto|jump\\s+to|navigate\\s+to)\\b",
+      "regex": "^(?:ir\\s+a|ir\\s+al|saltar\\s+a|navegar\\s+a)\\b",
       "flags": "i",
       "actions": ["SET_INTENT(GOTO_DATE)"]
     },
     {
       "name": "new_event",
-      "regex": "^(?:new|create)\\s+(?:an?\\s+)?event\\b",
+      "regex": "^(?:nuevo|crear)\\s+(?:un\\s+)?evento\\b",
       "flags": "i",
       "actions": []
     },
     {
       "name": "next_weekday",
-      "regex": "\\bnext\\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b",
+      "regex": "\\bpróximo\\s+(lunes|martes|miércoles|jueves|viernes|sábado|domingo)\\b",
       "flags": "i",
       "actions": ["NEXT_WEEKDAY($1)"]
     },
     {
       "name": "time_noon",
-      "regex": "\\bat\\s+noon\\b",
+      "regex": "\\bal\\s+mediodía\\b",
       "flags": "i",
       "actions": ["SET_TIME(12,0,\"\")"]
     },
     {
       "name": "time_midnight",
-      "regex": "\\bat\\s+midnight\\b",
+      "regex": "\\ba\\s+medianoche\\b",
       "flags": "i",
       "actions": ["SET_TIME(0,0,\"\")"]
     },
     {
       "name": "in_minutes",
-      "regex": "\\bin\\s+(\\d+)\\s+minutes?\\b",
+      "regex": "\\ben\\s+(\\d+)\\s+minutos?\\b",
       "flags": "i",
       "actions": ["ADD_MINUTES($1)"]
     },
     {
       "name": "in_hours",
-      "regex": "\\bin\\s+(\\d+)\\s+hours?\\b",
+      "regex": "\\ben\\s+(\\d+)\\s+horas?\\b",
       "flags": "i",
       "actions": ["ADD_HOURS($1)"]
     },
     {
       "name": "in_days",
-      "regex": "\\bin\\s+(\\d+)\\s+days?\\b",
+      "regex": "\\ben\\s+(\\d+)\\s+días?\\b",
       "flags": "i",
       "actions": ["ADD_DAYS($1)"]
     },
     {
       "name": "in_weeks",
-      "regex": "\\bin\\s+(\\d+)\\s+weeks?\\b",
+      "regex": "\\ben\\s+(\\d+)\\s+semanas?\\b",
       "flags": "i",
       "actions": ["ADD_WEEKS($1)"]
     },
     {
-      "name": "time_exact_ampm",
-      "regex": "(?:\\bat\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?\\b",
+      "name": "time_exact",
+      "regex": "(?:a\\s+las\\s+)?(\\d{1,2})(?::(\\d{2}))?\\b",
       "flags": "i",
-      "actions": ["SET_TIME($1,$2,$3)"]
-    },
-    {
-      "name": "next_week",
-      "regex": "\\bnext\\s+week\\b",
-      "flags": "i",
-      "actions": ["ADD_DAYS(7)"]
-    },
-    {
-      "name": "next_month",
-      "regex": "\\bnext\\s+month\\b",
-      "flags": "i",
-      "actions": ["ADD_DAYS(30)"]
-    },
-    {
-      "name": "day_after_tomorrow",
-      "regex": "\\bday\\s+after\\s+tomorrow\\b",
-      "flags": "i",
-      "actions": ["ADD_DAYS(2)"]
+      "actions": ["SET_TIME($1,$2,\"\")"]
     },
     {
       "name": "tomorrow",
-      "regex": "\\b(tomorrow)\\b",
+      "regex": "\\b(mañana)\\b",
       "flags": "i",
       "actions": ["ADD_DAYS(1)"]
     },
     {
       "name": "today",
-      "regex": "\\b(today)\\b",
+      "regex": "\\b(hoy)\\b",
       "flags": "i",
       "actions": ["ADD_DAYS(0)"]
     },
     {
       "name": "yesterday",
-      "regex": "\\b(yesterday)\\b",
+      "regex": "\\b(ayer)\\b",
       "flags": "i",
       "actions": ["SUBTRACT_DAYS(1)"]
     },
     {
       "name": "target_calendar",
-      "regex": "\\bin\\s+([\\w\\-\\/ ]{2,50})\\s+calendar\\b",
+      "regex": "\\ben\\s+el\\s+calendario\\s+([\\w\\-\\/ ]{2,50})\\b",
       "flags": "i",
       "actions": ["SET_TARGET($1)"]
     },
     {
       "name": "recur_daily",
-      "regex": "\\b(?:every\\s+day|daily)\\b",
+      "regex": "\\b(?:cada\\s+día|diariamente)\\b",
       "flags": "i",
       "actions": ["SET_RECURRENCE(DAILY,1)"]
     },
     {
       "name": "recur_weekly_weekday",
-      "regex": "\\bevery\\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b",
+      "regex": "\\btodos\\s+los\\s+(lunes|martes|miércoles|jueves|viernes|sábado|domingo)\\b",
       "flags": "i",
       "actions": ["SET_RECURRENCE(WEEKLY,1,$1)"]
     }

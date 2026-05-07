@@ -22,31 +22,67 @@ import { t } from '../i18n/i18n';
 
 const DEBOUNCE_MS = 120;
 
-const INTENT_LABELS: Record<string, string> = {
-  CREATE_EVENT: '📅 Create Event',
-  NEW_EVENT: '📅 New Event (blank)',
-  NAVIGATE_DAY: '🧭 Navigate → Day View',
-  NAVIGATE_WEEK: '🧭 Navigate → Week View',
-  NAVIGATE_MONTH: '🧭 Navigate → Month View',
-  OPEN_CALENDAR: '📖 Open Calendar',
-  OPEN_SIDEBAR: '📖 Open Sidebar',
-  OPEN_SETTINGS: '⚙️ Open Settings',
-  OPEN_CHRONO: '📊 Open Chrono Analyser',
-  SHOW_CHANGELOG: '📋 Show Changelog',
-  RESET_CACHE: '🗑️ Reset Event Cache',
-  REVALIDATE_REMOTE: '🔄 Revalidate Remote Calendars',
-  SYNC_ACTIVITYWATCH: '⏱️ Sync ActivityWatch',
-  GOTO_DATE: '📆 Go to Date'
-};
+/**
+ * Returns the localized label for a given intent.
+ * Using literal strings here ensures the i18n pruning tool can track usage.
+ */
+function getIntentLabel(intent: string): string {
+  switch (intent) {
+    case 'CREATE_EVENT':
+      return t('nlp.intents.CREATE_EVENT');
+    case 'NEW_EVENT':
+      return t('nlp.intents.NEW_EVENT');
+    case 'NAVIGATE_DAY':
+      return t('nlp.intents.NAVIGATE_DAY');
+    case 'NAVIGATE_WEEK':
+      return t('nlp.intents.NAVIGATE_WEEK');
+    case 'NAVIGATE_MONTH':
+      return t('nlp.intents.NAVIGATE_MONTH');
+    case 'OPEN_CALENDAR':
+      return t('nlp.intents.OPEN_CALENDAR');
+    case 'OPEN_SIDEBAR':
+      return t('nlp.intents.OPEN_SIDEBAR');
+    case 'OPEN_SETTINGS':
+      return t('nlp.intents.OPEN_SETTINGS');
+    case 'OPEN_CHRONO':
+      return t('nlp.intents.OPEN_CHRONO');
+    case 'SHOW_CHANGELOG':
+      return t('nlp.intents.SHOW_CHANGELOG');
+    case 'RESET_CACHE':
+      return t('nlp.intents.RESET_CACHE');
+    case 'REVALIDATE_REMOTE':
+      return t('nlp.intents.REVALIDATE_REMOTE');
+    case 'SYNC_ACTIVITYWATCH':
+      return t('nlp.intents.SYNC_ACTIVITYWATCH');
+    case 'GOTO_DATE':
+      return t('nlp.intents.GOTO_DATE');
+    default:
+      return intent;
+  }
+}
 
-const INTENT_DESCRIPTIONS: Record<string, string> = {
-  OPEN_SETTINGS: 'Opens the Full Calendar settings tab.',
-  OPEN_CHRONO: 'Launches the Chrono Analyser dashboard.',
-  SHOW_CHANGELOG: 'Displays the latest release notes.',
-  RESET_CACHE: 'Clears and rebuilds the event cache.',
-  REVALIDATE_REMOTE: 'Forces a fresh sync of all remote calendars.',
-  SYNC_ACTIVITYWATCH: 'Pulls latest data from ActivityWatch.'
-};
+/**
+ * Returns the localized description for a given intent.
+ * Using literal strings here ensures the i18n pruning tool can track usage.
+ */
+function getIntentDescription(intent: string): string | null {
+  switch (intent) {
+    case 'OPEN_SETTINGS':
+      return t('nlp.descriptions.OPEN_SETTINGS');
+    case 'OPEN_CHRONO':
+      return t('nlp.descriptions.OPEN_CHRONO');
+    case 'SHOW_CHANGELOG':
+      return t('nlp.descriptions.SHOW_CHANGELOG');
+    case 'RESET_CACHE':
+      return t('nlp.descriptions.RESET_CACHE');
+    case 'REVALIDATE_REMOTE':
+      return t('nlp.descriptions.REVALIDATE_REMOTE');
+    case 'SYNC_ACTIVITYWATCH':
+      return t('nlp.descriptions.SYNC_ACTIVITYWATCH');
+    default:
+      return null;
+  }
+}
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -187,11 +223,11 @@ export class NLPCommandModal extends Modal {
     const card = this.#previewContainer.createDiv({ cls: 'ofc-nlp-preview-card' });
 
     // Intent badge
-    const intentLabel = INTENT_LABELS[action.intent] ?? action.intent;
+    const intentLabel = getIntentLabel(action.intent);
     card.createDiv({ cls: 'ofc-nlp-preview-intent', text: intentLabel });
 
     // Description for non-event intents
-    const description = INTENT_DESCRIPTIONS[action.intent];
+    const description = getIntentDescription(action.intent);
     if (description) {
       card.createDiv({ cls: 'ofc-nlp-preview-description', text: description });
     }
@@ -201,7 +237,7 @@ export class NLPCommandModal extends Modal {
     } else if (action.intent === 'GOTO_DATE') {
       // Show the computed target date
       const dateRow = card.createDiv({ cls: 'ofc-nlp-preview-row' });
-      dateRow.createSpan({ cls: 'ofc-nlp-preview-label', text: 'Target' });
+      dateRow.createSpan({ cls: 'ofc-nlp-preview-label', text: t('nlp.preview.target') });
       dateRow.createSpan({ cls: 'ofc-nlp-preview-value', text: formatDate(action.date) });
     }
 
@@ -209,7 +245,7 @@ export class NLPCommandModal extends Modal {
     if (action.matchedRules.length > 0) {
       const rulesRow = card.createDiv({ cls: 'ofc-nlp-preview-rules' });
       rulesRow.createSpan({
-        text: `✓ ${action.matchedRules.length} pattern${action.matchedRules.length > 1 ? 's' : ''} matched`
+        text: t('nlp.preview.patternsMatched', { count: action.matchedRules.length })
       });
     }
   }
@@ -218,7 +254,7 @@ export class NLPCommandModal extends Modal {
     // Title
     if (action.title) {
       const titleRow = card.createDiv({ cls: 'ofc-nlp-preview-row' });
-      titleRow.createSpan({ cls: 'ofc-nlp-preview-label', text: 'Title' });
+      titleRow.createSpan({ cls: 'ofc-nlp-preview-label', text: t('nlp.preview.title') });
       titleRow.createSpan({
         cls: 'ofc-nlp-preview-value ofc-nlp-preview-title',
         text: action.title
@@ -227,13 +263,13 @@ export class NLPCommandModal extends Modal {
 
     // Date
     const dateRow = card.createDiv({ cls: 'ofc-nlp-preview-row' });
-    dateRow.createSpan({ cls: 'ofc-nlp-preview-label', text: 'Date' });
+    dateRow.createSpan({ cls: 'ofc-nlp-preview-label', text: t('nlp.preview.date') });
     dateRow.createSpan({ cls: 'ofc-nlp-preview-value', text: formatDate(action.date) });
 
     // Time (only if explicit)
     if (hasExplicitTime(action)) {
       const timeRow = card.createDiv({ cls: 'ofc-nlp-preview-row' });
-      timeRow.createSpan({ cls: 'ofc-nlp-preview-label', text: 'Time' });
+      timeRow.createSpan({ cls: 'ofc-nlp-preview-label', text: t('nlp.preview.time') });
       const endHour = (action.hours + 1) % 24;
       timeRow.createSpan({
         cls: 'ofc-nlp-preview-value',
@@ -241,24 +277,27 @@ export class NLPCommandModal extends Modal {
       });
     } else {
       const timeRow = card.createDiv({ cls: 'ofc-nlp-preview-row' });
-      timeRow.createSpan({ cls: 'ofc-nlp-preview-label', text: 'Time' });
-      timeRow.createSpan({ cls: 'ofc-nlp-preview-value ofc-nlp-preview-allday', text: 'All day' });
+      timeRow.createSpan({ cls: 'ofc-nlp-preview-label', text: t('nlp.preview.time') });
+      timeRow.createSpan({
+        cls: 'ofc-nlp-preview-value ofc-nlp-preview-allday',
+        text: t('nlp.preview.allDay')
+      });
     }
 
     // Target calendar
     if (action.targetCalendar) {
       const calRow = card.createDiv({ cls: 'ofc-nlp-preview-row' });
-      calRow.createSpan({ cls: 'ofc-nlp-preview-label', text: 'Calendar' });
+      calRow.createSpan({ cls: 'ofc-nlp-preview-label', text: t('nlp.preview.calendar') });
       calRow.createSpan({ cls: 'ofc-nlp-preview-value', text: action.targetCalendar });
     }
 
     // Recurrence
     if (action.recurrence) {
       const recurRow = card.createDiv({ cls: 'ofc-nlp-preview-row' });
-      recurRow.createSpan({ cls: 'ofc-nlp-preview-label', text: 'Recurrence' });
+      recurRow.createSpan({ cls: 'ofc-nlp-preview-label', text: t('nlp.preview.recurrence') });
       let recurText = action.recurrence.freq.toLowerCase();
       if (action.recurrence.interval > 1) {
-        recurText = `every ${action.recurrence.interval} ${recurText}`;
+        recurText = `${t('nlp.preview.every')} ${action.recurrence.interval} ${recurText}`;
       }
       if (action.recurrence.byDay) {
         recurText += ` (${action.recurrence.byDay.join(', ')})`;

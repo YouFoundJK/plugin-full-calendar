@@ -17,6 +17,7 @@ import type { OFCEvent } from '../../types';
 import type { NLPActionObject } from './types';
 import { launchCreateModal } from '../../ui/modals/event_modal';
 import { resolveSmartCalendar } from './smartCalendar';
+import { t } from '../i18n/i18n';
 
 // Re-export for external consumers
 export { resolveSmartCalendar } from './smartCalendar';
@@ -123,16 +124,19 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
   // --- Navigation intents ---
   const viewName = INTENT_VIEW_MAP[action.intent];
   if (viewName) {
+    new Notice(t('nlp.navigating', { view: action.intent.split('_')[1].toLowerCase() }));
     await internal.changeView(viewName);
     return;
   }
 
   if (action.intent === 'OPEN_CALENDAR') {
+    new Notice(t('nlp.navigating', { view: 'calendar' }));
     await internal.openCalendar();
     return;
   }
 
   if (action.intent === 'OPEN_SIDEBAR') {
+    new Notice(t('nlp.navigating', { view: 'sidebar' }));
     await internal.openSidebar();
     return;
   }
@@ -140,12 +144,13 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
   // --- Orchestrator intents ---
   if (action.intent === 'OPEN_SETTINGS') {
     PluginState.displaySettingsTab();
+    new Notice(t('nlp.parseSuccess'));
     return;
   }
 
   if (action.intent === 'OPEN_CHRONO') {
     if (PluginState.isMobile()) {
-      new Notice('The Chrono Analyser is only available on the desktop version of Obsidian.');
+      new Notice(t('notices.chronoAnalyserMobileDisabled'));
       return;
     }
     const plugin = PluginState.getPlugin();
@@ -159,29 +164,32 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
 
   if (action.intent === 'SHOW_CHANGELOG') {
     PluginState.showChangelog();
+    new Notice(t('nlp.parseSuccess'));
     return;
   }
 
   if (action.intent === 'RESET_CACHE') {
     PluginState.getCache().reset();
-    new Notice('Event cache has been reset.');
+    new Notice(t('nlp.notices.cacheReset'));
     return;
   }
 
   if (action.intent === 'REVALIDATE_REMOTE') {
     PluginState.getProviderRegistry().revalidateRemoteCalendars(true);
+    new Notice(t('nlp.parseSuccess'));
     return;
   }
 
   if (action.intent === 'SYNC_ACTIVITYWATCH') {
     const settings = PluginState.getSettings();
     if (!settings.activityWatch.enabled) {
-      new Notice('ActivityWatch is not enabled. Enable it in settings first.');
+      new Notice(t('nlp.notices.awNotEnabled'));
       return;
     }
     const plugin = PluginState.getPlugin();
     const { syncActivityWatch } = await import('../../features/activitywatch/sync');
     await syncActivityWatch(plugin);
+    new Notice(t('nlp.parseSuccess'));
     return;
   }
 
@@ -217,7 +225,7 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
 
   const calendarId = resolveCalendarId(resolved.targetCalendar);
   if (!calendarId) {
-    new Notice('No writable calendars available. Please add a calendar first.');
+    new Notice(t('nlp.noCalendars'));
     return;
   }
 
