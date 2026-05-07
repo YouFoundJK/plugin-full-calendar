@@ -25,6 +25,7 @@ import type { Workspace } from 'obsidian';
 import { initializeI18n, t } from './features/i18n/i18n';
 import './styles.css';
 
+import { AppWithSettings } from './types/obsidian-ext';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { PublicAPI, InternalAPI } from './api/FullCalendarAPI';
@@ -83,8 +84,25 @@ export default class FullCalendarPlugin extends Plugin {
     PluginState.setNonBlockingProcess((files, processor, description) =>
       this.#nonBlockingProcess(files, processor, description)
     );
-    PluginState.setDisplaySettingsTab(() => this.#settingsTab?.display());
-    PluginState.setShowChangelog(() => this.#settingsTab?.showChangelog());
+    PluginState.setDisplaySettingsTab(() => {
+      const setting = (this.app as AppWithSettings).setting;
+      if (setting) {
+        setting.open();
+        setting.openTabById(this.manifest.id);
+      } else {
+        this.#settingsTab?.display();
+      }
+    });
+    PluginState.setShowChangelog(() => {
+      const setting = (this.app as AppWithSettings).setting;
+      if (setting) {
+        setting.open();
+        setting.openTabById(this.manifest.id);
+        this.#settingsTab?.showChangelog();
+      } else {
+        this.#settingsTab?.showChangelog();
+      }
+    });
     PluginState.setIsMobile(() => this.#isMobile);
 
     this.api = new PublicAPI(this);
