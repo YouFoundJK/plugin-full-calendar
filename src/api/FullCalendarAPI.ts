@@ -3,8 +3,18 @@ import { Notice, Modal, App } from 'obsidian';
 import type { Calendar } from '@fullcalendar/core';
 import type FullCalendarPlugin from '../main';
 import type { CalendarView } from '../ui/view';
-import { OFCEvent } from '../types';
+import type EventCache from '../core/EventCache';
+import type { ProviderRegistry } from '../providers/ProviderRegistry';
+import type { CalendarInfo } from '../types/calendar_settings';
+import { EventLocation, OFCEvent } from '../types';
+import type { ApiScope, ApiTokenRecord, FullCalendarSettings } from '../types/settings';
 import { launchCreateModal } from '../ui/modals/event_modal';
+import {
+  FULL_ACCESS_SCOPE,
+  getScopeDefinition,
+  hasApiScope,
+  normalizeApiScopes
+} from './apiScopes';
 
 /**
  * The internal API that actually holds state and performs actions.
@@ -92,6 +102,161 @@ export class InternalAPI {
   }
 }
 
+export type ApiEventDetails = {
+  event: OFCEvent;
+  calendarId: string;
+  location: EventLocation | null;
+} | null;
+
+type ApiTokenStore = Record<string, ApiTokenRecord>;
+
+function getApiTokenStore(settings: FullCalendarSettings): ApiTokenStore {
+  if (!settings.apiTokens) {
+    settings.apiTokens = {};
+  }
+  return settings.apiTokens;
+}
+
+function cloneSettings(settings: FullCalendarSettings): FullCalendarSettings {
+  return JSON.parse(JSON.stringify(settings)) as FullCalendarSettings;
+}
+
+function assertScope(grantedScopes: ApiScope[], required: ApiScope) {
+  if (!hasApiScope(grantedScopes, required)) {
+    throw new Error(`Full Calendar API: Missing required scope: ${required}`);
+  }
+}
+
+function createAuthorizedApi(tokenRecord: ApiTokenRecord): AuthorizedAPI {
+  const grantedScopes = tokenRecord.grantedScopes;
+  const internal = PluginState.getInternalAPI();
+  const cache = PluginState.getCache();
+  const registry = PluginState.getProviderRegistry();
+
+  return {
+    openCalendar: async () => {
+      assertScope(grantedScopes, 'ui:open-calendar');
+      return internal.openCalendar();
+    },
+    openSidebar: async () => {
+      assertScope(grantedScopes, 'ui:open-sidebar');
+      return internal.openSidebar();
+    },
+    changeView: async (viewName: string) => {
+      assertScope(grantedScopes, 'ui:change-view');
+      return internal.changeView(viewName);
+    },
+    openCreateModal: (initialData?: Partial<OFCEvent>) => {
+      assertScope(grantedScopes, 'ui:modals');
+      internal.openCreateModal(initialData);
+    },
+    getAllEvents: () => {
+      assertScope(grantedScopes, 'events:read');
+      return cache.getAllEvents();
+    },
+    getEventById: (id: string) => {
+      assertScope(grantedScopes, 'events:read');
+      return cache.getEventById(id);
+    },
+    getEventDetails: (id: string) => {
+      assertScope(grantedScopes, 'events:read');
+      return cache.store.getEventDetails(id) as ApiEventDetails;
+    },
+    createEvent: (calendarId: string, event: OFCEvent, options?: { silent?: boolean }) => {
+      assertScope(grantedScopes, 'events:write');
+      return cache.addEvent(calendarId, event, options as { silent: boolean } | undefined);
+    },
+    updateEvent: (eventId: string, event: OFCEvent, options?: { silent?: boolean }) => {
+      assertScope(grantedScopes, 'events:write');
+      return cache.updateEventWithId(eventId, event, options as { silent: boolean } | undefined);
+    },
+    deleteEvent: (
+      eventId: string,
+      options?: { silent?: boolean; instanceDate?: string; force?: boolean }
+    ) => {
+      assertScope(grantedScopes, 'events:write');
+      return cache.deleteEvent(eventId, options);
+    },
+    moveEvent: (eventId: string, newCalendarId: string, newEventData?: OFCEvent) => {
+      assertScope(grantedScopes, 'events:write');
+      return cache.moveEventToCalendar(eventId, newCalendarId, newEventData);
+    },
+    processEvent: (
+      eventId: string,
+      processor: (event: OFCEvent) => OFCEvent,
+      options?: { silent?: boolean }
+    ) => {
+      assertScope(grantedScopes, 'events:write');
+      return cache.processEvent(eventId, processor, options as { silent: boolean } | undefined);
+    },
+    toggleRecurringInstance: (eventId: string, instanceDate: string, isDone: boolean) => {
+      assertScope(grantedScopes, 'events:write');
+      return cache.toggleRecurringInstance(eventId, instanceDate, isDone);
+    },
+    modifyRecurringInstance: (eventId: string, instanceDate: string, newEvent: OFCEvent) => {
+      assertScope(grantedScopes, 'events:write');
+      return cache.modifyRecurringInstance(eventId, instanceDate, newEvent);
+    },
+    scheduleTask: (taskId: string, date: Date) => {
+      assertScope(grantedScopes, 'events:write');
+      return cache.scheduleTask(taskId, date);
+    },
+    validateTaskSchedule: (taskId: string, date: Date) => {
+      assertScope(grantedScopes, 'events:write');
+      return cache.validateTaskSchedule(taskId, date);
+    },
+    getCalendarSources: () => {
+      assertScope(grantedScopes, 'providers:read');
+      return registry.getAllSources();
+    },
+    getProviderCapabilities: (calendarId: string) => {
+      assertScope(grantedScopes, 'providers:read');
+      return registry.getCapabilities(calendarId);
+    },
+    revalidateRemoteCalendars: (force?: boolean) => {
+      assertScope(grantedScopes, 'providers:write');
+      registry.revalidateRemoteCalendars(force);
+    },
+    reloadProviderNow: (calendarId: string) => {
+      assertScope(grantedScopes, 'providers:write');
+      registry.reloadProviderNow(calendarId);
+    },
+    getSettings: () => {
+      assertScope(grantedScopes, 'settings:read');
+      return cloneSettings(PluginState.getSettings());
+    },
+    updateSettings: async (
+      partial: Partial<FullCalendarSettings>,
+      options?: { save?: boolean }
+    ) => {
+      assertScope(grantedScopes, 'settings:write');
+      const nextSettings = { ...PluginState.getSettings(), ...partial };
+      PluginState.setSettings(nextSettings);
+      if (options?.save !== false) {
+        await PluginState.saveSettings();
+      }
+    },
+    saveSettings: async () => {
+      assertScope(grantedScopes, 'settings:write');
+      await PluginState.saveSettings();
+    },
+    loadSettings: async () => {
+      assertScope(grantedScopes, 'settings:read');
+      await PluginState.loadSettings();
+    },
+    getInternalState: () => {
+      assertScope(grantedScopes, FULL_ACCESS_SCOPE);
+      return {
+        plugin: PluginState.getPlugin(),
+        settings: PluginState.getSettings(),
+        cache: PluginState.getCache(),
+        providerRegistry: PluginState.getProviderRegistry(),
+        internalAPI: PluginState.getInternalAPI()
+      };
+    }
+  };
+}
+
 /**
  * The VIP section. Only granted to plugins with a valid token.
  */
@@ -102,6 +267,45 @@ export interface AuthorizedAPI {
   openCreateModal(initialData?: Partial<OFCEvent>): void;
   getAllEvents(): unknown[];
   getEventById(id: string): OFCEvent | null;
+  getEventDetails(id: string): ApiEventDetails;
+  createEvent(
+    calendarId: string,
+    event: OFCEvent,
+    options?: { silent?: boolean }
+  ): Promise<boolean>;
+  updateEvent(eventId: string, event: OFCEvent, options?: { silent?: boolean }): Promise<boolean>;
+  deleteEvent(
+    eventId: string,
+    options?: { silent?: boolean; instanceDate?: string; force?: boolean }
+  ): Promise<void>;
+  moveEvent(eventId: string, newCalendarId: string, newEventData?: OFCEvent): Promise<void>;
+  processEvent(
+    eventId: string,
+    processor: (event: OFCEvent) => OFCEvent,
+    options?: { silent?: boolean }
+  ): Promise<boolean>;
+  toggleRecurringInstance(eventId: string, instanceDate: string, isDone: boolean): Promise<void>;
+  modifyRecurringInstance(eventId: string, instanceDate: string, newEvent: OFCEvent): Promise<void>;
+  scheduleTask(taskId: string, date: Date): Promise<void>;
+  validateTaskSchedule(taskId: string, date: Date): Promise<{ isValid: boolean; reason?: string }>;
+  getCalendarSources(): CalendarInfo[];
+  getProviderCapabilities(calendarId: string): ReturnType<ProviderRegistry['getCapabilities']>;
+  revalidateRemoteCalendars(force?: boolean): void;
+  reloadProviderNow(calendarId: string): void;
+  getSettings(): FullCalendarSettings;
+  updateSettings(
+    partial: Partial<FullCalendarSettings>,
+    options?: { save?: boolean }
+  ): Promise<void>;
+  saveSettings(): Promise<void>;
+  loadSettings(): Promise<void>;
+  getInternalState(): {
+    plugin: FullCalendarPlugin;
+    settings: FullCalendarSettings;
+    cache: EventCache;
+    providerRegistry: ProviderRegistry;
+    internalAPI: InternalAPI;
+  };
 }
 
 /**
@@ -118,35 +322,48 @@ export class PublicAPI {
    * Requests access to the Full Calendar API.
    * Prompts the user with a modal. If approved, returns a token.
    */
-  public requestAccess(pluginId: string, reason: string): Promise<string | null> {
+  public requestAccess(
+    pluginId: string,
+    reason: string,
+    requestedScopes?: ApiScope[]
+  ): Promise<string | null> {
     return new Promise(resolve => {
-      const modal = new AuthorizationModal(this.#plugin.app, pluginId, reason, approved => {
-        if (!approved) {
-          resolve(null);
-          return;
-        }
-
-        // Generate a secure token
-        const token = crypto.randomUUID();
-        const settings = PluginState.getSettings();
-
-        if (!settings.authorizedTokens) {
-          settings.authorizedTokens = {};
-        }
-
-        settings.authorizedTokens[token] = {
-          pluginId,
-          reason,
-          grantedAt: Date.now()
-        };
-
-        PluginState.saveSettings()
-          .then(() => resolve(token))
-          .catch(err => {
-            console.error('Failed to save settings:', err);
+      const normalizedScopes = normalizeApiScopes(requestedScopes);
+      const modal = new AuthorizationModal(
+        this.#plugin.app,
+        pluginId,
+        reason,
+        normalizedScopes,
+        result => {
+          if (!result.approved) {
             resolve(null);
-          });
-      });
+            return;
+          }
+          if (result.grantedScopes.length === 0) {
+            resolve(null);
+            return;
+          }
+
+          const token = crypto.randomUUID();
+          const settings = PluginState.getSettings();
+          const tokenStore = getApiTokenStore(settings);
+
+          tokenStore[token] = {
+            pluginId,
+            reason,
+            requestedScopes: normalizedScopes,
+            grantedScopes: result.grantedScopes,
+            grantedAt: Date.now()
+          };
+
+          PluginState.saveSettings()
+            .then(() => resolve(token))
+            .catch(err => {
+              console.error('Failed to save settings:', err);
+              resolve(null);
+            });
+        }
+      );
       modal.open();
     });
   }
@@ -156,18 +373,27 @@ export class PublicAPI {
    */
   public withToken(token: string): AuthorizedAPI | null {
     const settings = PluginState.getSettings();
-    if (settings.authorizedTokens && settings.authorizedTokens[token]) {
-      // Valid token. Return a bound version of the InternalAPI.
-      const internal = PluginState.getInternalAPI();
-      return {
-        openCalendar: internal.openCalendar.bind(internal),
-        openSidebar: internal.openSidebar.bind(internal),
-        changeView: internal.changeView.bind(internal),
-        openCreateModal: internal.openCreateModal.bind(internal),
-        getAllEvents: internal.getAllEvents.bind(internal),
-        getEventById: internal.getEventById.bind(internal)
-      };
+    const tokenStore = getApiTokenStore(settings);
+    const tokenRecord = tokenStore[token];
+
+    if (tokenRecord) {
+      return createAuthorizedApi(tokenRecord);
     }
+
+    const legacyToken = settings.authorizedTokens?.[token];
+    if (legacyToken) {
+      const migratedRecord: ApiTokenRecord = {
+        pluginId: legacyToken.pluginId,
+        reason: legacyToken.reason,
+        requestedScopes: [FULL_ACCESS_SCOPE],
+        grantedScopes: [FULL_ACCESS_SCOPE],
+        grantedAt: legacyToken.grantedAt
+      };
+      tokenStore[token] = migratedRecord;
+      void PluginState.saveSettings();
+      return createAuthorizedApi(migratedRecord);
+    }
+
     console.error('Full Calendar API: Invalid or unauthorized token.');
     return null;
   }
@@ -176,12 +402,22 @@ export class PublicAPI {
 class AuthorizationModal extends Modal {
   private pluginId: string;
   private reason: string;
-  private onResolve: (approved: boolean) => void;
+  private requestedScopes: ApiScope[];
+  private grantedScopes: Set<ApiScope>;
+  private onResolve: (result: { approved: boolean; grantedScopes: ApiScope[] }) => void;
 
-  constructor(app: App, pluginId: string, reason: string, onResolve: (approved: boolean) => void) {
+  constructor(
+    app: App,
+    pluginId: string,
+    reason: string,
+    requestedScopes: ApiScope[],
+    onResolve: (result: { approved: boolean; grantedScopes: ApiScope[] }) => void
+  ) {
     super(app);
     this.pluginId = pluginId;
     this.reason = reason;
+    this.requestedScopes = requestedScopes;
+    this.grantedScopes = new Set(requestedScopes);
     this.onResolve = onResolve;
   }
 
@@ -199,20 +435,65 @@ class AuthorizationModal extends Modal {
     });
 
     contentEl.createEl('p', {
-      text: `If you approve, this plugin will be able to read your calendar events and perform actions on your behalf.`
+      text: `Select which permissions to grant. You can change these later in settings.`
+    });
+
+    const scopesContainer = contentEl.createDiv({ cls: 'ofc-auth-scopes' });
+    const availableScopes: ApiScope[] =
+      this.requestedScopes.length > 0 ? this.requestedScopes : ['events:read'];
+    let approveBtn: HTMLButtonElement | null = null;
+    const updateApproveState = () => {
+      if (approveBtn) {
+        approveBtn.disabled = this.grantedScopes.size === 0;
+      }
+    };
+
+    availableScopes.forEach((scope: ApiScope) => {
+      const definition = getScopeDefinition(scope);
+      const row = scopesContainer.createDiv({ cls: 'ofc-auth-scope-row' });
+      const label = definition?.label || scope;
+      const description = definition?.description || '';
+
+      if (definition?.risky) {
+        row.addClass('is-risky');
+      }
+
+      const checkboxLabel = row.createEl('label', { cls: 'ofc-auth-scope-label' });
+      const checkbox = checkboxLabel.createEl('input');
+      checkbox.setAttribute('type', 'checkbox');
+      checkbox.checked = this.grantedScopes.has(scope);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          this.grantedScopes.add(scope);
+        } else {
+          this.grantedScopes.delete(scope);
+        }
+        updateApproveState();
+      };
+
+      checkboxLabel.createSpan({ text: label });
+      if (description) {
+        row.createDiv({ cls: 'ofc-auth-scope-desc', text: description });
+      }
     });
 
     const buttonContainer = contentEl.createEl('div', { cls: 'ofc-auth-buttons' });
 
     const denyBtn = buttonContainer.createEl('button', { text: 'Deny' });
     denyBtn.onclick = () => {
-      this.onResolve(false);
+      this.onResolve({ approved: false, grantedScopes: [] });
       this.close();
     };
 
-    const approveBtn = buttonContainer.createEl('button', { text: 'Approve', cls: 'mod-cta' });
+    approveBtn = buttonContainer.createEl('button', { text: 'Approve', cls: 'mod-cta' });
+
+    updateApproveState();
+
     approveBtn.onclick = () => {
-      this.onResolve(true);
+      this.onResolve({
+        approved: true,
+        grantedScopes: Array.from(this.grantedScopes)
+      });
       this.close();
     };
   }

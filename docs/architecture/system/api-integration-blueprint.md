@@ -6,7 +6,7 @@
 ## Integration Steps
 
 1. Detect the plugin and obtain the `PublicAPI` instance.
-2. Request access with your plugin ID and a clear reason.
+2. Request access with your plugin ID, a clear reason, and the scopes you need.
 3. Store the returned token in your own plugin settings.
 4. Use `withToken()` on startup to obtain an `AuthorizedAPI` instance.
 
@@ -19,7 +19,11 @@ if (!publicApi) {
   return; // Full Calendar not installed or not loaded.
 }
 
-let token = await publicApi.requestAccess('your-plugin-id', 'Explain what you need from Full Calendar.');
+let token = await publicApi.requestAccess(
+  'your-plugin-id',
+  'Explain what you need from Full Calendar.',
+  ['events:read', 'ui:open-calendar']
+);
 if (!token) {
   return; // User denied.
 }

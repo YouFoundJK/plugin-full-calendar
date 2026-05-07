@@ -15,9 +15,14 @@
 
 ## Authorization and Token Storage
 
-- `PublicAPI.requestAccess(pluginId, reason)` shows a modal and stores an approved token in settings.
-- Tokens are stored in `FullCalendarSettings.authorizedTokens` as `{ pluginId, reason, grantedAt }` keyed by a UUID.
+- `PublicAPI.requestAccess(pluginId, reason, requestedScopes?)` shows a permissions modal and stores an approved token in settings.
+- Tokens are stored in `FullCalendarSettings.apiTokens` as `{ pluginId, reason, requestedScopes, grantedScopes, grantedAt }` keyed by a UUID.
 - `PublicAPI.withToken(token)` returns `AuthorizedAPI` or `null` if the token is missing or invalid.
+
+## Scope Model
+
+The API is scope-gated. Each method requires a scope (e.g. `events:read`, `events:write`, `settings:write`).
+`system:full-access` unlocks an unsafe gateway that exposes internal state for trusted integrations.
 
 ## API Surface (AuthorizedAPI)
 

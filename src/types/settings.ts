@@ -47,6 +47,28 @@ export interface TasksIntegrationSettings {
   openEditModalAfterBacklogDrop: boolean;
 }
 
+export type ApiScope =
+  | 'ui:open-calendar'
+  | 'ui:open-sidebar'
+  | 'ui:change-view'
+  | 'ui:modals'
+  | 'events:read'
+  | 'events:write'
+  | 'providers:read'
+  | 'providers:write'
+  | 'settings:read'
+  | 'settings:write'
+  | 'system:full-access';
+
+export interface ApiTokenRecord {
+  pluginId: string;
+  reason: string;
+  requestedScopes: ApiScope[];
+  grantedScopes: ApiScope[];
+  grantedAt: number;
+  lastUsedAt?: number;
+}
+
 export interface BusinessHoursSettings {
   enabled: boolean;
   daysOfWeek: number[]; // 0=Sunday, 1=Monday, etc.
@@ -133,6 +155,7 @@ export interface FullCalendarSettings {
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
   activityWatch: ActivityWatchSettings;
   tasksIntegration: TasksIntegrationSettings;
+  apiTokens?: Record<string, ApiTokenRecord>;
   authorizedTokens?: Record<string, { pluginId: string; reason: string; grantedAt: number }>;
 
   currentVersion: string | null;
@@ -195,6 +218,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     calendarDisplayDateTarget: 'scheduledDate',
     openEditModalAfterBacklogDrop: false
   },
+  apiTokens: {},
   authorizedTokens: {},
 
   enableDefaultReminder: true,

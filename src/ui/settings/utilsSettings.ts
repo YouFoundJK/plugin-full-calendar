@@ -5,7 +5,13 @@
  */
 
 import { Notice } from 'obsidian';
-import { FullCalendarSettings, GoogleAccount, DEFAULT_SETTINGS } from '../../types/settings'; // Add GoogleAccount import
+import {
+  FullCalendarSettings,
+  GoogleAccount,
+  DEFAULT_SETTINGS,
+  ApiScope,
+  ApiTokenRecord
+} from '../../types/settings';
 import { CalendarInfo, generateCalendarId } from '../../types/calendar_settings';
 import { t } from '../../features/i18n/i18n';
 
@@ -26,6 +32,8 @@ type LegacySettings = Partial<FullCalendarSettings> & {
   calendarSources?: (CalendarInfo | GoogleSourceWithAuth)[];
   googleAuth?: LegacyGoogleAuth;
 };
+
+const FULL_ACCESS_SCOPE: ApiScope = 'system:full-access';
 
 // Accept unknown to force validation of shape when accessing.
 export function migrateAndSanitizeSettings(settings: unknown): {
@@ -83,6 +91,8 @@ export function migrateAndSanitizeSettings(settings: unknown): {
       ...DEFAULT_SETTINGS.tasksIntegration,
       ...((raw as Partial<FullCalendarSettings>).tasksIntegration || {})
     },
+    apiTokens: (raw as Partial<FullCalendarSettings>).apiTokens || {},
+    authorizedTokens: (raw as Partial<FullCalendarSettings>).authorizedTokens || {},
     currentVersion: raw.currentVersion ?? null
   } as FullCalendarSettings & { calendarSources: (CalendarInfo | GoogleSourceWithAuth)[] } & {
     googleAuth?: LegacyGoogleAuth;
@@ -161,6 +171,30 @@ export function migrateAndSanitizeSettings(settings: unknown): {
     needsSave = true;
   }
   newSettings.calendarSources = sources;
+
+  // MIGRATION 3: Convert legacy authorizedTokens into scoped apiTokens.
+  const legacyTokens = (raw as Partial<FullCalendarSettings>).authorizedTokens || {};
+  const legacyTokenEntries = Object.entries(legacyTokens);
+  if (legacyTokenEntries.length > 0 && Object.keys(newSettings.apiTokens || {}).length === 0) {
+    needsSave = true;
+    newSettings.apiTokens = legacyTokenEntries.reduce(
+      (acc, [token, legacy]) => {
+        acc[token] = {
+          pluginId: legacy.pluginId,
+          reason: legacy.reason,
+          requestedScopes: [FULL_ACCESS_SCOPE],
+          grantedScopes: [FULL_ACCESS_SCOPE],
+          grantedAt: legacy.grantedAt
+        } as ApiTokenRecord;
+        return acc;
+      },
+      {} as Record<string, ApiTokenRecord>
+    );
+  }
+  if (legacyTokenEntries.length > 0) {
+    newSettings.authorizedTokens = {};
+    needsSave = true;
+  }
 
   // SANITIZATION 1: Correct initial view if timeline is disabled.
   newSettings = sanitizeInitialView(newSettings);
