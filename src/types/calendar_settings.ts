@@ -96,11 +96,21 @@ export function safeParseCalendarInfo(obj: unknown): CalendarInfo | null {
  * @returns A new unique ID string.
  */
 export function generateCalendarId(type: CalendarInfo['type'], existingIds: string[]): string {
-  const relevantIds = existingIds.filter(id => id.startsWith(type));
+  const relevantIds = existingIds.filter(id => {
+    // Ensure the ID starts with the type followed by underscore (e.g., "local_", "caldav_")
+    return id.startsWith(`${type}_`);
+  });
   let newIdNumber = 1;
   if (relevantIds.length > 0) {
     const highestNumber = relevantIds
-      .map(id => parseInt(id.split('_')[1], 10))
+      .map(id => {
+        const parts = id.split('_');
+        // Strict validation: ID must have exactly 2 parts [type, number]
+        if (parts.length === 2) {
+          return parseInt(parts[1], 10);
+        }
+        return NaN;
+      })
       .filter(num => !isNaN(num))
       .reduce((max, current) => Math.max(max, current), 0);
     newIdNumber = highestNumber + 1;

@@ -219,7 +219,12 @@ export function addCalendarButton(
             ): void => {
               void (async () => {
                 const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
-                const existingIds = PluginState.getSettings().calendarSources.map(s => s.id);
+                // Collect IDs from both settings and ProviderRegistry to prevent race conditions
+                const settingsIds = PluginState.getSettings().calendarSources.map(s => s.id);
+                const registryIds = PluginState.getProviderRegistry()
+                  .getAllSources()
+                  .map(s => s.id);
+                const existingIds = Array.from(new Set([...settingsIds, ...registryIds]));
 
                 for (const finalConfig of configs) {
                   const newSettingsId = generateCalendarId(
