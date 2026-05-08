@@ -959,7 +959,6 @@
     "view": {
       "errors": {
         "cacheNotLoaded": "Full Calendar event cache not loaded.",
-        "viewEnhancerNotInitialized": "Full Calendar view enhancer not initialized.",
         "chronoAnalyserDesktopOnly": "The ChronoAnalyser is only available on desktop.",
         "chronoAnalyserFailed": "Failed to open ChronoAnalyser. Please check the console.",
         "modifyEventFailed": "Failed to modify event.",

@@ -955,7 +955,6 @@
     "view": {
       "errors": {
         "cacheNotLoaded": "Cache degli eventi di Full Calendar non caricata.",
-        "viewEnhancerNotInitialized": "L'ottimizzatore della vista di Full Calendar non è inizializzato.",
         "chronoAnalyserDesktopOnly": "Il Chrono Analyser è disponibile solo sulla versione desktop.",
         "chronoAnalyserFailed": "Impossibile aprire il Chrono Analyser. Si prega di controllare la console.",
         "modifyEventFailed": "Impossibile modificare l'evento.",
