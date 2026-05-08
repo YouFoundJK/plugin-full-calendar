@@ -99,6 +99,12 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig>, SyncKey
   }
 
   computeSyncKey(event: OFCEvent): string {
+    // For rrule events, use the unique id field (ics::uid::date::recurring) to prevent
+    // collision with RECURRENCE-ID exception instances that share the same uid.
+    // This ensures the parent recurring series survives the sync deduplication process.
+    if (event.type === 'rrule' && event.id) {
+      return event.id;
+    }
     return event.uid || JSON.stringify(event);
   }
 

@@ -209,4 +209,57 @@ END:VCALENDAR`;
     expect(e4).toHaveProperty('startTime', '10:00');
     expect(e4.timezone).toBe('Europe/Berlin');
   });
+
+  it('parses recurring event with RECURRENCE-ID exception without losing the series', () => {
+    // Regression test for: recurring ICS events with RECURRENCE-ID exceptions
+    // were silently dropped due to sync key collision in ICSProvider.computeSyncKey()
+    // See: https://github.com/blacksmithstudio/obsidian-full-calendar/issues/...
+    const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//EN
+BEGIN:VEVENT
+UID:course-sosc-1420
+DTSTART;TZID=China Standard Time:20260203T133000
+DTEND;TZID=China Standard Time:20260203T143000
+RRULE:FREQ=WEEKLY;UNTIL=20260505T053000Z;BYDAY=TU
+SUMMARY:SOSC 1420 (L1)
+DESCRIPTION:Regular Tuesday class
+END:VEVENT
+BEGIN:VEVENT
+UID:course-sosc-1420
+RECURRENCE-ID;TZID=China Standard Time:20260317T133000
+DTSTART;TZID=China Standard Time:20260317T133000
+DTEND;TZID=China Standard Time:20260317T143000
+SUMMARY:SOSC 1420 (L1) + MidTerm
+DESCRIPTION:Modified occurrence with midterm exam
+END:VEVENT
+END:VCALENDAR`;
+
+    const events = getEventsFromICS(ics);
+
+    // Should have 2 events: 1 rrule (parent series) + 1 exception (modified occurrence)
+    expect(events).toHaveLength(2);
+
+    // Verify rrule event exists and is properly formed
+    const rruleEvent = events.find(e => e.type === 'rrule' && e.uid === 'course-sosc-1420') as
+      | ((typeof events)[0] & { type: 'rrule' })
+      | undefined;
+    expect(rruleEvent).toBeDefined();
+    expect(rruleEvent?.title).toBe('SOSC 1420 (L1)');
+    expect(rruleEvent?.rrule).toContain('FREQ=WEEKLY');
+    expect(rruleEvent?.rrule).toContain('BYDAY=TU');
+    // Timezone name may be normalized by ical.js (China Standard Time → Asia/Shanghai)
+    expect(rruleEvent?.timezone).toBeTruthy();
+
+    // Verify exception event exists
+    const exceptionEvent = events.find(e => e.type === 'single' && e.uid === 'course-sosc-1420') as
+      | ((typeof events)[0] & { type: 'single' })
+      | undefined;
+    expect(exceptionEvent).toBeDefined();
+    expect(exceptionEvent?.title).toBe('SOSC 1420 (L1) + MidTerm');
+    expect(exceptionEvent?.date).toBe('2026-03-17');
+
+    // Verify exception date is added to rrule's skipDates
+    expect(rruleEvent?.skipDates).toContain('2026-03-17');
+  });
 });
