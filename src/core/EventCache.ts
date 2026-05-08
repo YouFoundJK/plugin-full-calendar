@@ -5,121 +5,90 @@
  * @description
  * The `EventCache` serves as the authoritative source for all calendar events within the plugin.
  * It is responsible for orchestrating the fetching, parsing, storing, and updating of event data
- * from all configured calendar sources (local and remote). The cache listens for changes in the
- * Obsidian Vault, manages create/update/delete (CUD) operations by delegating to the appropriate
- * calendar instance, and notifies registered UI views of any changes, ensuring the calendar view
- * remains in sync with the underlying data.
+ * from all configured calendar sources (local and remote).
  *
  * @details
- * - Initialize and manage `Calendar` objects based on plugin settings.
- * - Fetch, parse, and store events in the internal `EventStore`.
- * - Provide event data to the UI in a FullCalendar-compatible format.
- * - Handle all CUD operations, delegating file I/O to the appropriate `EditableCalendar` instance.
- * - Subscribe to Vault changes and update internal state accordingly.
- * - Notify registered subscribers (views) of any changes to event data.
- * - Throttle and manage revalidation of remote calendars (ICS, CalDAV, etc.).
- * - Maintain a mapping between persistent event identifiers and session-specific IDs.
- * - Support recurring event management and override logic.
- * - Batch and flush updates for efficient UI synchronization.
- *
- * @example:
- * - Acts as the bridge between the source-of-truth for calendars (network or filesystem)
- *   and the FullCalendar UI plugin.
- * - Maintains an in-memory cache of all events to be displayed, in a normalized format.
- * - Provides a public API for querying and mutating events, as well as for view synchronization.
- *
- * @see EventStore.ts
- * @see RecurringEventManager.ts
- * @see ui/view.ts
- * @see EditableCalendar
- * @see RemoteCalendar
+ * - Acts as an orchestrator for mutation, synchronization, and subscription management.
+ * - Delegates core logic to CacheMutationHandler, CacheSyncHandler, and CacheSubscriptionManager.
+ * - Maintains central state for the EventStore, EventEnhancer, and TimeEngine.
  *
  * @license See LICENSE.md
  */
 
 import { PluginState } from './PluginState';
-import { Notice } from 'obsidian';
 import { FullCalendarSettings } from '../types/settings';
 
 import FullCalendarPlugin from '../main';
-import EventStore, { StoredEvent } from './EventStore';
+import EventStore from './EventStore';
 import { OFCEvent, EventLocation } from '../types';
 import { CalendarProvider } from '../providers/Provider';
 import { EventEnhancer } from './EventEnhancer';
 import { TimeEngine, TimeState } from './TimeEngine';
-import { t } from '../features/i18n/i18n';
 
-export type CacheEntry = { event: OFCEvent; id: string; calendarId: string };
+// Import refactored handlers
+import { CacheSubscriptionManager } from './cache/CacheSubscriptionManager';
+import { CacheSyncHandler, CacheContext } from './cache/CacheSyncHandler';
+import { CacheMutationHandler, MutationContext } from './cache/CacheMutationHandler';
+import { CacheEntry, UpdateViewCallback, OFCEventSource, CachedEvent } from './cache/types';
 
-export type UpdateViewCallback = (
-  info:
-    | {
-        type: 'events';
-        toRemove: string[];
-        toAdd: CacheEntry[];
-        affectedCalendars: string[];
-      }
-    | { type: 'calendar'; calendar: OFCEventSource }
-    | { type: 'resync' }
-) => void;
+// Re-export types for backward compatibility with external modules
+export type { CacheEntry, UpdateViewCallback, OFCEventSource, CachedEvent };
 
-export type CachedEvent = Pick<StoredEvent, 'event' | 'id'>;
-
-export type OFCEventSource = {
-  events: CachedEvent[];
-  editable: boolean;
-  color: string;
-  id: string;
-};
-
-/**
- * Persistent event cache that also can write events back to disk.
- *
- * The EventCache acts as the bridge between the source-of-truth for
- * calendars (either the network or filesystem) and the FullCalendar view plugin.
- *
- * It maintains its own copy of all events which should be displayed on calendars
- * in the internal event format.
- *
- * Pluggable Calendar classes are responsible for parsing and serializing events
- * from their source, but the EventCache performs all I/O itself.
- *
- * Subscribers can register callbacks on the EventCache to be updated when events
- * change on disk.
- */
 export default class EventCache {
-  // ====================================================================
-  //                         STATE & INITIALIZATION
-  // ====================================================================
-
   private _plugin: FullCalendarPlugin;
   private _store = new EventStore();
-  // RecurringEventManager is now nullable and lazily loaded
   private recurringEventManager:
     | import('../features/recur_events/RecurringEventManager').RecurringEventManager
     | null = null;
   private timeEngine: TimeEngine;
 
-  // Listener for view config changes
   private viewConfigListener: (() => void) | null = null;
   private workspaceEmitter: import('obsidian').Workspace | null = null;
 
   calendars = new Map<string, CalendarProvider<unknown>>();
   initialized = false;
-
   public isBulkUpdating = false;
+  public enhancer: EventEnhancer;
 
-  public enhancer: EventEnhancer; // Make public for modules
+  // Internal Handlers
+  private subscriptionManager: CacheSubscriptionManager;
+  private syncHandler: CacheSyncHandler;
+  private mutationHandler: CacheMutationHandler;
 
   constructor(plugin: FullCalendarPlugin) {
     this._plugin = plugin;
     this.enhancer = new EventEnhancer(PluginState.getSettings());
     this.timeEngine = new TimeEngine(this);
-    // REMOVE direct instantiation
-    // this.recurringEventManager = new RecurringEventManager(this, this._plugin);
+
+    // Initialize Handlers
+    this.subscriptionManager = new CacheSubscriptionManager();
+
+    const context: CacheContext = {
+      store: this._store,
+      enhancer: this.enhancer,
+      timeEngine: this.timeEngine,
+      isBulkUpdating: this.isBulkUpdating,
+      setBulkUpdating: (val: boolean) => (this.isBulkUpdating = val),
+      flushUpdateQueue: this.flushUpdateQueue.bind(this),
+      generateId: this.generateId.bind(this),
+      updateQueue: this.subscriptionManager.updateQueue
+    };
+
+    this.syncHandler = new CacheSyncHandler(context);
+
+    const mutationContext: MutationContext = {
+      ...context,
+      calendars: this.calendars,
+      getRecurringEventManager: this.getRecurringEventManager.bind(this),
+      getProviderForEvent: this.getProviderForEvent.bind(this)
+    };
+    this.mutationHandler = new CacheMutationHandler(mutationContext);
   }
 
-  // Listen for settings changes
+  // ====================================================================
+  //                         LIFECYCLE & SETTINGS
+  // ====================================================================
+
   public listenForSettingsChanges(workspace: import('obsidian').Workspace): void {
     this.workspaceEmitter = workspace;
     const emitter = workspace as unknown as {
@@ -149,37 +118,21 @@ export default class EventCache {
     this.resync();
   }
 
-  /**
-   * Public method to be called by subscribers when settings change.
-   * Updates the event enhancer with the latest settings.
-   */
   public updateSettings(newSettings: FullCalendarSettings): void {
     this.enhancer.updateSettings(newSettings);
   }
 
-  get plugin(): FullCalendarPlugin {
-    return this._plugin;
-  }
+  // ====================================================================
+  //                         CACHE INITIALIZATION
+  // ====================================================================
 
-  get store(): EventStore {
-    return this._store;
-  }
-
-  getProviders(): CalendarProvider<unknown>[] {
-    return Array.from(this.calendars.values());
-  }
-
-  /**
-   * Flush the cache and initialize calendars from the provider registry.
-   */
   reset(): void {
     this.initialized = false;
     this.timeEngine.stop();
     const infos = PluginState.getProviderRegistry().getAllSources();
     this.calendars.clear();
     this._store.clear();
-    this.updateQueue = { toRemove: new Set(), toAdd: new Map() }; // Clear the queue
-    // this.resync();
+    this.subscriptionManager.updateQueue = { toRemove: new Set(), toAdd: new Map() };
 
     infos.forEach(info => {
       const settingsId = info.id;
@@ -314,598 +267,66 @@ export default class EventCache {
    * @param event Event details
    * @returns Returns true if successful, false otherwise.
    */
-  async addEvent(
-    calendarId: string,
-    event: OFCEvent,
-    options?: { silent: boolean }
-  ): Promise<boolean> {
-    // A new event from the UI will not have a timezone. Assign the current
-    // display timezone to it so it is persisted correctly.
-    if (!event.allDay && !event.timezone) {
-      const displayTimezone =
-        PluginState.getSettings().displayTimezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone;
-      event.timezone = displayTimezone;
-    }
-    // Step 1: Get Provider, Config, and pre-flight checks
-    const calendarInfo = PluginState.getProviderRegistry().getSource(calendarId);
-    if (!calendarInfo) {
-      new Notice(t('eventCache.calendarNotFound', { calendarId }));
-      return false;
-    }
-    // CORRECTED: Check capabilities through the registry, not by getting a provider instance.
-    const capabilities = PluginState.getProviderRegistry().getCapabilities(calendarId);
-    if (!capabilities) {
-      new Notice(t('eventCache.providerNotFound', { type: calendarInfo.type }));
-      return false;
-    }
-
-    if (!capabilities.canCreate) {
-      new Notice(t('eventCache.readOnly'));
-      return false;
-    }
-
-    // Step 2: Optimistic state mutation
-    const optimisticId = this.generateId();
-    const optimisticEvent = event;
-
-    this._store.add({
-      calendarId: calendarId,
-      location: null, // Location is unknown until provider returns
-      id: optimisticId,
-      event: optimisticEvent
-    });
-    PluginState.getProviderRegistry().addMapping(optimisticEvent, calendarId, optimisticId);
-
-    // Step 3: Immediate UI update
-    const optimisticCacheEntry: CacheEntry = {
-      event: optimisticEvent,
-      id: optimisticId,
-      calendarId: calendarId
-    };
-
-    if (options?.silent) {
-      this.updateQueue.toAdd.set(optimisticId, optimisticCacheEntry);
-    } else {
-      this.flushUpdateQueue([], [optimisticCacheEntry]);
-    }
-
-    // Step 4: Asynchronous I/O with rollback
-    try {
-      // Prepare the event for the provider (e.g., combine title and category)
-      const eventForStorage = this.enhancer.prepareForStorage(event);
-      // Delegate to ProviderRegistry
-      const [finalEvent, newLocation] =
-        await PluginState.getProviderRegistry().createEventInProvider(calendarId, eventForStorage);
-
-      // SUCCESS: The I/O succeeded. Update the store with the authoritative event.
-      // The `finalEvent` from the provider is the source of truth. It needs to be enhanced
-      // back into the structured format for the cache.
-      const authoritativeEvent = this.enhancer.enhance(finalEvent);
-
-      // Replace the optimistic event in the store with the authoritative one.
-      this._store.delete(optimisticId);
-      this._store.add({
-        calendarId: calendarId,
-        location: newLocation,
-        id: optimisticId,
-        event: authoritativeEvent
-      });
-
-      // Update ID mapping with the new authoritative data.
-      PluginState.getProviderRegistry().removeMapping(optimisticId);
-      PluginState.getProviderRegistry().addMapping(authoritativeEvent, calendarId, optimisticId);
-
-      // Flush this "correction" to the UI. The event is already visible,
-      // but this updates its data to the final state from the server.
-      // Flush this "correction" to the UI. The event is already visible,
-      // but this updates its data to the final state from the server.
-      this.timeEngine.scheduleCacheRebuild();
-
-      return true;
-    } catch (e) {
-      // FAILURE: I/O failed. Roll back all optimistic changes.
-      console.error(`Failed to create event with provider. Rolling back cache state.`, {
-        error: e
-      });
-
-      // Roll back store and mappings
-      PluginState.getProviderRegistry().removeMapping(optimisticId);
-      this._store.delete(optimisticId);
-
-      // Roll back UI
-      if (options?.silent) {
-        this.updateQueue.toAdd.delete(optimisticId);
-      } else {
-        this.flushUpdateQueue([optimisticId], []);
-      }
-
-      new Notice(t('eventCache.createFailed'));
-      return false;
-    }
+  addEvent(calendarId: string, event: OFCEvent, options?: { silent: boolean }): Promise<boolean> {
+    return this.mutationHandler.addEvent(calendarId, event, options);
   }
 
-  /**
-   * Deletes an event by its ID.
-   *
-   * @param eventId ID of the event to delete.
-   * @param options Options for the delete operation.
-   * @returns Promise that resolves when the delete operation is complete.
-   */
-  async deleteEvent(
+  deleteEvent(
     eventId: string,
     options?: { silent?: boolean; instanceDate?: string; force?: boolean }
   ): Promise<void> {
-    const originalDetails = this.store.getEventDetails(eventId);
-    if (!originalDetails) {
-      throw new Error(`Event with ID ${eventId} not found for deletion.`);
-    }
-    const { event, calendarId } = originalDetails;
-    const { provider } = this.getProviderForEvent(eventId);
-
-    // Step 2: Pre-flight checks and recurring event logic
-    if (!provider.getCapabilities().canDelete) {
-      throw new Error(`Calendar of type "${provider.type}" does not support deleting events.`);
-    }
-
-    // Use lazy RecurringEventManager
-    if (!options?.force) {
-      const recurringManager = await this.getRecurringEventManager();
-      if (await recurringManager.handleDelete(eventId, event, options)) {
-        // The recurring manager handled the deletion logic (e.g., by showing a modal).
-        // It will call back into `deleteEvent` with `force:true` if needed.
-        return;
-      }
-    }
-
-    const handle = provider.getEventHandle(event);
-
-    // Step 3: Optimistic state mutation
-    PluginState.getProviderRegistry().removeMapping(eventId);
-    this._store.delete(eventId);
-
-    // Step 4: Immediate UI update
-    if (options?.silent) {
-      this.updateQueue.toRemove.add(eventId);
-    } else {
-      this.flushUpdateQueue([eventId], []);
-    }
-
-    // Step 5: Asynchronous I/O with rollback
-    if (!handle) {
-      console.warn(
-        `Could not generate a persistent handle for the event being deleted. Proceeding with deletion from cache only.`
-      );
-      // No I/O to perform, so no rollback is necessary. The operation is complete.
-      this.timeEngine.scheduleCacheRebuild();
-      return;
-    }
-
-    try {
-      await PluginState.getProviderRegistry().deleteEventInProvider(eventId, event, calendarId);
-      this.timeEngine.scheduleCacheRebuild();
-      // SUCCESS: The external source is now in sync with the cache.
-    } catch (e) {
-      // FAILURE: The I/O operation failed. Roll back the optimistic changes.
-      console.error(`Failed to delete event with provider. Rolling back cache state.`, {
-        eventId,
-        error: e
-      });
-
-      // Re-add event to the store
-      const locationForStore = originalDetails.location
-        ? {
-            file: { path: originalDetails.location.path },
-            lineNumber: originalDetails.location.lineNumber
-          }
-        : null;
-
-      this._store.add({
-        calendarId: originalDetails.calendarId,
-        location: locationForStore,
-        id: originalDetails.id,
-        event: originalDetails.event
-      });
-
-      // Restore ID mapping
-      PluginState.getProviderRegistry().addMapping(
-        originalDetails.event,
-        originalDetails.calendarId,
-        originalDetails.id
-      );
-
-      // Roll back the UI update
-      const cacheEntry: CacheEntry = {
-        event: originalDetails.event,
-        id: originalDetails.id,
-        calendarId: originalDetails.calendarId
-      };
-
-      if (options?.silent) {
-        // If part of a bulk operation, reverse the change in the queue.
-        this.updateQueue.toRemove.delete(eventId);
-        this.updateQueue.toAdd.set(eventId, cacheEntry);
-      } else {
-        // Otherwise, flush the reversal to the UI immediately.
-        this.flushUpdateQueue([], [cacheEntry]);
-      }
-
-      new Notice(t('eventCache.deleteFailed'));
-
-      // Propagate the error to the original caller.
-      throw e;
-    }
+    return this.mutationHandler.deleteEvent(eventId, options);
   }
 
-  /**
-   * Updates an event with the given ID.
-   *
-   * @param eventId ID of the event to update.
-   * @param newEvent New event data.
-   * @param options Options for the update operation.
-   * @returns Promise that resolves when the update operation is complete.
-   */
-  async updateEventWithId(
+  updateEventWithId(
     eventId: string,
     newEvent: OFCEvent,
     options?: { silent: boolean }
   ): Promise<boolean> {
-    if (!newEvent.allDay && !newEvent.timezone) {
-      const displayTimezone =
-        PluginState.getSettings().displayTimezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone;
-      newEvent.timezone = displayTimezone;
-    }
-
-    // Step 1: Get all original details for potential rollback
-    const originalDetails = this.store.getEventDetails(eventId);
-    if (!originalDetails) {
-      throw new Error(`Event with ID ${eventId} not present in event store.`);
-    }
-
-    const { provider, event: oldEvent } = this.getProviderForEvent(eventId);
-    const calendarId = originalDetails.calendarId;
-
-    // Step 2: Pre-flight checks and recurring event logic
-    if (!provider.getCapabilities().canEdit) {
-      throw new Error(`Calendar of type "${provider.type}" does not support editing events.`);
-    }
-
-    // Use lazy RecurringEventManager
-    const recurringManager = await this.getRecurringEventManager();
-    const handledByRecurringManager = await recurringManager.handleUpdate(
-      oldEvent,
-      newEvent,
-      calendarId
-    );
-    if (handledByRecurringManager) {
-      return true; // The recurring manager took full control and completed the update.
-    }
-
-    const handle = provider.getEventHandle(oldEvent);
-    if (!handle) {
-      throw new Error(`Could not generate a persistent handle for the event being modified.`);
-    }
-
-    this.isBulkUpdating = true;
-    try {
-      // Step 3: Optimistic state mutation
-      // Remove the old event and its mappings
-      PluginState.getProviderRegistry().removeMapping(eventId);
-      this.store.delete(eventId);
-
-      // Add the new event and its mappings, using the same session ID
-      const newEventWithId = newEvent;
-
-      // FIX: Convert the location from the stored format back to the input format.
-      const locationForStore = originalDetails.location
-        ? {
-            file: { path: originalDetails.location.path },
-            lineNumber: originalDetails.location.lineNumber
-          }
-        : null;
-
-      this.store.add({
-        calendarId: calendarId,
-        location: locationForStore, // Use the correctly formatted location
-        id: eventId,
-        event: newEventWithId
-      });
-      PluginState.getProviderRegistry().addMapping(newEventWithId, calendarId, eventId);
-
-      // Step 4: Immediate UI update
-      const newCacheEntry: CacheEntry = {
-        event: newEventWithId,
-        id: eventId,
-        calendarId: calendarId
-      };
-
-      // The UI needs to know to remove the old event and add the new one.
-      // This is how FullCalendar handles an "update".
-      if (options?.silent) {
-        this.updateQueue.toRemove.add(eventId);
-        this.updateQueue.toAdd.set(eventId, newCacheEntry);
-      } else {
-        this.flushUpdateQueue([eventId], [newCacheEntry]);
-      }
-
-      // Step 5: Asynchronous I/O with rollback
-      try {
-        // Prepare events for storage (e.g., flatten title and category).
-        const preparedOldEvent = this.enhancer.prepareForStorage(oldEvent);
-        const preparedNewEvent = this.enhancer.prepareForStorage(newEvent);
-
-        const updatedLocation = await PluginState.getProviderRegistry().updateEventInProvider(
-          eventId,
-          calendarId,
-          preparedOldEvent,
-          preparedNewEvent
-        );
-
-        const authoritativeUpdatedEvent = this.enhancer.enhance(preparedNewEvent);
-
-        // Replace optimistic event with provider-authoritative event and refresh mapping.
-        PluginState.getProviderRegistry().removeMapping(eventId);
-        this.store.delete(eventId);
-
-        const finalLocation = updatedLocation || locationForStore;
-        this.store.add({
-          calendarId: calendarId,
-          location: finalLocation,
-          id: eventId,
-          event: authoritativeUpdatedEvent
-        });
-        PluginState.getProviderRegistry().addMapping(
-          authoritativeUpdatedEvent,
-          calendarId,
-          eventId
-        );
-
-        // SUCCESS: The I/O succeeded. Correct the location in the store if it changed.
-        // This ensures our cache is perfectly in sync with the source of truth.
-
-        this.timeEngine.scheduleCacheRebuild();
-
-        return true;
-      } catch (e) {
-        // FAILURE: I/O failed. Roll back all optimistic changes.
-        console.error(`Failed to update event with provider. Rolling back cache state.`, {
-          eventId,
-          error: e
-        });
-
-        // Roll back store and mappings to original state
-        PluginState.getProviderRegistry().removeMapping(eventId);
-        this.store.delete(eventId);
-
-        const locationForStore = originalDetails.location
-          ? {
-              file: { path: originalDetails.location.path },
-              lineNumber: originalDetails.location.lineNumber
-            }
-          : null;
-
-        this.store.add({
-          calendarId: originalDetails.calendarId,
-          location: locationForStore,
-          id: originalDetails.id,
-          event: originalDetails.event
-        });
-        PluginState.getProviderRegistry().addMapping(
-          originalDetails.event,
-          originalDetails.calendarId,
-          originalDetails.id
-        );
-
-        // Roll back the UI update
-        const originalCacheEntry: CacheEntry = {
-          event: originalDetails.event,
-          id: originalDetails.id,
-          calendarId: originalDetails.calendarId
-        };
-
-        if (options?.silent) {
-          this.updateQueue.toRemove.delete(eventId); // Should already be gone, but be safe
-          this.updateQueue.toAdd.set(eventId, originalCacheEntry);
-        } else {
-          // Replace the new version with the original
-          this.flushUpdateQueue([eventId], [originalCacheEntry]);
-        }
-
-        new Notice(t('eventCache.updateFailed'));
-        return false;
-      }
-    } finally {
-      this.isBulkUpdating = false;
-    }
+    return this.mutationHandler.updateEventWithId(eventId, newEvent, options);
   }
 
-  /**
-   * Transform an event that's already in the event store.
-   *
-   * A more "type-safe" wrapper around updateEventWithId(),
-   * use this function if the caller is only modifying few
-   * known properties of an event.
-   * @param id ID of event to transform.
-   * @param process function to transform the event.
-   * @returns true if the update was successful.
-   */
   processEvent(
     id: string,
     process: (e: OFCEvent) => OFCEvent,
     options?: { silent: boolean }
   ): Promise<boolean> {
-    const event = this.store.getEventById(id);
-    if (!event) {
-      throw new Error('Event does not exist');
-    }
-    const newEvent = process(event);
-    return this.updateEventWithId(id, newEvent, options);
+    const event = this._store.getEventById(id);
+    if (!event) throw new Error('Event does not exist');
+    return this.updateEventWithId(id, process(event), options);
   }
 
-  private async getRecurringEventManager(): Promise<
-    import('../features/recur_events/RecurringEventManager').RecurringEventManager
-  > {
-    if (!this.recurringEventManager) {
-      const { RecurringEventManager } = await import(
-        '../features/recur_events/RecurringEventManager'
-      );
-      this.recurringEventManager = new RecurringEventManager(this, this.plugin);
-    }
-    return this.recurringEventManager;
+  toggleRecurringInstance(eventId: string, instanceDate: string, isDone: boolean): Promise<void> {
+    return this.mutationHandler.toggleRecurringInstance(eventId, instanceDate, isDone);
   }
 
-  async toggleRecurringInstance(
-    eventId: string,
-    instanceDate: string,
-    isDone: boolean
-  ): Promise<void> {
-    const recurringManager = await this.getRecurringEventManager();
-    await recurringManager.toggleRecurringInstance(eventId, instanceDate, isDone);
-    this.flushUpdateQueue([], []);
-  }
-
-  async modifyRecurringInstance(
+  modifyRecurringInstance(
     masterEventId: string,
     instanceDate: string,
     newEventData: OFCEvent
   ): Promise<void> {
-    const eventForStorage = this.enhancer.prepareForStorage(newEventData);
-    const recurringManager = await this.getRecurringEventManager();
-    await recurringManager.modifyRecurringInstance(masterEventId, instanceDate, eventForStorage);
-    this.flushUpdateQueue([], []);
+    return this.mutationHandler.modifyRecurringInstance(masterEventId, instanceDate, newEventData);
   }
 
-  async moveEventToCalendar(
+  moveEventToCalendar(
     eventId: string,
     newCalendarId: string,
     newEventData?: OFCEvent
   ): Promise<void> {
-    const originalDetails = this._store.getEventDetails(eventId);
-    if (!originalDetails) {
-      throw new Error(`Event with ID ${eventId} not found.`);
-    }
-
-    // 0. Try to delegate to RecurringEventManager
-    // We lazily load the manager if it's not present (though it should be initialized by now usually)
-    if (!this.recurringEventManager) {
-      const { RecurringEventManager } = await import(
-        '../features/recur_events/RecurringEventManager'
-      );
-      this.recurringEventManager = new RecurringEventManager(this, this._plugin);
-    }
-
-    // Check if it's a recurring event move
-    const isRecurringHandled = await this.recurringEventManager.moveRecurringEvent(
-      eventId,
-      newCalendarId,
-      newEventData
-    );
-    if (isRecurringHandled) {
-      return;
-    }
-
-    // 1. Add the event to the new calendar
-    // We pass the new event object if provided, otherwise the original one.
-    const eventToCreate = newEventData || originalDetails.event;
-
-    const success = await this.addEvent(newCalendarId, eventToCreate);
-
-    if (!success) {
-      throw new Error(`Failed to move event: Could not create event in destination calendar.`);
-    }
-
-    // 2. Delete from the old calendar
-    try {
-      // Logic check: if we are moving to the SAME calendar, we should probably just use updateEventWithId unless we really want to generate a new ID.
-      // But typically move is across calendars.
-      // If newCalendarId === originalDetails.calendarId, then this is just a fancy update that changes ID (unnecessary).
-      // But we will allow it if the caller insists.
-
-      await this.deleteEvent(eventId);
-    } catch (e) {
-      console.error('Failed to delete event from old calendar after moving it.', e);
-      new Notice(t('eventCache.movePartialSuccess'));
-      // We do not rollback the creation because data safety is priority.
-      // Better to have a duplicate than to lose data.
-      throw e;
-    }
+    return this.mutationHandler.moveEventToCalendar(eventId, newCalendarId, newEventData);
   }
 
-  /**
-   * Schedules an undated task by adding a due date to it.
-   * This is specifically designed for drag-and-drop from the Tasks Backlog to the calendar.
-   *
-   * @param taskId Unique identifier for the task (filePath::lineNumber)
-   * @param date Date to schedule the task for
-   */
-  public async scheduleTask(taskId: string, date: Date): Promise<void> {
-    // Find the Tasks provider instance
-    const tasksProvider = PluginState.getProviderRegistry()
-      .getActiveProviders()
-      .find(provider => provider.type === 'tasks') as unknown as {
-      scheduleTask: (taskId: string, date: Date) => Promise<void>;
-      type: string;
-    };
-
-    if (!tasksProvider) {
-      throw new Error('No Tasks provider found. Cannot schedule task.');
-    }
-
-    // Check if the provider has the scheduleTask method (from our implementation)
-    if (typeof tasksProvider.scheduleTask !== 'function') {
-      throw new Error('Tasks provider does not support task scheduling.');
-    }
-
-    // Delegate to the Tasks provider's schedule method
-    await tasksProvider.scheduleTask(taskId, date);
+  scheduleTask(taskId: string, date: Date): Promise<void> {
+    return this.mutationHandler.scheduleTask(taskId, date);
   }
 
-  /**
-   * Asks the appropriate provider if a task can be scheduled on a given date.
-   * This is used to enforce provider-specific rules (e.g., not scheduling after a due date).
-   * @param taskId The persistent ID of the task.
-   * @param date The target date for scheduling.
-   * @returns A validation result from the provider.
-   */
-  public async validateTaskSchedule(
-    taskId: string,
-    date: Date
-  ): Promise<{ isValid: boolean; reason?: string }> {
-    // Find the Tasks provider instance. This assumes a single tasks provider for now.
-    const tasksProvider = PluginState.getProviderRegistry()
-      .getActiveProviders()
-      .find(provider => provider.type === 'tasks');
-
-    if (tasksProvider && typeof tasksProvider.canBeScheduledAt === 'function') {
-      // Create a minimal event stub containing the UID, which is all the provider needs
-      // to look up the full task details in its own cache.
-      const eventStub: OFCEvent = {
-        uid: taskId,
-        title: '',
-        type: 'single',
-        allDay: true,
-        date: '',
-        endDate: null
-      };
-      return tasksProvider.canBeScheduledAt(eventStub, date);
-    }
-
-    // If no provider is found or the method isn't implemented, default to allowing the action.
-    return { isValid: true };
+  validateTaskSchedule(taskId: string, date: Date): Promise<{ isValid: boolean; reason?: string }> {
+    return this.mutationHandler.validateTaskSchedule(taskId, date);
   }
 
   // ====================================================================
   //                         VIEW SYNCHRONIZATION
   // ====================================================================
-
-  private updateViewCallbacks: UpdateViewCallback[] = [];
-  private timeTickCallbacks: ((state: TimeState) => void)[] = [];
-
-  public updateQueue: { toRemove: Set<string>; toAdd: Map<string, CacheEntry> } = {
-    toRemove: new Set(),
-    toAdd: new Map()
-  };
 
   /**
    * Register a callback.
@@ -917,71 +338,35 @@ export default class EventCache {
     eventType: 'update' | 'time-tick',
     callback: UpdateViewCallback | ((state: TimeState) => void)
   ): UpdateViewCallback | ((state: TimeState) => void) {
-    switch (eventType) {
-      case 'update':
-        this.updateViewCallbacks.push(callback as UpdateViewCallback);
-        break;
-      case 'time-tick':
-        this.timeTickCallbacks.push(callback as (state: TimeState) => void);
-        break;
+    if (eventType === 'update') {
+      return this.subscriptionManager.on(eventType, callback as UpdateViewCallback);
+    } else {
+      return this.subscriptionManager.on(eventType, callback as (state: TimeState) => void);
     }
-    return callback;
   }
 
-  /**
-   * De-register a callback.
-   * Added overloads for better type inference.
-   */
   off(eventType: 'update', callback: UpdateViewCallback): void;
   off(eventType: 'time-tick', callback: (state: TimeState) => void): void;
   off(
     eventType: 'update' | 'time-tick',
     callback: UpdateViewCallback | ((state: TimeState) => void)
   ): void {
-    switch (eventType) {
-      case 'update':
-        this.updateViewCallbacks.remove(callback as UpdateViewCallback);
-        break;
-      case 'time-tick':
-        this.timeTickCallbacks.remove(callback as (state: TimeState) => void);
-        break;
+    if (eventType === 'update') {
+      this.subscriptionManager.off(eventType, callback as UpdateViewCallback);
+    } else {
+      this.subscriptionManager.off(eventType, callback as (state: TimeState) => void);
     }
   }
 
   resync(): void {
-    for (const callback of this.updateViewCallbacks) {
-      callback({ type: 'resync' });
-    }
-  }
-
-  /**
-   * Push updates to all subscribers.
-   * @param toRemove IDs of events to remove from the view.
-   * @param toAdd Events to add to the view.
-   */
-  private updateViews(toRemove: string[], toAdd: CacheEntry[], affectedCalendars: string[]) {
-    const payload = {
-      toRemove,
-      toAdd,
-      affectedCalendars
-    };
-
-    for (const callback of this.updateViewCallbacks) {
-      callback({ type: 'events', ...payload });
-    }
+    this.subscriptionManager.resync();
   }
 
   /**
    * Broadcast TimeEngine state to subscribers.
    */
   public broadcastTimeTick(state: TimeState): void {
-    for (const cb of this.timeTickCallbacks) {
-      try {
-        cb(state);
-      } catch (e) {
-        console.error('Full Calendar: time-tick callback error', e);
-      }
-    }
+    this.subscriptionManager.broadcastTimeTick(state);
   }
 
   public flushUpdateQueue(
@@ -989,184 +374,22 @@ export default class EventCache {
     toAdd: CacheEntry[],
     affectedCalendars: string[] = []
   ): void {
-    const combinedToRemove = new Set(toRemove);
-    const combinedToAdd = new Map<string, CacheEntry>();
-    const allAffectedCalendars = new Set<string>(affectedCalendars);
-
-    for (const entry of toAdd) {
-      combinedToAdd.set(entry.id, entry);
-      allAffectedCalendars.add(entry.calendarId);
-    }
-
-    // Add accumulated queue items
-    for (const id of this.updateQueue.toRemove) {
-      combinedToRemove.add(id);
-      // Wait, we don't know the calendarId of elements in toRemove inside the queue easily.
-      // We rely on the caller passing affectedCalendars if they only removed elements.
-    }
-    for (const [id, entry] of this.updateQueue.toAdd) {
-      combinedToAdd.set(id, entry);
-      allAffectedCalendars.add(entry.calendarId);
-    }
-
-    this.isBulkUpdating = false;
-    this.updateQueue = { toRemove: new Set(), toAdd: new Map() };
-
-    if (combinedToRemove.size > 0 || combinedToAdd.size > 0 || allAffectedCalendars.size > 0) {
-      this.updateViews(
-        [...combinedToRemove],
-        [...combinedToAdd.values()],
-        Array.from(allAffectedCalendars)
-      );
-    }
+    this.subscriptionManager.flushUpdateQueue(toRemove, toAdd, affectedCalendars, () => {
+      this.isBulkUpdating = false;
+    });
   }
 
   // VIEW SYNCHRONIZATION
-  public updateCalendar(calendar: OFCEventSource) {
-    for (const callback of this.updateViewCallbacks) {
-      callback({ type: 'calendar', calendar });
-    }
+  public updateCalendar(calendar: OFCEventSource): void {
+    this.subscriptionManager.updateCalendar(calendar);
   }
 
   // ====================================================================
   //                         FILESYSTEM & REMOTE HOOKS
   // ====================================================================
 
-  /**
-   * Sync a calendar's events with the cache, diffing and updating as needed.
-   */
   public syncCalendar(calendarId: string, newRawEvents: [OFCEvent, EventLocation | null][]): void {
-    if (this.isBulkUpdating) {
-      return;
-    }
-
-    // 1. Get OLD state from the store for this calendar.
-    const oldEventsInCalendar = this.store.getEventsInCalendar(calendarId);
-
-    // 2. ENHANCE the new raw events.
-    const newEnhancedEvents = newRawEvents.map(([rawEvent, location]) => ({
-      event: this.enhancer.enhance(rawEvent),
-      location,
-      calendarId
-    }));
-
-    // 3. Build keyed maps for old and new events using cheap sync keys (O(N), no I/O).
-    const oldByKey = new Map<string, { event: OFCEvent; id: string; calendarId: string }>();
-    for (const oldEvent of oldEventsInCalendar) {
-      const key = PluginState.getProviderRegistry().computeSyncKeyForEvent(
-        oldEvent.event,
-        calendarId
-      );
-      if (key) {
-        oldByKey.set(key, oldEvent);
-      }
-    }
-
-    const newByKey = new Map<
-      string,
-      { event: OFCEvent; location: EventLocation | null; calendarId: string }
-    >();
-    for (const newEvent of newEnhancedEvents) {
-      const key = PluginState.getProviderRegistry().computeSyncKeyForEvent(
-        newEvent.event,
-        newEvent.calendarId
-      );
-      if (key) {
-        newByKey.set(key, newEvent);
-      }
-    }
-
-    // 4. Compute the delta via three-way set comparison.
-    const idsToRemove: string[] = [];
-    const eventsToAdd: {
-      event: OFCEvent;
-      id: string;
-      location: EventLocation | null;
-      calendarId: string;
-    }[] = [];
-    let hasChanges = false;
-
-    // 4a. Removed events: old keys not present in new set.
-    for (const [key, oldEvent] of oldByKey) {
-      if (!newByKey.has(key)) {
-        idsToRemove.push(oldEvent.id);
-        PluginState.getProviderRegistry().removeMapping(oldEvent.id);
-        this.store.delete(oldEvent.id);
-        hasChanges = true;
-      }
-    }
-
-    // 4b. Added events: new keys not present in old set.
-    for (const [key, newEvent] of newByKey) {
-      if (!oldByKey.has(key)) {
-        const newSessionId = PluginState.getProviderRegistry().generateId();
-        PluginState.getProviderRegistry().addMapping(
-          newEvent.event,
-          newEvent.calendarId,
-          newSessionId
-        );
-        this.store.add({
-          calendarId: newEvent.calendarId,
-          location: newEvent.location,
-          id: newSessionId,
-          event: newEvent.event
-        });
-        eventsToAdd.push({
-          event: newEvent.event,
-          location: newEvent.location,
-          calendarId: newEvent.calendarId,
-          id: newSessionId
-        });
-        hasChanges = true;
-      }
-    }
-
-    // 4c. Unchanged keys: reuse session IDs. Check for data changes within same identity.
-    for (const [key, oldEvent] of oldByKey) {
-      const newEvent = newByKey.get(key);
-      if (newEvent) {
-        if (JSON.stringify(oldEvent.event) !== JSON.stringify(newEvent.event)) {
-          // Data changed but identity is the same — update in-place, reuse session ID.
-          this.store.delete(oldEvent.id);
-          this.store.add({
-            calendarId: newEvent.calendarId,
-            location: newEvent.location,
-            id: oldEvent.id,
-            event: newEvent.event
-          });
-          // Re-map in case the global identifier changed (e.g. title changed).
-          PluginState.getProviderRegistry().removeMapping(oldEvent.id);
-          PluginState.getProviderRegistry().addMapping(
-            newEvent.event,
-            newEvent.calendarId,
-            oldEvent.id
-          );
-          // Queue UI update for this event (remove old rendering, add new).
-          idsToRemove.push(oldEvent.id);
-          eventsToAdd.push({
-            event: newEvent.event,
-            location: newEvent.location,
-            calendarId: newEvent.calendarId,
-            id: oldEvent.id
-          });
-          hasChanges = true;
-        }
-        // If data is identical: no-op. Session ID, store entry, and mapping are all reused.
-      }
-    }
-
-    if (!hasChanges) {
-      return;
-    }
-
-    // 5. Notify the UI with only the delta.
-    const cacheEntriesToAdd = eventsToAdd.map(({ event, id, calendarId }) => ({
-      event,
-      id,
-      calendarId
-    }));
-    this.flushUpdateQueue(idsToRemove, cacheEntriesToAdd, [calendarId]);
-    this.timeEngine.scheduleCacheRebuild();
+    this.syncHandler.syncCalendar(calendarId, newRawEvents);
   }
 
   /**
@@ -1184,214 +407,65 @@ export default class EventCache {
       deletions: string[];
     }
   ): Promise<void> {
-    const { additions, updates: updateArr, deletions } = updates;
-
-    // If there are no changes, exit early.
-    if (additions.length === 0 && updateArr.length === 0 && deletions.length === 0) {
-      return Promise.resolve();
-    }
-
-    this.isBulkUpdating = true;
-    try {
-      // 1. Handle Deletions
-      for (const sessionId of deletions) {
-        const event = this.store.getEventById(sessionId);
-        if (event) {
-          PluginState.getProviderRegistry().removeMapping(sessionId);
-          this.store.delete(sessionId);
-          this.updateQueue.toRemove.add(sessionId);
-        }
-      }
-
-      // 2. Handle Additions
-      for (const { event: rawEvent, location } of additions) {
-        const event = this.enhancer.enhance(rawEvent);
-        const newSessionId = this.generateId();
-        this.store.add({ calendarId, location, id: newSessionId, event });
-        PluginState.getProviderRegistry().addMapping(event, calendarId, newSessionId);
-        this.updateQueue.toAdd.set(newSessionId, { event, id: newSessionId, calendarId });
-      }
-
-      // 3. Handle Updates
-      for (const { sessionId, event: rawEvent, location } of updateArr) {
-        const event = this.enhancer.enhance(rawEvent);
-        const oldEvent = this.store.getEventById(sessionId);
-        if (oldEvent) {
-          PluginState.getProviderRegistry().removeMapping(sessionId);
-          this.store.delete(sessionId);
-          this.store.add({ calendarId, location, id: sessionId, event });
-          PluginState.getProviderRegistry().addMapping(event, calendarId, sessionId);
-        }
-        // For FullCalendar's view, an update is a remove + add.
-        this.updateQueue.toRemove.add(sessionId);
-        this.updateQueue.toAdd.set(sessionId, { event, id: sessionId, calendarId });
-      }
-    } finally {
-      this.isBulkUpdating = false;
-      this.flushUpdateQueue([], []); // This processes the .toAdd and .toRemove queues.
-      this.timeEngine.scheduleCacheRebuild();
-    }
-
-    return Promise.resolve();
-  }
-
-  // ====================================================================
-  //                         TESTING UTILITIES
-  // ====================================================================
-
-  get _storeForTest() {
-    return this._store;
+    return this.syncHandler.processProviderUpdates(calendarId, updates);
   }
 
   public syncFile(
     file: { path: string },
     newEventsWithDetails: { event: OFCEvent; location: EventLocation | null; calendarId: string }[]
   ): Promise<void> {
-    if (this.isBulkUpdating) {
-      return Promise.resolve();
-    }
+    return this.syncHandler.syncFile(file, newEventsWithDetails);
+  }
 
-    // 1. Get OLD state from the store for this specific file.
-    const oldEventsInFile = this.store.getEventsInFile(file);
+  // ====================================================================
+  //                         INTERNAL HELPERS
+  // ====================================================================
 
-    // 2. ENHANCE the new raw events from the provider.
-    const newEnhancedEvents = newEventsWithDetails.map(({ event, location, calendarId }) => ({
-      event: this.enhancer.enhance(event),
-      location,
-      calendarId
-    }));
-
-    // 3. Build keyed maps for old and new events using cheap sync keys.
-    const oldByKey = new Map<string, { event: OFCEvent; id: string; calendarId: string }>();
-    for (const oldEvent of oldEventsInFile) {
-      const key = PluginState.getProviderRegistry().computeSyncKeyForEvent(
-        oldEvent.event,
-        oldEvent.calendarId
+  private async getRecurringEventManager(): Promise<
+    import('../features/recur_events/RecurringEventManager').RecurringEventManager
+  > {
+    if (!this.recurringEventManager) {
+      const { RecurringEventManager } = await import(
+        '../features/recur_events/RecurringEventManager'
       );
-      if (key) {
-        oldByKey.set(key, oldEvent);
-      }
+      this.recurringEventManager = new RecurringEventManager(this, this._plugin);
     }
-
-    const newByKey = new Map<
-      string,
-      { event: OFCEvent; location: EventLocation | null; calendarId: string }
-    >();
-    for (const newEvent of newEnhancedEvents) {
-      const key = PluginState.getProviderRegistry().computeSyncKeyForEvent(
-        newEvent.event,
-        newEvent.calendarId
-      );
-      if (key) {
-        newByKey.set(key, newEvent);
-      }
-    }
-
-    // 4. Compute the delta via three-way set comparison.
-    const idsToRemove: string[] = [];
-    const eventsToAdd: {
-      event: OFCEvent;
-      id: string;
-      location: EventLocation | null;
-      calendarId: string;
-    }[] = [];
-    let hasChanges = false;
-
-    // 4a. Removed events.
-    for (const [key, oldEvent] of oldByKey) {
-      if (!newByKey.has(key)) {
-        idsToRemove.push(oldEvent.id);
-        PluginState.getProviderRegistry().removeMapping(oldEvent.id);
-        this.store.delete(oldEvent.id);
-        hasChanges = true;
-      }
-    }
-
-    // 4b. Added events.
-    for (const [key, newEvent] of newByKey) {
-      if (!oldByKey.has(key)) {
-        const newSessionId = PluginState.getProviderRegistry().generateId();
-        PluginState.getProviderRegistry().addMapping(
-          newEvent.event,
-          newEvent.calendarId,
-          newSessionId
-        );
-        this.store.add({
-          calendarId: newEvent.calendarId,
-          location: newEvent.location,
-          id: newSessionId,
-          event: newEvent.event
-        });
-        eventsToAdd.push({
-          event: newEvent.event,
-          location: newEvent.location,
-          calendarId: newEvent.calendarId,
-          id: newSessionId
-        });
-        hasChanges = true;
-      }
-    }
-
-    // 4c. Unchanged keys: reuse session IDs, check for data changes.
-    for (const [key, oldEvent] of oldByKey) {
-      const newEvent = newByKey.get(key);
-      if (newEvent) {
-        if (JSON.stringify(oldEvent.event) !== JSON.stringify(newEvent.event)) {
-          this.store.delete(oldEvent.id);
-          this.store.add({
-            calendarId: newEvent.calendarId,
-            location: newEvent.location,
-            id: oldEvent.id,
-            event: newEvent.event
-          });
-          PluginState.getProviderRegistry().removeMapping(oldEvent.id);
-          PluginState.getProviderRegistry().addMapping(
-            newEvent.event,
-            newEvent.calendarId,
-            oldEvent.id
-          );
-          idsToRemove.push(oldEvent.id);
-          eventsToAdd.push({
-            event: newEvent.event,
-            location: newEvent.location,
-            calendarId: newEvent.calendarId,
-            id: oldEvent.id
-          });
-          hasChanges = true;
-        }
-      }
-    }
-
-    if (!hasChanges) {
-      return Promise.resolve();
-    }
-
-    // 5. Notify the UI with only the delta.
-    const cacheEntriesToAdd = eventsToAdd.map(({ event, id, calendarId }) => ({
-      event,
-      id,
-      calendarId
-    }));
-    this.flushUpdateQueue(idsToRemove, cacheEntriesToAdd);
-    this.timeEngine.scheduleCacheRebuild();
-
-    return Promise.resolve();
+    return this.recurringEventManager;
   }
 
   private getProviderForEvent(eventId: string) {
     const details = this._store.getEventDetails(eventId);
-    if (!details) {
-      throw new Error(`Event ID ${eventId} not present in event store.`);
-    }
+    if (!details) throw new Error(`Event ID ${eventId} not present in event store.`);
     const { calendarId, location, event } = details;
     const provider = this.calendars.get(calendarId);
-    if (!provider) {
+    if (!provider)
       throw new Error(`Provider for calendar ID ${calendarId} not found in cache map.`);
-    }
     const calendarInfo = PluginState.getProviderRegistry().getSource(calendarId);
-    if (!calendarInfo) {
-      throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
-    }
+    if (!calendarInfo) throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
     return { provider, location, event };
+  }
+
+  // ====================================================================
+  //                         GETTERS & SETTERS
+  // ====================================================================
+
+  get plugin(): FullCalendarPlugin {
+    return this._plugin;
+  }
+
+  get store(): EventStore {
+    return this._store;
+  }
+
+  get updateQueue() {
+    return this.subscriptionManager.updateQueue;
+  }
+
+  set updateQueue(val) {
+    this.subscriptionManager.updateQueue = val;
+  }
+
+  get _storeForTest() {
+    return this._store;
   }
 }
