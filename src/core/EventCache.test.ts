@@ -687,6 +687,66 @@ describe('editable calendars', () => {
     const newLoc = mockLocation();
     const newEvent = mockEvent();
 
+    it('assigns a default one-hour endTime when moving all-day event to timed slot', async () => {
+      const allDayEvent: EditableEventResponse = [
+        {
+          title: 'all-day-source',
+          uid: 'all-day-source',
+          type: 'single',
+          allDay: true,
+          date: '2026-05-10',
+          endDate: null,
+          skipDates: []
+        } as unknown as OFCEvent,
+        mockLocation()
+      ];
+
+      const [cache, calendar] = makeEditableCache([allDayEvent]);
+      await cache.populate();
+
+      const sources = cache.getAllEvents();
+      const id = sources[0].events[0].id;
+
+      const movedToTimed: OFCEvent = {
+        title: 'all-day-source',
+        uid: 'all-day-source',
+        type: 'single',
+        allDay: false,
+        date: '2026-05-10',
+        startTime: '09:00',
+        endTime: null,
+        endDate: null,
+        timezone: 'UTC'
+      } as unknown as OFCEvent;
+
+      calendar.updateEvent.mockResolvedValue(mockLocation());
+
+      await cache.updateEventWithId(id, movedToTimed);
+
+      const safeRegistry = PluginState.getProviderRegistry() as unknown as {
+        updateEventInProvider: jest.Mock;
+      };
+
+      expect(safeRegistry.updateEventInProvider).toHaveBeenCalledWith(
+        id,
+        'test',
+        expect.any(Object),
+        expect.objectContaining({
+          allDay: false,
+          startTime: '09:00',
+          endTime: '10:00'
+        })
+      );
+
+      expect(cache.store.getEventById(id)).toEqual(
+        expect.objectContaining({
+          allDay: false,
+          startTime: '09:00',
+          endTime: '10:00'
+        })
+      );
+    });
+
     it.each([
       [
         'calendar moves event to a new file',

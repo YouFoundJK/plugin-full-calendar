@@ -6,6 +6,7 @@ import { CacheEntry } from './types';
 import { CalendarProvider } from '../../providers/Provider';
 import { CacheContext } from './CacheSyncHandler';
 import { EventPathLocation } from '../EventStore';
+import { DateTime } from 'luxon';
 
 export interface MutationContext extends CacheContext {
   calendars: Map<string, CalendarProvider<unknown>>;
@@ -21,6 +22,30 @@ export interface MutationContext extends CacheContext {
 
 export class CacheMutationHandler {
   constructor(private ctx: MutationContext) {}
+
+  private ensureDefaultTimedDurationOnAllDayTransition(
+    oldEvent: OFCEvent,
+    newEvent: OFCEvent
+  ): OFCEvent {
+    if (!oldEvent.allDay || newEvent.allDay) {
+      return newEvent;
+    }
+
+    const hasEndTime = typeof newEvent.endTime === 'string' && newEvent.endTime.trim().length > 0;
+    if (hasEndTime) {
+      return newEvent;
+    }
+
+    const parsedStart = DateTime.fromFormat(newEvent.startTime, 'H:mm');
+    if (!parsedStart.isValid) {
+      return newEvent;
+    }
+
+    return {
+      ...newEvent,
+      endTime: parsedStart.plus({ hours: 1 }).toFormat('HH:mm')
+    };
+  }
 
   async addEvent(
     calendarId: string,
@@ -217,6 +242,7 @@ export class CacheMutationHandler {
     }
 
     const { provider, event: oldEvent } = this.ctx.getProviderForEvent(eventId);
+    newEvent = this.ensureDefaultTimedDurationOnAllDayTransition(oldEvent, newEvent);
     const calendarId = originalDetails.calendarId;
 
     if (!provider.getCapabilities().canEdit) {
