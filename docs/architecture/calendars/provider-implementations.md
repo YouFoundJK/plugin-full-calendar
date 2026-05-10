@@ -71,6 +71,21 @@ Calendar event drag/update behavior and backlog drag/drop both write `calendarDi
 
 The `openEditModalAfterBacklogDrop` setting gates the Tasks plugin edit modal after backlog drops. Its default is `false`, so the normal drag/drop path stays fast and non-blocking unless the user explicitly opts into the modal.
 
+#### Tasks time-format contract
+
+- `settings.tasksIntegration.taskDisplayFormat` controls how timed tasks are serialized back to markdown.
+- Default is `dayPlanner` for new installs and forward writes.
+- `standard` remains available as a compatibility/user preference mode.
+
+Serialization modes:
+
+| Mode         | Example output |
+| ------------ | -------------- |
+| `dayPlanner` | `- [ ] 5:00 - 19:00 Task title ⏳ 2026-05-02` |
+| `standard`   | `- [ ] Task title (5:00 AM-7:00 AM) ⏳ 2026-05-02` |
+
+Parsing must support both schemas regardless of the selected write mode. Do not introduce a read-mode switch tied to `taskDisplayFormat`.
+
 ## Cross-provider orchestration constraints
 
 - Registry is the only runtime router for provider read/write operations.

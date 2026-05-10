@@ -564,6 +564,12 @@
       "openEditModalAfterBacklogDrop": {
         "label": "Open Tasks edit modal after backlog drop",
         "description": "Open the Obsidian Tasks edit modal immediately after dragging a task from the backlog onto the calendar."
+      },
+      "taskDisplayFormat": {
+        "label": "Task time format",
+        "description": "Choose how Full Calendar writes time into Tasks lines.",
+        "standard": "Standard format",
+        "dayPlanner": "Day Planner Format"
       }
     }
   },

@@ -179,3 +179,24 @@ describe('updateTimeInLine (12h mode)', () => {
     });
   });
 });
+
+describe('updateTimeInLine (day planner format)', () => {
+  it('moves time range to the front in 24h format', () => {
+    expect(updateTimeInLine(BASE, '05:00', '19:00', false, '⏳', 'dayPlanner')).toBe(
+      '- [ ] 5:00 - 19:00 My task ⏳ 2024-06-15'
+    );
+  });
+
+  it('replaces legacy parenthesized time with day planner prefix', () => {
+    expect(updateTimeInLine(WITH_RANGE_12H, '05:00', '19:00', false, '⏳', 'dayPlanner')).toBe(
+      '- [ ] 5:00 - 19:00 My task ⏳ 2024-06-15'
+    );
+  });
+
+  it('keeps block links while rewriting day planner format', () => {
+    const line = '- [ ] My task (9:00 AM-5:00 PM) ⏳ 2024-06-15 ^abc123';
+    expect(updateTimeInLine(line, '05:00', '19:00', true, '⏳', 'dayPlanner')).toBe(
+      '- [ ] 5:00 - 19:00 My task ⏳ 2024-06-15 ^abc123'
+    );
+  });
+});

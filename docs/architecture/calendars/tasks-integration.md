@@ -16,10 +16,37 @@ Unlike other providers that crawl files directly, the Tasks provider is an event
 When a user drags a task on the calendar or toggles its completion state, the provider performs **Surgical Replacement**:
 
 - **Targeting**: It uses the file path and line number provided by the Tasks cache.
-- **Injection Logic**: It uses regex to inject or update date emojis (`⏳`, `🛫`, `📅`) and time blocks `(HH:mm)` while preserving:
+- **Injection Logic**: It uses regex to inject or update date emojis (`⏳`, `🛫`, `📅`) and time tokens while preserving:
     - Task descriptions.
     - Existing metadata (created dates, recurrence, etc.).
     - **Block Links** (`^uuid`): The regex ensures that injected data is placed *before* any block links at the end of the line.
+
+## Time Format Contract
+
+The Tasks integration has an explicit write-format setting:
+
+- `settings.tasksIntegration.taskDisplayFormat`
+    - `dayPlanner` (default): write time at the start of the task line.
+    - `standard`: write parenthesized time near date metadata.
+
+### Write behavior
+
+For timed tasks, the provider writes one of the following:
+
+- Day Planner range: `- [ ] 5:00 - 19:00 Task title ⏳ 2026-05-02`
+- Day Planner single: `- [ ] 14:30 Task title ⏳ 2026-05-02`
+- Standard range: `- [ ] Task title (5:00 AM-7:00 AM) ⏳ 2026-05-02`
+- Standard single: `- [ ] Task title (14:30) ⏳ 2026-05-02`
+
+All-day updates remove time tokens in either format.
+
+### Read behavior
+
+Parsing is format-agnostic and supports both Day Planner prefix and legacy parenthesized syntax. This means:
+
+- Existing legacy tasks remain fully compatible.
+- Newly written day-planner tasks are parsed identically into `startTime` / `endTime`.
+- No mandatory bulk migration is required for correctness.
 
 ## Optimistic UI Updates
 

@@ -40,11 +40,13 @@ export interface ActivityWatchSettings {
 export type TasksDateTarget = 'scheduledDate' | 'startDate' | 'dueDate';
 
 export type TasksBacklogDateTarget = TasksDateTarget;
+export type TasksDisplayFormat = 'standard' | 'dayPlanner';
 
 export interface TasksIntegrationSettings {
   backlogDateTarget: TasksBacklogDateTarget;
   calendarDisplayDateTarget: TasksDateTarget;
   openEditModalAfterBacklogDrop: boolean;
+  taskDisplayFormat?: TasksDisplayFormat;
 }
 
 export type ApiScope =
@@ -216,7 +218,8 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   tasksIntegration: {
     backlogDateTarget: 'scheduledDate',
     calendarDisplayDateTarget: 'scheduledDate',
-    openEditModalAfterBacklogDrop: false
+    openEditModalAfterBacklogDrop: false,
+    taskDisplayFormat: 'dayPlanner'
   },
   apiTokens: {},
   authorizedTokens: {},

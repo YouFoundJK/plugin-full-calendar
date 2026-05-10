@@ -2,7 +2,7 @@ import { PluginState } from '../../core/PluginState';
 import { Modal, Setting } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { t } from '../../features/i18n/i18n';
-import { TasksBacklogDateTarget, TasksDateTarget } from '../../types/settings';
+import { TasksBacklogDateTarget, TasksDateTarget, TasksDisplayFormat } from '../../types/settings';
 
 export class TasksIntegrationSettingsModal extends Modal {
   constructor(
@@ -60,6 +60,21 @@ export class TasksIntegrationSettingsModal extends Modal {
           await PluginState.saveSettings();
           this.onChange();
         });
+      });
+
+    new Setting(this.contentEl)
+      .setName(t('settings.tasksIntegration.taskDisplayFormat.label'))
+      .setDesc(t('settings.tasksIntegration.taskDisplayFormat.description'))
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('standard', t('settings.tasksIntegration.taskDisplayFormat.standard'))
+          .addOption('dayPlanner', t('settings.tasksIntegration.taskDisplayFormat.dayPlanner'))
+          .setValue(settings.taskDisplayFormat ?? 'dayPlanner')
+          .onChange(async value => {
+            settings.taskDisplayFormat = value as TasksDisplayFormat;
+            await PluginState.saveSettings();
+            this.onChange();
+          });
       });
   }
 

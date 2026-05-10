@@ -38,7 +38,16 @@ Full Calendar respects the Tasks plugin's emoji-based data model. You can config
 
 ## Time-Blocking Syntax
 
-To position a task at a specific time (rather than just as an "all-day" event), Full Calendar uses a compact time-block embedded in the title.
+To position a task at a specific time (rather than just as an "all-day" event), Full Calendar supports two formats.
+
+**Default write format (new behavior): Day Planner**
+
+| Format | Example | Result |
+|---|---|---|
+| **Day Planner Range** | `- [ ] 5:00 - 19:00 Wellness - Task` | Preferred default for new/updated tasks |
+| **Day Planner Point Time** | `- [ ] 14:30 Standup` | Timed task with default duration |
+
+**Legacy format (still supported for reading/parsing):**
 
 | Syntax | Example | Result |
 |---|---|---|
@@ -46,10 +55,33 @@ To position a task at a specific time (rather than just as an "all-day" event), 
 | **Time Range** | `(9:00-10:30)` | Blocks exactly 90 minutes |
 | **12h Format** | `(2:30 PM)` | Correctly parsed and displayed |
 
-**Example Task Line:**
-`- [ ] Sync with Team (14:00-15:00) ⏳ 2025-03-28`
+### Format Schema
+
+Day Planner schema:
+
+```text
+- [ ] <H:mm> - <H:mm> <title text> <date marker>
+- [ ] <H:mm> <title text> <date marker>
+```
+
+Legacy schema:
+
+```text
+- [ ] <title text> (<H:mm-H:mm>) <date marker>
+- [ ] <title text> (<H:mm>) <date marker>
+```
+
+Where `<date marker>` is one of `⏳ YYYY-MM-DD`, `🛫 YYYY-MM-DD`, or `📅 YYYY-MM-DD` (depending on integration settings).
+
+**Example Task Lines:**
+
+- `- [ ] 5:00 - 19:00 Sync with Team ⏳ 2025-03-28`
+- `- [ ] Sync with Team (14:00-15:00) ⏳ 2025-03-28`
 
 *Dragging an event on the calendar automatically updates this time-block in your markdown.*
+
+> [!NOTE]
+> Full Calendar parses both formats automatically in calendar/backlog views. You do not need to migrate older tasks for them to remain visible and schedulable.
 
 ---
 
@@ -68,6 +100,7 @@ Once you add a **Tasks** source in **[Calendar Settings](../settings/sources.md)
 *   **Backlog Filter Date**: Choose which missing date makes a task "unscheduled" (e.g., show tasks missing a `⏳`).
 *   **Calendar Display Date**: Choose which date determines the task's position on the grid.
 *   **Auto-Open Edit Modal**: If enabled, dropping a task from the backlog will immediately open the Tasks plugin's native edit modal for further refinement.
+*   **Task Time Format**: Choose how Full Calendar writes time back to task lines. Default is **Day Planner Format**.
 
 <!-- Image missing: ../../assets/calendars/tasks-integration.gif -->
 

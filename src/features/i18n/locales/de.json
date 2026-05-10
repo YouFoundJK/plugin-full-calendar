@@ -560,6 +560,12 @@
       "calendarDisplayDateTarget": {
         "label": "Kalender-Anzeigedatum-Feld",
         "description": "Wählen Sie, welchen Tasks-Datumsmarker Full Calendar zur Anzeige von Tasks-Ereignissen verwendet. Es gibt kein Fallback auf andere Datumsmarker. Starten Sie Obsidian neu oder laden Sie das Plugin neu, damit diese Änderung vollständig wirksam wird."
+      },
+      "taskDisplayFormat": {
+        "label": "Task time format",
+        "description": "Choose how Full Calendar writes time into Tasks lines.",
+        "standard": "Standard format",
+        "dayPlanner": "Day Planner Format"
       }
     }
   },

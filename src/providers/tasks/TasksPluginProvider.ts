@@ -37,7 +37,7 @@ import {
   TasksPluginTask,
   tasksToCalendarTasks
 } from './taskPayloadAdapter';
-import { TasksDateTarget } from '../../types/settings';
+import { TasksDateTarget, TasksDisplayFormat } from '../../types/settings';
 
 export { extractTimeFromTitle } from './taskPayloadAdapter';
 
@@ -68,17 +68,31 @@ export function updateTimeInLine(
   startTime: string | null,
   endTime: string | null,
   timeFormat24h = true,
-  dateSymbol = getScheduledDateEmoji()
+  dateSymbol = getScheduledDateEmoji(),
+  displayFormat: TasksDisplayFormat = 'standard'
 ): string {
   // Strip any existing time block (24h or 12h) from the line.
   const timeBlockPattern =
     /\s*\(\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?(?:-\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?)?\)/g;
-  let result = line.replace(timeBlockPattern, '');
+  const dayPlannerPrefixPattern = /^(\s*-\s\[[ xX]\]\s+)\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?\s+/;
+  let result = line.replace(timeBlockPattern, '').replace(dayPlannerPrefixPattern, '$1');
 
   if (startTime) {
-    const fmt = (t: string) => formatTimeToken(t, timeFormat24h);
+    const isDayPlanner = displayFormat === 'dayPlanner';
+    const fmt = (t: string) => formatTimeToken(t, isDayPlanner ? true : timeFormat24h);
     const fmtStart = fmt(startTime);
     const fmtEnd = endTime && endTime !== startTime ? fmt(endTime) : null;
+    if (isDayPlanner) {
+      const dayPlannerPrefix = fmtEnd ? `${fmtStart} - ${fmtEnd}` : fmtStart;
+      const taskPrefixMatch = result.match(/^(\s*-\s\[[ xX]\]\s+)/);
+      if (taskPrefixMatch) {
+        result = `${taskPrefixMatch[1]}${dayPlannerPrefix} ${result.slice(taskPrefixMatch[1].length)}`;
+      } else {
+        result = `${dayPlannerPrefix} ${result}`;
+      }
+      return result.trimEnd();
+    }
+
     const timeBlock = fmtEnd ? `(${fmtStart}-${fmtEnd})` : `(${fmtStart})`;
 
     // Insert before the configured date marker (guaranteed present after updateTaskLine).
@@ -775,8 +789,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     const startTime = newEvent.allDay ? null : newEvent.startTime;
     const endTime = newEvent.allDay ? null : (newEvent.endTime ?? null);
     const timeFormat24h = PluginState.getSettings().timeFormat24h;
+    const taskDisplayFormat = PluginState.getSettings().tasksIntegration.taskDisplayFormat;
 
-    await this._surgicallyUpdateTask(taskId, newDate, startTime, endTime, timeFormat24h);
+    await this._surgicallyUpdateTask(
+      taskId,
+      newDate,
+      startTime,
+      endTime,
+      timeFormat24h,
+      taskDisplayFormat ?? 'dayPlanner'
+    );
     const [filePath, lineNumberStr] = taskId.split('::');
     return {
       file: { path: filePath },
@@ -808,7 +830,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     newDate: Date,
     startTime?: string | null,
     endTime?: string | null,
-    timeFormat24h = true
+    timeFormat24h = true,
+    taskDisplayFormat: TasksDisplayFormat = 'dayPlanner'
   ): Promise<void> {
     const task = this.allTasks.find(t => t.id === taskId);
     if (!task) {
@@ -823,7 +846,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         startTime,
         endTime ?? null,
         timeFormat24h,
-        this.getDateTargetEmoji(dateTarget)
+        this.getDateTargetEmoji(dateTarget),
+        taskDisplayFormat
       );
     }
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
