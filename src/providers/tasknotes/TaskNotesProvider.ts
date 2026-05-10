@@ -26,8 +26,21 @@ type TaskNotesTask = {
   title: string;
   status: string;
   scheduled?: string;
+  recurrence?: string;
+  recurrence_anchor?: 'scheduled' | 'completion';
+  complete_instances?: string[];
+  skipped_instances?: string[];
   timeEstimate?: number;
   completedDate?: string;
+  customProperties?: Record<string, unknown>;
+  recurringEventId?: string;
+};
+
+type TaskNotesTaskCreationData = {
+  title: string;
+  scheduled?: string;
+  timeEstimate?: number | null;
+  customFrontmatter?: Record<string, unknown>;
 };
 
 type TaskNotesPluginApi = {
@@ -43,6 +56,11 @@ type TaskNotesPluginApi = {
       value: unknown
     ): Promise<TaskNotesTask>;
     toggleStatus?(task: TaskNotesTask): Promise<TaskNotesTask>;
+    toggleRecurringTaskSkipped?(task: TaskNotesTask, date?: Date): Promise<TaskNotesTask>;
+    createTask?(
+      taskData: TaskNotesTaskCreationData,
+      options?: { applyDefaults?: boolean }
+    ): Promise<{ taskInfo: TaskNotesTask }>;
   };
   statusManager?: {
     isCompletedStatus(status: string): boolean;
@@ -329,7 +347,160 @@ export class TaskNotesProvider
     return this.source.dispatchMode || 'search';
   }
 
+  private parseTaskRecurrence(task: TaskNotesTask): { rrule: string; dtstart?: string } | null {
+    if (!task.recurrence || typeof task.recurrence !== 'string') {
+      return null;
+    }
+
+    const normalized = task.recurrence.replace(/\r\n/g, '\n').trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const lines = normalized
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    const dtstartLine = lines.find(line => line.startsWith('DTSTART'));
+    const rruleLineFromLines = lines.find(line => line.startsWith('RRULE:'));
+
+    if (rruleLineFromLines) {
+      return {
+        rrule: rruleLineFromLines,
+        dtstart: dtstartLine
+      };
+    }
+
+    if (normalized.startsWith('DTSTART:') && normalized.includes(';FREQ=')) {
+      const firstSemicolon = normalized.indexOf(';');
+      if (firstSemicolon > 0) {
+        const dtstart = normalized.slice(0, firstSemicolon);
+        const rulePart = normalized.slice(firstSemicolon + 1).trim();
+        if (rulePart.includes('FREQ=')) {
+          const rrule = rulePart.startsWith('RRULE:') ? rulePart : `RRULE:${rulePart}`;
+          return { rrule, dtstart };
+        }
+      }
+    }
+
+    const rulePart = normalized.startsWith('RRULE:') ? normalized : `RRULE:${normalized}`;
+    if (!rulePart.includes('FREQ=')) {
+      return null;
+    }
+
+    return {
+      rrule: rulePart,
+      dtstart: dtstartLine
+    };
+  }
+
+  private extractDateAndTimeFromDtstart(
+    dtstartLine?: string
+  ): { date: string; time: string | null } | null {
+    if (!dtstartLine) {
+      return null;
+    }
+
+    const valuePart = dtstartLine.split(':')[1];
+    if (!valuePart) {
+      return null;
+    }
+
+    const normalized = valuePart.replace(/Z$/, '');
+    if (!/^\d{8}(T\d{6})?$/.test(normalized)) {
+      return null;
+    }
+
+    const dateRaw = normalized.slice(0, 8);
+    const date = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
+
+    if (normalized.length === 8) {
+      return { date, time: null };
+    }
+
+    const timeRaw = normalized.slice(9, 15);
+    const time = `${timeRaw.slice(0, 2)}:${timeRaw.slice(2, 4)}`;
+    return { date, time };
+  }
+
+  private getTaskRecurringParentId(task: TaskNotesTask): string | undefined {
+    if (typeof task.recurringEventId === 'string' && task.recurringEventId.trim().length > 0) {
+      return task.recurringEventId;
+    }
+
+    const fromCustom = task.customProperties?.recurringEventId;
+    if (typeof fromCustom === 'string' && fromCustom.trim().length > 0) {
+      return fromCustom;
+    }
+
+    return undefined;
+  }
+
+  private buildRecurringEvent(task: TaskNotesTask): OFCEvent | null {
+    const parsedRecurrence = this.parseTaskRecurrence(task);
+    if (!parsedRecurrence) {
+      return null;
+    }
+
+    const scheduledParts = this.getScheduledParts(task.scheduled);
+    const dtstartParts = this.extractDateAndTimeFromDtstart(parsedRecurrence.dtstart);
+
+    const startDate = scheduledParts.date || dtstartParts?.date || '';
+    if (!startDate) {
+      return null;
+    }
+
+    const startTime = this.normalizeTime(scheduledParts.time ?? dtstartParts?.time ?? null);
+
+    const uniqueSkipDates = Array.from(
+      new Set((task.skipped_instances ?? []).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)))
+    );
+
+    if (!startTime) {
+      return {
+        type: 'rrule',
+        title: task.title,
+        allDay: true,
+        startDate,
+        endDate: null,
+        rrule: parsedRecurrence.rrule,
+        skipDates: uniqueSkipDates,
+        isTask: true,
+        uid: task.path,
+        recurringEventId: this.getTaskRecurringParentId(task)
+      };
+    }
+
+    const endTime =
+      typeof task.timeEstimate === 'number' && task.timeEstimate > 0
+        ? (this.computeEndTime(startDate, startTime, task.timeEstimate) ?? startTime)
+        : startTime;
+
+    return {
+      type: 'rrule',
+      title: task.title,
+      allDay: false,
+      startDate,
+      endDate: null,
+      startTime,
+      endTime,
+      rrule: parsedRecurrence.rrule,
+      skipDates: uniqueSkipDates,
+      isTask: true,
+      uid: task.path,
+      recurringEventId: this.getTaskRecurringParentId(task)
+    };
+  }
+
   private taskToEvent(task: TaskNotesTask): [OFCEvent, EventLocation | null] | null {
+    if (task.recurrence) {
+      const recurringEvent = this.buildRecurringEvent(task);
+      if (recurringEvent) {
+        return [recurringEvent, { file: { path: task.path }, lineNumber: undefined }];
+      }
+    }
+
     if (!task.scheduled) {
       return null;
     }
@@ -357,7 +528,8 @@ export class TaskNotesProvider
             startTime: safeTime,
             endTime,
             completed: isCompleted ? completedDate : false,
-            uid: task.path
+            uid: task.path,
+            recurringEventId: this.getTaskRecurringParentId(task)
           };
         })()
       : {
@@ -367,7 +539,8 @@ export class TaskNotesProvider
           date,
           endDate: null,
           completed: isCompleted ? completedDate : false,
-          uid: task.path
+          uid: task.path,
+          recurringEventId: this.getTaskRecurringParentId(task)
         };
 
     return [event, { file: { path: task.path }, lineNumber: undefined }];
@@ -617,21 +790,55 @@ export class TaskNotesProvider
 
   async updateEvent(
     handle: EventHandle,
-    _oldEvent: OFCEvent,
+    oldEvent: OFCEvent,
     newEvent: OFCEvent
   ): Promise<EventLocation | null> {
-    if (newEvent.type !== 'single' || !newEvent.date) {
-      throw new Error('TaskNotes provider can only update single, dated events.');
-    }
-
     const taskNotes = this.getTaskNotesPlugin();
     if (!taskNotes) {
       throw new Error('TaskNotes plugin is not available.');
     }
 
-    const task = await taskNotes.cacheManager.getTaskInfo(handle.persistentId);
+    let task = await taskNotes.cacheManager.getTaskInfo(handle.persistentId);
     if (!task) {
       throw new Error(`TaskNotes task not found for ${handle.persistentId}.`);
+    }
+
+    if (newEvent.type === 'rrule' || newEvent.type === 'recurring') {
+      if (oldEvent.type !== 'rrule' && oldEvent.type !== 'recurring') {
+        throw new Error('TaskNotes provider cannot convert single events into recurring events.');
+      }
+
+      if (!taskNotes.taskService.toggleRecurringTaskSkipped) {
+        throw new Error('TaskNotes recurring skip API is not available.');
+      }
+
+      const oldSkipSet = new Set((oldEvent.skipDates ?? []).filter(Boolean));
+      const newSkipSet = new Set((newEvent.skipDates ?? []).filter(Boolean));
+
+      for (const date of newSkipSet) {
+        if (!oldSkipSet.has(date)) {
+          task = await taskNotes.taskService.toggleRecurringTaskSkipped(
+            task,
+            DateTime.fromISO(date).toJSDate()
+          );
+        }
+      }
+
+      for (const date of oldSkipSet) {
+        if (!newSkipSet.has(date)) {
+          task = await taskNotes.taskService.toggleRecurringTaskSkipped(
+            task,
+            DateTime.fromISO(date).toJSDate()
+          );
+        }
+      }
+
+      this.tasksById.set(task.path, task);
+      return { file: { path: task.path }, lineNumber: undefined };
+    }
+
+    if (newEvent.type !== 'single' || !newEvent.date) {
+      throw new Error('TaskNotes provider can only update single, dated events.');
     }
 
     const startTime = !newEvent.allDay ? this.normalizeTime(newEvent.startTime) : null;
@@ -663,10 +870,65 @@ export class TaskNotesProvider
     );
   }
 
-  createInstanceOverride(): Promise<EditableEventResponse> {
-    return Promise.reject(
-      new Error('TaskNotes provider does not support recurring event overrides.')
+  async createInstanceOverride(
+    masterEvent: OFCEvent,
+    _instanceDate: string,
+    newEventData: OFCEvent
+  ): Promise<EditableEventResponse> {
+    if (newEventData.type !== 'single' || !newEventData.date) {
+      throw new Error(
+        'TaskNotes provider can only create single overrides for recurring instances.'
+      );
+    }
+
+    const taskNotes = this.getTaskNotesPlugin();
+    if (!taskNotes?.taskService.createTask) {
+      throw new Error('TaskNotes createTask API is not available.');
+    }
+
+    const masterPersistentId = this.getEventHandle(masterEvent)?.persistentId || masterEvent.uid;
+    if (!masterPersistentId) {
+      throw new Error('TaskNotes provider could not resolve recurring master ID.');
+    }
+
+    const startTime = !newEventData.allDay
+      ? this.normalizeTime(newEventData.startTime ?? null)
+      : null;
+    const endTime = !newEventData.allDay ? this.normalizeTime(newEventData.endTime ?? null) : null;
+    const scheduledValue =
+      newEventData.allDay || !startTime ? newEventData.date : `${newEventData.date}T${startTime}`;
+
+    let timeEstimateValue: number | null = null;
+    if (!newEventData.allDay && startTime && endTime) {
+      timeEstimateValue = this.computeMinutes(startTime, endTime);
+    }
+
+    const created = await taskNotes.taskService.createTask(
+      {
+        title: newEventData.title,
+        scheduled: scheduledValue,
+        timeEstimate: timeEstimateValue,
+        customFrontmatter: { recurringEventId: masterPersistentId }
+      },
+      { applyDefaults: false }
     );
+
+    const createdTask = created.taskInfo;
+    this.tasksById.set(createdTask.path, createdTask);
+
+    const mapped = this.taskToEvent(createdTask);
+    if (!mapped) {
+      throw new Error('TaskNotes override task could not be mapped to a calendar event.');
+    }
+
+    const [createdEvent, location] = mapped;
+    return [
+      {
+        ...createdEvent,
+        recurringEventId: masterPersistentId
+      },
+      location
+    ];
   }
 
   public async toggleComplete(eventId: string, isDone: boolean): Promise<boolean> {
