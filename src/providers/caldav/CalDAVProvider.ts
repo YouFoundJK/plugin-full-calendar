@@ -61,6 +61,170 @@ function parseStatusCode(statusLine: string): number | null {
   return Number(match[1]);
 }
 
+type CalendarObjectRef = {
+  href: string;
+  etag?: string;
+};
+
+function shouldUseCompatibilityFetch(status: number): boolean {
+  return status === 400 || status === 422;
+}
+
+function getSuccessfulPropNode(response: Element): Element | null {
+  const propstats = response.getElementsByTagNameNS('*', 'propstat');
+
+  for (let i = 0; i < propstats.length; i++) {
+    const propstat = propstats[i];
+    const status = propstat.getElementsByTagNameNS('*', 'status')[0]?.textContent || '';
+    const statusCode = parseStatusCode(status);
+    if (statusCode == null || statusCode < 200 || statusCode >= 300) continue;
+
+    const prop = propstat.getElementsByTagNameNS('*', 'prop')[0];
+    if (prop) {
+      return prop;
+    }
+  }
+
+  return null;
+}
+
+function extractCalendarObjectRefs(doc: Document): CalendarObjectRef[] {
+  const refs: CalendarObjectRef[] = [];
+  const responses = Array.from(doc.getElementsByTagNameNS('*', 'response'));
+
+  for (const response of responses) {
+    const hrefNode =
+      response.getElementsByTagNameNS('DAV:', 'href')[0] ||
+      response.getElementsByTagNameNS('*', 'href')[0];
+    const href = hrefNode?.textContent?.trim();
+    if (!href || href.endsWith('/')) {
+      continue;
+    }
+
+    const prop = getSuccessfulPropNode(response);
+    let etag =
+      prop?.getElementsByTagNameNS('DAV:', 'getetag')[0]?.textContent ||
+      prop?.getElementsByTagNameNS('*', 'getetag')[0]?.textContent ||
+      undefined;
+
+    if (etag) {
+      etag = etag.trim();
+    }
+
+    refs.push({ href, etag: etag || undefined });
+  }
+
+  return refs;
+}
+
+function resolveCollectionObjectUrl(collectionUrl: string, href: string): string {
+  return new URL(href, collectionUrl).toString();
+}
+
+async function fetchCalendarObjectsByRefs(
+  collectionUrl: string,
+  refs: CalendarObjectRef[],
+  authHeader?: string
+): Promise<{ ics: string; etag?: string }[]> {
+  const getResults = await Promise.allSettled(
+    refs.map(async ref => {
+      const getHeaders: Record<string, string> = { Accept: 'text/calendar' };
+      if (authHeader) {
+        getHeaders['Authorization'] = authHeader;
+      }
+
+      const getUrl = resolveCollectionObjectUrl(collectionUrl, ref.href);
+      const getRes = await obsidianFetch(getUrl, { method: 'GET', headers: getHeaders });
+      const getText = await getRes.text();
+
+      if (getRes.status < 200 || getRes.status >= 300) {
+        throw new Error(`CalDAV fallback GET failed (${getRes.status}) for ${ref.href}`);
+      }
+
+      const payload = {
+        ics: assertIcsPayload(getText, `CalDAV fallback GET for ${ref.href}`)
+      } as { ics: string; etag?: string };
+
+      if (ref.etag) {
+        payload.etag = ref.etag;
+      }
+
+      return payload;
+    })
+  );
+
+  const successfulObjects: { ics: string; etag?: string }[] = [];
+  const failedResults: PromiseRejectedResult[] = [];
+
+  for (const result of getResults) {
+    if (result.status === 'fulfilled') {
+      successfulObjects.push(result.value);
+    } else {
+      failedResults.push(result);
+    }
+  }
+
+  if (failedResults.length > 0) {
+    console.warn(
+      `[CalDAVProvider] Compatibility fallback skipped ${failedResults.length} event object(s).`
+    );
+  }
+
+  if (successfulObjects.length === 0) {
+    const firstMessage =
+      failedResults[0] && failedResults[0].reason instanceof Error
+        ? failedResults[0].reason.message
+        : String(failedResults[0]?.reason ?? '');
+    throw new Error(
+      firstMessage || 'CalDAV fallback GET did not return any valid calendar objects.'
+    );
+  }
+
+  return successfulObjects;
+}
+
+async function fetchCalendarObjectsViaPropfindFallback(
+  collectionUrl: string,
+  authHeader?: string
+): Promise<{ ics: string; etag?: string }[]> {
+  const propfindHeaders: Record<string, string> = {
+    Depth: '1',
+    'Content-Type': 'application/xml; charset=utf-8',
+    Accept: '*/*'
+  };
+  if (authHeader) {
+    propfindHeaders['Authorization'] = authHeader;
+  }
+
+  const propfindBody = `<?xml version="1.0" encoding="utf-8"?>
+<d:propfind xmlns:d="DAV:">
+  <d:prop>
+    <d:getetag/>
+  </d:prop>
+</d:propfind>`;
+
+  const propfindRes = await obsidianFetch(canonCollection(collectionUrl), {
+    method: 'PROPFIND',
+    headers: propfindHeaders,
+    body: propfindBody
+  });
+  const propfindXml = await propfindRes.text();
+
+  if (propfindRes.status < 200 || propfindRes.status >= 300) {
+    throw new Error(`CalDAV compatibility PROPFIND failed (${propfindRes.status}).`);
+  }
+
+  assertNonEmptyText(propfindXml, 'CalDAV compatibility PROPFIND returned an empty body.');
+  const propfindDoc = ensureXmlDocument(propfindXml, 'CalDAV compatibility PROPFIND');
+
+  const refs = extractCalendarObjectRefs(propfindDoc);
+  if (refs.length === 0) {
+    return [];
+  }
+
+  return fetchCalendarObjectsByRefs(collectionUrl, refs, authHeader);
+}
+
 // --- Direct REPORT + GET implementation (standards-compliant) ---
 async function fetchCalendarObjects(
   collectionUrl: string,
@@ -106,6 +270,12 @@ async function fetchCalendarObjects(
   const xml = await reportRes.text();
 
   if (reportRes.status < 200 || reportRes.status >= 300) {
+    if (shouldUseCompatibilityFetch(reportRes.status)) {
+      console.warn(
+        `[CalDAVProvider] REPORT ${reportRes.status}; attempting compatibility fallback.`
+      );
+      return fetchCalendarObjectsViaPropfindFallback(collectionUrl, authHeader);
+    }
     console.error('[CalDAVProvider] REPORT request failed', reportRes.status, xml.slice(0, 800));
     throw new Error(`REPORT ${reportRes.status}`);
   }
@@ -194,29 +364,11 @@ async function fetchCalendarObjects(
       return [];
     }
 
-    // Fetch each .ics file individually
-    const collectionOrigin = new URL(collectionUrl).origin;
-    const getPromises = eventHrefs.map(async href => {
-      const getUrl = collectionOrigin + href;
-      const getHeaders: Record<string, string> = { Accept: 'text/calendar' };
-      if (authHeader) {
-        getHeaders['Authorization'] = authHeader;
-      }
-
-      const getRes = await obsidianFetch(getUrl, { method: 'GET', headers: getHeaders });
-      const getText = await getRes.text();
-
-      if (getRes.status < 200 || getRes.status >= 300) {
-        throw new Error(`CalDAV fallback GET failed (${getRes.status}) for ${href}`);
-      }
-
-      return assertIcsPayload(getText, `CalDAV fallback GET for ${href}`);
-    });
-
-    const fetchedIcs = await Promise.all(getPromises);
-    // Individual fetches don't easily give us ETags unless we capture headers from each response
-    // For now, mapping to object structure. PROPFIND is better for ETags.
-    return fetchedIcs.map(ics => ({ ics, etag: undefined }));
+    return fetchCalendarObjectsByRefs(
+      collectionUrl,
+      eventHrefs.map(href => ({ href })),
+      authHeader
+    );
   }
 
   return icsList;
@@ -333,14 +485,26 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
         this.source.username,
         this.source.password
       );
-      return icsList
-        .flatMap(({ ics, etag }) =>
-          getEventsFromICS(ics).map(ev => {
+      const parsedEvents: OFCEvent[] = [];
+      let parseFailures = 0;
+
+      for (const { ics, etag } of icsList) {
+        try {
+          const events = getEventsFromICS(ics).map(ev => {
             if (etag) ev.etag = etag.replace(/"/g, ''); // standard ETag usually has quotes
             return ev;
-          })
-        )
-        .map(ev => [ev, null]);
+          });
+          parsedEvents.push(...events);
+        } catch {
+          parseFailures += 1;
+        }
+      }
+
+      if (parseFailures > 0) {
+        console.warn(`[CalDAVProvider] Skipped ${parseFailures} malformed ICS payload(s).`);
+      }
+
+      return parsedEvents.map(ev => [ev, null]);
     } catch (err) {
       console.error('[CalDAVProvider] Failed to fetch events.', err);
       const errorMessage = err instanceof Error ? err.message : String(err);

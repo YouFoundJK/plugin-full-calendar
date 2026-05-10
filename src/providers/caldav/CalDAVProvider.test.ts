@@ -119,6 +119,166 @@ END:VCALENDAR
     expect(events[0][0].title).toBe('Test Event 1');
   });
 
+  it('should use compatibility fallback when REPORT returns 400', async () => {
+    const mockPropfindResponse = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <d:collection/>
+                <c:calendar xmlns:c="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    const mockFallbackPropfind = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/event1.ics</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:getetag>"etag-1"</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    const mockIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:event1
+SUMMARY:Fallback Event
+DTSTART:20230101T100000Z
+DTEND:20230101T110000Z
+END:VEVENT
+END:VCALENDAR
+`;
+
+    mockObsidianFetch
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockPropfindResponse)
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 400,
+        text: () => Promise.resolve('Bad Request')
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockFallbackPropfind)
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        text: () => Promise.resolve(mockIcs)
+      } as Response);
+
+    const events = await provider.getEvents();
+
+    expect(events).toHaveLength(1);
+    expect(events[0][0].title).toBe('Fallback Event');
+    expect(events[0][0].etag).toBe('etag-1');
+
+    expect(mockObsidianFetch).toHaveBeenCalledTimes(4);
+    expect(mockObsidianFetch).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('https://example.com/caldav/user/calendar/events/'),
+      expect.objectContaining({
+        method: 'PROPFIND',
+        headers: expect.objectContaining({
+          Depth: '1'
+        }) as Record<string, unknown>
+      })
+    );
+  });
+
+  it('should keep valid fallback events when some fallback GET requests fail', async () => {
+    const mockPropfindResponse = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <d:collection/>
+                <c:calendar xmlns:c="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    const mockFallbackPropfind = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/bad.ics</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:getetag>"bad-etag"</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+        <d:response>
+          <d:href>/caldav/user/calendar/events/good.ics</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:getetag>"good-etag"</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    const goodIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:good
+SUMMARY:Good Event
+DTSTART:20230101T100000Z
+DTEND:20230101T110000Z
+END:VEVENT
+END:VCALENDAR
+`;
+
+    mockObsidianFetch
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockPropfindResponse)
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 400,
+        text: () => Promise.resolve('Bad Request')
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockFallbackPropfind)
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 500,
+        text: () => Promise.resolve('Server error')
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        text: () => Promise.resolve(goodIcs)
+      } as Response);
+
+    const events = await provider.getEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0][0].title).toBe('Good Event');
+    expect(events[0][0].etag).toBe('good-etag');
+  });
+
   it('should throw error if URL is not a calendar collection', async () => {
     const mockPropfindResponse = `
       <d:multistatus xmlns:d="DAV:">
