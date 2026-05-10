@@ -395,6 +395,51 @@ describe('DailyNoteProvider workflow', () => {
     expect(eventLines).toHaveLength(2);
   });
 
+  it('reassigns uid when moving to a date with an existing uid collision', async () => {
+    const app = createMockApp();
+
+    const provider = new DailyNoteProvider(
+      { id: 'dailynote_1', heading: 'Calendar' },
+      makePlugin(),
+      app
+    );
+
+    const existingTargetDayEvent: OFCEvent = {
+      title: 'Already on target date',
+      type: 'single',
+      allDay: true,
+      date: '2026-05-11',
+      endDate: null
+    };
+
+    const sourceDayEvent: OFCEvent = {
+      title: 'Dragged from previous day',
+      type: 'single',
+      allDay: true,
+      date: '2026-05-10',
+      endDate: null
+    };
+
+    const [targetExisting] = await provider.createEvent(existingTargetDayEvent);
+    const [sourceCreated] = await provider.createEvent(sourceDayEvent);
+
+    expect(targetExisting.uid).toBe('1');
+    expect(sourceCreated.uid).toBe('1');
+
+    const movedEvent = {
+      ...sourceCreated,
+      date: '2026-05-11'
+    } as OFCEvent;
+
+    const moveHandle = provider.getEventHandle(sourceCreated);
+    expect(moveHandle?.persistentId).toBe('2026-05-10::uid:1');
+
+    await provider.updateEvent(moveHandle!, sourceCreated, movedEvent);
+
+    expect(movedEvent.uid).toBe('2');
+    expect(provider.getEventHandle(movedEvent)?.persistentId).toBe('2026-05-11::uid:2');
+  });
+
   it('loads legacy event correctly', async () => {
     const file = makeFile('Daily/2026-04-07.md');
     dailyNotesByPath.set(file.path, file);

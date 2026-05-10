@@ -357,7 +357,7 @@ export class DailyNoteProvider
       const m = moment(newEventData.date);
       let newFile = getDailyNote(m, getAllDailyNotes());
       if (!newFile) newFile = await createDailyNote(m);
-      const eventToStore = await this._assignLocalUid(newFile, newEventData);
+      const eventToStore = await this._assignLocalUid(newFile, { ...newEventData, uid: undefined });
 
       Object.assign(newEventData, eventToStore);
 
