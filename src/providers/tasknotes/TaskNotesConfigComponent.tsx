@@ -26,14 +26,17 @@ export const TaskNotesConfigComponent: React.FC<TaskNotesConfigComponentProps> =
   onSave,
   onClose
 }) => {
-  const [name, setName] = React.useState(config.name || 'TaskNotes');
+  const [name, setName] = React.useState(config.name || t('settings.calendars.types.tasknotes'));
+  const [dispatchMode, setDispatchMode] = React.useState<'search' | 'create'>(
+    config.dispatchMode || 'search'
+  );
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setIsSubmitting(true);
-    onSave({ ...config, id: config.id || '', name });
+    onSave({ ...config, id: config.id || '', name, dispatchMode });
   };
 
   return (
@@ -67,8 +70,36 @@ export const TaskNotesConfigComponent: React.FC<TaskNotesConfigComponentProps> =
                 setName(e.target.value);
                 onConfigChange({ ...config, name: e.target.value });
               }}
-              placeholder="TaskNotes"
+              placeholder={t('settings.calendars.tasknotes.calendarName.placeholder')}
             />
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-item-info">
+            <div className="setting-item-name">
+              {t('settings.calendars.tasknotes.dispatchMode.label')}
+            </div>
+            <div className="setting-item-description">
+              {t('settings.calendars.tasknotes.dispatchMode.description')}
+            </div>
+          </div>
+          <div className="setting-item-control">
+            <select
+              value={dispatchMode}
+              onChange={e => {
+                const mode = e.target.value as 'search' | 'create';
+                setDispatchMode(mode);
+                onConfigChange({ ...config, name, dispatchMode: mode });
+              }}
+            >
+              <option value="search">
+                {t('settings.calendars.tasknotes.dispatchMode.options.search')}
+              </option>
+              <option value="create">
+                {t('settings.calendars.tasknotes.dispatchMode.options.create')}
+              </option>
+            </select>
           </div>
         </div>
 

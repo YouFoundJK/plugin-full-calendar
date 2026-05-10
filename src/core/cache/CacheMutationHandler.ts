@@ -7,6 +7,7 @@ import { CalendarProvider } from '../../providers/Provider';
 import { CacheContext } from './CacheSyncHandler';
 import { EventPathLocation } from '../EventStore';
 import { DateTime } from 'luxon';
+import { DelegatedProviderActionError } from '../../providers/Provider';
 
 export interface MutationContext extends CacheContext {
   calendars: Map<string, CalendarProvider<unknown>>;
@@ -118,6 +119,19 @@ export class CacheMutationHandler {
       this.ctx.timeEngine.scheduleCacheRebuild();
       return true;
     } catch (e) {
+      if (e instanceof DelegatedProviderActionError) {
+        PluginState.getProviderRegistry().removeMapping(optimisticId);
+        this.ctx.store.delete(optimisticId);
+
+        if (options?.silent) {
+          this.ctx.updateQueue.toAdd.delete(optimisticId);
+        } else {
+          this.ctx.flushUpdateQueue([optimisticId], []);
+        }
+
+        return true;
+      }
+
       console.error(`Failed to create event with provider. Rolling back cache state.`, {
         error: e
       });

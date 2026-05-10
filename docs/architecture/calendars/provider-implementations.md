@@ -9,7 +9,7 @@
 | ----------- | --------------------- | ----------------------------------------------------------------------- |
 | Local       | Full Note, Daily Note | Vault-backed, file-centric parsing and persistence.                     |
 | Remote      | Google, CalDAV, ICS   | Network-backed with auth/protocol handling and staged loading behavior. |
-| Integration | Tasks, Bases          | Plugin/API integration with custom semantics beyond simple event files. |
+| Integration | Tasks, TaskNotes, Bases | Plugin/API integration with custom semantics beyond simple event files. |
 
 ## Key implementation notes
 
@@ -86,6 +86,26 @@ Serialization modes:
 
 Parsing must support both schemas regardless of the selected write mode. Do not introduce a read-mode switch tied to `taskDisplayFormat`.
 
+### TaskNotes Provider (provider-owned NLP endpoint)
+
+TaskNotes is a plugin-runtime integration provider and intentionally avoids HTTP transport. It reads from TaskNotes cache APIs and writes via TaskNotes service/UI endpoints.
+
+Key contracts:
+
+- Create behavior is provider-owned and configurable by source `dispatchMode`.
+- Default dispatch endpoint is `search` (Search + Create selector flow).
+- Alternate endpoint `create` opens TaskNotes create modal directly.
+- Full Calendar NLP dispatch remains generic; provider decides endpoint semantics.
+
+TaskNotes create delegation path:
+
+1. NLP resolves target calendar and calls `EventCache.addEvent(...)`.
+2. Registry routes to `TaskNotesProvider.createEvent(...)`.
+3. Provider opens TaskNotes UI, prefills NLP query, then throws `DelegatedProviderActionError`.
+4. Cache mutation handler treats this as intentional handoff and rolls back optimistic placeholder state without generic failure notice.
+
+This prevents duplicate modal UX and keeps provider-specific behavior outside dispatcher logic.
+
 ## Cross-provider orchestration constraints
 
 - Registry is the only runtime router for provider read/write operations.
@@ -102,3 +122,4 @@ Parsing must support both schemas regardless of the selected write mode. Do not 
 - `src/providers/caldav/CalDAVProvider.ts`
 - `src/providers/google/GoogleProvider.ts`
 - `src/providers/tasks/TasksPluginProvider.ts`
+- `src/providers/tasknotes/TaskNotesProvider.ts`

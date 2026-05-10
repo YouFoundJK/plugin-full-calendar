@@ -21,6 +21,13 @@ export class RecoverableProviderLoadError extends Error {
   }
 }
 
+export class DelegatedProviderActionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DelegatedProviderActionError';
+  }
+}
+
 export interface ProviderLoadRetryPolicy {
   retryDelayMs: number;
   maxAttempts?: number;

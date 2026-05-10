@@ -11,7 +11,7 @@
 | Payload (Lexer) | Language-specific regex rules and DSL action mappings | `src/features/nlp/payloads/<locale>.json` |
 | Loader | Payload resolution, in-memory caching, disk caching, remote fetch | `src/features/nlp/loader.ts` |
 | Smart Calendar | Pure-function title scanner for dynamic calendar name matching | `src/features/nlp/smartCalendar.ts` |
-| Dispatcher | Maps `NLPActionObject` → plugin actions (modals, navigation, settings, sync) | `src/features/nlp/dispatcher.ts` |
+| Dispatcher | Maps `NLPActionObject` → plugin actions (cache/provider mutations, navigation, settings, sync) | `src/features/nlp/dispatcher.ts` |
 | Modal | User-facing input with live preview, debounced parsing | `src/features/nlp/NLPCommandModal.ts` |
 
 ## Data flow
@@ -44,7 +44,7 @@ Raw Input String
        │
        ▼
 ┌────────────┐
-│ Dispatcher │  CREATE_EVENT     → launchCreateModal()
+│ Dispatcher │  CREATE_EVENT     → EventCache.addEvent() → ProviderRegistry → Provider.createEvent()
 │            │  NAVIGATE_*       → InternalAPI.changeView()
 │            │  OPEN_*           → InternalAPI / PluginState
 │            │  GOTO_DATE        → changeView('timeGridDay') + gotoDate()
@@ -59,7 +59,7 @@ Raw Input String
 
 | Intent | Short-circuits? | Dispatcher target |
 |---|---|---|
-| `CREATE_EVENT` | No | `launchCreateModal()` with smart calendar resolution |
+| `CREATE_EVENT` | No | `EventCache.addEvent()` with smart calendar resolution and provider-owned create endpoint |
 | `NEW_EVENT` | No | `openCreateModal()` (blank form) |
 | `NAVIGATE_DAY` | Yes | `changeView('timeGridDay')` |
 | `NAVIGATE_WEEK` | Yes | `changeView('timeGridWeek')` |
@@ -75,6 +75,17 @@ Raw Input String
 | `GOTO_DATE` | **No** | `changeView('timeGridDay')` + `gotoDate(date)` |
 
 > **GOTO_DATE does NOT short-circuit** so that subsequent date rules (e.g., `tomorrow`, `next tuesday`) can still modify the context date before the dispatcher navigates.
+
+## Provider delegation contract for CREATE_EVENT
+
+`CREATE_EVENT` stays generic by design:
+
+1. Dispatcher builds a normalized `OFCEvent` payload.
+2. Dispatcher calls `EventCache.addEvent(calendarId, event)`.
+3. `EventCache` routes write through `ProviderRegistry` to the selected provider.
+4. Provider decides endpoint behavior.
+
+Example: `TaskNotesProvider` may delegate to native TaskNotes UI and throw `DelegatedProviderActionError` to signal an intentional handoff. Cache mutation handling then rolls back optimistic placeholder state without surfacing a generic create-failed error.
 
 ## DSL command reference
 

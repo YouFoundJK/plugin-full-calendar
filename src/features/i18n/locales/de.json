@@ -176,6 +176,15 @@
       "defaultValidation": "Diese Aufgabe kann an diesem Datum nicht geplant werden.",
       "scheduledNoModal": "Aufgabe geplant, aber Tasks-Bearbeitungsmodal konnte nicht geöffnet werden.",
       "apiUnavailable": "Obsidian Tasks Plugin API nicht verfügbar."
+    },
+    "tasknotes": {
+      "addSourceFirst": "Add a TaskNotes calendar source first, then return here to configure integration.",
+      "handoffSingleOnly": "TaskNotes NLP handoff currently supports single events only.",
+      "handoffTitleRequired": "TaskNotes NLP handoff requires a title.",
+      "handoffStartTimeRequired": "TaskNotes NLP handoff requires a valid start time for timed events.",
+      "invalidSourceId": "TaskNotes provider source ID must follow tasknotes_[n] pattern (received: {{sourceId}}).",
+      "createModalUnavailable": "TaskNotes plugin is unavailable or does not expose create modal integration.",
+      "selectorUnavailable": "TaskNotes plugin is unavailable or does not expose selector integration."
     }
   },
   "eventCache": {
@@ -438,14 +447,23 @@
         },
         "calendarName": {
           "label": "Kalendername",
-          "description": "Anzeigename für diesen Kalender"
+          "description": "Anzeigename für diesen Kalender",
+          "placeholder": "TaskNotes"
         },
         "readOnly": {
           "label": "Ereignisse",
           "description": "Ereignisbearbeitungen öffnen den TaskNotes-Editor. Drag-and-Drop aktualisiert das geplante Datum und die Dauer, ohne ein Modal anzuzeigen."
         },
         "adding": "Wird hinzugefügt...",
-        "cancel": "Abbrechen"
+        "cancel": "Abbrechen",
+        "dispatchMode": {
+          "label": "NLP Dispatch Endpoint",
+          "description": "Choose where Full Calendar forwards TaskNotes-targeted NLP requests.",
+          "options": {
+            "search": "Search + Create (selector modal)",
+            "create": "Direct Create (task creation modal NLP)"
+          }
+        }
       }
     },
     "categorization": {
@@ -573,6 +591,29 @@
       "buyMeACoffee": "☕ Spendier mir einen Kaffee",
       "suggestFeature": "💡 Funktion vorschlagen",
       "raiseIssue": "🐛 Problem melden"
+    },
+    "tasknotesIntegration": {
+      "title": "TaskNotes Integration",
+      "descriptionConfigured": "Configure how NLP dispatches to TaskNotes.",
+      "descriptionMissingSource": "TaskNotes integration is available. Add a TaskNotes calendar source to configure it.",
+      "docsLink": "TaskNotes integration",
+      "configButton": "Configure TaskNotes integration",
+      "noSource": "Add a TaskNotes calendar source first before configuring TaskNotes integration.",
+      "modal": {
+        "title": "TaskNotes Integration"
+      },
+      "source": {
+        "label": "TaskNotes Calendar Source",
+        "description": "Select which TaskNotes calendar source to configure."
+      },
+      "dispatchMode": {
+        "label": "NLP Dispatch Endpoint",
+        "description": "Choose whether Full Calendar should open TaskNotes search NLP or create NLP.",
+        "options": {
+          "search": "Search + Create (selector modal)",
+          "create": "Direct Create (task creation modal NLP)"
+        }
+      }
     }
   },
   "modals": {

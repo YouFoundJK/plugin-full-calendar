@@ -64,6 +64,26 @@ The **FCR Command** is your single point of control for Full Calendar Remastered
 
 ---
 
+## Provider-Aware Create Flow
+
+`CREATE_EVENT` commands are dispatched through the same provider pipeline used by normal event creation.
+
+*   For local/standard calendar providers, events are created directly in the target source.
+*   For TaskNotes providers, creation is delegated to TaskNotes native UI.
+
+This means NLP create commands no longer open an extra intermediate Full Calendar create modal before provider handling.
+
+## TaskNotes NLP Endpoint
+
+For TaskNotes calendars, configure the NLP endpoint at **Settings → Integrations → TaskNotes Integration**:
+
+*   **Search + Create (selector modal)** *(default)*
+*   **Direct Create (task creation modal NLP)**
+
+Both modes prefill TaskNotes with parsed NLP text so you can quickly confirm and finalize in TaskNotes-native UI.
+
+---
+
 ## Smart Calendar Matching
 
 When you type `in <name>` at the end of your input, the system checks if `<name>` matches any of your [configured calendars](../settings/sources.md) (case-insensitive). If it does, the event is routed to that calendar and the `in <name>` is stripped from the title.

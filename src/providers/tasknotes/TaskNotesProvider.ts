@@ -4,6 +4,7 @@ import { DateTime } from 'luxon';
 import {
   CalendarProvider,
   CalendarProviderCapabilities,
+  DelegatedProviderActionError,
   RecoverableProviderLoadError,
   SyncKeyProvider
 } from '../Provider';
@@ -16,6 +17,7 @@ import {
   TaskNotesConfigComponent,
   TaskNotesConfigComponentProps
 } from './TaskNotesConfigComponent';
+import { t } from '../../features/i18n/i18n';
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
 
@@ -49,6 +51,8 @@ type TaskNotesPluginApi = {
     task: TaskNotesTask,
     onTaskUpdated?: (task: TaskNotesTask) => void
   ) => void | Promise<void>;
+  openTaskSelectorWithCreate?: () => Promise<void>;
+  openTaskCreationModal?: (prePopulatedValues?: Partial<{ title: string }>) => void;
   emitter?: {
     on(event: string, cb: (data: unknown) => void): void;
     off(event: string, cb: (data: unknown) => void): void;
@@ -225,6 +229,104 @@ export class TaskNotesProvider
       diff += 24 * 60;
     }
     return Math.round(diff);
+  }
+
+  private isTaskNotesSourceId(): boolean {
+    return /^tasknotes_\d+$/i.test(this.source.id);
+  }
+
+  private toTaskNotesNLPQuery(event: OFCEvent): string {
+    if (event.type !== 'single' || !event.date) {
+      throw new Error(t('notices.tasknotes.handoffSingleOnly'));
+    }
+
+    const title = event.title?.trim();
+    if (!title) {
+      throw new Error(t('notices.tasknotes.handoffTitleRequired'));
+    }
+
+    if (event.allDay) {
+      return `${title} scheduled ${event.date}`;
+    }
+
+    const normalizedStart = this.normalizeTime(event.startTime ?? null);
+    if (!normalizedStart) {
+      throw new Error(t('notices.tasknotes.handoffStartTimeRequired'));
+    }
+
+    const normalizedEnd = this.normalizeTime(event.endTime ?? null);
+    let durationToken = '';
+    if (normalizedEnd) {
+      const minutes = this.computeMinutes(normalizedStart, normalizedEnd);
+      if (minutes && minutes > 0) {
+        durationToken = ` for ${minutes}m`;
+      }
+    }
+
+    return `${title} scheduled ${event.date} ${normalizedStart}${durationToken}`;
+  }
+
+  private prefillTaskSelectorInput(text: string, attempt = 0): void {
+    const modal = document.querySelector('.task-selector-with-create-modal');
+    const input = modal?.querySelector('input.prompt-input') as HTMLInputElement | null;
+
+    if (input) {
+      input.value = text;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+      input.setSelectionRange(text.length, text.length);
+      return;
+    }
+
+    if (attempt < 20) {
+      window.setTimeout(() => this.prefillTaskSelectorInput(text, attempt + 1), 50);
+    }
+  }
+
+  private prefillTaskCreationInput(text: string, attempt = 0): void {
+    const activeEditor = (this.plugin.app.workspace as unknown as { activeEditor?: unknown })
+      .activeEditor as
+      | {
+          editMode?: {
+            setValue?: (value: string) => void;
+            editor?: { cm?: { focus?: () => void } };
+          };
+        }
+      | undefined;
+
+    const hasCreateModal = !!document.querySelector('.mod-tasknotes .nl-markdown-editor');
+    if (!hasCreateModal) {
+      if (attempt < 20) {
+        window.setTimeout(() => this.prefillTaskCreationInput(text, attempt + 1), 50);
+      }
+      return;
+    }
+
+    const editMode = activeEditor?.editMode;
+    if (editMode?.setValue) {
+      editMode.setValue(text);
+      editMode.editor?.cm?.focus?.();
+      return;
+    }
+
+    const fallbackTextarea: HTMLTextAreaElement | null = document.querySelector(
+      '.mod-tasknotes .nl-input'
+    );
+    if (fallbackTextarea) {
+      fallbackTextarea.value = text;
+      fallbackTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+      fallbackTextarea.focus();
+      fallbackTextarea.setSelectionRange(text.length, text.length);
+      return;
+    }
+
+    if (attempt < 20) {
+      window.setTimeout(() => this.prefillTaskCreationInput(text, attempt + 1), 50);
+    }
+  }
+
+  private getDispatchMode(): 'search' | 'create' {
+    return this.source.dispatchMode || 'search';
   }
 
   private taskToEvent(task: TaskNotesTask): [OFCEvent, EventLocation | null] | null {
@@ -442,7 +544,7 @@ export class TaskNotesProvider
 
   getCapabilities(): CalendarProviderCapabilities {
     return {
-      canCreate: false,
+      canCreate: true,
       canEdit: true,
       canDelete: false,
       hasCustomEditUI: true,
@@ -486,10 +588,31 @@ export class TaskNotesProvider
     return Row;
   }
 
-  createEvent(): Promise<EditableEventResponse> {
-    return Promise.reject(
-      new Error('Full Calendar cannot create TaskNotes tasks directly. Use TaskNotes instead.')
-    );
+  async createEvent(event: OFCEvent): Promise<EditableEventResponse> {
+    if (!this.isTaskNotesSourceId()) {
+      throw new Error(t('notices.tasknotes.invalidSourceId', { sourceId: this.source.id }));
+    }
+
+    const taskNotes = this.getTaskNotesPlugin();
+    const nlpQuery = this.toTaskNotesNLPQuery(event);
+    const dispatchMode = this.getDispatchMode();
+
+    if (dispatchMode === 'create') {
+      if (!taskNotes?.openTaskCreationModal) {
+        throw new Error(t('notices.tasknotes.createModalUnavailable'));
+      }
+      taskNotes.openTaskCreationModal();
+      this.prefillTaskCreationInput(nlpQuery);
+    } else {
+      if (!taskNotes?.openTaskSelectorWithCreate) {
+        throw new Error(t('notices.tasknotes.selectorUnavailable'));
+      }
+      const openPromise = taskNotes.openTaskSelectorWithCreate();
+      this.prefillTaskSelectorInput(nlpQuery);
+      await openPromise;
+    }
+
+    throw new DelegatedProviderActionError('TaskNotes delegated creation to provider UI.');
   }
 
   async updateEvent(

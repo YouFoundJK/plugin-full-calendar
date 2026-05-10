@@ -15,7 +15,6 @@ import { PluginState } from '../../core/PluginState';
 import { Notice } from 'obsidian';
 import type { OFCEvent } from '../../types';
 import type { NLPActionObject } from './types';
-import { launchCreateModal } from '../../ui/modals/event_modal';
 import { resolveSmartCalendar } from './smartCalendar';
 import { t } from '../i18n/i18n';
 
@@ -62,9 +61,9 @@ export function hasExplicitTime(action: NLPActionObject): boolean {
 }
 
 /**
- * Builds a partial OFCEvent from the NLP action object for the create modal.
+ * Builds a single-event OFCEvent from the NLP action object.
  */
-function buildPartialEvent(action: NLPActionObject): Partial<OFCEvent> {
+function buildCreateEvent(action: NLPActionObject): OFCEvent {
   const timed = hasExplicitTime(action);
 
   if (timed) {
@@ -75,6 +74,7 @@ function buildPartialEvent(action: NLPActionObject): Partial<OFCEvent> {
       title: action.title,
       type: 'single',
       date: action.date,
+      endDate: null,
       allDay: false,
       startTime: `${pad(action.hours)}:${pad(action.minutes)}`,
       endTime: `${pad(endHour)}:${pad(endMinute)}`
@@ -85,6 +85,7 @@ function buildPartialEvent(action: NLPActionObject): Partial<OFCEvent> {
     title: action.title,
     type: 'single',
     date: action.date,
+    endDate: null,
     allDay: true
   };
 }
@@ -231,6 +232,6 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
     return;
   }
 
-  const partialEvent = buildPartialEvent(resolved);
-  launchCreateModal(PluginState.getPlugin(), partialEvent, calendarId);
+  const createEventData = buildCreateEvent(resolved);
+  await PluginState.getCache().addEvent(calendarId, createEventData);
 }

@@ -29,6 +29,9 @@ Access these settings in **Full Calendar Settings → Calendar Sources**.
 *   **Tasks Plugin**: Enable to pull tasks into your calendar. See: [Tasks Integration](../calendars/tasks-plugin-integration.md).
     *   **Date Mapping**: Choose which task date to use: `Scheduled`, `Due`, or `Start`.
     *   **Backlog Behavior**: Enable `Open edit modal after backlog drop` to immediately refine tasks dragged onto the calendar.
+*   **TaskNotes Plugin**: Enable to sync scheduled TaskNotes tasks into your calendar. See: [TaskNotes Integration](../calendars/tasknotes.md).
+    *   **NLP Endpoint Mode**: Configure whether NLP creation opens `Search + Create` (default) or `Direct Create`.
+    *   **Integration Visibility**: TaskNotes Integration always appears in **Settings → Integrations** and will prompt you to add a TaskNotes source if one is missing.
 *   **ActivityWatch**: Sync your system activity as background events. See: [ActivityWatch Integration](../calendars/activitywatch.md).
     *   **API URL**: Defaults to `http://127.0.0.1:5600`.
     *   **Sync Strategy**: Choose `Auto` or `Custom` date ranges.

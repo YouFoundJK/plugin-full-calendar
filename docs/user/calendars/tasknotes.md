@@ -14,9 +14,20 @@ The TaskNotes provider connects to the TaskNotes internal cache. It interprets a
 
 
 *   **Bidirectional Sync**: Dragging a TaskNotes event on the calendar updates its scheduled date/time in the original note.
-*   **FCR Command Support**: Use the **[FCR Command](../features/nlp.md)** to quickly reschedule or create tasks that TaskNotes will track.
+*   **FCR Command Support**: Use the **[FCR Command](../features/nlp.md)** to quickly create TaskNotes tasks using TaskNotes-native NLP UI.
 *   **Custom UI**: Clicking a TaskNotes event opens the native TaskNotes edit modal for advanced task refinement.
 *   **Status Awareness**: The provider respects completion statuses. Completed tasks are visually distinguished on the calendar.
+
+## NLP Endpoint Modes
+
+When an NLP create command targets a TaskNotes calendar, Full Calendar delegates creation to TaskNotes UI.
+
+The endpoint mode is configurable at **Settings → Integrations → TaskNotes Integration**:
+
+*   **Search + Create (selector modal)** *(default)*: Opens TaskNotes selector + create flow with NLP text prefilled.
+*   **Direct Create (creation modal NLP)**: Opens TaskNotes create modal directly with NLP text prefilled.
+
+This default is intentionally conservative and discoverable: Search + Create helps users validate the target task context before confirming.
 
 ## Setup
 
@@ -24,15 +35,16 @@ The TaskNotes provider connects to the TaskNotes internal cache. It interprets a
 2.  Go to **[Full Calendar Settings](../settings/index.md) → [Calendar Sources](../settings/sources.md)**.
 3.  Click **Add Source** and select **TaskNotes**.
 4.  The provider will automatically attempt to link with the TaskNotes cache.
+5.  (Optional) Open **Integrations → TaskNotes Integration** and change NLP endpoint mode.
 
 ## Capabilities
 
 | Feature | Supported | Notes |
 |---|---|---|
-| Create Events | ❌ No | Tasks must be created via TaskNotes or in **[Markdown](local.md)**. |
+| Create Events | ✅ Yes | Full Calendar delegates creation to TaskNotes native UI (Search + Create by default). |
 | Edit Date/Time | ✅ Yes | Drag-and-drop support for rescheduling. |
 | Edit Metadata | ✅ Yes | Uses TaskNotes' native edit modal. |
-| Delete Events | ❌ No | Delete the task in the source file to remove it. |
+| Delete Events | ❌ No | Delete is delegated to TaskNotes. |
 | Recurring Events| ❌ No | TaskNotes recurring logic is managed internally. |
 
 ---

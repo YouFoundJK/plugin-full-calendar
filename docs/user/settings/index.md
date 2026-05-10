@@ -17,7 +17,7 @@
 ## Settings Surface
 
 ### Infrastructure
-- [Calendar Sources](sources.md): Local Vault, Google Calendar, CalDAV, ICS, Tasks, ActivityWatch.
+- [Calendar Sources](sources.md): Local Vault, Google Calendar, CalDAV, ICS, Tasks, TaskNotes, ActivityWatch.
 - [API and Security](api.md): Token management and cross-plugin authorization.
 
 ### Experience

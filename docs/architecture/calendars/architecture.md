@@ -13,7 +13,7 @@
 |---|---|---|
 | Local | Full Note, Daily Note | Vault-backed parsing and write paths with file/location identity. |
 | Remote | Google, CalDAV, ICS | Network-backed ingestion and protocol/auth handling. |
-| Integration | [Tasks](tasks-integration.md), TaskNotes, Bases | Plugin-integrated sources with custom semantics beyond plain calendar files. |
+| Integration | [Tasks](tasks-integration.md), [TaskNotes](provider-implementations.md#tasknotes-provider-provider-owned-nlp-endpoint), Bases | Plugin-integrated sources with custom semantics beyond plain calendar files. |
 
 ## Runtime flow (provider perspective)
 
@@ -49,4 +49,5 @@ See: [Provider Blueprint](provider-blueprint.md)
 - `src/providers/caldav/`
 - `src/providers/ics/`
 - `src/providers/tasks/`
+- `src/providers/tasknotes/`
 - `src/providers/bases/`

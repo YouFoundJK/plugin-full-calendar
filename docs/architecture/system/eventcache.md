@@ -25,6 +25,16 @@
 4. Cache delegates durable write to the owning provider via `ProviderRegistry`.
 5. Success path replaces optimistic state with provider-authoritative result; failure path rolls back and republishes correction.
 
+### Delegated provider action exception path
+
+Some providers intentionally hand off creation/edit UX to native integration UI instead of returning a created entity immediately.
+
+- Signal: provider throws `DelegatedProviderActionError`.
+- Cache behavior: roll back optimistic placeholder state.
+- UX behavior: do not show generic create-failed notice.
+
+This contract allows provider-owned UI flows (for example TaskNotes NLP handoff) without polluting dispatcher logic with provider-specific branches.
+
 !!! warning "Invariant"
     No subsystem should mutate persistent event state outside `EventCache`. Direct provider-to-UI mutation paths are architectural violations.
 
