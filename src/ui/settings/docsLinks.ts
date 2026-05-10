@@ -5,6 +5,12 @@
  */
 
 import { t } from '../../features/i18n/i18n';
+import {
+  createLinksFragment,
+  createMarkdownLinksFragment,
+  LinkItem,
+  linkItemsToSegments
+} from './linkTextFragments';
 
 export interface DocsLink {
   text: string;
@@ -21,27 +27,26 @@ export function createDocsLinksFragment(
   links: DocsLink[],
   prefix = t('global.learnMore')
 ): DocumentFragment {
-  const fragment = document.createDocumentFragment();
   if (links.length === 0) {
-    return fragment;
+    return document.createDocumentFragment();
   }
 
+  const fragment = document.createDocumentFragment();
   fragment.appendText(prefix);
-  links.forEach((link, index) => {
-    if (index > 0) {
-      fragment.appendText(' | ');
-    }
-    fragment.createEl('a', {
-      text: link.text,
-      href: toDocsUrl(link.path)
-    });
-  });
+  fragment.appendText(' ');
+
+  const linkItems: LinkItem[] = links.map(link => ({
+    text: link.text,
+    href: toDocsUrl(link.path)
+  }));
+
+  fragment.append(createLinksFragment(linkItemsToSegments(linkItems), { betweenLinksText: ' | ' }));
   return fragment;
 }
 
 export function createDescWithDocs(description: string, links: DocsLink[]): DocumentFragment {
   const fragment = document.createDocumentFragment();
-  fragment.appendText(description);
+  fragment.append(createMarkdownLinksFragment(description));
   if (links.length > 0) {
     fragment.appendText(' ');
     fragment.append(createDocsLinksFragment(links));

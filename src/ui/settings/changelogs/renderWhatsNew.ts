@@ -11,6 +11,7 @@ import './changelog.css';
 import { t } from '../../../features/i18n/i18n';
 import FullCalendarPlugin from '../../../main';
 import { WhatsNewModal } from '../../modals/WhatsNewModal';
+import { createMarkdownLinksFragment } from '../linkTextFragments';
 
 /**
  * Checks if the plugin version has changed and displays the "What's New" modal if necessary.
@@ -54,7 +55,9 @@ export function renderWhatsNew(containerEl: HTMLElement, onShowChangelog: () => 
 
   const whatsNewList = whatsNewContainer.createDiv('full-calendar-whats-new-list');
   latestVersion.changes.forEach(change => {
-    const item = new Setting(whatsNewList).setName(change.title).setDesc(change.description);
+    const item = new Setting(whatsNewList)
+      .setName(change.title)
+      .setDesc(createMarkdownLinksFragment(change.description));
 
     const iconEl = document.createElement('span');
     iconEl.className = `change-icon-settings change-type-${change.type}`;

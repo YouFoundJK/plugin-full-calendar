@@ -13,6 +13,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { changelogData } from './changelogData';
 import { Version } from './changelogData';
+import { parseMarkdownLinks } from '../linkTextFragments';
 import { Setting, requestUrl } from 'obsidian';
 import './changelog.css';
 import { t } from '../../../features/i18n/i18n';
@@ -30,34 +31,24 @@ interface VersionSectionProps {
   embedded?: boolean;
 }
 
-const parseLinks = (text: string): React.ReactNode[] => {
-  const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.substring(lastIndex, match.index));
+const renderMarkdownLinks = (text: string): React.ReactNode[] =>
+  parseMarkdownLinks(text).map((segment, idx) => {
+    if (segment.kind === 'text') {
+      return segment.text;
     }
-    parts.push(
+
+    return (
       <a
-        href={match[2]}
+        href={segment.href}
         target="_blank"
         rel="noopener noreferrer"
-        key={match.index}
+        key={`md-link-${idx}`}
         onClick={e => e.stopPropagation()}
       >
-        {match[1]}
+        {segment.text}
       </a>
     );
-    lastIndex = regex.lastIndex;
-  }
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
-  }
-  return parts;
-};
+  });
 
 export const VersionSection = ({
   version,
@@ -85,8 +76,8 @@ export const VersionSection = ({
               {change.type === 'fix' && '🐛'}
             </div>
             <div className="change-content">
-              <div className="change-title">{parseLinks(change.title)}</div>
-              <div className="change-description">{parseLinks(change.description)}</div>
+              <div className="change-title">{renderMarkdownLinks(change.title)}</div>
+              <div className="change-description">{renderMarkdownLinks(change.description)}</div>
             </div>
           </div>
         ))}

@@ -433,19 +433,19 @@
       },
       "tasknotes": {
         "zeroConfig": {
-          "label": "Zero Configuration Required",
-          "description": "This provider reads TaskNotes tasks directly from your vault and maps scheduled tasks to calendar events."
+          "label": "Nessuna configurazione richiesta",
+          "description": "Questo provider legge le attività di TaskNotes direttamente dal tuo vault e mappa le attività pianificate agli eventi del calendario."
         },
         "calendarName": {
-          "label": "Calendar Name",
-          "description": "Display name for this calendar"
+          "label": "Nome calendario",
+          "description": "Nome visualizzato per questo calendario"
         },
         "readOnly": {
-          "label": "Events",
-          "description": "Event edits open the TaskNotes editor. Drag-and-drop updates scheduled date and duration without showing a modal."
+          "label": "Eventi",
+          "description": "Le modifiche agli eventi aprono l'editor di TaskNotes. Il drag-and-drop aggiorna la data pianificata e la durata senza mostrare una finestra modale."
         },
-        "adding": "Adding...",
-        "cancel": "Cancel"
+        "adding": "Aggiunta...",
+        "cancel": "Annulla"
       }
     },
     "categorization": {
@@ -562,11 +562,17 @@
         "description": "Scegli quale marcatore di data di Tasks Full Calendar utilizza per visualizzare gli eventi Tasks. Nessun fallback su altri marcatori di data. Riavvia Obsidian o ricarica il plugin affinché questa modifica abbia effetto."
       },
       "taskDisplayFormat": {
-        "label": "Task time format",
-        "description": "Choose how Full Calendar writes time into Tasks lines.",
-        "standard": "Standard format",
-        "dayPlanner": "Day Planner Format"
+        "label": "Formato ora dell'attività",
+        "description": "Scegli come Full Calendar scrive l'ora nelle righe di Tasks.",
+        "standard": "Formato standard",
+        "dayPlanner": "Formato Day Planner"
       }
+    },
+    "footer": {
+      "message": "Ti piace quello che vedi?",
+      "buyMeACoffee": "☕ Offrimi un caffè",
+      "suggestFeature": "💡 Suggerisci una funzione",
+      "raiseIssue": "🐛 Segnala un problema"
     }
   },
   "modals": {
@@ -1010,8 +1016,8 @@
     "errorBody": "Full Calendar: Impossibile mostrare la notifica desktop. Controlla la console per errori."
   },
   "global": {
-    "learnMore": "Learn more",
-    "settingsHeader": "Switch between focused setting groups to keep configuration lighter and easier to scan."
+    "learnMore": "Scopri di più",
+    "settingsHeader": "Passa tra gruppi di impostazioni focalizzati per mantenere la configurazione più leggera e facile da scansionare."
   },
   "api": {
     "authorization": {

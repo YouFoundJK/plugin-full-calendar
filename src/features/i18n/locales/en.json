@@ -571,6 +571,12 @@
         "standard": "Standard format",
         "dayPlanner": "Day Planner Format"
       }
+    },
+    "footer": {
+      "message": "Do you like what you see?",
+      "buyMeACoffee": "☕ Buy me a coffee",
+      "suggestFeature": "💡 Suggest a new feature",
+      "raiseIssue": "🐛 Raise an issue"
     }
   },
   "modals": {
