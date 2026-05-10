@@ -412,7 +412,8 @@
           "description": "Mot de passe du compte"
         },
         "importButton": "Importer les calendriers",
-        "importing": "Importation..."
+        "importing": "Importation...",
+        "importFailed": "Failed to import calendar"
       },
       "tasks": {
         "zeroConfig": {

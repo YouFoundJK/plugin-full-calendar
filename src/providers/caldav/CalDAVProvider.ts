@@ -9,6 +9,7 @@ import FullCalendarPlugin from '../../main';
 import { CalDAVConfigComponent } from './CalDAVConfigComponent';
 import * as React from 'react';
 import { obsidianFetch } from './obsidian-fetch_caldav';
+import { createBasicAuthHeader } from './auth_caldav';
 
 import { fetchCalendarInfo } from './helper_caldav';
 
@@ -83,10 +84,7 @@ async function fetchCalendarObjects(
   </c:filter>
 </c:calendar-query>`;
 
-  const authHeader =
-    username && password
-      ? 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64')
-      : undefined;
+  const authHeader = createBasicAuthHeader(username, password);
 
   const reportHeaders: Record<string, string> = {
     Depth: '1',
@@ -431,10 +429,9 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
     // Fetch existing
     // We need to fetch the raw text of the ICS file.
     const headers: Record<string, string> = {};
-    if (this.source.username && this.source.password) {
-      headers['Authorization'] =
-        'Basic ' +
-        Buffer.from(`${this.source.username}:${this.source.password}`).toString('base64');
+    const authHeader = createBasicAuthHeader(this.source.username, this.source.password);
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
     }
 
     // Use obsidianFetch directly for GET
@@ -474,10 +471,9 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
   // Helper to attach auth and fetch
   private async doRequest(url: string, options: RequestInit) {
     const headers = (options.headers as Record<string, string>) || {};
-    if (this.source.username && this.source.password) {
-      headers['Authorization'] =
-        'Basic ' +
-        Buffer.from(`${this.source.username}:${this.source.password}`).toString('base64');
+    const authHeader = createBasicAuthHeader(this.source.username, this.source.password);
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
     }
     options.headers = headers;
 

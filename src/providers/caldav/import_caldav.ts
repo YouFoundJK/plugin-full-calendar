@@ -14,12 +14,15 @@ export async function importCalendars(
 ): Promise<CalDAVSource[]> {
   const { serverUrl, collectionUrl } = splitCalDAVUrl(inputUrl);
 
-  const { isCalendar, displayName, color } = await fetchCalendarInfo(collectionUrl, {
+  const { isCalendar, displayName, color, error } = await fetchCalendarInfo(collectionUrl, {
     username: auth.username,
     password: auth.password
   });
 
   if (!isCalendar) {
+    if (error) {
+      throw new Error(`Failed to import CalDAV calendar: ${error}`);
+    }
     throw new Error(
       'The provided URL does not appear to be a valid CalDAV calendar collection. Please ensure it points directly to a calendar.'
     );

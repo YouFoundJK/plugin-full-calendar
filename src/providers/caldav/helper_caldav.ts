@@ -1,5 +1,6 @@
 // --- helpers/url.ts ---
 import { obsidianFetch } from './obsidian-fetch_caldav';
+import { createBasicAuthHeader } from './auth_caldav';
 
 export function ensureTrailingSlash(u: string) {
   return u.endsWith('/') ? u : u + '/';
@@ -18,16 +19,16 @@ export function eqUrl(a: string, b: string) {
 export async function fetchCalendarInfo(
   url: string,
   auth?: { username?: string; password?: string }
-): Promise<{ isCalendar: boolean; displayName?: string; color?: string }> {
+): Promise<{ isCalendar: boolean; displayName?: string; color?: string; error?: string }> {
   const headers: Record<string, string> = {
     Depth: '0',
     'Content-Type': 'application/xml; charset=utf-8',
     Accept: '*/*'
   };
 
-  if (auth?.username && auth?.password) {
-    headers['Authorization'] =
-      'Basic ' + Buffer.from(`${auth.username}:${auth.password}`).toString('base64');
+  const authHeader = createBasicAuthHeader(auth?.username, auth?.password);
+  if (authHeader) {
+    headers['Authorization'] = authHeader;
   }
 
   const body = `<?xml version="1.0" encoding="utf-8" ?>
@@ -43,7 +44,10 @@ export async function fetchCalendarInfo(
     const res = await obsidianFetch(url, { method: 'PROPFIND', headers, body });
 
     if (res.status >= 400) {
-      return { isCalendar: false };
+      return {
+        isCalendar: false,
+        error: `CalDAV PROPFIND failed with status ${res.status}.`
+      };
     }
 
     const xml = await res.text();
@@ -77,7 +81,8 @@ export async function fetchCalendarInfo(
     return { isCalendar, displayName, color };
   } catch (e) {
     console.error(`[CalDAV] Error fetching calendar info for ${url}`, e);
-    return { isCalendar: false };
+    const message = e instanceof Error ? e.message : String(e);
+    return { isCalendar: false, error: message };
   }
 }
 

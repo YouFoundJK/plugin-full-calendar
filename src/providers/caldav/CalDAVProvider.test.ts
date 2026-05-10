@@ -445,6 +445,42 @@ describe('fetchCalendarInfo', () => {
       password: 'creds'
     });
     expect(result.isCalendar).toBe(false);
+    expect(result.error).toContain('status 401');
+  });
+
+  it('builds UTF-8 Basic auth header without relying on direct Buffer usage', async () => {
+    const xml = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <cal:calendar xmlns:cal="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 207,
+      text: () => Promise.resolve(xml)
+    } as Response);
+
+    await fetchCalendarInfo('https://example.com/cal/', {
+      username: 'usér',
+      password: 'päss'
+    });
+
+    expect(mockObsidianFetch).toHaveBeenCalledWith(
+      'https://example.com/cal/',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Basic dXPDqXI6cMOkc3M='
+        }) as Record<string, unknown>
+      })
+    );
   });
 
   it('handles color values without a leading # prefix', async () => {
@@ -567,5 +603,20 @@ describe('importCalendars', () => {
         []
       )
     ).rejects.toThrow('does not appear to be a valid CalDAV calendar collection');
+  });
+
+  it('throws a structured error when discovery request fails', async () => {
+    mockObsidianFetch.mockResolvedValueOnce({
+      status: 503,
+      text: () => Promise.resolve('Service unavailable')
+    } as Response);
+
+    await expect(
+      importCalendars(
+        { type: 'basic', username: 'u', password: 'p' },
+        'https://example.com/files/',
+        []
+      )
+    ).rejects.toThrow('Failed to import CalDAV calendar: CalDAV PROPFIND failed with status 503.');
   });
 });

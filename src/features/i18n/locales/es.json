@@ -412,7 +412,8 @@
           "description": "Contraseña de la cuenta"
         },
         "importButton": "Importar calendarios",
-        "importing": "Importando..."
+        "importing": "Importando...",
+        "importFailed": "Failed to import calendar"
       },
       "tasks": {
         "zeroConfig": {
