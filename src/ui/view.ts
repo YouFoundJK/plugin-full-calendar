@@ -288,6 +288,8 @@ export class CalendarView extends ItemView implements ViewContext {
         },
         toggleTask: (eventApi, isDone) =>
           this.interactionHandler.handleToggleTask(eventApi, isDone),
+        getRecurringInstanceState: eventApi =>
+          this.interactionHandler.getRecurringTaskInstanceState(eventApi),
         dateRightClick: (date: Date, mouseEvent: MouseEvent) => {
           if (!this.dateNavigation && this.fullCalendarView) {
             this.dateNavigation = createDateNavigation(this.fullCalendarView, calendarEl);

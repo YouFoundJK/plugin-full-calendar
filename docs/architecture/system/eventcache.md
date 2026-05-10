@@ -35,6 +35,23 @@ Some providers intentionally hand off creation/edit UX to native integration UI 
 
 This contract allows provider-owned UI flows (for example TaskNotes NLP handoff) without polluting dispatcher logic with provider-specific branches.
 
+### Recurring instance state path (provider-agnostic)
+
+Recurring-instance status operations (complete/skip for a single occurrence) use a normalized contract rather than provider-type branching.
+
+Flow:
+
+1. UI interaction identifies a recurring instance date.
+2. Interaction layer asks the owning provider for normalized instance state (`RecurringInstanceStateProvider.getRecurringInstanceState`).
+3. UI submits desired normalized state (`setRecurringInstanceState`) back to the provider.
+4. Provider performs backend-native persistence and emits/propagates cache refresh updates through existing provider update channels.
+
+Invariants:
+
+- Core/UI never inspect backend-specific recurring fields.
+- Provider implementations own translation from normalized state to backend semantics.
+- Providers that do not implement this optional interface keep existing fallback behavior.
+
 !!! warning "Invariant"
     No subsystem should mutate persistent event state outside `EventCache`. Direct provider-to-UI mutation paths are architectural violations.
 

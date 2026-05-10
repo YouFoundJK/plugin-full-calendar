@@ -2,6 +2,10 @@ import { Notice } from 'obsidian';
 import { DateTime } from 'luxon';
 import { EventApi, EventClickArg } from '@fullcalendar/core';
 import { PluginState } from '../../core/PluginState';
+import type {
+  RecurringInstanceState,
+  RecurringInstanceStateProvider
+} from '../../providers/Provider';
 import { t } from '../../features/i18n/i18n';
 import { dateEndpointsToFrontmatter, fromEventApi } from '../../core/interop';
 import { TasksBacklogView, TASKS_BACKLOG_VIEW_TYPE } from '../../providers/tasks/TasksBacklogView';
@@ -9,6 +13,38 @@ import { ViewContext } from './ViewContext';
 
 export class ViewEventInteractionHandler {
   constructor(private ctx: ViewContext) {}
+
+  public async getRecurringTaskInstanceState(
+    eventApi: EventApi
+  ): Promise<RecurringInstanceState | null> {
+    const eventId = eventApi.id;
+    const eventDetails = PluginState.getCache().store.getEventDetails(eventId);
+    if (!eventDetails) return null;
+
+    const { event, calendarId } = eventDetails;
+    const provider = PluginState.getProviderRegistry().getInstance(calendarId);
+    const isRecurringSystem =
+      event.type === 'recurring' || event.type === 'rrule' || !!event.recurringEventId;
+    if (!provider || !isRecurringSystem || !eventApi.start) {
+      return null;
+    }
+
+    if (
+      'getRecurringInstanceState' in provider &&
+      typeof provider.getRecurringInstanceState === 'function'
+    ) {
+      const instanceDate = DateTime.fromJSDate(eventApi.start).toISODate();
+      if (!instanceDate) {
+        return null;
+      }
+
+      return await (
+        provider as unknown as RecurringInstanceStateProvider
+      ).getRecurringInstanceState(event, instanceDate);
+    }
+
+    return null;
+  }
 
   public async handleEventClick(info: EventClickArg): Promise<void> {
     try {
@@ -163,12 +199,38 @@ export class ViewEventInteractionHandler {
     const { event, calendarId } = eventDetails;
     const provider = PluginState.getProviderRegistry().getInstance(calendarId);
 
+    const isRecurringSystem =
+      event.type === 'recurring' || event.type === 'rrule' || event.recurringEventId;
+
+    if (provider && isRecurringSystem && eventApi.start) {
+      const instanceDate = DateTime.fromJSDate(eventApi.start).toISODate();
+      if (instanceDate) {
+        if (
+          'getRecurringInstanceState' in provider &&
+          typeof provider.getRecurringInstanceState === 'function' &&
+          'setRecurringInstanceState' in provider &&
+          typeof provider.setRecurringInstanceState === 'function'
+        ) {
+          const recurringProvider = provider as unknown as RecurringInstanceStateProvider;
+          const currentState = (await recurringProvider.getRecurringInstanceState(
+            event,
+            instanceDate
+          )) ?? {
+            completed: false,
+            skipped: false
+          };
+
+          return await recurringProvider.setRecurringInstanceState(event, instanceDate, {
+            ...currentState,
+            completed: isDone
+          });
+        }
+      }
+    }
+
     if (provider && provider.toggleComplete) {
       return await provider.toggleComplete(eventId, isDone);
     }
-
-    const isRecurringSystem =
-      event.type === 'recurring' || event.type === 'rrule' || event.recurringEventId;
 
     if (!isRecurringSystem) {
       const { toggleTask } = await import('../../types/tasks');

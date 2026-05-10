@@ -112,6 +112,40 @@ This prevents duplicate modal UX and keeps provider-specific behavior outside di
 - Providers expose capabilities (`canCreate`, `canEdit`, `canDelete`) and optional custom hooks (`toggleComplete`, `canBeScheduledAt`).
 - Persistent event identity must be surfaced through `getEventHandle()` so global identifier mapping remains stable.
 
+## Provider-agnostic recurring instance semantics
+
+Recurring-instance completion and skip behavior must remain provider-owned while the UI and core remain provider-agnostic.
+
+Contract location:
+
+- `src/providers/Provider.ts` defines `RecurringInstanceState` and optional `RecurringInstanceStateProvider` hooks.
+
+Contract shape:
+
+- `getRecurringInstanceState(event, instanceDate)` returns normalized state (`completed`, `skipped`) for a concrete instance date.
+- `setRecurringInstanceState(event, instanceDate, nextState)` applies provider-owned persistence and returns success/failure.
+
+Design goals:
+
+- No provider-specific recurrence fields (for example backend-specific arrays or flags) may leak into generic UI logic.
+- UI checkbox and styling logic must consume only normalized `RecurringInstanceState`.
+- Mutation orchestration remains generic; provider adapters translate normalized state into backend-native operations.
+
+### Rollout pattern for additional providers
+
+When adding recurring-instance semantics to another provider (CalDAV, Google, Tasks, etc.), follow this sequence:
+
+1. Keep provider-specific recurrence persistence internal to the provider implementation.
+2. Implement `RecurringInstanceStateProvider` in that provider.
+3. Map backend-native state to `RecurringInstanceState` in `getRecurringInstanceState(...)`.
+4. Map normalized target state back to backend-native write operations in `setRecurringInstanceState(...)`.
+5. Avoid introducing provider-type checks in shared UI/core pathways.
+
+### Current adoption
+
+- TaskNotes provider implements this contract and adapts TaskNotes recurring-instance APIs behind the generic interface.
+- Existing providers that do not implement this optional interface continue to use legacy fallback behavior.
+
 ## Integration anchors
 
 - `src/providers/Provider.ts`

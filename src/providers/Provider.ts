@@ -53,6 +53,11 @@ export interface EventContextAction {
   run(): Promise<void> | void;
 }
 
+export interface RecurringInstanceState {
+  completed: boolean;
+  skipped: boolean;
+}
+
 export interface CalendarProvider<TConfig> {
   readonly type: string;
   readonly displayName: string;
@@ -165,4 +170,24 @@ export interface SyncKeyProvider {
 
 export interface CanonicalTitleProvider {
   getCanonicalTitle(event: OFCEvent): string;
+}
+
+/**
+ * Optional interface for providers that own recurring-instance semantics.
+ *
+ * This keeps provider-specific recurrence state (for example, arrays of completed
+ * or skipped dates) encapsulated inside each provider and exposes only a generic,
+ * provider-agnostic contract to core/UI layers.
+ */
+export interface RecurringInstanceStateProvider {
+  getRecurringInstanceState(
+    event: OFCEvent,
+    instanceDate: string
+  ): Promise<RecurringInstanceState | null>;
+
+  setRecurringInstanceState(
+    event: OFCEvent,
+    instanceDate: string,
+    nextState: RecurringInstanceState
+  ): Promise<boolean>;
 }

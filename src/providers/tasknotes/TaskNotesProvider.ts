@@ -5,6 +5,8 @@ import {
   CalendarProvider,
   CalendarProviderCapabilities,
   DelegatedProviderActionError,
+  RecurringInstanceState,
+  RecurringInstanceStateProvider,
   RecoverableProviderLoadError,
   SyncKeyProvider
 } from '../Provider';
@@ -56,6 +58,7 @@ type TaskNotesPluginApi = {
       value: unknown
     ): Promise<TaskNotesTask>;
     toggleStatus?(task: TaskNotesTask): Promise<TaskNotesTask>;
+    toggleRecurringTaskComplete?(task: TaskNotesTask, date?: Date): Promise<TaskNotesTask>;
     toggleRecurringTaskSkipped?(task: TaskNotesTask, date?: Date): Promise<TaskNotesTask>;
     createTask?(
       taskData: TaskNotesTaskCreationData,
@@ -78,7 +81,10 @@ type TaskNotesPluginApi = {
 };
 
 export class TaskNotesProvider
-  implements CalendarProvider<TaskNotesProviderConfig>, SyncKeyProvider
+  implements
+    CalendarProvider<TaskNotesProviderConfig>,
+    SyncKeyProvider,
+    RecurringInstanceStateProvider
 {
   static readonly type = 'tasknotes';
   static readonly displayName = 'TaskNotes';
@@ -437,6 +443,41 @@ export class TaskNotesProvider
     return undefined;
   }
 
+  private getRecurringStateForDate(
+    task: TaskNotesTask,
+    instanceDate: string
+  ): RecurringInstanceState {
+    const completed = Array.isArray(task.complete_instances)
+      ? task.complete_instances.includes(instanceDate)
+      : false;
+    const skipped = Array.isArray(task.skipped_instances)
+      ? task.skipped_instances.includes(instanceDate)
+      : false;
+    return { completed, skipped };
+  }
+
+  private async getTaskForEvent(event: OFCEvent): Promise<TaskNotesTask | null> {
+    if (!event.uid) {
+      return null;
+    }
+
+    const cached = this.tasksById.get(event.uid);
+    if (cached) {
+      return cached;
+    }
+
+    const taskNotes = this.getTaskNotesPlugin();
+    if (!taskNotes) {
+      return null;
+    }
+
+    const fetched = await taskNotes.cacheManager.getTaskInfo(event.uid);
+    if (fetched) {
+      this.tasksById.set(fetched.path, fetched);
+    }
+    return fetched;
+  }
+
   private buildRecurringEvent(task: TaskNotesTask): OFCEvent | null {
     const parsedRecurrence = this.parseTaskRecurrence(task);
     if (!parsedRecurrence) {
@@ -741,6 +782,73 @@ export class TaskNotesProvider
 
   computeSyncKey(event: OFCEvent): string {
     return event.uid || JSON.stringify(event);
+  }
+
+  public async getRecurringInstanceState(
+    event: OFCEvent,
+    instanceDate: string
+  ): Promise<RecurringInstanceState | null> {
+    if (!instanceDate) {
+      return null;
+    }
+
+    if (event.type === 'single' && event.recurringEventId) {
+      const completed =
+        event.completed !== undefined && event.completed !== null && !!event.completed;
+      return { completed, skipped: false };
+    }
+
+    if (event.type !== 'rrule' && event.type !== 'recurring') {
+      return null;
+    }
+
+    const task = await this.getTaskForEvent(event);
+    if (!task || !task.recurrence) {
+      return null;
+    }
+
+    return this.getRecurringStateForDate(task, instanceDate);
+  }
+
+  public async setRecurringInstanceState(
+    event: OFCEvent,
+    instanceDate: string,
+    nextState: RecurringInstanceState
+  ): Promise<boolean> {
+    if ((event.type !== 'rrule' && event.type !== 'recurring') || !event.uid) {
+      return false;
+    }
+
+    const taskNotes = this.getTaskNotesPlugin();
+    if (!taskNotes) {
+      return false;
+    }
+
+    let task = await this.getTaskForEvent(event);
+    if (!task || !task.recurrence) {
+      return false;
+    }
+
+    const instanceDateObj = DateTime.fromISO(instanceDate).toJSDate();
+    const currentState = this.getRecurringStateForDate(task, instanceDate);
+
+    if (nextState.completed !== currentState.completed) {
+      if (!taskNotes.taskService.toggleRecurringTaskComplete) {
+        return false;
+      }
+      task = await taskNotes.taskService.toggleRecurringTaskComplete(task, instanceDateObj);
+    }
+
+    const refreshedState = this.getRecurringStateForDate(task, instanceDate);
+    if (nextState.skipped !== refreshedState.skipped) {
+      if (!taskNotes.taskService.toggleRecurringTaskSkipped) {
+        return false;
+      }
+      task = await taskNotes.taskService.toggleRecurringTaskSkipped(task, instanceDateObj);
+    }
+
+    this.tasksById.set(task.path, task);
+    return true;
   }
 
   getSettingsRowComponent(): FCReactComponent<{
