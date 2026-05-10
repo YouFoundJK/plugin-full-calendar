@@ -26,7 +26,7 @@ const resources: Record<string, { translation: Record<string, unknown> }> = {
 /**
  * Available language codes
  */
-const SUPPORTED_LANGUAGES = ['en', 'de', 'fr', 'it', 'es'] as const;
+const SUPPORTED_LANGUAGES = ['en', 'de', 'fr', 'it', 'es', 'zh'] as const;
 export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number];
 
 /**

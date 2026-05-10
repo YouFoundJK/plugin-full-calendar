@@ -121,6 +121,12 @@ Once you add a **Tasks** source in **[Calendar Settings](../settings/sources.md)
 *   **Auto-Open Edit Modal**: If enabled, dropping a task from the backlog will immediately open the Tasks plugin's native edit modal for further refinement.
 *   **Task Time Format**: Choose how Full Calendar writes time back to task lines. Default is **Day Planner Format**.
 
+## Advanced Settings
+
+Access the tasks Plugin Integration specific settings at (only visible if the Tasks Calendar is added).
+
+> Settings -> Integrations -> Tasks Plugin Integration
+
 <!-- Image missing: ../../assets/calendars/tasks-integration.gif -->
 
 ---
