@@ -61,6 +61,15 @@ The provider enforces a strict mapping policy to maintain data integrity:
 - **Consistency**: It only reads from the *specific* date target configured by the user (Scheduled, Due, or Start).
 - **Reasoning**: This prevents "ghosting" where a task appears on the calendar under one date but is tracked in the backlog under another, ensuring a predictable user experience.
 
+## Backlog View Filtering Contract
+
+Backlog filtering is split by responsibility:
+
+- **Provider-level filter** (`TasksPluginProvider.getUndatedTasks()`): decides which tasks are backlog candidates using `backlogDateTarget` and completion state.
+- **View-level filter** (`TasksBacklogView`): applies client-side fuzzy filtering over candidate tasks by title and file path.
+
+The view-level fuzzy filter is intentionally non-destructive: it does not mutate provider state and only narrows visible rows in the panel.
+
 ---
 
 [Provider Architecture](architecture.md) · [Event Cache](../system/eventcache.md) · [API Surface](../system/api-architecture.md)

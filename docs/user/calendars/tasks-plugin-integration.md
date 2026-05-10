@@ -19,6 +19,25 @@ The integration revolves around two surfaces: the **Backlog** (where unscheduled
 
 4.  **Execute**: Mark tasks as complete directly on the calendar; the checkbox state syncs back to your note instantly.
 
+## Backlog Filtering
+
+The Tasks Backlog supports two filters that work together:
+
+- **Missing Date** dropdown: selects which missing Tasks date marker defines backlog membership (`⏳`, `🛫`, or `📅`).
+- **Fuzzy Search** input: filters visible backlog rows by task title, file name, or full file path.
+
+### Fuzzy Search behavior
+
+- Search is case-insensitive.
+- Multiple keywords are supported (space-separated).
+- A keyword matches if it appears directly or as a fuzzy character subsequence in title/path text.
+
+Examples:
+
+- `meeting daily` matches tasks with both terms across title/path.
+- `projA/roadmap` matches by path fragment.
+- `wkpln` can match `weekly-plan` via fuzzy subsequence matching.
+
 ---
 
 ## Data Mapping & Emojis

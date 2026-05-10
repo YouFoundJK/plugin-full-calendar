@@ -26,9 +26,14 @@ export class TasksBacklogView extends ItemView {
   private plugin: FullCalendarPlugin;
   private tasksProvider: TasksPluginProvider | null = null;
   private undatedTasks: ParsedUndatedTask[] = [];
+  private filteredTasks: ParsedUndatedTask[] = [];
   private displayedTasks: ParsedUndatedTask[] = [];
   private readonly TASKS_PER_PAGE = 200;
   private currentPage = 1;
+  private searchQuery = '';
+  private shouldRestoreSearchFocus = false;
+  private searchSelectionStart: number | null = null;
+  private searchSelectionEnd: number | null = null;
   private draggable: Draggable | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: FullCalendarPlugin) {
@@ -103,9 +108,45 @@ export class TasksBacklogView extends ItemView {
    * Updates the displayed tasks based on current page and pagination settings.
    */
   private updateDisplayedTasks(): void {
+    this.filteredTasks = this.filterTasks(this.undatedTasks, this.searchQuery);
     const startIndex = (this.currentPage - 1) * this.TASKS_PER_PAGE;
     const endIndex = startIndex + this.TASKS_PER_PAGE;
-    this.displayedTasks = this.undatedTasks.slice(startIndex, endIndex);
+    this.displayedTasks = this.filteredTasks.slice(startIndex, endIndex);
+  }
+
+  private filterTasks(tasks: ParsedUndatedTask[], query: string): ParsedUndatedTask[] {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return tasks;
+    }
+
+    const tokens = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
+
+    return tasks.filter(task => {
+      const filePath = task.location.path.toLowerCase();
+      const fileName = task.location.path.split('/').pop()?.toLowerCase() ?? filePath;
+      const title = task.title.toLowerCase();
+      const haystacks = [title, fileName, filePath];
+
+      return tokens.every(token =>
+        haystacks.some(
+          haystack => haystack.includes(token) || this.isFuzzySubsequence(token, haystack)
+        )
+      );
+    });
+  }
+
+  private isFuzzySubsequence(needle: string, haystack: string): boolean {
+    if (!needle) return true;
+    let i = 0;
+    let j = 0;
+    while (i < needle.length && j < haystack.length) {
+      if (needle[i] === haystack[j]) {
+        i++;
+      }
+      j++;
+    }
+    return i === needle.length;
   }
 
   /**
@@ -141,10 +182,14 @@ export class TasksBacklogView extends ItemView {
     const headerTitleRow = header.createEl('div', { cls: 'tasks-backlog-title-row' });
     headerTitleRow.createEl('h3', { text: 'Tasks backlog' });
     this.renderDateTargetSelector(headerTitleRow);
+    this.renderSearchBar(header);
 
     if (this.undatedTasks.length > 0) {
+      const countText = this.searchQuery.trim()
+        ? `${this.filteredTasks.length} of ${this.undatedTasks.length} ${this.getBacklogCountLabel()}`
+        : `${this.undatedTasks.length} ${this.getBacklogCountLabel()}`;
       header.createEl('div', {
-        text: `${this.undatedTasks.length} ${this.getBacklogCountLabel()}`,
+        text: countText,
         cls: 'tasks-backlog-count'
       });
     }
@@ -156,6 +201,29 @@ export class TasksBacklogView extends ItemView {
       this.renderTasksList(container);
       this.renderPaginationControls(container);
     }
+
+    this.restoreSearchFocusIfNeeded();
+  }
+
+  private restoreSearchFocusIfNeeded(): void {
+    if (!this.shouldRestoreSearchFocus) {
+      return;
+    }
+
+    const input = this.containerEl.querySelector<HTMLInputElement>('.tasks-backlog-search-input');
+    if (!input) {
+      this.shouldRestoreSearchFocus = false;
+      return;
+    }
+
+    input.focus();
+    if (this.searchSelectionStart !== null && this.searchSelectionEnd !== null) {
+      input.setSelectionRange(this.searchSelectionStart, this.searchSelectionEnd);
+    }
+
+    this.shouldRestoreSearchFocus = false;
+    this.searchSelectionStart = null;
+    this.searchSelectionEnd = null;
   }
 
   /**
@@ -163,10 +231,43 @@ export class TasksBacklogView extends ItemView {
    */
   private renderEmptyState(container: HTMLElement): void {
     const emptyState = container.createEl('div', { cls: 'tasks-backlog-empty' });
+    if (this.undatedTasks.length > 0 && this.searchQuery.trim()) {
+      emptyState.createEl('div', {
+        text: `No tasks matched "${this.searchQuery}" for missing ${this.getBacklogDateTargetLabel()}.`
+      });
+      emptyState.createEl('div', {
+        text: 'Try fewer keywords or search by part of the task title or file path.',
+        cls: 'tasks-backlog-help'
+      });
+      return;
+    }
+
     emptyState.createEl('div', { text: `No tasks missing ${this.getBacklogDateTargetLabel()}.` });
     emptyState.createEl('div', {
       text: 'Change the backlog date field above to review a different task date marker.',
       cls: 'tasks-backlog-help'
+    });
+  }
+
+  private renderSearchBar(container: HTMLElement): void {
+    const searchRow = container.createEl('div', { cls: 'tasks-backlog-search-row' });
+    const input = searchRow.createEl('input', {
+      cls: 'tasks-backlog-search-input',
+      attr: {
+        type: 'search',
+        placeholder: 'Filter by task title or file path',
+        'aria-label': 'Filter tasks backlog by task title or file path'
+      }
+    });
+    input.value = this.searchQuery;
+    input.addEventListener('input', () => {
+      this.searchQuery = input.value;
+      this.searchSelectionStart = input.selectionStart;
+      this.searchSelectionEnd = input.selectionEnd;
+      this.shouldRestoreSearchFocus = true;
+      this.currentPage = 1;
+      this.updateDisplayedTasks();
+      this.render();
     });
   }
 
@@ -284,7 +385,7 @@ export class TasksBacklogView extends ItemView {
    * Renders pagination controls if needed.
    */
   private renderPaginationControls(container: HTMLElement): void {
-    const totalPages = Math.ceil(this.undatedTasks.length / this.TASKS_PER_PAGE);
+    const totalPages = Math.ceil(this.filteredTasks.length / this.TASKS_PER_PAGE);
 
     if (totalPages <= 1) return;
 
@@ -315,7 +416,7 @@ export class TasksBacklogView extends ItemView {
     // Load More button (alternative to pagination)
     if (this.currentPage < totalPages) {
       const loadMoreBtn = pagination.createEl('button', {
-        text: `Load More (${Math.min(this.TASKS_PER_PAGE, this.undatedTasks.length - this.currentPage * this.TASKS_PER_PAGE)} more)`,
+        text: `Load More (${Math.min(this.TASKS_PER_PAGE, this.filteredTasks.length - this.currentPage * this.TASKS_PER_PAGE)} more)`,
         cls: 'tasks-backlog-load-more'
       });
       loadMoreBtn.addEventListener('click', () => this.loadMore());
@@ -337,7 +438,7 @@ export class TasksBacklogView extends ItemView {
    * Navigates to the next page.
    */
   private goToNextPage(): void {
-    const totalPages = Math.ceil(this.undatedTasks.length / this.TASKS_PER_PAGE);
+    const totalPages = Math.ceil(this.filteredTasks.length / this.TASKS_PER_PAGE);
     if (this.currentPage < totalPages) {
       this.currentPage++;
       this.updateDisplayedTasks();
@@ -350,7 +451,7 @@ export class TasksBacklogView extends ItemView {
    */
   private loadMore(): void {
     const newEndIndex = this.currentPage * this.TASKS_PER_PAGE + this.TASKS_PER_PAGE;
-    this.displayedTasks = this.undatedTasks.slice(0, newEndIndex);
+    this.displayedTasks = this.filteredTasks.slice(0, newEndIndex);
     this.render();
   }
 
