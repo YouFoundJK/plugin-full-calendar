@@ -31,9 +31,20 @@ Full Calendar supports multiple calendar sources:
 
 The FullCalendar library is released under the [GPLv3 license](https://fullcalendar.io/license). It's an awesome piece of work, and it would not have been possible to make something like this plugin so easily without it.
 
-[![Support me on Ko-Fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/youfoundjk)
+### Your turn to support OpenSource
+> FCR is developed at a [high velocity](https://youfoundjk.github.io/plugin-full-calendar/SustainabilityEthics/#the-economic-reality-of-maintenance) using AI-augmented engineering. To keep up this pace (and avoid reverting to slow, manual coding), the project relies on a small community subsidy to cover AI tools (25 USD / month). 
 
-### Installation
+If this project has helped you consider supporting:
+
+<div align="center">
+  <br>
+  <a href="https://youfoundjk.github.io/plugin-full-calendar/SustainabilityEthics/#what-this-means-for-you-and-me" style="display: inline-block; padding: 12px 26px; background-color: #3a7be4; color: #ffffff; text-decoration: none; font-family: -apple-system, sans-serif; font-size: 16px; font-weight: bold; border-radius: 7px; border: 2px solid #d6dee5;">
+    💖 Sponsor FCR & View Transparency Math
+  </a>
+  <br><br>
+</div>
+
+## Installation
 
 You can also head over to the [releases page](https://github.com/YouFoundJK/plugin-full-calendar/releases/latest) and unzip the latest release inside of the `.obsidian/plugins` directory inside your vault.
 
@@ -42,6 +53,8 @@ Or install via **BRAT**:
 1. Install the [Obsidian42 BRAT](https://github.com/TfTHacker/obsidian42-brat) community plugin.
 2. In BRAT, add this repo URL: `https://github.com/YouFoundJK/plugin-full-calendar`.
 3. Click **Add Plugin** and let Obsidian download it. Restart if prompted.
+
+
 ## Contributors ✨
 
 Thanks goes to these wonderful people ([✨](https://allcontributors.org/docs/en/emoji-key)):
