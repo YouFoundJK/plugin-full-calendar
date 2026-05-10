@@ -1,6 +1,12 @@
 {
-  "version": 2,
+  "version": 3,
   "locale": "de",
+  "categoryParsing": {
+    "spokenDelimiterRegex": "\\s+(?:dash|bindestrich)\\s+",
+    "spokenDelimiterFlags": "gi",
+    "explicitCategoryRegex": "\\bkategorie\\s+(.+)$",
+    "explicitCategoryFlags": "i"
+  },
   "rules": [
     {
       "name": "navigate_week",

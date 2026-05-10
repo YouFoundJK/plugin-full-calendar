@@ -19,6 +19,8 @@ import { resolveSmartCalendar } from './smartCalendar';
 import { loadNLPPayload } from './loader';
 import type { NLPActionObject, NLPPayload } from './types';
 import { t } from '../i18n/i18n';
+import { PluginState } from '../../core/PluginState';
+import { normalizeNLPEventTitleWithCategories } from './titleCategorization';
 
 const DEBOUNCE_MS = 120;
 
@@ -202,6 +204,15 @@ export class NLPCommandModal extends Modal {
     // Apply smart calendar resolution for the live preview
     if (action.intent === 'CREATE_EVENT') {
       action = resolveSmartCalendar(action, getWritableCalendarNames());
+      const settings = PluginState.getSettings();
+      action = {
+        ...action,
+        title: normalizeNLPEventTitleWithCategories(action.title, {
+          enableAdvancedCategorization: settings.enableAdvancedCategorization,
+          categoryNames: settings.categorySettings.map(category => category.name),
+          payload: this.#payload
+        })
+      };
     }
 
     this.#lastAction = action;

@@ -45,6 +45,12 @@ export type NLPRule = {
 export type NLPPayload = {
   version: number;
   locale: NLPSupportedLanguage;
+  categoryParsing?: {
+    spokenDelimiterRegex: string;
+    spokenDelimiterFlags?: string;
+    explicitCategoryRegex: string;
+    explicitCategoryFlags?: string;
+  };
   rules: NLPRule[];
 };
 

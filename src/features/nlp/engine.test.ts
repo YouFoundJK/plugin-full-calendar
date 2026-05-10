@@ -29,6 +29,16 @@ describe('NLP engine', () => {
       expect(result.title).toBe('working in team stand up');
     });
 
+    it('handles "for 5 hours" duration syntax', () => {
+      const now = new Date('2026-05-01T09:00:00');
+      const result = processNaturalLanguage('seminar tomorrow at 3 pm for 5 hours', payloadEn, now);
+
+      expect(result.date).toBe('2026-05-02');
+      expect(result.hours).toBe(15);
+      expect(result.endHours).toBe(20);
+      expect(result.title).toBe('seminar');
+    });
+
     it('converts 12 am to 00:00 (midnight)', () => {
       const now = new Date('2026-05-07T09:00:00');
       const result = processNaturalLanguage('Backup at 12 am', payloadEn, now);

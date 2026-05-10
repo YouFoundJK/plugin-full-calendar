@@ -1,6 +1,12 @@
 {
-  "version": 2,
+  "version": 3,
   "locale": "it",
+  "categoryParsing": {
+    "spokenDelimiterRegex": "\\s+(?:trattino|dash)\\s+",
+    "spokenDelimiterFlags": "gi",
+    "explicitCategoryRegex": "\\bcategoria\\s+(.+)$",
+    "explicitCategoryFlags": "i"
+  },
   "rules": [
     {
       "name": "navigate_week",

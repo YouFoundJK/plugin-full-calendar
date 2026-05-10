@@ -1,6 +1,12 @@
 {
-  "version": 2,
+  "version": 3,
   "locale": "en",
+  "categoryParsing": {
+    "spokenDelimiterRegex": "\\s+(?:dash|hyphen)\\s+",
+    "spokenDelimiterFlags": "gi",
+    "explicitCategoryRegex": "\\bcategory\\s+(.+)$",
+    "explicitCategoryFlags": "i"
+  },
   "rules": [
     {
       "name": "navigate_week",
@@ -94,7 +100,7 @@
     },
     {
       "name": "duration_hrs",
-      "regex": "\\bfor\\s+(\\d+)\\s+hrs?\\b",
+      "regex": "\\bfor\\s+(\\d+)\\s+(?:hrs?|hours?)\\b",
       "flags": "i",
       "actions": ["ADD_DURATION($1,0)"]
     },
