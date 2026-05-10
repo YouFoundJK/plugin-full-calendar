@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { Setting } from 'obsidian';
@@ -33,7 +34,9 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
   onClose
 }) => {
   const [view, setView] = useState<'account-select' | 'calendar-select'>('account-select');
-  const [accounts, setAccounts] = useState<GoogleAccount[]>(plugin.settings.googleAccounts || []);
+  const [accounts, setAccounts] = useState<GoogleAccount[]>(
+    PluginState.getSettings().googleAccounts || []
+  );
   const [selectedAccount, setSelectedAccount] = useState<GoogleAccount | null>(null);
   interface CalendarListDisplayItem {
     id: string;
@@ -54,18 +57,18 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
   // REMOVE legacy polling useEffect:
   // useEffect(() => {
   //   const interval = setInterval(() => {
-  //     const latestAccounts = plugin.settings.googleAccounts || [];
+  //     const latestAccounts = PluginState.getSettings().googleAccounts || [];
   //     if (latestAccounts.length !== accounts.length) {
   //       setAccounts(latestAccounts);
   //     }
   //   }, 500);
   //   return () => clearInterval(interval);
-  // }, [plugin.settings.googleAccounts, accounts.length]);
+  // }, [PluginState.getSettings().googleAccounts, accounts.length]);
 
   // ADD event-driven update for accounts list:
   useEffect(() => {
     const handleAccountAdded = () => {
-      const latestAccounts = plugin.settings.googleAccounts || [];
+      const latestAccounts = PluginState.getSettings().googleAccounts || [];
       setAccounts([...latestAccounts]);
     };
     (plugin.app.workspace as unknown as { on: (name: string, cb: () => void) => void }).on(
@@ -109,8 +112,8 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
       // REMOVE THE HACK and pass the account object directly.
       const allCalendars = await fetchGoogleCalendarList(plugin, account);
       const existingGoogleIds = new Set(
-        plugin.settings.calendarSources
-          .filter(
+        PluginState.getSettings()
+          .calendarSources.filter(
             (s): s is Extract<typeof s, { type: 'google'; calendarId: string }> =>
               s.type === 'google'
           )

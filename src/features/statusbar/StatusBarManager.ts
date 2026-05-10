@@ -10,6 +10,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../core/PluginState';
 import { Menu } from 'obsidian';
 import { DateTime, Duration } from 'luxon';
 import FullCalendarPlugin from '../../main';
@@ -52,7 +53,7 @@ export class StatusBarManager {
   public unload(): void {
     // Unsubscribe and remove the status bar item
     if (this.timeTickCallback) {
-      this.plugin.cache.off('time-tick', this.timeTickCallback);
+      PluginState.getCache().off('time-tick', this.timeTickCallback);
       this.timeTickCallback = null;
     }
     if (this.statusBarItemEl) {
@@ -71,10 +72,10 @@ export class StatusBarManager {
         this.statusBarItemEl.onClickEvent(ev => this.handleClick(ev));
       }
       this.timeTickCallback = (state: TimeState) => this.handleTimeTick(state);
-      this.plugin.cache.on('time-tick', this.timeTickCallback);
+      PluginState.getCache().on('time-tick', this.timeTickCallback);
     } else if (!shouldBeRunning && isRunning) {
       if (this.timeTickCallback) {
-        this.plugin.cache.off('time-tick', this.timeTickCallback);
+        PluginState.getCache().off('time-tick', this.timeTickCallback);
         this.timeTickCallback = null;
       }
       if (this.statusBarItemEl) {
@@ -128,7 +129,7 @@ export class StatusBarManager {
           .onClick(() => {
             if (this.currentState?.current) {
               void openFileForEvent(
-                this.plugin.cache,
+                PluginState.getCache(),
                 this.plugin.app,
                 this.currentState.current.id
               );
@@ -146,7 +147,7 @@ export class StatusBarManager {
         menu.addItem(item => {
           const time = eventData.start.toFormat('h:mm a');
           item.setTitle(`${time}: ${eventData.event.title}`).onClick(() => {
-            void openFileForEvent(this.plugin.cache, this.plugin.app, eventData.id);
+            void openFileForEvent(PluginState.getCache(), this.plugin.app, eventData.id);
           });
         });
       });

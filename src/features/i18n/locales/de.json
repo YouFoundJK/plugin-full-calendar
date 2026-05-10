@@ -51,6 +51,88 @@
       "errors": {
         "groupExists": "Gruppenname \"{{name}}\" existiert bereits."
       }
+    },
+    "analyser": {
+      "header": "📊 ChronoAnalyser",
+      "subtitle": "Interaktive Analyse Ihrer Zeiterfassungsdaten",
+      "proTip": "Pro-Tipp",
+      "clickNextTip": "Klicken, um den nächsten Tipp anzuzeigen",
+      "insights": {
+        "title": "💡 Erkenntnisse",
+        "generate": "Erkenntnisse generieren",
+        "configure": "Erkenntnisse konfigurieren",
+        "placeholder": "Klicken Sie auf \"Erkenntnisse generieren\", um Ihre Daten zu analysieren."
+      },
+      "filters": {
+        "hierarchy": "📂 Nach Hierarchie filtern (Kalenderquelle)",
+        "hierarchyPlaceholder": "Alle Hierarchien (tippen zum Filtern...)",
+        "project": "📋 Nach Projekt filtern",
+        "projectPlaceholder": "Alle Projekte (tippen zum Filtern...)",
+        "category": "🔍 Nach Kategorie filtern (z.B. Stichwort -ausschluss)",
+        "categoryPlaceholder": "Z.B. aufgabe.* -review",
+        "dateRange": "📅 Zeitraum",
+        "dateRangePlaceholder": "Zeitraum auswählen (JJJJ-MM-TT bis JJJJ-MM-TT)",
+        "today": "Heute",
+        "yesterday": "Gestern",
+        "thisWeek": "Diese Woche",
+        "thisMonth": "Diesen Monat",
+        "clearDates": "🗑️ Daten löschen",
+        "clearDatesTooltip": "Datumsfilter löschen"
+      },
+      "config": {
+        "metric": "📏 Metrik",
+        "duration": "Dauer (Stunden)",
+        "count": "Ereignisanzahl",
+        "analysisType": "🎯 Analysetyp",
+        "pie": "Kategorieweise (Kreis)",
+        "sunburst": "Kategorieweise (Sunburst)",
+        "timeSeries": "Zeitreihen-Trend",
+        "activity": "Aktivitätsmuster",
+        "breakdownLevel": "📈 Aufschlüsselungsebene",
+        "hierarchy": "Hierarchie",
+        "project": "Projekt",
+        "subproject": "Unterprojekt",
+        "projectsByHierarchy": "Projekte nach Hierarchie",
+        "subprojectsByProject": "Unterprojekte nach Projekt",
+        "granularity": "🕒 Granularität",
+        "daily": "Täglich",
+        "weekly": "Wöchentlich",
+        "monthly": "Monatlich",
+        "chartType": "📊 Diagrammtyp",
+        "overallTrend": "Gesamttrend",
+        "stackedByCategory": "Nach Kategorie gestapelt",
+        "stackBy": "📚 Stapeln nach",
+        "analyzeBy": "📅 Analysieren nach",
+        "dayOfWeek": "Wochentag",
+        "hourOfDay": "Tageszeit (Aufgabenstart)",
+        "heatmap": "Heatmap (Tag vs. Stunde)",
+        "tooltips": {
+          "categorywise": "Visualisieren Sie, wie die Zeit auf verschiedene Kategorien verteilt ist.",
+          "timeSeries": "Visualisieren Sie, wie sich der Zeitaufwand über einen Zeitraum ändert.",
+          "activity": "Identifizieren Sie Muster, wann Aufgaben typischerweise ausgeführt werden.",
+          "dayOfWeek": "Zeigt ein Balkendiagramm mit den insgesamt aufgewendeten Stunden für jeden Wochentag an.",
+          "hourOfDay": "Zeigt ein Balkendiagramm mit den insgesamt aufgewendeten Stunden für jede Stunde des Tages an.",
+          "heatmap": "Zeigt eine Heatmap an, bei der die Zeilen Wochentage und die Spalten Tagesstunden sind. Die Farbintensität stellt die Gesamtstunden dar."
+        }
+      },
+      "stats": {
+        "totalHours": "Gesamtstunden (gefiltert)",
+        "filesInFilter": "Dateien im Filter",
+        "activeAnalysis": "Aktive Analyse"
+      },
+      "log": {
+        "title": "📋 Verarbeitungsprotokoll & Probleme",
+        "noIssues": "Keine Probleme gefunden."
+      },
+      "details": {
+        "title": "Kategoriedetails",
+        "close": "Schließen",
+        "project": "Projekt",
+        "subproject": "Unterprojekt (voll)",
+        "duration": "Dauer (Std.)",
+        "date": "Datum",
+        "filePath": "Dateipfad"
+      }
     }
   },
   "commands": {
@@ -60,7 +142,8 @@
     "openCalendar": "Kalender öffnen",
     "openChronoAnalyser": "Chrono-Analyser öffnen (nur Desktop)",
     "openSidebar": "Im Seitenbereich öffnen",
-    "syncActivityWatch": "ActivityWatch synchronisieren"
+    "syncActivityWatch": "ActivityWatch synchronisieren",
+    "nlpQuickAdd": "FCR Command"
   },
   "notices": {
     "settingsUpdated": "Full Calendar hat Ihre Kalendereinstellungen auf ein neues Format aktualisiert.",
@@ -93,6 +176,15 @@
       "defaultValidation": "Diese Aufgabe kann an diesem Datum nicht geplant werden.",
       "scheduledNoModal": "Aufgabe geplant, aber Tasks-Bearbeitungsmodal konnte nicht geöffnet werden.",
       "apiUnavailable": "Obsidian Tasks Plugin API nicht verfügbar."
+    },
+    "tasknotes": {
+      "addSourceFirst": "Add a TaskNotes calendar source first, then return here to configure integration.",
+      "handoffSingleOnly": "TaskNotes NLP handoff currently supports single events only.",
+      "handoffTitleRequired": "TaskNotes NLP handoff requires a title.",
+      "handoffStartTimeRequired": "TaskNotes NLP handoff requires a valid start time for timed events.",
+      "invalidSourceId": "TaskNotes provider source ID must follow tasknotes_[n] pattern (received: {{sourceId}}).",
+      "createModalUnavailable": "TaskNotes plugin is unavailable or does not expose create modal integration.",
+      "selectorUnavailable": "TaskNotes plugin is unavailable or does not expose selector integration."
     }
   },
   "eventCache": {
@@ -274,7 +366,9 @@
       "showEventInStatusBar": {
         "label": "Aktuelles Ereignis in der Statusleiste anzeigen",
         "description": "Zeigt den Titel des aktuell laufenden Ereignisses in der Obsidian-Statusleiste an."
-      }
+      },
+      "highlightCurrentOrNextEvent": "Highlight current or next event",
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active."
     },
     "calendars": {
       "title": "Kalender verwalten",
@@ -292,7 +386,8 @@
         "ical": "ICS",
         "google": "Google Kalender",
         "tasks": "Obsidian Tasks",
-        "bases": "Obsidian Bases"
+        "bases": "Obsidian Bases",
+        "tasknotes": "TaskNotes"
       },
       "fullNote": {
         "directory": {
@@ -326,7 +421,8 @@
           "description": "Passwort für das Konto"
         },
         "importButton": "Kalender importieren",
-        "importing": "Importiere..."
+        "importing": "Importiere...",
+        "importFailed": "Failed to import calendar"
       },
       "tasks": {
         "zeroConfig": {
@@ -343,12 +439,35 @@
         },
         "adding": "Wird hinzugefügt...",
         "cancel": "Abbrechen"
+      },
+      "tasknotes": {
+        "zeroConfig": {
+          "label": "Keine Konfiguration erforderlich",
+          "description": "Dieser Provider liest TaskNotes-Aufgaben direkt aus Ihrem Vault und verknüpft geplante Aufgaben mit Kalenderereignissen."
+        },
+        "calendarName": {
+          "label": "Kalendername",
+          "description": "Anzeigename für diesen Kalender",
+          "placeholder": "TaskNotes"
+        },
+        "readOnly": {
+          "label": "Ereignisse",
+          "description": "Ereignisbearbeitungen öffnen den TaskNotes-Editor. Drag-and-Drop aktualisiert das geplante Datum und die Dauer, ohne ein Modal anzuzeigen."
+        },
+        "adding": "Wird hinzugefügt...",
+        "cancel": "Abbrechen",
+        "dispatchMode": {
+          "label": "NLP Dispatch Endpoint",
+          "description": "Choose where Full Calendar forwards TaskNotes-targeted NLP requests.",
+          "options": {
+            "search": "Search + Create (selector modal)",
+            "create": "Direct Create (task creation modal NLP)"
+          }
+        }
       }
     },
     "categorization": {
       "title": "Erweiterte Kategorisierung und Zeitachse",
-      "learnMore": "Mehr erfahren",
-      "learnMoreLink": "hier",
       "enable": {
         "label": "Erweiterte Kategorisierung aktivieren (titelbasiert)",
         "description": "Aktivieren Sie die kategoriebasierte Farbgebung und schalten Sie Zeitachsenansichten frei. Dies ändert die Titel der Ereignisnotizen und ermöglicht die Zeitachsenvisualisierung nach Kategorie."
@@ -359,7 +478,8 @@
         "buttonDisableWithoutCleanup": "Ohne Bereinigung deaktivieren",
         "buttonDisable": "Deaktivieren und Notizen bereinigen",
         "buttonCancel": "Abbrechen"
-      }
+      },
+      "learnMoreLink": "here"
     },
     "workspaces": {
       "title": "Arbeitsbereiche",
@@ -458,6 +578,41 @@
       "calendarDisplayDateTarget": {
         "label": "Kalender-Anzeigedatum-Feld",
         "description": "Wählen Sie, welchen Tasks-Datumsmarker Full Calendar zur Anzeige von Tasks-Ereignissen verwendet. Es gibt kein Fallback auf andere Datumsmarker. Starten Sie Obsidian neu oder laden Sie das Plugin neu, damit diese Änderung vollständig wirksam wird."
+      },
+      "taskDisplayFormat": {
+        "label": "Aufgaben-Zeitformat",
+        "description": "Wählen Sie aus, wie Full Calendar die Zeit in Tasks-Zeilen schreibt.",
+        "standard": "Standardformat",
+        "dayPlanner": "Day Planner Format"
+      }
+    },
+    "footer": {
+      "message": "Gefällt dir, was du siehst?",
+      "buyMeACoffee": "☕ Spendier mir einen Kaffee",
+      "suggestFeature": "💡 Funktion vorschlagen",
+      "raiseIssue": "🐛 Problem melden"
+    },
+    "tasknotesIntegration": {
+      "title": "TaskNotes Integration",
+      "descriptionConfigured": "Configure how NLP dispatches to TaskNotes.",
+      "descriptionMissingSource": "TaskNotes integration is available. Add a TaskNotes calendar source to configure it.",
+      "docsLink": "TaskNotes integration",
+      "configButton": "Configure TaskNotes integration",
+      "noSource": "Add a TaskNotes calendar source first before configuring TaskNotes integration.",
+      "modal": {
+        "title": "TaskNotes Integration"
+      },
+      "source": {
+        "label": "TaskNotes Calendar Source",
+        "description": "Select which TaskNotes calendar source to configure."
+      },
+      "dispatchMode": {
+        "label": "NLP Dispatch Endpoint",
+        "description": "Choose whether Full Calendar should open TaskNotes search NLP or create NLP.",
+        "options": {
+          "search": "Search + Create (selector modal)",
+          "create": "Direct Create (task creation modal NLP)"
+        }
       }
     }
   },
@@ -854,7 +1009,6 @@
     "view": {
       "errors": {
         "cacheNotLoaded": "Der Ereignis-Cache von Full Calendar wurde nicht geladen.",
-        "viewEnhancerNotInitialized": "Der Ansichtsverbesserer von Full Calendar wurde nicht initialisiert.",
         "chronoAnalyserDesktopOnly": "Der Chrono-Analysator ist nur auf dem Desktop verfügbar.",
         "chronoAnalyserFailed": "Fehler beim Öffnen des Chrono-Analysators. Bitte überprüfen Sie die Konsole.",
         "modifyEventFailed": "Fehler beim Ändern des Ereignisses.",
@@ -901,5 +1055,77 @@
     "inMinutes": "(In {{mins}} Minuten)",
     "failed": "Full Calendar: Desktop-Benachrichtigung konnte nicht erstellt werden.",
     "errorBody": "Full Calendar: Desktop-Benachrichtigung konnte nicht angezeigt werden. Überprüfen Sie die Konsole auf Fehler."
+  },
+  "global": {
+    "learnMore": "Mehr erfahren",
+    "settingsHeader": "Wechseln Sie zwischen fokussierten Einstellungsgruppen, um die Konfiguration übersichtlicher und einfacher scannbar zu halten."
+  },
+  "api": {
+    "authorization": {
+      "title": "Autorisierungsanfrage",
+      "requestingPluginMessage": "Das Plugin \"{{pluginId}}\" fordert Zugriff auf Full Calendar an.",
+      "reasonLabel": "Grund: {{reason}}",
+      "permissionsLabel": "Wählen Sie aus, welche Berechtigungen Sie gewähren möchten. Sie können dies später in den Einstellungen ändern.",
+      "approve": "Genehmigen",
+      "deny": "Ablehnen"
+    },
+    "settings": {
+      "title": "API-Zugriff",
+      "managePermissions": "Berechtigungen für \"{{pluginId}}\" verwalten.",
+      "noAuthorizedPlugins": "Keine externen Plugins sind autorisiert.",
+      "editAccess": "Zugriff bearbeiten",
+      "revoke": "Widerrufen",
+      "cancel": "Abbrechen",
+      "save": "Speichern"
+    }
+  },
+  "nlp": {
+    "modalTitle": "FCR-Befehl",
+    "placeholder": "z.B. morgen um 16:00 Team-Standup, Einstellungen öffnen, gehe zum nächsten Dienstag",
+    "submit": "Ausführen",
+    "cancel": "Abbrechen",
+    "previewHint": "Geben Sie einen Befehl ein — Ereignisse erstellen, Ansichten navigieren, Einstellungen öffnen und mehr.",
+    "noCalendars": "Keine beschreibbaren Kalender verfügbar. Bitte fügen Sie zuerst einen Kalender hinzu.",
+    "parseSuccess": "Befehl ausgeführt.",
+    "navigating": "Navigiere zur Ansicht {{view}}.",
+    "intents": {
+      "CREATE_EVENT": "📅 Ereignis erstellen",
+      "NEW_EVENT": "📅 Neues Ereignis (leer)",
+      "NAVIGATE_DAY": "🧭 Navigieren → Tagesansicht",
+      "NAVIGATE_WEEK": "🧭 Navigieren → Wochenansicht",
+      "NAVIGATE_MONTH": "🧭 Navigieren → Monatsansicht",
+      "OPEN_CALENDAR": "📖 Kalender öffnen",
+      "OPEN_SIDEBAR": "📖 Seitenleiste öffnen",
+      "OPEN_SETTINGS": "⚙️ Einstellungen öffnen",
+      "OPEN_CHRONO": "📊 Chrono-Analysator öffnen",
+      "SHOW_CHANGELOG": "📋 Änderungsprotokoll anzeigen",
+      "RESET_CACHE": "🗑️ Ereignis-Cache zurücksetzen",
+      "REVALIDATE_REMOTE": "🔄 Remote-Kalender aktualisieren",
+      "SYNC_ACTIVITYWATCH": "⏱️ ActivityWatch synchronisieren",
+      "GOTO_DATE": "📆 Gehe zum Datum"
+    },
+    "descriptions": {
+      "OPEN_SETTINGS": "Öffnet den Einstellungen-Tab von Full Calendar.",
+      "OPEN_CHRONO": "Startet das Chrono-Analysator-Dashboard.",
+      "SHOW_CHANGELOG": "Zeigt die neuesten Versionshinweise an.",
+      "RESET_CACHE": "Löscht und baut den Ereignis-Cache neu auf.",
+      "REVALIDATE_REMOTE": "Erzwingt eine frische Synchronisierung aller Remote-Kalender.",
+      "SYNC_ACTIVITYWATCH": "Ruft die neuesten Daten von ActivityWatch ab."
+    },
+    "preview": {
+      "target": "Ziel",
+      "title": "Titel",
+      "date": "Datum",
+      "time": "Zeit",
+      "allDay": "Ganztägig",
+      "calendar": "Kalender",
+      "recurrence": "Wiederholung",
+      "every": "Alle",
+      "patternsMatched": "✓ {{count}} Muster gefunden"
+    },
+    "notices": {
+      "cacheReset": "Ereignis-Cache wurde zurückgesetzt.",
+      "awNotEnabled": "ActivityWatch ist nicht aktiviert. Bitte zuerst in den Einstellungen aktivieren."
+    }
   }
 }

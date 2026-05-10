@@ -13,6 +13,7 @@ import FullCalendarPlugin from '../../main';
 
 // Import the new provider and its types
 import { FullNoteProvider } from './FullNoteProvider';
+import { PluginState } from '../../core/PluginState';
 
 // Mock Obsidian module
 jest.mock(
@@ -116,10 +117,12 @@ interface MockObsidian {
 
 const dirName = 'events';
 
-const makePlugin = (settings: Partial<FullCalendarSettings> = {}): FullCalendarPlugin =>
-  ({
+const makePlugin = (settings: Partial<FullCalendarSettings> = {}): FullCalendarPlugin => {
+  const mergedSettings = { ...DEFAULT_SETTINGS, ...settings };
+  PluginState.setSettings(mergedSettings as never);
+  return {
     app: {}, // Mock app if needed, though not used by constructor directly
-    settings: { ...DEFAULT_SETTINGS, ...settings },
+    settings: mergedSettings,
     nonBlockingProcess: jest.fn(
       async (files: TFile[], processor: (file: TFile) => Promise<void>) => {
         for (const file of files) {
@@ -127,7 +130,8 @@ const makePlugin = (settings: Partial<FullCalendarSettings> = {}): FullCalendarP
         }
       }
     )
-  }) as unknown as FullCalendarPlugin;
+  } as unknown as FullCalendarPlugin;
+};
 
 describe('FullNoteCalendar Tests', () => {
   it.each([

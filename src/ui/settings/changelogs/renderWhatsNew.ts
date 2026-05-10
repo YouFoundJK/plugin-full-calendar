@@ -4,12 +4,14 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { Setting } from 'obsidian';
 import { changelogData } from './changelogData';
 import './changelog.css';
 import { t } from '../../../features/i18n/i18n';
 import FullCalendarPlugin from '../../../main';
 import { WhatsNewModal } from '../../modals/WhatsNewModal';
+import { createMarkdownLinksFragment } from '../linkTextFragments';
 
 /**
  * Checks if the plugin version has changed and displays the "What's New" modal if necessary.
@@ -21,14 +23,14 @@ export function checkAndShowWhatsNew(plugin: FullCalendarPlugin): void {
   // Defer to onLayoutReady to ensure the UI is initialized before showing the modal
   plugin.app.workspace.onLayoutReady(async () => {
     if (
-      plugin.settings.currentVersion === null ||
-      plugin.settings.currentVersion !== latestVersion
+      PluginState.getSettings().currentVersion === null ||
+      PluginState.getSettings().currentVersion !== latestVersion
     ) {
       new WhatsNewModal(plugin.app, plugin).open();
 
       // Update the persisted version
-      plugin.settings.currentVersion = latestVersion;
-      await plugin.saveSettings();
+      PluginState.getSettings().currentVersion = latestVersion;
+      await PluginState.saveSettings();
     }
   });
 }
@@ -53,7 +55,9 @@ export function renderWhatsNew(containerEl: HTMLElement, onShowChangelog: () => 
 
   const whatsNewList = whatsNewContainer.createDiv('full-calendar-whats-new-list');
   latestVersion.changes.forEach(change => {
-    const item = new Setting(whatsNewList).setName(change.title).setDesc(change.description);
+    const item = new Setting(whatsNewList)
+      .setName(change.title)
+      .setDesc(createMarkdownLinksFragment(change.description));
 
     const iconEl = document.createElement('span');
     iconEl.className = `change-icon-settings change-type-${change.type}`;

@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { requestUrl, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { CalendarInfo } from '../../../types';
@@ -48,7 +49,7 @@ export class GoogleAuthManager {
     authObj: GoogleAccount | LegacyAuth,
     isLegacy: boolean // This parameter is now effectively unused but safe to keep
   ): Promise<string | null> {
-    const { settings } = this.plugin;
+    const settings = PluginState.getSettings();
     if (!authObj.refreshToken) {
       const email = 'email' in authObj ? authObj.email : 'unknown';
       const id = 'id' in authObj ? authObj.id : 'unknown';
@@ -98,7 +99,7 @@ export class GoogleAuthManager {
         authObj.expiryDate = Date.now() + data.expires_in * 1000;
 
         // Save settings to persist the new token
-        await this.plugin.saveSettings();
+        await PluginState.saveSettings();
         return data.access_token;
       }
 
@@ -111,14 +112,14 @@ export class GoogleAuthManager {
       // This protects against 500s or other temporary issues where we shouldn't lose the user's login.
       if (response.status === 400 || response.status === 401) {
         if (!isLegacy && 'id' in authObj) {
-          const account = this.plugin.settings.googleAccounts.find(a => a.id === authObj.id);
+          const account = PluginState.getSettings().googleAccounts.find(a => a.id === authObj.id);
           if (account) {
             account.accessToken = null;
             account.refreshToken = null;
             account.expiryDate = null;
           }
         }
-        await this.plugin.saveSettings();
+        await PluginState.saveSettings();
         new Notice(t('google.auth.expired'));
       }
       return null;
@@ -147,7 +148,9 @@ export class GoogleAuthManager {
       return null;
     }
 
-    const account = this.plugin.settings.googleAccounts.find(a => a.id === source.googleAccountId);
+    const account = PluginState.getSettings().googleAccounts.find(
+      a => a.id === source.googleAccountId
+    );
     if (!account) {
       console.error(`Could not find Google account with ID: ${source.googleAccountId}`);
       return null;
@@ -189,15 +192,15 @@ export class GoogleAuthManager {
       ...auth
     };
 
-    const existingAccounts = this.plugin.settings.googleAccounts || [];
+    const existingAccounts = PluginState.getSettings().googleAccounts || [];
     const index = existingAccounts.findIndex(a => a.id === newAccount.id);
     if (index !== -1) {
       existingAccounts[index] = newAccount;
     } else {
       existingAccounts.push(newAccount);
     }
-    this.plugin.settings.googleAccounts = existingAccounts;
-    await this.plugin.saveSettings();
+    PluginState.getSettings().googleAccounts = existingAccounts;
+    await PluginState.saveSettings();
 
     // Notify UI that a Google account was added
     this.plugin.app.workspace.trigger('full-calendar:google-account-added');
@@ -209,12 +212,12 @@ export class GoogleAuthManager {
    * Removes a Google Account and all its associated calendars.
    */
   public async removeAccount(accountId: string): Promise<void> {
-    this.plugin.settings.googleAccounts = (this.plugin.settings.googleAccounts || []).filter(
-      a => a.id !== accountId
-    );
-    this.plugin.settings.calendarSources = this.plugin.settings.calendarSources.filter(
+    PluginState.getSettings().googleAccounts = (
+      PluginState.getSettings().googleAccounts || []
+    ).filter(a => a.id !== accountId);
+    PluginState.getSettings().calendarSources = PluginState.getSettings().calendarSources.filter(
       s => !(s.type === 'google' && s.googleAccountId === accountId)
     );
-    await this.plugin.saveSettings();
+    await PluginState.saveSettings();
   }
 }

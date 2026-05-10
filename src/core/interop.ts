@@ -550,6 +550,8 @@ export function fromEventApi(
 
   const extendedProps = (event.extendedProps || {}) as Record<string, unknown>;
   const taskCompleted = extendedProps.taskCompleted as string | boolean | null | undefined;
+  const timedStart = event.start as Date;
+  const timedEnd = event.end ?? new Date(timedStart.getTime() + 60 * 60 * 1000);
   return {
     uid: extendedProps.uid as string | undefined,
     title: (extendedProps.cleanTitle as string | undefined) || event.title,
@@ -561,8 +563,8 @@ export function fromEventApi(
       ? { allDay: true }
       : {
           allDay: false,
-          startTime: getTime(event.start!, sourceZone),
-          endTime: getTime(event.end!, sourceZone)
+          startTime: getTime(timedStart, sourceZone),
+          endTime: getTime(timedEnd, sourceZone)
         }),
 
     ...(isRecurring

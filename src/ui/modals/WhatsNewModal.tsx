@@ -5,6 +5,7 @@ import { changelogData } from '../settings/changelogs/changelogData';
 import { VersionSection } from '../settings/changelogs/Changelog';
 import '../settings/changelogs/changelog.css';
 import FullCalendarPlugin from '../../main';
+import { PluginState } from '../../core/PluginState';
 
 type SettingsManager = {
   open: () => void;
@@ -54,14 +55,11 @@ export class WhatsNewModal extends Modal {
           btn.setButtonText('See all changelogs').onClick(() => {
             this.close();
             // Open settings to changelog
-            const settingsTab = this.plugin.settingsTab;
-            if (settingsTab) {
-              settingsTab.showChangelog();
-              // Open settings
-              const settingsManager = (this.plugin.app as AppWithSettings).setting;
-              settingsManager.open();
-              settingsManager.openTabById(this.plugin.manifest.id);
-            }
+            PluginState.showChangelog();
+            // Open settings
+            const settingsManager = (this.plugin.app as AppWithSettings).setting;
+            settingsManager.open();
+            settingsManager.openTabById(this.plugin.manifest.id);
           })
         )
         .addButton((btn: ButtonComponent) =>

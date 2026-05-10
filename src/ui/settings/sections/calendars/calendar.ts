@@ -24,6 +24,7 @@ import type {
 
 import { Menu } from 'obsidian';
 import type { PluginDef } from '@fullcalendar/core';
+import type { RecurringInstanceState } from '../../../../providers/Provider';
 import { createDateNavigation } from '../../../../features/navigation/DateNavigation';
 import {
   patchRRuleTimezoneExpansion,
@@ -47,6 +48,7 @@ interface ExtraRenderProps {
   timeFormat24h?: boolean;
   openContextMenuForEvent?: (event: EventApi, mouseEvent: MouseEvent) => Promise<void>;
   toggleTask?: (event: EventApi, isComplete: boolean) => Promise<boolean>;
+  getRecurringInstanceState?: (event: EventApi) => Promise<RecurringInstanceState | null>;
   dateRightClick?: (date: Date, mouseEvent: MouseEvent) => void;
   viewRightClick?: (mouseEvent: MouseEvent, calendar: Calendar) => void;
   forceNarrow?: boolean;
@@ -128,6 +130,7 @@ export async function renderCalendar(
     eventMouseEnter,
     openContextMenuForEvent,
     toggleTask,
+    getRecurringInstanceState,
     dateRightClick,
     viewRightClick,
     customButtons,
@@ -620,6 +623,8 @@ export async function renderCalendar(
     },
 
     editable: modifyEvent && true,
+    // Keep drag mirror anchored to the viewport, not transformed Obsidian panes.
+    fixedMirrorParent: document.body,
     eventDrop: modifyEventCallback,
     eventResize: modifyEventCallback,
 
@@ -650,6 +655,16 @@ export async function renderCalendar(
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.checked = !!event.extendedProps.taskCompleted;
+
+          const syncVisualState = (state: RecurringInstanceState | null) => {
+            const completed = state?.completed ?? checkbox.checked;
+            const skipped = state?.skipped ?? false;
+
+            checkbox.checked = completed;
+            el.toggleClass('ofc-task-completed', completed);
+            el.toggleClass('ofc-task-skipped', skipped);
+          };
+
           checkbox.onclick = async e => {
             e.stopPropagation();
             if (e.target) {
@@ -659,6 +674,17 @@ export async function renderCalendar(
               }
             }
           };
+
+          if (getRecurringInstanceState) {
+            void (async () => {
+              const instanceState = await getRecurringInstanceState(event);
+              if (!instanceState) {
+                return;
+              }
+              syncVisualState(instanceState);
+            })();
+          }
+
           // Make the checkbox more visible against different color events.
           if (textColor == 'black') {
             checkbox.addClass('ofc-checkbox-black');

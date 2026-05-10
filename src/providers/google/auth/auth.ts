@@ -14,6 +14,7 @@ import { Platform, requestUrl, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { GoogleAuthManager } from './GoogleAuthManager';
 import { t } from '../../../features/i18n/i18n';
+import { PluginState } from '../../../core/PluginState';
 
 // =================================================================================================
 // CONSTANTS
@@ -118,7 +119,7 @@ function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
 
           await exchangeCodeForToken(code, state, plugin);
           // Refresh the settings tab if it's open
-          plugin.settingsTab?.display();
+          PluginState.displaySettingsTab();
         } catch (e) {
           console.error('Error handling Google Auth callback:', e);
           res.end('Authentication failed. Please check the console in Obsidian and try again.');
@@ -143,7 +144,7 @@ function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
  * Kicks off the Google OAuth 2.0 flow.
  */
 export async function startGoogleLogin(plugin: FullCalendarPlugin): Promise<void> {
-  const { settings } = plugin;
+  const settings = PluginState.getSettings();
   const isMobile = Platform.isMobile;
 
   // For mobile: Open window FIRST (synchronously) to avoid iOS popup blocker.
@@ -209,7 +210,7 @@ export async function exchangeCodeForToken(
     return;
   }
 
-  const { settings } = plugin;
+  const settings = PluginState.getSettings();
   const isMobile = Platform.isMobile;
   const redirectUri = isMobile ? MOBILE_REDIRECT_URI : DESKTOP_REDIRECT_URI;
   const clientId = settings.useCustomGoogleClient ? settings.googleClientId : PUBLIC_CLIENT_ID;

@@ -12,6 +12,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../../core/PluginState';
 import { Notice } from 'obsidian';
 import * as React from 'react';
 import { CalendarInfo } from '../../../../types/calendar_settings';
@@ -174,7 +175,7 @@ export const ProviderAwareCalendarSettingRow = ({
   deleteCalendar,
   plugin
 }: ProviderAwareCalendarSettingsRowProps) => {
-  const registry = plugin.providerRegistry;
+  const registry = PluginState.getProviderRegistry();
   const provider = setting.id ? registry.getInstance(setting.id) : null;
 
   const rowProps = {

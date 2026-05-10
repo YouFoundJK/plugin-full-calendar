@@ -51,15 +51,15 @@ nav:
           - index.md
           - What's New: whats_new.md
           - Changelog: changelog.md
+          - Future & Sustainability: SustainabilityEthics.md
     - User Docs:
           - user/index.md
           - Onboarding and Daily Use:
                 - user/guides/index.md
                 - Getting Started: getting_started.md
                 - Commands and Shortcuts: user/guides/commands-and-shortcuts.md
-                - Interactions and Gestures: user/guides/interactions.md
-                - Reminders and Notifications: user/guides/reminders.md
                 - Quick Workflows: user/guides/quick-workflows.md
+                - Troubleshooting: user/guides/troubleshooting.md
           - Calendar Types:
                 - user/calendars/index.md
                 - Full Note Calendar: user/calendars/local.md
@@ -67,10 +67,10 @@ nav:
                 - ICS (Remote and Local): user/calendars/ics.md
                 - CalDAV: user/calendars/caldav.md
                 - Google Calendar: user/calendars/gcal.md
-                - Obsidian Bases Calendar: user/calendars/bases.md
                 - Tasks Plugin Integration: user/calendars/tasks-plugin-integration.md
+                - TaskNotes Integration: user/calendars/tasknotes.md
                 - ActivityWatch Integration: user/calendars/activitywatch.md
-                - Dataview Integration: user/calendars/dataview.md
+                - Obsidian Bases Calendar: user/calendars/bases.md
           - Working with Events:
                 - user/events/index.md
                 - Event Management: user/events/manage.md
@@ -83,37 +83,57 @@ nav:
                 - user/views/index.md
                 - Workspaces: user/views/workspaces.md
                 - Timeline View Usage: user/views/timeline_view.md
+          - Features:    
+                - user/features/index.md
+                - FCR Command (NLP): user/features/nlp.md
+                - Interactions and Gestures: user/features/interactions.md
+                - Reminders and Notifications: user/features/reminders.md
+                - Status Bar Integration: user/features/statusbar.md
+                - Internationalization: user/features/i18n.md
           - Chrono Analyser: 
                 - user/chrono_analyser/index.md
                 - Introduction: user/chrono_analyser/introduction.md
                 - Use Cases: user/chrono_analyser/usecases.md
+                - Configuration: user/chrono_analyser/settings.md
                 - FAQ: user/chrono_analyser/faq.md
           - Settings and Customization:
                 - user/settings/index.md
                 - Calendar Sources: user/settings/sources.md
                 - Display and Behavior: user/settings/fc_config.md
-          - Troubleshooting: user/guides/troubleshooting.md
+                - Categories and Colors: user/settings/categories.md
+                - Workspaces: user/settings/workspaces.md
+                - Reminders: user/settings/reminders.md
+                - API and Security: user/settings/api.md
     - Architecture Docs:
           - architecture/system/index.md
           - System:
                 - architecture/system/overview.md
-                - Events Architecture: architecture/events/architecture.md
-                - EventCache Contract: architecture/system/eventcache.md
+                - Event Cache: architecture/system/eventcache.md
+                - Performance and Staged Loading: architecture/system/performance.md
                 - Event Storage and Identifiers: architecture/system/event-storage.md
                 - FullCalendar Interop: architecture/system/interop.md
+                - API Architecture: architecture/system/api-architecture.md
+                - API Integration Blueprint: architecture/system/api-integration-blueprint.md
                 - Data Flow: architecture/system/data-flow.md
                 - Core Systems: architecture/system/core-systems.md
                 - Extending the Plugin: architecture/system/extending.md
                 - Testing and Validation: architecture/system/testing.md
+                - Backward Compatibility: architecture/system/backward-compatibility.md
           - Provider Architecture:
                 - architecture/calendars/architecture.md
-                - Implementations and Patches: architecture/calendars/provider-implementations.md
+                - Tasks Integration: architecture/calendars/tasks-integration.md
+          - Events:
+                - architecture/events/architecture.md
+                - architecture/events/manage.md
+          - Implementations:
+                - architecture/calendars/provider-implementations.md
                 - New Provider Blueprint: architecture/calendars/provider-blueprint.md
           - Features:
                 - architecture/system/features/index.md
                 - Settings Architecture: architecture/settings/architecture.md
                 - Timezone Architecture: architecture/system/features/timezone-architecture.md
                 - Reminders Architecture: architecture/system/features/reminders-architecture.md
+                - NLP Architecture: architecture/system/features/nlp-architecture.md
                 - ActivityWatch Architecture: architecture/activitywatch/index.md
                 - ActivityWatch Implementation: architecture/activitywatch/implementation.md
           - Views Architecture:
@@ -127,7 +147,6 @@ nav:
                 - Calendar Load Profiling Audit: architecture/dev-logs/devlog_calendar_load_profiling_2026-04-11.md
                 - RRULE Timezone Date-Shift Fix: architecture/dev-logs/devlog_rrule_timezone_patch.md
     - Reference:
-          - Internationalization: user/features/i18n.md
           - Data Integrity and File Modifications: user/reference/data_integrity.md
     - Privacy and Terms:
           - Privacy Policy: user/legal/privacy-policy.md

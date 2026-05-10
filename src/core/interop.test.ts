@@ -140,6 +140,32 @@ describe('interop toEventInput tests', () => {
       expect(single.endDate).toBeNull();
       expect(single.timezone).toBeUndefined();
     });
+
+    it('should fallback to one-hour duration when timed EventApi end is null', () => {
+      const settings: FullCalendarSettings = {
+        ...DEFAULT_SETTINGS,
+        displayTimezone: 'UTC'
+      };
+
+      const eventApi = {
+        id: 'timed-null-end-1',
+        title: 'Timed Null End',
+        allDay: false,
+        start: new Date('2026-05-10T09:00:00.000Z'),
+        end: null,
+        extendedProps: {
+          cleanTitle: 'Timed Null End',
+          uid: 'uid-timed-null-end',
+          sourceTimezone: 'UTC'
+        }
+      } as unknown as EventApi;
+
+      const result = fromEventApi(eventApi, settings);
+      expect(result.allDay).toBe(false);
+      const timed = result as Extract<OFCEvent, { allDay: false }>;
+      expect(timed.startTime).toBe('09:00');
+      expect(timed.endTime).toBe('10:00');
+    });
   });
 
   // ==========================================================================

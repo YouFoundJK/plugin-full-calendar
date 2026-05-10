@@ -10,6 +10,8 @@
  * @license See LICENSE.md
  */
 
+export const CATEGORY_TITLE_DELIMITER = ' - ';
+
 /**
  * Parses a full title string into its category, sub-category, and clean title components.
  * The format is `Category - SubCategory - Title`. A sub-category is only parsed
@@ -32,13 +34,13 @@ export function parseTitle(
   subCategory: string | undefined;
   title: string;
 } {
-  const parts = fullTitle.split(' - ');
+  const parts = fullTitle.split(CATEGORY_TITLE_DELIMITER);
 
   if (parts.length >= 3) {
     // Case: "Category - SubCategory - Title"
     const category = parts[0].trim();
     const subCategory = parts[1].trim();
-    const title = parts.slice(2).join(' - ').trim();
+    const title = parts.slice(2).join(CATEGORY_TITLE_DELIMITER).trim();
 
     // Ensure parts are not empty strings
     if (category && subCategory && title) {
@@ -86,12 +88,12 @@ export function parseSubcategoryTitle(titleWithSubcategory: string): {
   subCategory: string | undefined;
   title: string;
 } {
-  const parts = titleWithSubcategory.split(' - ');
+  const parts = titleWithSubcategory.split(CATEGORY_TITLE_DELIMITER);
 
   if (parts.length >= 2) {
     // Case: "SubCategory - Title" (robust to extra dashes)
     const subCategory = parts[0].trim();
-    const title = parts.slice(1).join(' - ').trim();
+    const title = parts.slice(1).join(CATEGORY_TITLE_DELIMITER).trim();
 
     // Ensure parts are not empty strings
     if (subCategory && title) {
@@ -117,13 +119,13 @@ export function constructTitle(
   title: string
 ): string {
   if (category && subCategory) {
-    return `${category} - ${subCategory} - ${title}`;
+    return `${category}${CATEGORY_TITLE_DELIMITER}${subCategory}${CATEGORY_TITLE_DELIMITER}${title}`;
   }
   if (category) {
-    return `${category} - ${title}`;
+    return `${category}${CATEGORY_TITLE_DELIMITER}${title}`;
   }
   if (subCategory) {
-    return `${subCategory} - ${title}`;
+    return `${subCategory}${CATEGORY_TITLE_DELIMITER}${title}`;
   }
   return title;
 }

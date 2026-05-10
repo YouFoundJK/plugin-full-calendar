@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 /**
  * @file RecurringEventManager.test.ts
  * @brief Tests for RecurringEventManager bug fixes
@@ -7,8 +8,9 @@ import { OFCEvent } from '../../types';
 import { RecurringEventManager } from './RecurringEventManager';
 import EventCache from '../../core/EventCache';
 import { CalendarProvider } from '../../providers/Provider';
-import { DEFAULT_SETTINGS } from '../../types/settings';
+import { DEFAULT_SETTINGS, FullCalendarSettings } from '../../types/settings';
 import FullCalendarPlugin from '../../main';
+import type { ProviderRegistry } from '../../providers/ProviderRegistry';
 
 // Mock Obsidian
 jest.mock(
@@ -42,9 +44,20 @@ describe('RecurringEventManager', () => {
     }
   } as unknown as FullCalendarPlugin;
 
+  const setPluginStateFromMock = (plugin: unknown) => {
+    const state = plugin as {
+      settings: FullCalendarSettings;
+      providerRegistry: ProviderRegistry;
+    };
+
+    PluginState.setSettings(state.settings);
+    PluginState.setProviderRegistry(state.providerRegistry);
+  };
+
   beforeEach(() => {
-    (mockPlugin.providerRegistry.getSource as jest.Mock).mockClear();
-    (mockPlugin.providerRegistry.getInstance as jest.Mock)?.mockClear();
+    setPluginStateFromMock(mockPlugin);
+    (PluginState.getProviderRegistry().getSource as jest.Mock).mockClear();
+    (PluginState.getProviderRegistry().getInstance as jest.Mock)?.mockClear();
 
     // Create mock calendar
     mockProvider = {
@@ -79,12 +92,12 @@ describe('RecurringEventManager', () => {
   describe('toggleRecurringInstance - undoing completed task', () => {
     beforeEach(() => {
       // Mock the provider registry to return our test provider and config
-      (mockPlugin.providerRegistry.getSource as jest.Mock).mockReturnValue({
+      (PluginState.getProviderRegistry().getSource as jest.Mock).mockReturnValue({
         type: 'test',
         config: { directory: 'events' }
       });
       // The getProviderAndConfig helper now uses getInstance, so we mock that.
-      (mockPlugin.providerRegistry.getInstance as jest.Mock).mockReturnValue(mockProvider);
+      (PluginState.getProviderRegistry().getInstance as jest.Mock).mockReturnValue(mockProvider);
     });
 
     const masterEvent: OFCEvent = {

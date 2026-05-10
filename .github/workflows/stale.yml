@@ -1,0 +1,52 @@
+name: Stale management
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"  # daily run
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # ✅ Timing
+          days-before-issue-stale: 60
+          days-before-issue-close: 10
+
+          days-before-pr-stale: 60
+          days-before-pr-close: 10
+
+          # ✅ Messages
+          stale-issue-message: >
+            This issue has been inactive for 60 days.
+            It will be closed in 10 days unless there is further activity.
+
+          close-issue-message: >
+            Closing this issue due to inactivity.
+
+          stale-pr-message: >
+            This PR has been inactive for 60 days.
+            It will be closed in 10 days unless updated.
+
+          close-pr-message: >
+            Closing this PR due to inactivity.
+
+          # ✅ Labels applied
+          stale-issue-label: stale
+          stale-pr-label: stale
+
+          # ✅ IMPORTANT: exemptions
+          exempt-issue-labels: "keep open,help wanted"
+          exempt-pr-labels: "keep open"
+
+          # ✅ Behavior tweaks
+          remove-stale-when-updated: true
+          delete-branch: false
+
+          # Optional but useful:
+          operations-per-run: 200
+          ascending: true

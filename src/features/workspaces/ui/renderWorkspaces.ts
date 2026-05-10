@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { WorkspaceSettings, createDefaultWorkspace } from '../../../types/settings';
@@ -44,18 +45,18 @@ export function renderWorkspaceSettings(
         .onClick(() => {
           const newWorkspace = createDefaultWorkspace(t('settings.workspaces.defaultName'));
           new WorkspaceModal(plugin, newWorkspace, true, workspace => {
-            plugin.settings.workspaces.push(workspace);
-            void plugin.saveSettings();
+            PluginState.getSettings().workspaces.push(workspace);
+            void PluginState.saveSettings();
             rerender();
           }).open();
         });
     });
 
   // Workspace list
-  if (plugin.settings.workspaces.length > 0) {
+  if (PluginState.getSettings().workspaces.length > 0) {
     const workspaceList = workspaceSection.createEl('div', { cls: 'workspace-list' });
 
-    plugin.settings.workspaces.forEach((workspace, index) => {
+    PluginState.getSettings().workspaces.forEach((workspace, index) => {
       const workspaceItem = workspaceList.createEl('div', { cls: 'workspace-item' });
 
       new Setting(workspaceItem)
@@ -67,8 +68,8 @@ export function renderWorkspaceSettings(
             .setIcon('pencil')
             .onClick(() => {
               new WorkspaceModal(plugin, workspace, false, updatedWorkspace => {
-                plugin.settings.workspaces[index] = updatedWorkspace;
-                void plugin.saveSettings();
+                PluginState.getSettings().workspaces[index] = updatedWorkspace;
+                void PluginState.saveSettings();
                 rerender();
               }).open();
             });
@@ -89,14 +90,14 @@ export function renderWorkspaceSettings(
               });
 
               new WorkspaceModal(plugin, duplicatedWorkspace, true, newWorkspace => {
-                plugin.settings.workspaces.push(newWorkspace);
-                void plugin.saveSettings();
+                PluginState.getSettings().workspaces.push(newWorkspace);
+                void PluginState.saveSettings();
                 rerender();
               }).open();
             });
         })
         .addButton(button => {
-          const isActive = plugin.settings.activeWorkspace === workspace.id;
+          const isActive = PluginState.getSettings().activeWorkspace === workspace.id;
           button
             .setButtonText(
               isActive
@@ -106,8 +107,8 @@ export function renderWorkspaceSettings(
             .setIcon(isActive ? 'check' : 'play')
             .setDisabled(isActive)
             .onClick(async () => {
-              plugin.settings.activeWorkspace = workspace.id;
-              await plugin.saveSettings();
+              PluginState.getSettings().activeWorkspace = workspace.id;
+              await PluginState.saveSettings();
               rerender();
             });
         })
@@ -118,12 +119,12 @@ export function renderWorkspaceSettings(
             .setWarning()
             .onClick(async () => {
               // If this workspace is currently active, clear the active workspace
-              if (plugin.settings.activeWorkspace === workspace.id) {
-                plugin.settings.activeWorkspace = null;
+              if (PluginState.getSettings().activeWorkspace === workspace.id) {
+                PluginState.getSettings().activeWorkspace = null;
               }
 
-              plugin.settings.workspaces.splice(index, 1);
-              await plugin.saveSettings();
+              PluginState.getSettings().workspaces.splice(index, 1);
+              await PluginState.saveSettings();
               rerender();
             });
         });

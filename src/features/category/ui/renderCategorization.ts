@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { createElement } from 'react';
 import { Setting, Modal } from 'obsidian';
 import * as ReactDOM from 'react-dom/client';
@@ -22,7 +23,7 @@ export function renderCategorizationSettings(
     .setName(t('settings.categorization.title'))
     .setHeading()
     .setDesc(
-      createDescWithDocs(t('settings.categorization.learnMore'), [
+      createDescWithDocs(t('global.learnMore'), [
         { text: t('settings.categorization.learnMoreLink'), path: 'user/events/categories' },
         { text: 'Event management', path: 'user/events/manage' },
         { text: 'Tasks and categories', path: 'user/events/tasks' }
@@ -33,80 +34,84 @@ export function renderCategorizationSettings(
     .setName(t('settings.categorization.enable.label'))
     .setDesc(t('settings.categorization.enable.description'))
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.enableAdvancedCategorization).onChange(async value => {
-        if (value) {
-          // Logic for turning ON
-          // LAZY LOAD MODAL
-          const { BulkCategorizeModal } = await import('./BulkCategorizeModal');
-          new BulkCategorizeModal(plugin.app, (choice, defaultCategory) => {
-            void (async () => {
-              plugin.settings.enableAdvancedCategorization = true;
-              await plugin.saveData(plugin.settings);
-              await bulkUpdateCategories(plugin, choice, defaultCategory);
-              rerender();
-            })();
-          }).open();
-        } else {
-          // Logic for turning OFF
-          const confirmModal = new Modal(plugin.app);
-          confirmModal.modalEl.addClass('full-calendar-confirm-modal');
-          const { contentEl } = confirmModal;
-          contentEl.createEl('h2', { text: t('settings.categorization.disable.modalTitle') });
-          contentEl.createEl('p', {
-            text: t('settings.categorization.disable.modalDescription')
-          });
-          new Setting(contentEl)
-            .addButton(btn =>
-              btn
-                .setButtonText(t('settings.categorization.disable.buttonDisableWithoutCleanup'))
-                .setCta()
-                .onClick(async () => {
-                  plugin.settings.enableAdvancedCategorization = false;
-                  await plugin.saveData(plugin.settings);
+      toggle
+        .setValue(PluginState.getSettings().enableAdvancedCategorization)
+        .onChange(async value => {
+          if (value) {
+            // Logic for turning ON
+            // LAZY LOAD MODAL
+            const { BulkCategorizeModal } = await import('./BulkCategorizeModal');
+            new BulkCategorizeModal(plugin.app, (choice, defaultCategory) => {
+              void (async () => {
+                PluginState.getSettings().enableAdvancedCategorization = true;
+                await PluginState.saveSettings();
+                await bulkUpdateCategories(plugin, choice, defaultCategory);
+                rerender();
+              })();
+            }).open();
+          } else {
+            // Logic for turning OFF
+            const confirmModal = new Modal(plugin.app);
+            confirmModal.modalEl.addClass('full-calendar-confirm-modal');
+            const { contentEl } = confirmModal;
+            contentEl.createEl('h2', { text: t('settings.categorization.disable.modalTitle') });
+            contentEl.createEl('p', {
+              text: t('settings.categorization.disable.modalDescription')
+            });
+            new Setting(contentEl)
+              .addButton(btn =>
+                btn
+                  .setButtonText(t('settings.categorization.disable.buttonDisableWithoutCleanup'))
+                  .setCta()
+                  .onClick(async () => {
+                    PluginState.getSettings().enableAdvancedCategorization = false;
+                    await PluginState.saveSettings();
+                    confirmModal.close();
+                    rerender();
+                  })
+              )
+              .addButton(btn =>
+                btn
+                  .setButtonText(t('settings.categorization.disable.buttonDisable'))
+                  .onClick(async () => {
+                    PluginState.getSettings().enableAdvancedCategorization = false;
+                    PluginState.getSettings().categorySettings = [];
+                    await PluginState.saveSettings();
+                    await bulkRemoveCategories(plugin);
+                    confirmModal.close();
+                    rerender();
+                  })
+              )
+              .addButton(btn =>
+                btn.setButtonText(t('settings.categorization.disable.buttonCancel')).onClick(() => {
+                  toggle.setValue(true); // Revert toggle state if cancelled
                   confirmModal.close();
-                  rerender();
                 })
-            )
-            .addButton(btn =>
-              btn
-                .setButtonText(t('settings.categorization.disable.buttonDisable'))
-                .onClick(async () => {
-                  plugin.settings.enableAdvancedCategorization = false;
-                  plugin.settings.categorySettings = [];
-                  await plugin.saveData(plugin.settings);
-                  await bulkRemoveCategories(plugin);
-                  confirmModal.close();
-                  rerender();
-                })
-            )
-            .addButton(btn =>
-              btn.setButtonText(t('settings.categorization.disable.buttonCancel')).onClick(() => {
-                toggle.setValue(true); // Revert toggle state if cancelled
-                confirmModal.close();
-              })
-            );
-          confirmModal.open();
-        }
-      });
+              );
+            confirmModal.open();
+          }
+        });
     });
 
-  if (plugin.settings.enableAdvancedCategorization) {
+  if (PluginState.getSettings().enableAdvancedCategorization) {
     const categoryDiv = containerEl.createDiv();
     const categoryRoot = ReactDOM.createRoot(categoryDiv);
 
-    const allCategoriesInVault = plugin.cache.getAllCategories();
-    const configuredCategoryNames = new Set(plugin.settings.categorySettings.map(s => s.name));
+    const allCategoriesInVault = PluginState.getCache().getAllCategories();
+    const configuredCategoryNames = new Set(
+      PluginState.getSettings().categorySettings.map(s => s.name)
+    );
     const availableSuggestions = allCategoriesInVault.filter(
       cat => !configuredCategoryNames.has(cat)
     );
 
     categoryRoot.render(
       createElement(CategorySettingsManager, {
-        settings: plugin.settings.categorySettings,
+        settings: PluginState.getSettings().categorySettings,
         suggestions: availableSuggestions,
         onSave: async newSettings => {
-          plugin.settings.categorySettings = newSettings;
-          await plugin.saveSettings();
+          PluginState.getSettings().categorySettings = newSettings;
+          await PluginState.saveSettings();
         }
       })
     );

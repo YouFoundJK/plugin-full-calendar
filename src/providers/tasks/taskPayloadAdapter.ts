@@ -61,6 +61,8 @@ export function extractTimeFromTitle(title: string): {
   cleanTitle: string;
 } {
   const TIME_TOKEN = String.raw`\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?`;
+  const dayPlannerRangePattern = new RegExp(`^\\s*(${TIME_TOKEN})\\s*-\\s*(${TIME_TOKEN})\\s+`);
+  const dayPlannerSinglePattern = new RegExp(`^\\s*(${TIME_TOKEN})\\s+`);
   const timeRangePattern = new RegExp(`\\((${TIME_TOKEN})-(${TIME_TOKEN})\\)`);
   const timePattern = new RegExp(`\\((${TIME_TOKEN})\\)`);
 
@@ -68,6 +70,24 @@ export function extractTimeFromTitle(title: string): {
     t.replace(/\s*([AaPp][Mm])$/, (_, m: string) => ` ${m.toUpperCase()}`);
 
   const rangeMatch = title.match(timeRangePattern);
+  const dayPlannerRangeMatch = title.match(dayPlannerRangePattern);
+  if (dayPlannerRangeMatch) {
+    return {
+      startTime: normalise(dayPlannerRangeMatch[1]),
+      endTime: normalise(dayPlannerRangeMatch[2]),
+      cleanTitle: collapseSpaces(title.replace(dayPlannerRangeMatch[0], ''))
+    };
+  }
+
+  const dayPlannerSingleMatch = title.match(dayPlannerSinglePattern);
+  if (dayPlannerSingleMatch) {
+    return {
+      startTime: normalise(dayPlannerSingleMatch[1]),
+      endTime: null,
+      cleanTitle: collapseSpaces(title.replace(dayPlannerSingleMatch[0], ''))
+    };
+  }
+
   if (rangeMatch) {
     return {
       startTime: normalise(rangeMatch[1]),

@@ -1,7 +1,8 @@
+import { PluginState } from '../../core/PluginState';
 import { Modal, Setting } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { t } from '../../features/i18n/i18n';
-import { TasksBacklogDateTarget, TasksDateTarget } from '../../types/settings';
+import { TasksBacklogDateTarget, TasksDateTarget, TasksDisplayFormat } from '../../types/settings';
 
 export class TasksIntegrationSettingsModal extends Modal {
   constructor(
@@ -15,7 +16,7 @@ export class TasksIntegrationSettingsModal extends Modal {
     this.contentEl.empty();
     this.titleEl.setText(t('settings.tasksIntegration.modal.title'));
 
-    const settings = this.plugin.settings.tasksIntegration;
+    const settings = PluginState.getSettings().tasksIntegration;
 
     new Setting(this.contentEl)
       .setName(t('settings.tasksIntegration.backlogDateTarget.label'))
@@ -28,8 +29,8 @@ export class TasksIntegrationSettingsModal extends Modal {
           .setValue(settings.backlogDateTarget)
           .onChange(async value => {
             settings.backlogDateTarget = value as TasksBacklogDateTarget;
-            await this.plugin.saveSettings();
-            this.plugin.providerRegistry.refreshBacklogViews();
+            await PluginState.saveSettings();
+            PluginState.getProviderRegistry().refreshBacklogViews();
             this.onChange();
           });
       });
@@ -45,7 +46,7 @@ export class TasksIntegrationSettingsModal extends Modal {
           .setValue(settings.calendarDisplayDateTarget)
           .onChange(async value => {
             settings.calendarDisplayDateTarget = value as TasksDateTarget;
-            await this.plugin.saveSettings();
+            await PluginState.saveSettings();
             this.onChange();
           });
       });
@@ -56,9 +57,24 @@ export class TasksIntegrationSettingsModal extends Modal {
       .addToggle(toggle => {
         toggle.setValue(settings.openEditModalAfterBacklogDrop).onChange(async value => {
           settings.openEditModalAfterBacklogDrop = value;
-          await this.plugin.saveSettings();
+          await PluginState.saveSettings();
           this.onChange();
         });
+      });
+
+    new Setting(this.contentEl)
+      .setName(t('settings.tasksIntegration.taskDisplayFormat.label'))
+      .setDesc(t('settings.tasksIntegration.taskDisplayFormat.description'))
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('standard', t('settings.tasksIntegration.taskDisplayFormat.standard'))
+          .addOption('dayPlanner', t('settings.tasksIntegration.taskDisplayFormat.dayPlanner'))
+          .setValue(settings.taskDisplayFormat ?? 'dayPlanner')
+          .onChange(async value => {
+            settings.taskDisplayFormat = value as TasksDisplayFormat;
+            await PluginState.saveSettings();
+            this.onChange();
+          });
       });
   }
 

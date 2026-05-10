@@ -5,7 +5,7 @@
  */
 
 import { Notice } from 'obsidian';
-import { FullCalendarSettings, GoogleAccount, DEFAULT_SETTINGS } from '../../types/settings'; // Add GoogleAccount import
+import { FullCalendarSettings, GoogleAccount, DEFAULT_SETTINGS } from '../../types/settings';
 import { CalendarInfo, generateCalendarId } from '../../types/calendar_settings';
 import { t } from '../../features/i18n/i18n';
 
@@ -83,6 +83,8 @@ export function migrateAndSanitizeSettings(settings: unknown): {
       ...DEFAULT_SETTINGS.tasksIntegration,
       ...((raw as Partial<FullCalendarSettings>).tasksIntegration || {})
     },
+    apiTokens: (raw as Partial<FullCalendarSettings>).apiTokens || {},
+    authorizedTokens: (raw as Partial<FullCalendarSettings>).authorizedTokens || {},
     currentVersion: raw.currentVersion ?? null
   } as FullCalendarSettings & { calendarSources: (CalendarInfo | GoogleSourceWithAuth)[] } & {
     googleAuth?: LegacyGoogleAuth;

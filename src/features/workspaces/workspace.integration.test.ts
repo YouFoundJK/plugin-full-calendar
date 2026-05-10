@@ -2,6 +2,7 @@
  * Integration test for workspace functionality
  */
 
+import { PluginState } from '../../core/PluginState';
 import {
   WorkspaceSettings,
   createDefaultWorkspace,
@@ -47,10 +48,10 @@ class MockCalendarView {
   }
 
   getActiveWorkspace(): WorkspaceSettings | null {
-    if (!this.plugin.settings.activeWorkspace) return null;
+    if (!PluginState.getSettings().activeWorkspace) return null;
     return (
-      this.plugin.settings.workspaces.find(
-        (w: WorkspaceSettings) => w.id === this.plugin.settings.activeWorkspace
+      PluginState.getSettings().workspaces.find(
+        (w: WorkspaceSettings) => w.id === PluginState.getSettings().activeWorkspace
       ) || null
     );
   }
@@ -93,7 +94,7 @@ class MockCalendarView {
 
   filterEventsByCategory(events: CalendarEventLike[]): CalendarEventLike[] {
     // Only apply when advanced categorization is enabled
-    if (!this.plugin.settings.enableAdvancedCategorization) {
+    if (!PluginState.getSettings().enableAdvancedCategorization) {
       return events;
     }
 
@@ -108,7 +109,7 @@ class MockCalendarView {
     }
 
     const knownCategories = new Set(
-      this.plugin.settings.categorySettings?.map(category => category.name) ?? []
+      PluginState.getSettings().categorySettings?.map(category => category.name) ?? []
     );
 
     return events.filter(event => {
@@ -150,6 +151,7 @@ describe('Workspace Integration Tests', () => {
     mockPlugin = {
       settings: { ...DEFAULT_SETTINGS }
     };
+    PluginState.setSettings(mockPlugin.settings as unknown as FullCalendarSettings);
     mockView = new MockCalendarView(mockPlugin);
   });
 

@@ -51,6 +51,88 @@
       "errors": {
         "groupExists": "El nombre del grupo \"{{name}}\" ya existe."
       }
+    },
+    "analyser": {
+      "header": "📊 ChronoAnalyser",
+      "subtitle": "Análisis interactivo de sus datos de seguimiento de tiempo",
+      "proTip": "Consejo pro",
+      "clickNextTip": "Haga clic para ver el siguiente consejo",
+      "insights": {
+        "title": "💡 Insights",
+        "generate": "Generar insights",
+        "configure": "Configurar insights",
+        "placeholder": "Haga clic en \"Generar insights\" para analizar sus datos."
+      },
+      "filters": {
+        "hierarchy": "📂 filtrar por jerarquía (fuente de calendario)",
+        "hierarchyPlaceholder": "Todas las jerarquías (escriba para filtrar...)",
+        "project": "📋 filtrar por proyecto",
+        "projectPlaceholder": "Todos los proyectos (escriba para filtrar...)",
+        "category": "🔍 filtrar por categoría (ej: palabra clave -excluir)",
+        "categoryPlaceholder": "Ej: tarea.* -review",
+        "dateRange": "📅 rango de fechas",
+        "dateRangePlaceholder": "Seleccionar rango (aaaa-mm-dd a aaaa-mm-dd)",
+        "today": "Hoy",
+        "yesterday": "Ayer",
+        "thisWeek": "Esta semana",
+        "thisMonth": "Este mes",
+        "clearDates": "🗑️ borrar fechas",
+        "clearDatesTooltip": "Borrar filtros de fecha"
+      },
+      "config": {
+        "metric": "📏 métrica",
+        "duration": "Duración (horas)",
+        "count": "Cantidad de eventos",
+        "analysisType": "🎯 tipo de análisis",
+        "pie": "Por categoría (pie)",
+        "sunburst": "Por categoría (sunburst)",
+        "timeSeries": "Tendencia temporal",
+        "activity": "Patrones de actividad",
+        "breakdownLevel": "📈 nivel de desglose",
+        "hierarchy": "Jerarquía",
+        "project": "Proyecto",
+        "subproject": "Subproyecto",
+        "projectsByHierarchy": "Proyectos por jerarquía",
+        "subprojectsByProject": "Subproyectos por proyecto",
+        "granularity": "🕒 granularidad",
+        "daily": "Diario",
+        "weekly": "Semanal",
+        "monthly": "Mensual",
+        "chartType": "📊 tipo de gráfico",
+        "overallTrend": "Tendencia general",
+        "stackedByCategory": "Apilado por categoría",
+        "stackBy": "📚 apilar por",
+        "analyzeBy": "📅 analizar por",
+        "dayOfWeek": "Día de la semana",
+        "hourOfDay": "Hora del día (inicio de tarea)",
+        "heatmap": "Mapa de calor (día vs hora)",
+        "tooltips": {
+          "categorywise": "Visualice cómo se distribuye el tiempo entre las diferentes categorías.",
+          "timeSeries": "Visualice cómo cambia el tiempo dedicado a lo largo de un período.",
+          "activity": "Identifique patrones sobre cuándo se realizan habitualmente las tareas.",
+          "dayOfWeek": "Muestra un gráfico de barras con el total de horas dedicadas cada día de la semana.",
+          "hourOfDay": "Muestra un gráfico de barras con el total de horas asociadas a tareas que comienzan en cada hora del día.",
+          "heatmap": "Muestra un mapa de calor donde las filas son los días de la semana y las columnas las horas del día."
+        }
+      },
+      "stats": {
+        "totalHours": "Horas totales (filtradas)",
+        "filesInFilter": "Archivos en el filtro",
+        "activeAnalysis": "Análisis activo"
+      },
+      "log": {
+        "title": "📋 registro de procesamiento y problemas",
+        "noIssues": "No se encontraron problemas."
+      },
+      "details": {
+        "title": "Detalles de la categoría",
+        "close": "Cerrar",
+        "project": "Proyecto",
+        "subproject": "Subproyecto (completo)",
+        "duration": "Duración (h)",
+        "date": "Fecha",
+        "filePath": "Ruta del archivo"
+      }
     }
   },
   "commands": {
@@ -60,7 +142,8 @@
     "openCalendar": "Abrir calendario",
     "openChronoAnalyser": "Abrir Crono Analizador (Solo escritorio)",
     "openSidebar": "Abrir en la barra lateral",
-    "syncActivityWatch": "Sync ActivityWatch"
+    "syncActivityWatch": "Sync ActivityWatch",
+    "nlpQuickAdd": "FCR Command"
   },
   "notices": {
     "settingsUpdated": "Full Calendar ha actualizado la configuración de tu calendario a un nuevo formato.",
@@ -93,6 +176,15 @@
       "defaultValidation": "Esta tarea no se puede programar en esta fecha.",
       "scheduledNoModal": "Tarea programada, pero no se pudo abrir el modal de edición de Tasks.",
       "apiUnavailable": "API del complemento Obsidian Tasks no disponible."
+    },
+    "tasknotes": {
+      "addSourceFirst": "Add a TaskNotes calendar source first, then return here to configure integration.",
+      "handoffSingleOnly": "TaskNotes NLP handoff currently supports single events only.",
+      "handoffTitleRequired": "TaskNotes NLP handoff requires a title.",
+      "handoffStartTimeRequired": "TaskNotes NLP handoff requires a valid start time for timed events.",
+      "invalidSourceId": "TaskNotes provider source ID must follow tasknotes_[n] pattern (received: {{sourceId}}).",
+      "createModalUnavailable": "TaskNotes plugin is unavailable or does not expose create modal integration.",
+      "selectorUnavailable": "TaskNotes plugin is unavailable or does not expose selector integration."
     }
   },
   "eventCache": {
@@ -274,7 +366,9 @@
       "showEventInStatusBar": {
         "label": "Mostrar evento actual en la barra de estado",
         "description": "Mostrar el título del evento en curso en la barra de estado de Obsidian."
-      }
+      },
+      "highlightCurrentOrNextEvent": "Highlight current or next event",
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active."
     },
     "calendars": {
       "title": "Gestionar calendarios",
@@ -292,7 +386,8 @@
         "ical": "ICS",
         "google": "Google Calendar",
         "tasks": "Tareas de Obsidian",
-        "bases": "Obsidian Bases"
+        "bases": "Obsidian Bases",
+        "tasknotes": "TaskNotes"
       },
       "fullNote": {
         "directory": {
@@ -326,7 +421,8 @@
           "description": "Contraseña de la cuenta"
         },
         "importButton": "Importar calendarios",
-        "importing": "Importando..."
+        "importing": "Importando...",
+        "importFailed": "Failed to import calendar"
       },
       "tasks": {
         "zeroConfig": {
@@ -343,12 +439,35 @@
         },
         "adding": "Agregando...",
         "cancel": "Cancelar"
+      },
+      "tasknotes": {
+        "zeroConfig": {
+          "label": "Sin configuración requerida",
+          "description": "Este proveedor lee las tareas de TaskNotes directamente desde tu vault y asigna las tareas programadas a eventos del calendario."
+        },
+        "calendarName": {
+          "label": "Nombre del calendario",
+          "description": "Nombre de visualización para este calendario",
+          "placeholder": "TaskNotes"
+        },
+        "readOnly": {
+          "label": "Eventos",
+          "description": "Las ediciones de eventos abren el editor de TaskNotes. Al arrastrar y soltar se actualiza la fecha programada y la duración sin mostrar una ventana emergente."
+        },
+        "adding": "Agregando...",
+        "cancel": "Cancelar",
+        "dispatchMode": {
+          "label": "NLP Dispatch Endpoint",
+          "description": "Choose where Full Calendar forwards TaskNotes-targeted NLP requests.",
+          "options": {
+            "search": "Search + Create (selector modal)",
+            "create": "Direct Create (task creation modal NLP)"
+          }
+        }
       }
     },
     "categorization": {
       "title": "Categorización avanzada y línea de tiempo",
-      "learnMore": "Aprende más",
-      "learnMoreLink": "aquí",
       "enable": {
         "label": "Habilitar categorización avanzada (basada en título)",
         "description": "Habilita el coloreo por categoría y desbloquea vistas de línea de tiempo. Esto modificará los títulos de las notas de eventos y permitirá la visualización por categoría."
@@ -359,7 +478,8 @@
         "buttonDisableWithoutCleanup": "Deshabilitar sin limpieza",
         "buttonDisable": "Deshabilitar y limpiar notas",
         "buttonCancel": "Cancelar"
-      }
+      },
+      "learnMoreLink": "here"
     },
     "workspaces": {
       "title": "Espacios de trabajo",
@@ -458,6 +578,41 @@
       "calendarDisplayDateTarget": {
         "label": "Campo de fecha de visualización del calendario",
         "description": "Elige qué marcador de fecha de Tasks utiliza Full Calendar para mostrar los eventos de Tasks. No hay alternativa a otros marcadores de fecha. Reinicia Obsidian o recarga el plugin para que este cambio surta efecto."
+      },
+      "taskDisplayFormat": {
+        "label": "Formato de hora de tarea",
+        "description": "Elige cómo Full Calendar escribe la hora en las líneas de Tasks.",
+        "standard": "Formato estándar",
+        "dayPlanner": "Formato Day Planner"
+      }
+    },
+    "footer": {
+      "message": "¿Te gusta lo que ves?",
+      "buyMeACoffee": "☕ Invítame a un café",
+      "suggestFeature": "💡 Sugerir una función",
+      "raiseIssue": "🐛 Informar de un error"
+    },
+    "tasknotesIntegration": {
+      "title": "TaskNotes Integration",
+      "descriptionConfigured": "Configure how NLP dispatches to TaskNotes.",
+      "descriptionMissingSource": "TaskNotes integration is available. Add a TaskNotes calendar source to configure it.",
+      "docsLink": "TaskNotes integration",
+      "configButton": "Configure TaskNotes integration",
+      "noSource": "Add a TaskNotes calendar source first before configuring TaskNotes integration.",
+      "modal": {
+        "title": "TaskNotes Integration"
+      },
+      "source": {
+        "label": "TaskNotes Calendar source",
+        "description": "Select which TaskNotes calendar source to configure."
+      },
+      "dispatchMode": {
+        "label": "NLP Dispatch Endpoint",
+        "description": "Choose whether FCR should open TaskNotes search NLP or create NLP.",
+        "options": {
+          "search": "Search + Create (selector modal)",
+          "create": "Direct create (task creation modal NLP)"
+        }
       }
     }
   },
@@ -854,7 +1009,6 @@
     "view": {
       "errors": {
         "cacheNotLoaded": "La caché de eventos de Full Calendar no está cargada.",
-        "viewEnhancerNotInitialized": "El mejorador de vistas de Full Calendar no está inicializado.",
         "chronoAnalyserDesktopOnly": "El Analizador Chrono solo está disponible en la versión de escritorio.",
         "chronoAnalyserFailed": "No se pudo abrir el Analizador Chrono. Revisa la consola.",
         "modifyEventFailed": "No se pudo modificar el evento.",
@@ -901,5 +1055,77 @@
     "inMinutes": "(En {{mins}} minutos)",
     "failed": "Full Calendar: Falló al crear la notificación de escritorio.",
     "errorBody": "Full Calendar: No se pudo mostrar la notificación de escritorio. Revisa la consola para ver errores."
+  },
+  "global": {
+    "learnMore": "Más información",
+    "settingsHeader": "Cambia entre grupos de configuración específicos para mantener la configuración más ligera y fácil de revisar."
+  },
+  "api": {
+    "authorization": {
+      "title": "Solicitud de autorización",
+      "requestingPluginMessage": "El plugin \"{{pluginId}}\" solicita acceso a Full Calendar.",
+      "reasonLabel": "Motivo: {{reason}}",
+      "permissionsLabel": "Seleccione los permisos que desea otorgar. Puede cambiarlos más tarde en la configuración.",
+      "approve": "Aprobar",
+      "deny": "Denegar"
+    },
+    "settings": {
+      "title": "Acceso a la API",
+      "managePermissions": "Gestionar permisos para \"{{pluginId}}\".",
+      "noAuthorizedPlugins": "No hay plugins externos autorizados.",
+      "editAccess": "Editar acceso",
+      "revoke": "Revocar",
+      "cancel": "Cancelar",
+      "save": "Guardar"
+    }
+  },
+  "nlp": {
+    "modalTitle": "Comando FCR",
+    "placeholder": "ej: mañana a las 4pm reunión de equipo, abrir ajustes, ir al próximo martes",
+    "submit": "Ejecutar",
+    "cancel": "Cancelar",
+    "previewHint": "Escribe un comando — crear eventos, navegar vistas, abrir ajustes, y más.",
+    "noCalendars": "No hay calendarios editables disponibles. Por favor, añade un calendario primero.",
+    "parseSuccess": "Comando ejecutado.",
+    "navigating": "Navegando a la vista {{view}}.",
+    "intents": {
+      "CREATE_EVENT": "📅 Crear evento",
+      "NEW_EVENT": "📅 Nuevo evento (vacío)",
+      "NAVIGATE_DAY": "🧭 Navegar → Vista diaria",
+      "NAVIGATE_WEEK": "🧭 Navegar → Vista semanal",
+      "NAVIGATE_MONTH": "🧭 Navegar → Vista mensual",
+      "OPEN_CALENDAR": "📖 Abrir calendario",
+      "OPEN_SIDEBAR": "📖 Abrir barra lateral",
+      "OPEN_SETTINGS": "⚙️ Abrir ajustes",
+      "OPEN_CHRONO": "📊 Abrir Analizador Chrono",
+      "SHOW_CHANGELOG": "📋 Mostrar registro de cambios",
+      "RESET_CACHE": "🗑️ Restablecer caché de eventos",
+      "REVALIDATE_REMOTE": "🔄 Revalidar calendarios remotos",
+      "SYNC_ACTIVITYWATCH": "⏱️ Sincronizar ActivityWatch",
+      "GOTO_DATE": "📆 Ir a la fecha"
+    },
+    "descriptions": {
+      "OPEN_SETTINGS": "Abre la pestaña de ajustes de Full Calendar.",
+      "OPEN_CHRONO": "Inicia el panel del Analizador Chrono.",
+      "SHOW_CHANGELOG": "Muestra las últimas notas de la versión.",
+      "RESET_CACHE": "Limpia y reconstruye el caché de eventos.",
+      "REVALIDATE_REMOTE": "Fuerza una sincronización fresca de todos los calendarios remotos.",
+      "SYNC_ACTIVITYWATCH": "Obtiene los últimos datos de ActivityWatch."
+    },
+    "preview": {
+      "target": "Objetivo",
+      "title": "Título",
+      "date": "Fecha",
+      "time": "Hora",
+      "allDay": "Todo el día",
+      "calendar": "Calendario",
+      "recurrence": "Recurrencia",
+      "every": "Cada",
+      "patternsMatched": "✓ {{count}} patrón coincidente"
+    },
+    "notices": {
+      "cacheReset": "El caché de eventos se ha restablecido.",
+      "awNotEnabled": "ActivityWatch no está habilitado. Habilítalo en los ajustes primero."
+    }
   }
 }

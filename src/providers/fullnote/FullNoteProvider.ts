@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import { rrulestr } from 'rrule';
 import { DateTime } from 'luxon';
 import { CachedMetadata, TFile, TFolder, normalizePath } from 'obsidian';
@@ -211,14 +212,14 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     }
 
     // Fallback for legacy events or events created in-memory that haven't been saved yet.
-    const filename = filenameForEvent(event, this.plugin.settings);
+    const filename = filenameForEvent(event, PluginState.getSettings());
     const path = normalizePath(`${this.source.directory}/${filename}`);
     return { persistentId: path };
   }
 
   computeSyncKey(event: OFCEvent): string {
     if (event.uid) return event.uid;
-    const filename = filenameForEvent(event, this.plugin.settings);
+    const filename = filenameForEvent(event, PluginState.getSettings());
     return normalizePath(`${this.source.directory}/${filename}`);
   }
 
@@ -267,7 +268,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
   }
 
   async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation]> {
-    const baseFilename = basenameFromEvent(event, this.plugin.settings);
+    const baseFilename = basenameFromEvent(event, PluginState.getSettings());
     const path = findUniquePath(this.app, this.source.directory, baseFilename);
 
     // The frontmatter is generated from the clean `event` object, so the title remains unsuffixed.
@@ -292,8 +293,8 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     }
 
     // Determine if the event's core identifiers (which make up the filename) have changed.
-    const oldBaseFilename = basenameFromEvent(oldEventData, this.plugin.settings);
-    const newBaseFilename = basenameFromEvent(newEventData, this.plugin.settings);
+    const oldBaseFilename = basenameFromEvent(oldEventData, PluginState.getSettings());
+    const newBaseFilename = basenameFromEvent(newEventData, PluginState.getSettings());
 
     let finalPath = oldPath;
     let fileToRewrite = originalFile;

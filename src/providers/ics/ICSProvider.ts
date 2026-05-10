@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import { request, TFile } from 'obsidian';
 import { OFCEvent, EventLocation } from '../../types';
 import { getEventsFromICS } from './ics';
@@ -98,6 +99,12 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig>, SyncKey
   }
 
   computeSyncKey(event: OFCEvent): string {
+    // For rrule events, use the unique id field (ics::uid::date::recurring) to prevent
+    // collision with RECURRENCE-ID exception instances that share the same uid.
+    // This ensures the parent recurring series survives the sync deduplication process.
+    if (event.type === 'rrule' && event.id) {
+      return event.id;
+    }
     return event.uid || JSON.stringify(event);
   }
 
@@ -140,7 +147,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig>, SyncKey
 
     try {
       const response = await request({ url: remoteUrl, method: 'GET' });
-      const displayTimezone = this.plugin.settings.displayTimezone;
+      const displayTimezone = PluginState.getSettings().displayTimezone;
       if (!displayTimezone) return [];
 
       // Remove timezone conversion logic; just return raw events

@@ -13,6 +13,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../core/PluginState';
 import { TFile, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
@@ -36,7 +37,7 @@ import {
   TasksPluginTask,
   tasksToCalendarTasks
 } from './taskPayloadAdapter';
-import { TasksDateTarget } from '../../types/settings';
+import { TasksDateTarget, TasksDisplayFormat } from '../../types/settings';
 
 export { extractTimeFromTitle } from './taskPayloadAdapter';
 
@@ -67,17 +68,31 @@ export function updateTimeInLine(
   startTime: string | null,
   endTime: string | null,
   timeFormat24h = true,
-  dateSymbol = getScheduledDateEmoji()
+  dateSymbol = getScheduledDateEmoji(),
+  displayFormat: TasksDisplayFormat = 'standard'
 ): string {
   // Strip any existing time block (24h or 12h) from the line.
   const timeBlockPattern =
     /\s*\(\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?(?:-\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?)?\)/g;
-  let result = line.replace(timeBlockPattern, '');
+  const dayPlannerPrefixPattern = /^(\s*-\s\[[ xX]\]\s+)\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?\s+/;
+  let result = line.replace(timeBlockPattern, '').replace(dayPlannerPrefixPattern, '$1');
 
   if (startTime) {
-    const fmt = (t: string) => formatTimeToken(t, timeFormat24h);
+    const isDayPlanner = displayFormat === 'dayPlanner';
+    const fmt = (t: string) => formatTimeToken(t, isDayPlanner ? true : timeFormat24h);
     const fmtStart = fmt(startTime);
     const fmtEnd = endTime && endTime !== startTime ? fmt(endTime) : null;
+    if (isDayPlanner) {
+      const dayPlannerPrefix = fmtEnd ? `${fmtStart} - ${fmtEnd}` : fmtStart;
+      const taskPrefixMatch = result.match(/^(\s*-\s\[[ xX]\]\s+)/);
+      if (taskPrefixMatch) {
+        result = `${taskPrefixMatch[1]}${dayPlannerPrefix} ${result.slice(taskPrefixMatch[1].length)}`;
+      } else {
+        result = `${dayPlannerPrefix} ${result}`;
+      }
+      return result.trimEnd();
+    }
+
     const timeBlock = fmtEnd ? `(${fmtStart}-${fmtEnd})` : `(${fmtStart})`;
 
     // Insert before the configured date marker (guaranteed present after updateTaskLine).
@@ -213,7 +228,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   public async toggleComplete(eventId: string, isDone: boolean): Promise<boolean> {
     try {
-      const event = this.plugin.cache?.getEventById(eventId);
+      const event = PluginState.getCache()?.getEventById(eventId);
       if (!event || !event.uid || event.type !== 'single') {
         throw new Error(
           `Event with session ID ${eventId} not found, has no UID, or is not a single event.`
@@ -252,7 +267,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
       // Push the update to the EventCache.
       // We use the persistentId (event.uid) for the update payload.
-      await this.plugin.providerRegistry.processProviderUpdates(this.source.id, {
+      await PluginState.getProviderRegistry().processProviderUpdates(this.source.id, {
         additions: [],
         updates: [
           {
@@ -387,7 +402,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         // this.debugTasksCachePayload('request-cache-update', cacheData);
         if (this.resolveTasksCacheWarm(cacheData)) {
           if (didTimeout) {
-            this.plugin.providerRegistry.reloadProviderNow(this.source.id);
+            PluginState.getProviderRegistry().reloadProviderNow(this.source.id);
           }
         }
       };
@@ -434,7 +449,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private _taskToOFCEvent(task: CalendarTask): [OFCEvent, EventLocation | null] | null {
     const displayDate = this.getTaskDateValue(
       task,
-      this.plugin.settings.tasksIntegration.calendarDisplayDateTarget
+      PluginState.getSettings().tasksIntegration.calendarDisplayDateTarget
     );
 
     if (!displayDate) {
@@ -495,11 +510,11 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
       if (!this.isTasksCacheWarm) {
         this.resolveTasksCacheWarm(cacheData);
-        this.plugin.providerRegistry.reloadProviderNow(this.source.id);
+        PluginState.getProviderRegistry().reloadProviderNow(this.source.id);
         return;
       }
 
-      if (!this.plugin.cache) {
+      if (!PluginState.getCache()) {
         return;
       }
 
@@ -525,7 +540,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
             if (
               this.getTaskDateValue(
                 oldTask,
-                this.plugin.settings.tasksIntegration.calendarDisplayDateTarget
+                PluginState.getSettings().tasksIntegration.calendarDisplayDateTarget
               )
             ) {
               providerPayload.deletions.push(id);
@@ -540,7 +555,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           const wasDated = oldTask
             ? !!this.getTaskDateValue(
                 oldTask,
-                this.plugin.settings.tasksIntegration.calendarDisplayDateTarget
+                PluginState.getSettings().tasksIntegration.calendarDisplayDateTarget
               )
             : false;
           const isDated = transformed !== null;
@@ -575,14 +590,14 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
           providerPayload.updates.length > 0 ||
           providerPayload.deletions.length > 0
         ) {
-          await this.plugin.providerRegistry.processProviderUpdates(
+          await PluginState.getProviderRegistry().processProviderUpdates(
             this.source.id,
             providerPayload
           );
         }
 
         // Refresh the backlog view.
-        this.plugin.providerRegistry.refreshBacklogViews();
+        PluginState.getProviderRegistry().refreshBacklogViews();
       } finally {
         this.isProcessingUpdate = false;
       }
@@ -711,7 +726,10 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   private hasBacklogTargetDate(task: CalendarTask): boolean {
-    return !!this.getTaskDateValue(task, this.plugin.settings.tasksIntegration.backlogDateTarget);
+    return !!this.getTaskDateValue(
+      task,
+      PluginState.getSettings().tasksIntegration.backlogDateTarget
+    );
   }
 
   private updateTaskLine(
@@ -770,9 +788,17 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     // Extract time from the dropped event.  allDay → clear time block; timed → update it.
     const startTime = newEvent.allDay ? null : newEvent.startTime;
     const endTime = newEvent.allDay ? null : (newEvent.endTime ?? null);
-    const timeFormat24h = this.plugin.settings.timeFormat24h;
+    const timeFormat24h = PluginState.getSettings().timeFormat24h;
+    const taskDisplayFormat = PluginState.getSettings().tasksIntegration.taskDisplayFormat;
 
-    await this._surgicallyUpdateTask(taskId, newDate, startTime, endTime, timeFormat24h);
+    await this._surgicallyUpdateTask(
+      taskId,
+      newDate,
+      startTime,
+      endTime,
+      timeFormat24h,
+      taskDisplayFormat ?? 'dayPlanner'
+    );
     const [filePath, lineNumberStr] = taskId.split('::');
     return {
       file: { path: filePath },
@@ -804,13 +830,14 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     newDate: Date,
     startTime?: string | null,
     endTime?: string | null,
-    timeFormat24h = true
+    timeFormat24h = true,
+    taskDisplayFormat: TasksDisplayFormat = 'dayPlanner'
   ): Promise<void> {
     const task = this.allTasks.find(t => t.id === taskId);
     if (!task) {
       throw new Error(`Cannot find original task with ID ${taskId} to update.`);
     }
-    const dateTarget = this.plugin.settings.tasksIntegration.calendarDisplayDateTarget;
+    const dateTarget = PluginState.getSettings().tasksIntegration.calendarDisplayDateTarget;
     let newLine = this.updateTaskLine(task.originalMarkdown, newDate, dateTarget);
     // Only update the time block when explicitly provided (undefined = no change).
     if (startTime !== undefined) {
@@ -819,7 +846,8 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         startTime,
         endTime ?? null,
         timeFormat24h,
-        this.getDateTargetEmoji(dateTarget)
+        this.getDateTargetEmoji(dateTarget),
+        taskDisplayFormat
       );
     }
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
@@ -836,7 +864,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     if (!task) {
       throw new Error(`Cannot find original task to schedule at ${taskId}`);
     }
-    const dateTarget = this.plugin.settings.tasksIntegration.calendarDisplayDateTarget;
+    const dateTarget = PluginState.getSettings().tasksIntegration.calendarDisplayDateTarget;
     const newLine = this.updateTaskLine(task.originalMarkdown, date, dateTarget);
     await this.replaceTaskInFile(task.filePath, task.lineNumber, [newLine]);
     task.originalMarkdown = newLine;
@@ -851,13 +879,16 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         };
       }
     ).plugins?.plugins?.['obsidian-tasks-plugin']?.apiV1;
-    if (tasksApi && this.plugin.settings.tasksIntegration.openEditModalAfterBacklogDrop) {
+    if (tasksApi && PluginState.getSettings().tasksIntegration.openEditModalAfterBacklogDrop) {
       const editedTaskLine = await tasksApi.editTaskLineModal(newLine);
       if (editedTaskLine !== undefined && editedTaskLine !== newLine) {
         await this.replaceTaskInFile(task.filePath, task.lineNumber, [editedTaskLine]);
         task.originalMarkdown = editedTaskLine;
       }
-    } else if (!tasksApi && this.plugin.settings.tasksIntegration.openEditModalAfterBacklogDrop) {
+    } else if (
+      !tasksApi &&
+      PluginState.getSettings().tasksIntegration.openEditModalAfterBacklogDrop
+    ) {
       new Notice(t('notices.tasks.scheduledNoModal'));
     }
   }
@@ -879,7 +910,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     }
 
     // Step 1: Use the eventId (Session ID) to look up the full OFCEvent from the main cache.
-    const eventFromCache = this.plugin.cache?.getEventById(eventId);
+    const eventFromCache = PluginState.getCache()?.getEventById(eventId);
     if (!eventFromCache || !eventFromCache.uid) {
       throw new Error(
         `Could not find event or its persistent UID in the main cache for session ID ${eventId}.`

@@ -1,3 +1,4 @@
+import { PluginState } from '../../../core/PluginState';
 import { Setting, Notice } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../i18n/i18n';
@@ -9,7 +10,7 @@ export function renderActivityWatchSettings(
   plugin: FullCalendarPlugin,
   onChange: () => void
 ): void {
-  const settings = plugin.settings;
+  const settings = PluginState.getSettings();
   const awSettings = settings.activityWatch;
 
   new Setting(containerEl)
@@ -24,7 +25,7 @@ export function renderActivityWatchSettings(
     .addToggle(toggle => {
       toggle.setValue(awSettings.enabled).onChange(async value => {
         awSettings.enabled = value;
-        await plugin.saveSettings();
+        await PluginState.saveSettings();
         onChange();
 
         // If they just toggled it ON and no target calendar is set, prompt them

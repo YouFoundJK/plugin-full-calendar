@@ -14,6 +14,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../core/PluginState';
 import FullCalendarPlugin from '../../main';
 import {
   App,
@@ -118,6 +119,7 @@ export function addCalendarButton(
           ical: t('settings.calendars.types.ical'),
           google: t('settings.calendars.types.google'),
           tasks: t('settings.calendars.types.tasks'),
+          tasknotes: t('settings.calendars.types.tasknotes'),
           bases: t('settings.calendars.types.bases')
         }))
     )
@@ -142,7 +144,8 @@ export function addCalendarButton(
 
         const providerType = sourceType === 'icloud' ? 'caldav' : sourceType;
 
-        const providerClass = await plugin.providerRegistry.getProviderForType(providerType);
+        const providerClass =
+          await PluginState.getProviderRegistry().getProviderForType(providerType);
         if (!providerClass) {
           new Notice(t('notices.providerNotRegistered', { providerType }));
           return;
@@ -156,7 +159,7 @@ export function addCalendarButton(
         ).getConfigurationComponent();
 
         const modal = new ReactModal(plugin.app, async () => {
-          await plugin.loadSettings();
+          await PluginState.loadSettings();
 
           const usedDirectories = listUsedDirectories ? listUsedDirectories() : [];
           const directories = plugin.app.vault
@@ -175,7 +178,9 @@ export function addCalendarButton(
             }
           }
 
-          const existingCalendarColors = plugin.settings.calendarSources.map(s => s.color);
+          const existingCalendarColors = PluginState.getSettings().calendarSources.map(
+            s => s.color
+          );
 
           const initialConfig = sourceType === 'icloud' ? { url: 'https://caldav.icloud.com' } : {};
 
@@ -214,7 +219,12 @@ export function addCalendarButton(
             ): void => {
               void (async () => {
                 const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
-                const existingIds = plugin.settings.calendarSources.map(s => s.id);
+                // Collect IDs from both settings and ProviderRegistry to prevent race conditions
+                const settingsIds = PluginState.getSettings().calendarSources.map(s => s.id);
+                const registryIds = PluginState.getProviderRegistry()
+                  .getAllSources()
+                  .map(s => s.id);
+                const existingIds = Array.from(new Set([...settingsIds, ...registryIds]));
 
                 for (const finalConfig of configs) {
                   const newSettingsId = generateCalendarId(
@@ -239,7 +249,7 @@ export function addCalendarButton(
                   } as CalendarInfo;
 
                   // Add the provider instance to the registry BEFORE updating the UI.
-                  await plugin.providerRegistry.addInstance(finalSource);
+                  await PluginState.getProviderRegistry().addInstance(finalSource);
 
                   // Now, submit the complete source to the React component.
                   submitCallback(finalSource);
@@ -310,7 +320,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     const shellEl = this.containerEl.createDiv('full-calendar-settings-shell');
     const headerEl = shellEl.createDiv('full-calendar-settings-header');
     headerEl.createEl('p', {
-      text: 'Switch between focused setting groups to keep configuration lighter and easier to scan.'
+      text: t('global.settingsHeader')
     });
 
     const tabsRowEl = shellEl.createDiv('full-calendar-settings-tabs-row');
@@ -622,11 +632,15 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         const [
           { renderActivityWatchSettings },
           { renderGoogleSettings },
-          { renderTasksIntegrationSettings }
+          { renderTasksIntegrationSettings },
+          { renderTaskNotesIntegrationSettings },
+          { renderApiAccessSettings }
         ] = await Promise.all([
           import('../../features/activitywatch/ui/renderActivityWatch'),
           import('../../providers/google/ui/renderGoogle'),
-          import('../../providers/tasks/renderTasksIntegration')
+          import('../../providers/tasks/renderTasksIntegration'),
+          import('../../providers/tasknotes/renderTaskNotesIntegration'),
+          import('./sections/renderApiAccess')
         ]);
 
         renderActivityWatchSettings(containerEl, this.plugin, () => {
@@ -635,7 +649,13 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         renderTasksIntegrationSettings(containerEl, this.plugin, () => {
           void this.display();
         });
+        renderTaskNotesIntegrationSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
         renderGoogleSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        renderApiAccessSettings(containerEl, this.plugin, () => {
           void this.display();
         });
         break;
@@ -644,7 +664,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
   }
 
   private _renderInitialSetupNotice(containerEl: HTMLElement): void {
-    if (this.plugin.settings.calendarSources.length === 0) {
+    if (PluginState.getSettings().calendarSources.length === 0) {
       const notice = containerEl.createDiv('full-calendar-initial-setup-notice');
       new Setting(notice).setName('').setHeading();
       notice.createEl('p', {

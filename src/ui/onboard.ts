@@ -10,6 +10,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../core/PluginState';
 import { CalendarInfo } from '../types';
 import FullCalendarPlugin from '../main';
 import { addCalendarButton } from './settings/SettingsTab';
@@ -24,10 +25,10 @@ export function renderOnboarding(plugin: FullCalendarPlugin, el: HTMLElement) {
   const container = notice.createDiv();
   addCalendarButton(plugin, container, (source: CalendarInfo) => {
     void (async () => {
-      const { calendarSources } = plugin.settings;
+      const { calendarSources } = PluginState.getSettings();
       calendarSources.push(source);
-      await plugin.saveSettings();
-      await plugin.activateView();
+      await PluginState.saveSettings();
+      await PluginState.getInternalAPI().openCalendar();
     })();
   });
 }

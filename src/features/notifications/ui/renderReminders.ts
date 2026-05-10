@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../i18n/i18n';
@@ -32,26 +33,26 @@ export function renderRemindersSettings(
       ])
     )
     .addToggle(toggle => {
-      toggle.setValue(plugin.settings.enableDefaultReminder);
+      toggle.setValue(PluginState.getSettings().enableDefaultReminder);
       toggle.onChange(async val => {
-        plugin.settings.enableDefaultReminder = val;
-        await plugin.saveSettings();
+        PluginState.getSettings().enableDefaultReminder = val;
+        await PluginState.saveSettings();
         rerender();
       });
     });
 
-  if (plugin.settings.enableDefaultReminder) {
+  if (PluginState.getSettings().enableDefaultReminder) {
     new Setting(containerEl)
       .setName(t('settings.reminders.defaultTime.label'))
       .setDesc(t('settings.reminders.defaultTime.description'))
       .addText(text => {
         text.inputEl.type = 'number';
-        text.setValue(String(plugin.settings.defaultReminderMinutes));
+        text.setValue(String(PluginState.getSettings().defaultReminderMinutes));
         text.onChange(async val => {
           const parsed = parseInt(val, 10);
           if (!isNaN(parsed) && parsed >= 0) {
-            plugin.settings.defaultReminderMinutes = parsed;
-            await plugin.saveSettings();
+            PluginState.getSettings().defaultReminderMinutes = parsed;
+            await PluginState.saveSettings();
           }
         });
       });

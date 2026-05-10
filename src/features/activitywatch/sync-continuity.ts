@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import FullCalendarPlugin from '../../main';
 import { AWBucket } from './api';
 import {
@@ -28,6 +29,7 @@ import {
 } from './sync-utils';
 
 import { deriveActivityWatchBlocks, hasAwEvidenceAroundAnchorTime } from './sync-derive';
+import { FullCalendarSettings } from '../../types/settings';
 
 export function findBoundaryOverlappingActivityWatchEvent(
   sessionIndex: SessionIndex,
@@ -54,10 +56,10 @@ export function findBoundaryOverlappingActivityWatchEvent(
 
 export async function findContinuityCandidate(
   plugin: FullCalendarPlugin,
-  settings: FullCalendarPlugin['settings']['activityWatch'],
+  settings: FullCalendarSettings['activityWatch'],
   buckets: Record<string, AWBucket>,
   bucketIdsToFetch: Set<string>,
-  profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>,
+  profiles: NonNullable<FullCalendarSettings['activityWatch']['profiles']>,
   knownProfileSignatures: Set<ProfileSignature>
 ): Promise<ContinuityCandidate | null> {
   if (settings.syncStrategy === 'custom' || settings.lastSyncTime <= 0) {
@@ -122,12 +124,12 @@ export async function findContinuityCandidate(
 }
 
 export function buildSeedStateFromBoundaryEvent(
-  profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>,
+  profiles: NonNullable<FullCalendarSettings['activityWatch']['profiles']>,
   boundaryEvent: PriorCalendarEvent,
   boundaryMs: number
 ): {
   seedState: SeedState;
-  matchedProfile: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>[number];
+  matchedProfile: NonNullable<FullCalendarSettings['activityWatch']['profiles']>[number];
 } | null {
   const matchedProfile = profiles.find(
     profile =>
@@ -224,7 +226,7 @@ export async function createContinuityBlocksAndReplacePriorEvent(
 
   for (const sessionId of resolvedDeletes) {
     try {
-      await plugin.cache.deleteEvent(sessionId, { force: true });
+      await PluginState.getCache().deleteEvent(sessionId, { force: true });
     } catch (err) {
       console.error(
         'ActivityWatch continuity rewrite failed: detected a continuous session but could not delete the prior event before rewriting.',
@@ -245,7 +247,10 @@ export async function createContinuityBlocksAndReplacePriorEvent(
   let lastYieldTime = Date.now();
 
   for (const block of sortedBlocks) {
-    const created = await plugin.cache.addEvent(targetCalendarId, materializeBlockAsEvent(block));
+    const created = await PluginState.getCache().addEvent(
+      targetCalendarId,
+      materializeBlockAsEvent(block)
+    );
     if (created) {
       createdBlocks.push(block);
     }
@@ -325,7 +330,7 @@ export async function createOrUpdateBlock(
       if (!sessionId) continue;
 
       try {
-        await plugin.cache.deleteEvent(sessionId, { force: true });
+        await PluginState.getCache().deleteEvent(sessionId, { force: true });
         existing.sessionId = sessionId;
 
         const idx = existingOverlapEvents.indexOf(existing);
@@ -339,7 +344,7 @@ export async function createOrUpdateBlock(
   }
 
   const ofcEvent = materializeBlockAsEvent(block);
-  const created = await plugin.cache.addEvent(targetCalendarId, ofcEvent);
+  const created = await PluginState.getCache().addEvent(targetCalendarId, ofcEvent);
 
   if (created) {
     const recoveredCreatedSessionId = recoverSessionIdFromStore(sessionIndex, block);

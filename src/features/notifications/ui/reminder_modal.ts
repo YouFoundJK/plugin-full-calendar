@@ -2,6 +2,7 @@
  * @file reminder_modal.ts
  * @brief Launcher for the Reminder Modal.
  */
+import { PluginState } from '../../../core/PluginState';
 import * as React from 'react';
 import { DateTime } from 'luxon';
 import ReactModal from '../../../ui/ReactModal';
@@ -22,14 +23,14 @@ export function launchReminderModal(
       React.createElement(ReminderModal, {
         event,
         type,
-        defaultReminderMinutes: plugin.settings.defaultReminderMinutes,
+        defaultReminderMinutes: PluginState.getSettings().defaultReminderMinutes,
         onDismiss: () => {
           closeModal();
         },
         onOpen: () => {
           void (async () => {
             try {
-              await openFileForEvent(plugin.cache, plugin.app, eventId);
+              await openFileForEvent(PluginState.getCache(), plugin.app, eventId);
             } catch (e) {
               new Notice('Could not open event file.');
               console.error(e);
@@ -40,7 +41,7 @@ export function launchReminderModal(
         onSnooze: (minutes: number) => {
           void (async () => {
             try {
-              await plugin.cache.processEvent(eventId, e => {
+              await PluginState.getCache().processEvent(eventId, e => {
                 if (type === 'default') {
                   // Destructive Snooze: Move Start Time
                   if (e.allDay) {

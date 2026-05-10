@@ -1,6 +1,9 @@
 import { __testing } from './sync';
 import { createContinuityBlocksAndReplacePriorEvent } from './sync-continuity';
 import { getCalendarEventsInRange } from './sync-utils';
+import { PluginState } from '../../core/PluginState';
+import type { ProviderRegistry } from '../../providers/ProviderRegistry';
+import type EventCache from '../../core/EventCache';
 
 jest.mock('obsidian', () => {
   const moment = (input?: string | number, _format?: string, _strict?: boolean) => {
@@ -30,6 +33,16 @@ jest.mock('obsidian', () => {
 });
 
 describe('ActivityWatch continuity helpers', () => {
+  const setPluginStateFromMock = (plugin: unknown) => {
+    const state = plugin as {
+      providerRegistry: ProviderRegistry;
+      cache: EventCache;
+    };
+
+    PluginState.setProviderRegistry(state.providerRegistry);
+    PluginState.setCache(state.cache);
+  };
+
   const makePrior = (overrides: Partial<unknown> = {}) =>
     ({
       sessionId: 's1',
@@ -270,6 +283,7 @@ describe('ActivityWatch continuity helpers', () => {
         }
       }
     };
+    setPluginStateFromMock(plugin);
 
     const events = await getCalendarEventsInRange(
       plugin as never,

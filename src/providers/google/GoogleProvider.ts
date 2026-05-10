@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import { DateTime } from 'luxon';
 import { OFCEvent, EventLocation, validateEvent, CalendarInfo } from '../../types';
 import FullCalendarPlugin from '../../main';
@@ -122,7 +123,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
     } as Extract<CalendarInfo, { type: 'google' }>); // Provide exact subtype
     if (!token) return [];
 
-    const displayTimezone = this.plugin.settings.displayTimezone;
+    const displayTimezone = PluginState.getSettings().displayTimezone;
     if (!displayTimezone) return [];
 
     try {

@@ -10,6 +10,10 @@ import { TasksProviderConfig } from '../typesTask';
 import type { OFCEvent } from '../../../types/schema';
 import type { ObsidianInterface } from '../../../ObsidianAdapter';
 import type FullCalendarPlugin from '../../../main';
+import { PluginState } from '../../../core/PluginState';
+import type EventCache from '../../../core/EventCache';
+import { DEFAULT_SETTINGS, FullCalendarSettings } from '../../../types/settings';
+import type { ProviderRegistry } from '../../ProviderRegistry';
 
 // Mock the dependencies
 jest.mock('../../../ObsidianAdapter');
@@ -33,10 +37,11 @@ type MockPlugin = {
       plugins?: Record<string, { apiV1?: { editTaskLineModal: jest.Mock } }>;
     };
   };
-  settings: Record<string, unknown>;
+  settings: FullCalendarSettings;
   providerRegistry: {
     refreshBacklogViews: jest.Mock;
     reloadProviderNow: jest.Mock;
+    processProviderUpdates: jest.Mock;
   };
 };
 
@@ -73,6 +78,8 @@ describe('TasksPluginProvider', () => {
         }
       },
       settings: {
+        ...DEFAULT_SETTINGS,
+        timeFormat24h: true,
         tasksIntegration: {
           backlogDateTarget: 'scheduledDate',
           calendarDisplayDateTarget: 'scheduledDate',
@@ -81,9 +88,14 @@ describe('TasksPluginProvider', () => {
       },
       providerRegistry: {
         refreshBacklogViews: jest.fn(),
-        reloadProviderNow: jest.fn()
+        reloadProviderNow: jest.fn(),
+        processProviderUpdates: jest.fn()
       }
     };
+
+    PluginState.setSettings(mockPlugin.settings);
+    PluginState.setProviderRegistry(mockPlugin.providerRegistry as unknown as ProviderRegistry);
+    PluginState.setCache({ getEventById: jest.fn() } as unknown as EventCache);
 
     const config: TasksProviderConfig = {
       id: 'tasks_1',
@@ -229,7 +241,8 @@ describe('TasksPluginProvider', () => {
       mockPlugin.settings.tasksIntegration = {
         backlogDateTarget: 'scheduledDate',
         calendarDisplayDateTarget: 'dueDate',
-        openEditModalAfterBacklogDrop: false
+        openEditModalAfterBacklogDrop: false,
+        taskDisplayFormat: 'standard'
       };
       mockPlugin.app.workspace.trigger.mockImplementation(
         (eventName: string, callback: (data: unknown) => void) => {
@@ -447,7 +460,8 @@ describe('TasksPluginProvider', () => {
       mockPlugin.settings.tasksIntegration = {
         backlogDateTarget: 'scheduledDate',
         calendarDisplayDateTarget: 'dueDate',
-        openEditModalAfterBacklogDrop: false
+        openEditModalAfterBacklogDrop: false,
+        taskDisplayFormat: 'standard'
       };
       mockPlugin.app.workspace.trigger.mockImplementation(
         (eventName: string, callback: (data: unknown) => void) => {
@@ -480,6 +494,63 @@ describe('TasksPluginProvider', () => {
           date: '2026-05-05',
           startTime: '09:00',
           endTime: '10:00'
+        } as OFCEvent
+      );
+    });
+
+    it('writes day planner format when task display format is set to dayPlanner', async () => {
+      const file = { path: 'Daily.md' };
+      mockApp.getFileByPath.mockReturnValue(file);
+      mockApp.rewrite.mockImplementation((_file: unknown, update: (content: string) => string) => {
+        const updated = update('- [ ] Wellness - Task - edit 2 (5:00 AM-7:00 AM) ⏳ 2026-05-02');
+        expect(updated).toBe('- [ ] 5:00 - 19:00 Wellness - Task - edit 2 ⏳ 2026-05-05');
+        return Promise.resolve();
+      });
+      mockPlugin.settings.tasksIntegration = {
+        backlogDateTarget: 'scheduledDate',
+        calendarDisplayDateTarget: 'scheduledDate',
+        openEditModalAfterBacklogDrop: false,
+        taskDisplayFormat: 'dayPlanner'
+      };
+      mockPlugin.app.workspace.trigger.mockImplementation(
+        (eventName: string, callback: (data: unknown) => void) => {
+          if (eventName === 'obsidian-tasks-plugin:request-cache-update') {
+            callback({
+              state: 'Warm',
+              tasks: [
+                {
+                  path: 'Daily.md',
+                  description: 'Wellness - Task - edit 2 (5:00 AM-7:00 AM)',
+                  taskLocation: { lineNumber: 0 },
+                  scheduledDate: { toDate: () => new Date('2026-05-02T00:00:00') },
+                  originalMarkdown:
+                    '- [ ] Wellness - Task - edit 2 (5:00 AM-7:00 AM) ⏳ 2026-05-02',
+                  isDone: false
+                }
+              ]
+            });
+          }
+        }
+      );
+
+      await provider.getEvents();
+      await provider.updateEvent(
+        { persistentId: 'Daily.md::0' },
+        {
+          type: 'single',
+          title: 'Wellness - Task - edit 2',
+          date: '2026-05-02',
+          allDay: false,
+          startTime: '05:00',
+          endTime: '07:00'
+        } as OFCEvent,
+        {
+          type: 'single',
+          title: 'Wellness - Task - edit 2',
+          allDay: false,
+          date: '2026-05-05',
+          startTime: '05:00',
+          endTime: '19:00'
         } as OFCEvent
       );
     });

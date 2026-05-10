@@ -12,6 +12,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../core/PluginState';
 import { Notice } from 'obsidian';
 
 import { OFCEvent } from '../../types';
@@ -48,9 +49,9 @@ export class RecurringEventManager {
   }
 
   private getProviderAndConfig(calendarId: string) {
-    const calendarInfo = this.plugin.providerRegistry.getSource(calendarId);
+    const calendarInfo = PluginState.getProviderRegistry().getSource(calendarId);
     if (!calendarInfo) return null;
-    const provider = this.plugin.providerRegistry.getInstance(calendarId);
+    const provider = PluginState.getProviderRegistry().getInstance(calendarId);
     if (!provider) return null;
     return { provider, config: calendarInfo };
   }
@@ -299,7 +300,7 @@ export class RecurringEventManager {
     const { calendarId: masterCalendarId, event: masterEvent } = masterDetails;
 
     // CORRECTED: This was the source of the calendarInfo error.
-    const calendarInfo = this.plugin.providerRegistry.getSource(masterCalendarId);
+    const calendarInfo = PluginState.getProviderRegistry().getSource(masterCalendarId);
     if (!calendarInfo) {
       throw new Error(`Could not find calendar info for ${masterCalendarId}`);
     }
@@ -361,7 +362,7 @@ export class RecurringEventManager {
 
     // CORRECTED: Delegate the entire provider operation to the registry.
     const [authoritativeOverrideEvent, overrideLocation] =
-      await this.plugin.providerRegistry.createInstanceOverrideInProvider(
+      await PluginState.getProviderRegistry().createInstanceOverrideInProvider(
         calendarId,
         masterEvent,
         instanceDate,
@@ -532,7 +533,7 @@ export class RecurringEventManager {
     const directory = config.directory;
     if (!directory) return;
 
-    const oldFullTitle = this.plugin.cache.enhancer.prepareForStorage(oldParentEvent).title;
+    const oldFullTitle = PluginState.getCache().enhancer.prepareForStorage(oldParentEvent).title;
     const sanitizedOldTitle = this._sanitizeTitleForFilename(oldFullTitle);
 
     const childrenToUpdate = (newParentEvent.skipDates || []).flatMap((date: string) => {
@@ -746,7 +747,7 @@ export class RecurringEventManager {
       // Strategy: Since I can't easily get the return value from `cache.addEvent`,
       // I will replicate its core steps here for the Master so I have the Location.
       const [newMasterEvent, newMasterLocation] =
-        await this.plugin.providerRegistry.createEventInProvider(newCalendarId, eventToCreate);
+        await PluginState.getProviderRegistry().createEventInProvider(newCalendarId, eventToCreate);
 
       // Add New Master to Cache
       const newMasterId = this.cache.generateId();
@@ -772,7 +773,7 @@ export class RecurringEventManager {
       // 2. Identify Link ID (Filename for Local)
       // New Master Location has the path.
       let newLinkId: string | undefined;
-      const config = this.plugin.providerRegistry.getSource(newCalendarId);
+      const config = PluginState.getProviderRegistry().getSource(newCalendarId);
       if (config && config.type === 'local' && newMasterLocation && newMasterLocation.file) {
         // Local Calendar: Link ID is the filename
         newLinkId = newMasterLocation.file.path.split('/').pop();

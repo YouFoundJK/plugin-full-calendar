@@ -12,6 +12,7 @@
 | Recurrence | Instance overrides and parent-child lifecycle semantics. | `EventCache`, provider mutation paths |
 | Workspaces | View-level filtering and setting overrides for presentation segmentation. | `ViewEnhancer`, settings |
 | Category | Parsing, normalization, and bulk categorization workflows. | `EventEnhancer`, settings, UI controls |
+| NLP (FCR Command) | Universal orchestrator: NL event creation, view navigation, settings, cache, sync. | `smartCalendar`, `InternalAPI`, `PluginState`, `EventCache`, `ProviderRegistry` |
 
 ## Architecture rule
 
@@ -25,4 +26,5 @@ Feature modules may transform, filter, and react, but they must not replace core
 
 - [Timezone Architecture](timezone-architecture.md)
 - [Reminders Architecture](reminders-architecture.md)
+- [NLP Engine Architecture](nlp-architecture.md)
 - [ActivityWatch Architecture](../../activitywatch/index.md)

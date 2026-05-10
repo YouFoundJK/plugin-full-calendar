@@ -10,6 +10,8 @@
 | Event-state ownership and mutation authority | [EventCache Contract](eventcache.md) |
 | In-memory indexing and identifier mapping | [Event Storage and Identifiers](event-storage.md) |
 | OFCEvent <-> FullCalendar conversion boundary | [FullCalendar Interop](interop.md) |
+| External plugin API design and authorization | [API Architecture](api-architecture.md) |
+| How to integrate another plugin via API | [API Integration Blueprint](api-integration-blueprint.md) |
 | Runtime flow (load, mutate, external sync, tick/reminders) | [Data Flow](data-flow.md) |
 | Core subsystem contracts and invariants | [Core Systems](core-systems.md) |
 | Event-domain architecture scope | [Events Architecture](../events/architecture.md) |

@@ -1,8 +1,8 @@
-import FullCalendarPlugin from '../../main';
 import { requestUrl } from 'obsidian';
 import { AWBucket, AWEvent } from './api';
 import { executeFSM, FinalBlock, CompoundEvent, AWNode, SeedState } from './fsm';
 import { DerivedAWBlock, TimeRange, BucketEvent, BucketKinds } from './sync-types';
+import { FullCalendarSettings } from '../../types/settings';
 
 export const COMMON_BROWSER_APP_PATTERN =
   /(firefox|chrome|chromium|edge|brave|opera|vivaldi|arc|safari|librewolf|waterfox|floorp|zen|whale|tor)/i;
@@ -51,7 +51,7 @@ export async function deriveActivityWatchBlocks(
   apiUrl: string,
   buckets: Record<string, AWBucket>,
   bucketIdsToFetch: Set<string>,
-  profiles: NonNullable<FullCalendarPlugin['settings']['activityWatch']['profiles']>,
+  profiles: NonNullable<FullCalendarSettings['activityWatch']['profiles']>,
   startTime: Date,
   endTime: Date,
   seedStates: SeedState[] = []

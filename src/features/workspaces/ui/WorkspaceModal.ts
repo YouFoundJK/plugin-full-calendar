@@ -4,6 +4,7 @@
  * @license See LICENSE.md
  */
 
+import { PluginState } from '../../../core/PluginState';
 import { Modal, Setting, DropdownComponent, TextComponent, ToggleComponent } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { WorkspaceSettings, generateWorkspaceId } from '../../../types/settings';
@@ -43,22 +44,35 @@ export class WorkspaceModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
+    contentEl.parentElement?.addClass('settings-modal-wide');
+    contentEl.parentElement?.addClass('workspace-settings-modal');
+
+    const shell = contentEl.createEl('div', {
+      cls: 'settings-modal-shell workspace-settings-shell'
+    });
+    const body = shell.createEl('div', { cls: 'settings-modal-body workspace-settings-body' });
 
     // Modal title
-    contentEl.createEl('h2', {
+    body.createEl('h2', {
       text: this.isNew ? t('modals.workspace.title.create') : t('modals.workspace.title.edit')
     });
 
-    this.renderGeneralSection(contentEl);
-    this.renderViewSection(contentEl);
-    this.renderCalendarFilterSection(contentEl);
-    this.renderCategoryFilterSection(contentEl);
-    this.renderAppearanceSection(contentEl);
-    this.renderButtons(contentEl);
+    this.renderGeneralSection(body);
+    this.renderViewSection(body);
+    this.renderCalendarFilterSection(body);
+    this.renderCategoryFilterSection(body);
+    this.renderAppearanceSection(body);
+
+    const footer = shell.createEl('footer', {
+      cls: 'settings-modal-footer workspace-settings-footer'
+    });
+    this.renderButtons(footer);
   }
 
   onClose() {
     const { contentEl } = this;
+    contentEl.parentElement?.removeClass('settings-modal-wide');
+    contentEl.parentElement?.removeClass('workspace-settings-modal');
     contentEl.empty();
   }
 
@@ -94,7 +108,7 @@ export class WorkspaceModal extends Modal {
       listWeek: t('settings.viewOptions.list')
     };
 
-    if (this.plugin.settings.enableAdvancedCategorization) {
+    if (PluginState.getSettings().enableAdvancedCategorization) {
       desktopViewOptions['resourceTimelineWeek'] = t('settings.viewOptions.timelineWeek');
       desktopViewOptions['resourceTimelineDay'] = t('settings.viewOptions.timelineDay');
     }
@@ -158,7 +172,7 @@ export class WorkspaceModal extends Modal {
     section.createEl('h3', { text: t('modals.workspace.sections.calendarFilters') });
 
     // Get available calendars
-    const calendars = this.plugin.providerRegistry.getAllSources();
+    const calendars = PluginState.getProviderRegistry().getAllSources();
 
     if (calendars.length === 0) {
       section.createEl('p', {
@@ -229,7 +243,7 @@ export class WorkspaceModal extends Modal {
     const section = containerEl.createEl('div', { cls: 'workspace-modal-section' });
     section.createEl('h3', { text: t('modals.workspace.sections.categoryFilters') });
 
-    if (!this.plugin.settings.enableAdvancedCategorization) {
+    if (!PluginState.getSettings().enableAdvancedCategorization) {
       section.createEl('p', {
         text: t('modals.workspace.fields.categories.requiresAdvanced')
       });
@@ -282,7 +296,7 @@ export class WorkspaceModal extends Modal {
       this.workspace.categoryFilter = { mode: 'show-only', categories: [] };
     }
 
-    const categories = this.plugin.settings.categorySettings;
+    const categories = PluginState.getSettings().categorySettings;
     if (categories.length === 0) {
       this.categoryFilterContainer.createEl('p', {
         text: t('modals.workspace.fields.categories.noCategories')
@@ -349,7 +363,7 @@ export class WorkspaceModal extends Modal {
     this.renderBusinessHoursDetails();
 
     // Timeline expanded
-    if (this.plugin.settings.enableAdvancedCategorization) {
+    if (PluginState.getSettings().enableAdvancedCategorization) {
       new Setting(section)
         .setName(t('modals.workspace.fields.timelineCategories.label'))
         .setDesc(t('modals.workspace.fields.timelineCategories.description'))

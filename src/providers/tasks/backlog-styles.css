@@ -40,6 +40,26 @@
   font-size: 0.95em;
 }
 
+.tasks-backlog-search-row {
+  margin-top: 8px;
+}
+
+.tasks-backlog-search-input {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.tasks-backlog-search-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
 .tasks-backlog-count {
   font-size: 0.9em;
   color: var(--text-muted);

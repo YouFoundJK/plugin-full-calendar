@@ -1,20 +1,125 @@
 # Tasks Plugin Integration
 
-Unlock powerful task management by integrating the [Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) plugin directly into Full Calendar. This calendar source transforms your tasks into schedulable events with a dedicated backlog and full create, read, update, and delete (CRUD) support.
+!!! abstract "Philosophy"
+    The Tasks integration is a **bidirectional time-blocking bridge**. It transforms your [Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) into interactive calendar blocks, allowing you to drag unscheduled items from a sidebar backlog directly into your daily schedule.
 
-!!! success "Best for..."
-    Users of the Obsidian Tasks plugin who want to visualize, schedule, and manage their tasks on a calendar. It's perfect for time-blocking and ensuring that important to-dos get the attention they deserve.
 
-!!! tip "Requires Obsidian Tasks Plugin"
-    This calendar source requires the [Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) plugin to be installed and **enabled in your vault**.
+!!! tip "Power Up with Categories"
+    Tasks also support **[Advanced Categories](../events/categories.md)**. Add a category prefix to your task (e.g., `- [ ] Work - Finish report`) to color-code it on your calendar grid.
 
-## Setup
+## Core Workflow
 
-1.  In Full Calendar settings, go to the **Calendars** section.
-2.  Click **New Calendar** and select the type **Tasks**.
-3.  Give the calendar a name (e.g., "My Tasks") and assign it a color.
+The integration revolves around two surfaces: the **Backlog** (where unscheduled tasks live) and the **Calendar** (where scheduled tasks are blocked).
 
-Once added, Full Calendar will automatically discover all tasks from your vault and display them.
+1.  **Collect**: Write tasks in any markdown file using the Tasks plugin syntax.
+2.  **Queue**: Open the **Tasks Backlog** sidebar (via the **[Command Palette](../guides/commands-and-shortcuts.md)**) to see undated items.
+3.  **Schedule**: Drag a task from the backlog onto a calendar time slot. Full Calendar surgically updates the markdown file with the appropriate date emoji and time block.
+
+<!-- Image missing: ../../assets/calendars/task-backlog.gif -->
+
+4.  **Execute**: Mark tasks as complete directly on the calendar; the checkbox state syncs back to your note instantly.
+
+## Backlog Filtering
+
+The Tasks Backlog supports two filters that work together:
+
+- **Missing Date** dropdown: selects which missing Tasks date marker defines backlog membership (`⏳`, `🛫`, or `📅`).
+- **Fuzzy Search** input: filters visible backlog rows by task title, file name, or full file path.
+
+### Fuzzy Search behavior
+
+- Search is case-insensitive.
+- Multiple keywords are supported (space-separated).
+- A keyword matches if it appears directly or as a fuzzy character subsequence in title/path text.
+
+Examples:
+
+- `meeting daily` matches tasks with both terms across title/path.
+- `projA/roadmap` matches by path fragment.
+- `wkpln` can match `weekly-plan` via fuzzy subsequence matching.
+
+---
+
+## Data Mapping & Emojis
+
+Full Calendar respects the Tasks plugin's emoji-based data model. You can configure which specific date field controls the calendar display.
+
+| Setting | Emoji | Logic |
+|---|---|---|
+| **Scheduled Date** | `⏳` | **Default.** Best for daily "to-do" scheduling. |
+| **Start Date** | `🛫` | Best for tracking when you *begin* a multi-day effort. |
+| **Due Date** | `📅` | Best for hard deadlines and commitments. |
+
+> [!IMPORTANT]
+> **No Fallback**: If you set the calendar to show "Due Dates," a task with *only* a scheduled date (`⏳`) will stay in the backlog and will not appear on the calendar until a due date (`📅`) is added.
+
+---
+
+## Time-Blocking Syntax
+
+To position a task at a specific time (rather than just as an "all-day" event), Full Calendar supports two formats.
+
+**Default write format (new behavior): Day Planner**
+
+| Format | Example | Result |
+|---|---|---|
+| **Day Planner Range** | `- [ ] 5:00 - 19:00 Wellness - Task` | Preferred default for new/updated tasks |
+| **Day Planner Point Time** | `- [ ] 14:30 Standup` | Timed task with default duration |
+
+**Legacy format (still supported for reading/parsing):**
+
+| Syntax | Example | Result |
+|---|---|---|
+| **Point Time** | `(14:30)` | Starts at 2:30 PM (default duration) |
+| **Time Range** | `(9:00-10:30)` | Blocks exactly 90 minutes |
+| **12h Format** | `(2:30 PM)` | Correctly parsed and displayed |
+
+### Format Schema
+
+Day Planner schema:
+
+```text
+- [ ] <H:mm> - <H:mm> <title text> <date marker>
+- [ ] <H:mm> <title text> <date marker>
+```
+
+Legacy schema:
+
+```text
+- [ ] <title text> (<H:mm-H:mm>) <date marker>
+- [ ] <title text> (<H:mm>) <date marker>
+```
+
+Where `<date marker>` is one of `⏳ YYYY-MM-DD`, `🛫 YYYY-MM-DD`, or `📅 YYYY-MM-DD` (depending on integration settings).
+
+**Example Task Lines:**
+
+- `- [ ] 5:00 - 19:00 Sync with Team ⏳ 2025-03-28`
+- `- [ ] Sync with Team (14:00-15:00) ⏳ 2025-03-28`
+
+*Dragging an event on the calendar automatically updates this time-block in your markdown.*
+
+> [!NOTE]
+> Full Calendar parses both formats automatically in calendar/backlog views. You do not need to migrate older tasks for them to remain visible and schedulable.
+
+---
+
+## Power User Features
+
+The integration includes several automatic behaviors to keep your calendar clean:
+
+*   **Title Cleaning**: If enabled in settings, Full Calendar can automatically strip `#tags` from task titles on the calendar view for a cleaner look.
+*   **Default Durations**: Timed tasks without an end-time (e.g., `(14:30)`) are assigned a default **30-minute duration**.
+*   **Multi-Day & Custom Statuses**: Tasks spanning multiple days or using custom statuses (e.g., `/`, `>`, `-`) are correctly parsed and rendered.
+
+## Integration Settings
+
+Once you add a **Tasks** source in **[Calendar Settings](../settings/sources.md)**, a new **Integrations → Tasks** section appears:
+
+*   **Backlog Filter Date**: Choose which missing date makes a task "unscheduled" (e.g., show tasks missing a `⏳`).
+*   **Calendar Display Date**: Choose which date determines the task's position on the grid.
+*   **Auto-Open Edit Modal**: If enabled, dropping a task from the backlog will immediately open the Tasks plugin's native edit modal for further refinement.
+*   **Task Time Format**: Choose how Full Calendar writes time back to task lines. Default is **Day Planner Format**.
 
 ## Advanced Settings
 
@@ -26,93 +131,4 @@ Access the tasks Plugin Integration specific settings at (only visible if the Ta
 
 ---
 
-## Features
-
-The Tasks calendar is more than just a read-only view; it's a fully interactive task management system.
-
-### Task Backlog
-
-Once a Tasks Calendar is active, a new **Tasks Backlog** panel will be registered in sidebar (access it using Command Pallette), listing all unscheduled tasks. From here, you can drag and drop tasks directly onto the calendar to schedule them.
-
-- **Drag-and-Drop Scheduling:** Quickly schedule tasks by dragging them from the backlog to a specific date and time.
-- **Filtering:** Use the filter bar to narrow down tasks by status (`todo`, `done`) or by the file path they belong to.
-- **Backlog Filter Date Field:** Choose whether the backlog is organized around missing scheduled dates, start dates, or due dates. The same setting is available from **Settings -> Integrations -> Obsidian Tasks Integration** and from the dropdown at the top of the Tasks Backlog panel.
-
-<!-- Image missing: ../../assets/calendars/task-backlog.gif -->
-
-#### Backlog Filter Date Field
-
-The Tasks Backlog filter is driven by a single date-field setting:
-
-| Setting        | Backlog shows                  |
-| -------------- | ------------------------------ |
-| Scheduled date | Tasks without a scheduled date |
-| Start date     | Tasks without a start date     |
-| Due date       | Tasks without a due date       |
-
-Changing the dropdown in either Settings or the Tasks Backlog panel refreshes open backlog panels immediately. This means the backlog can be used as a focused queue: for example, set it to **Due date** when you want to review every task that still needs a deadline, even if some of those tasks already have scheduled dates.
-
-#### What the Calendar Shows
-
-The backlog filter date field does **not** decide where Tasks events appear on the calendar. Calendar display is controlled by **Calendar display date field** in **Settings -> Integrations -> Obsidian Tasks Integration**.
-
-| Calendar display setting | Calendar shows tasks with | Dragging from backlog writes |
-| ------------------------ | ------------------------- | ---------------------------- |
-| Scheduled date           | A scheduled date          | `⏳ YYYY-MM-DD`              |
-| Start date               | A start date              | `🛫 YYYY-MM-DD`              |
-| Due date                 | A due date                | `📅 YYYY-MM-DD`              |
-
-Full Calendar uses the selected calendar display field exactly. There is no fallback priority. For example, if **Calendar display date field** is set to **Due date**, a task with only a scheduled date will not appear on the calendar until it also has a due date.
-
-Changing the calendar display field may require restarting Obsidian or reloading the plugin before every open calendar view and provider cache reflects the new policy.
-
-The backlog filter and calendar display field can be different. For example, you can set the backlog to show tasks missing due dates while the calendar displays scheduled dates. In that setup, dragging from the backlog writes the calendar display field, not the backlog filter field.
-
-By default, both settings use **Scheduled date** for backward compatibility. Dragging from the backlog schedules the task without opening the Tasks edit modal. You can enable **Open Tasks edit modal after backlog drop** from the Tasks integration settings if you want to review the task immediately after dropping it onto the calendar.
-
-### Full CRUD Support
-
-You can manage your tasks without ever leaving the calendar interface.
-
-- **Create:** Create new tasks by clicking on the calendar or using the "Add Event" button.
-- **Read:** View all your scheduled and unscheduled tasks.
-- **Update:** Reschedule tasks by dragging them to a new time slot. Edit task details by clicking on the task to open the event editor. Mark tasks as complete by checking the box next to them.
-- **Delete:** Remove tasks from your calendar and your vault.
-
-All changes are synced back to the Tasks plugin in real-time.
-
-### Time Blocks
-
-You can schedule a task to a specific time—or a time range—by embedding a time block directly in the task's title. Full Calendar reads this block to position the task on the timed calendar view.
-
-In the calendar view, you can also drag and drop tasks between the "all day" area and the timed calendar view.
-
-**Supported formats:**
-
-| Format            | Example              | Result                         |
-| ----------------- | -------------------- | ------------------------------ |
-| Single time (24h) | `(14:30)`            | Event starts at 2:30 PM        |
-| Time range (24h)  | `(9:00-10:30)`       | Event from 9:00 AM to 10:30 AM |
-| Single time (12h) | `(2:30 PM)`          | Event starts at 2:30 PM        |
-| Time range (12h)  | `(9:00 AM-10:30 AM)` | Event from 9:00 AM to 10:30 AM |
-
-A complete task line with a time block looks like this:
-
-```
-- [ ] Review meeting notes (14:00-15:00) ⏳ 2025-03-28
-```
-
-The time block is placed **before** the configured calendar display date marker in the task description. With the default **Scheduled date** display policy, that means before `⏳`. If you switch the display policy to **Due date** or **Start date**, timed calendar edits place the time block before that selected marker instead. When you drag a task to a time slot on the calendar, the time block is written back automatically. Editing the event start/end time from the calendar view will update the embedded time block in the markdown file in real time.
-
-!!! tip "Time Format Setting"
-    Full Calendar reads time blocks in both 12-hour and 24-hour format. It writes time blocks in
-    the format specified under **Settings → Appearance**.
-
-### Advanced Parsing and Settings
-
-The integration is built with flexibility in mind.
-
-- **Multi-day Events:** The provider correctly parses tasks that span multiple days.
-- **Custom Statuses:** The plugin's parser can detect custom task statuses.
-- **Title Cleaning:** A setting is available to automatically strip tags from task titles for a cleaner look on the calendar.
-- **Tasks Integration Settings:** The Integrations section appears only after a Tasks calendar source exists. Its options control backlog filtering, calendar display date policy, and whether the Tasks edit modal opens after backlog drag-and-drop.
+[TaskNotes Integration](tasknotes.md) · [Advanced Categorization](../settings/categories.md) · [FCR Command](../features/nlp.md) · [Technical Architecture](../../architecture/calendars/tasks-integration.md)

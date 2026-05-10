@@ -40,11 +40,35 @@ export interface ActivityWatchSettings {
 export type TasksDateTarget = 'scheduledDate' | 'startDate' | 'dueDate';
 
 export type TasksBacklogDateTarget = TasksDateTarget;
+export type TasksDisplayFormat = 'standard' | 'dayPlanner';
 
 export interface TasksIntegrationSettings {
   backlogDateTarget: TasksBacklogDateTarget;
   calendarDisplayDateTarget: TasksDateTarget;
   openEditModalAfterBacklogDrop: boolean;
+  taskDisplayFormat?: TasksDisplayFormat;
+}
+
+export type ApiScope =
+  | 'ui:open-calendar'
+  | 'ui:open-sidebar'
+  | 'ui:change-view'
+  | 'ui:modals'
+  | 'events:read'
+  | 'events:write'
+  | 'providers:read'
+  | 'providers:write'
+  | 'settings:read'
+  | 'settings:write'
+  | 'system:full-access';
+
+export interface ApiTokenRecord {
+  pluginId: string;
+  reason: string;
+  requestedScopes: ApiScope[];
+  grantedScopes: ApiScope[];
+  grantedAt: number;
+  lastUsedAt?: number;
 }
 
 export interface BusinessHoursSettings {
@@ -133,6 +157,8 @@ export interface FullCalendarSettings {
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
   activityWatch: ActivityWatchSettings;
   tasksIntegration: TasksIntegrationSettings;
+  apiTokens?: Record<string, ApiTokenRecord>;
+  authorizedTokens?: Record<string, { pluginId: string; reason: string; grantedAt: number }>;
 
   currentVersion: string | null;
 }
@@ -192,8 +218,11 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   tasksIntegration: {
     backlogDateTarget: 'scheduledDate',
     calendarDisplayDateTarget: 'scheduledDate',
-    openEditModalAfterBacklogDrop: false
+    openEditModalAfterBacklogDrop: false,
+    taskDisplayFormat: 'dayPlanner'
   },
+  apiTokens: {},
+  authorizedTokens: {},
 
   enableDefaultReminder: true,
   defaultReminderMinutes: 10,

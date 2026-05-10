@@ -1,3 +1,4 @@
+import { PluginState } from '../core/PluginState';
 import { App, Notice } from 'obsidian';
 import FullCalendarPlugin from '../main';
 import * as Plotter from './ui/plotter';
@@ -46,9 +47,9 @@ export class AnalysisController {
     );
 
     this.dataService = new DataService(
-      this.plugin.cache,
+      PluginState.getCache(),
       this.dataManager,
-      this.plugin.settings,
+      PluginState.getSettings(),
       () => this.handleDataReady()
     );
   }
@@ -82,8 +83,8 @@ export class AnalysisController {
       this.dataManager.getKnownHierarchies(),
       this.dataManager.getKnownProjects(),
       (newConfig: InsightsConfig) => {
-        this.plugin.settings.chrono_analyser_config = newConfig;
-        void this.plugin.saveSettings();
+        PluginState.getSettings().chrono_analyser_config = newConfig;
+        void PluginState.saveSettings();
         this.uiService.insightsConfig = newConfig;
         new Notice(t('notices.chronoAnalyserInsightsSaved'));
       }
@@ -93,9 +94,9 @@ export class AnalysisController {
   public async initialize(): Promise<void> {
     await this.uiService.initialize();
 
-    if (!this.plugin.cache.initialized) {
+    if (!PluginState.getCache().initialized) {
       new Notice(t('notices.chronoAnalyserInitializing'), 2000);
-      await this.plugin.cache.populate();
+      await PluginState.getCache().populate();
     }
 
     this.dataService.initialize();

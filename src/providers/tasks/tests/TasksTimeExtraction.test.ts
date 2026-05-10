@@ -127,4 +127,20 @@ describe('extractTimeFromTitle', () => {
     const { cleanTitle } = extractTimeFromTitle('Lunch (12:00 PM)');
     expect(cleanTitle).toBe('Lunch');
   });
+
+  it('extracts day planner leading range format', () => {
+    expect(extractTimeFromTitle('5:00 - 19:00 Wellness - Task - edit 2')).toEqual({
+      startTime: '5:00',
+      endTime: '19:00',
+      cleanTitle: 'Wellness - Task - edit 2'
+    });
+  });
+
+  it('extracts day planner leading single-time format', () => {
+    expect(extractTimeFromTitle('7:30 Standup')).toEqual({
+      startTime: '7:30',
+      endTime: null,
+      cleanTitle: 'Standup'
+    });
+  });
 });

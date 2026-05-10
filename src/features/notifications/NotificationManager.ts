@@ -1,3 +1,4 @@
+import { PluginState } from '../../core/PluginState';
 import { DateTime } from 'luxon';
 import { Notice } from 'obsidian';
 import { OFCEvent } from '../../types';
@@ -20,7 +21,7 @@ export class NotificationManager {
 
   public unload(): void {
     if (this.timeTickCallback) {
-      this.plugin.cache.off('time-tick', this.timeTickCallback);
+      PluginState.getCache().off('time-tick', this.timeTickCallback);
       this.timeTickCallback = null;
     }
   }
@@ -32,17 +33,17 @@ export class NotificationManager {
     if (shouldBeRunning && !isRunning) {
       this.notifiedEvents.clear();
       this.timeTickCallback = (state: TimeState) => this.handleTimeTick(state);
-      this.plugin.cache.on('time-tick', this.timeTickCallback);
+      PluginState.getCache().on('time-tick', this.timeTickCallback);
     } else if (!shouldBeRunning && isRunning) {
       if (this.timeTickCallback) {
-        this.plugin.cache.off('time-tick', this.timeTickCallback);
+        PluginState.getCache().off('time-tick', this.timeTickCallback);
         this.timeTickCallback = null;
       }
     }
   }
 
   private handleTimeTick(state: TimeState) {
-    if (!this.plugin.cache.initialized) return;
+    if (!PluginState.getCache().initialized) return;
 
     const now = DateTime.now();
     // Optimization: Only process events starting within the next 48 hours.
@@ -61,7 +62,7 @@ export class NotificationManager {
 
   private checkAndNotify(occurrence: EnrichedOFCEvent, now: DateTime) {
     const { event, start } = occurrence;
-    const { enableDefaultReminder, defaultReminderMinutes } = this.plugin.settings;
+    const { enableDefaultReminder, defaultReminderMinutes } = PluginState.getSettings();
     const recencyCutoff = { minutes: 5 }; // Don't notify if the trigger point was more than 5 mins ago (e.g. at startup)
 
     // 1. Check Custom Reminder (High Priority)
@@ -122,7 +123,7 @@ export class NotificationManager {
       const mins = event.notify?.value || 0;
       body += '\n' + t('notifications.inMinutes', { mins: mins.toString() });
     } else {
-      const mins = this.plugin.settings.defaultReminderMinutes;
+      const mins = PluginState.getSettings().defaultReminderMinutes;
       body += '\n' + t('notifications.inMinutes', { mins: mins.toString() });
     }
 
