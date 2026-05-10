@@ -221,8 +221,8 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
   };
 
   return (
-    <div className="activitywatch-settings-shell">
-      <div className="activitywatch-settings-body">
+    <div className="settings-modal-shell activitywatch-settings-shell">
+      <div className="settings-modal-body activitywatch-settings-body">
         <section className="activitywatch-settings-heading setting-item">
           <div className="setting-item-info">
             <div className="setting-item-name">{t('settings.activityWatch.title')}</div>
@@ -433,7 +433,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
         </section>
       </div>
 
-      <footer className="activitywatch-settings-footer">
+      <footer className="settings-modal-footer activitywatch-settings-footer">
         <button type="button" onClick={onClose}>
           {t('modals.activityWatchSetup.buttons.cancel')}
         </button>

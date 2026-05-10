@@ -109,29 +109,50 @@
   color: var(--text-muted);
 }
 
-/* ActivityWatch Settings Modal */
-.activitywatch-settings-modal {
+/* Shared settings modal shell/footer layout */
+.settings-modal-wide {
   width: min(900px, 88vw);
   max-width: 900px;
   max-height: min(860px, 88vh);
 }
 
-.activitywatch-settings-modal .modal-content {
+.settings-modal-wide .modal-content {
   padding: 0;
   overflow: hidden;
 }
 
-.activitywatch-settings-shell {
+.settings-modal-shell {
   display: flex;
   flex-direction: column;
   max-height: min(860px, 88vh);
   min-height: min(620px, 82vh);
 }
 
-.activitywatch-settings-body {
+.settings-modal-body {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 18px 22px;
+}
+
+.settings-modal-footer {
+  align-items: center;
+  background-color: var(--background-primary);
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 22px;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+}
+
+/* ActivityWatch Settings Modal */
+
+.activitywatch-settings-shell {
+  display: flex;
+  flex-direction: column;
 }
 
 .activitywatch-settings-heading.setting-item {
@@ -254,31 +275,21 @@
 }
 
 .activitywatch-settings-footer {
-  align-items: center;
-  background-color: var(--background-primary);
-  border-top: 1px solid var(--background-modifier-border);
   display: flex;
-  flex: 0 0 auto;
-  gap: 10px;
-  justify-content: flex-end;
-  padding: 12px 22px;
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
 }
 
 @media (max-width: 640px) {
-  .activitywatch-settings-modal {
+  .settings-modal-wide {
     width: 96vw;
     max-height: 94vh;
   }
 
-  .activitywatch-settings-shell {
+  .settings-modal-shell {
     max-height: 94vh;
     min-height: 80vh;
   }
 
-  .activitywatch-settings-body {
+  .settings-modal-body {
     padding: 14px;
   }
 
@@ -296,11 +307,11 @@
     justify-self: start;
   }
 
-  .activitywatch-settings-footer {
+  .settings-modal-footer {
     padding: 10px 14px;
   }
 
-  .activitywatch-settings-footer button {
+  .settings-modal-footer button {
     flex: 1 1 0;
   }
 }

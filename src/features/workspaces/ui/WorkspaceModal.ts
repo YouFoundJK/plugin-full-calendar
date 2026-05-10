@@ -44,22 +44,35 @@ export class WorkspaceModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
+    contentEl.parentElement?.addClass('settings-modal-wide');
+    contentEl.parentElement?.addClass('workspace-settings-modal');
+
+    const shell = contentEl.createEl('div', {
+      cls: 'settings-modal-shell workspace-settings-shell'
+    });
+    const body = shell.createEl('div', { cls: 'settings-modal-body workspace-settings-body' });
 
     // Modal title
-    contentEl.createEl('h2', {
+    body.createEl('h2', {
       text: this.isNew ? t('modals.workspace.title.create') : t('modals.workspace.title.edit')
     });
 
-    this.renderGeneralSection(contentEl);
-    this.renderViewSection(contentEl);
-    this.renderCalendarFilterSection(contentEl);
-    this.renderCategoryFilterSection(contentEl);
-    this.renderAppearanceSection(contentEl);
-    this.renderButtons(contentEl);
+    this.renderGeneralSection(body);
+    this.renderViewSection(body);
+    this.renderCalendarFilterSection(body);
+    this.renderCategoryFilterSection(body);
+    this.renderAppearanceSection(body);
+
+    const footer = shell.createEl('footer', {
+      cls: 'settings-modal-footer workspace-settings-footer'
+    });
+    this.renderButtons(footer);
   }
 
   onClose() {
     const { contentEl } = this;
+    contentEl.parentElement?.removeClass('settings-modal-wide');
+    contentEl.parentElement?.removeClass('workspace-settings-modal');
     contentEl.empty();
   }
 
