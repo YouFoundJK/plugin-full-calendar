@@ -29,7 +29,7 @@ import { AppWithSettings } from './types/obsidian-ext';
 import { FullCalendarSettings, DEFAULT_SETTINGS } from './types/settings';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { PublicAPI, InternalAPI } from './api/FullCalendarAPI';
-import { registerNLPCommand } from './features/nlp/registerNLPCommand';
+import { openNLPCommandModal, registerNLPCommand } from './features/nlp/registerNLPCommand';
 
 // Inline the view type constants to avoid loading the heavy view module at startup
 const FULL_CALENDAR_VIEW_TYPE = 'full-calendar-view';
@@ -209,6 +209,11 @@ export default class FullCalendarPlugin extends Plugin {
     // Register the calendar icon on left-side bar
     this.addRibbonIcon('calendar-glyph', t('ribbon.openCalendar'), async (_: MouseEvent) => {
       await PluginState.getInternalAPI().openCalendar();
+    });
+
+    // Register the NLP quick-add icon on left-side bar for fast access on mobile
+    this.addRibbonIcon('file-text', t('commands.nlpQuickAdd'), (_: MouseEvent) => {
+      openNLPCommandModal(this);
     });
 
     this.#settingsTab = new LazySettingsTab(this.app, this, PluginState.getProviderRegistry());

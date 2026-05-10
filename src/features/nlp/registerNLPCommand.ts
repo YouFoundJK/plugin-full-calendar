@@ -13,12 +13,16 @@ import { NLPCommandModal } from './NLPCommandModal';
 import { t } from '../i18n/i18n';
 import type FullCalendarPlugin from '../../main';
 
+export function openNLPCommandModal(plugin: FullCalendarPlugin): void {
+  new NLPCommandModal(plugin.app, plugin.manifest.id).open();
+}
+
 export function registerNLPCommand(plugin: FullCalendarPlugin): void {
   plugin.addCommand({
     id: 'full-calendar-nlp-quick-add',
     name: t('commands.nlpQuickAdd'),
     callback: () => {
-      new NLPCommandModal(plugin.app, plugin.manifest.id).open();
+      openNLPCommandModal(plugin);
     }
   });
 }
