@@ -5,7 +5,7 @@
 
 ## Contract and orchestration
 
-`Provider` defines operations and capabilities; `ProviderRegistry` owns registration, lifecycle, load-priority orchestration, fetch/write routing, and global identifier mapping. `EventCache` only talks to providers through this registry path.
+`Provider` defines operations and capabilities (see [Provider Blueprint](provider-blueprint.md)); `ProviderRegistry` owns registration, lifecycle, load-priority orchestration, fetch/write routing, and global identifier mapping. `EventCache` only talks to providers through this registry path (see [EventCache Contract](../system/eventcache.md)).
 
 ## Provider families
 
@@ -19,7 +19,7 @@
 
 1. Registry selects provider instances by configured sources.
 2. Providers return raw source events and source locations/handles.
-3. Cache normalizes events through enhancer and stores canonical state.
+3. Cache normalizes events through enhancer and stores canonical state (see [Core Systems](../system/core-systems.md)).
 4. Mutations route back to providers through registry and capability checks.
 
 ## Non-standard implementations and patches
@@ -30,6 +30,7 @@ Important implementation-specific behavior is documented in the implementation d
 - CalDAV defensive REPORT/GET retrieval and XML namespace fallback handling.
 - [Tasks provider](tasks-integration.md) surgical markdown updates and custom completion scheduling semantics.
 - Provider load-priority tuning for staged startup behavior.
+- Recurrence/timezone behavior tracked in [RRULE Timezone Date-Shift Fix](../dev-logs/devlog_rrule_timezone_patch.md).
 
 See: [Provider Implementations and Patches](provider-implementations.md)
 

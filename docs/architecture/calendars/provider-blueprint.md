@@ -11,22 +11,24 @@
 
 ## Step 2: Implement provider contract
 
-Implement the `CalendarProvider` interface with clear source capability boundaries:
+Implement the `CalendarProvider` interface with clear source capability boundaries (see [Provider Architecture](architecture.md) for orchestration model and [Provider Implementations and Patches](provider-implementations.md) for non-standard cases):
 
 - `getEvents` is mandatory.
 - `createEvent` / `updateEvent` / `deleteEvent` should throw explicit read-only errors if unsupported.
 - `getEventHandle` must return stable persistent identity.
 - Optional hooks (`initialize`, `toggleComplete`, `canBeScheduledAt`) are allowed only when needed.
 
+If recurring instance complete/skip semantics are provider-owned, implement the normalized recurring-instance hooks described in [Provider Implementations and Patches](provider-implementations.md#provider-agnostic-recurring-instance-semantics).
+
 ## Step 3: Register and instantiate via registry
 
 1. Register dynamic loader in `registerBuiltInProviders`.
 2. Ensure source `type` maps to the exported class static `type`.
-3. Verify initialization path in `initializeInstances` and runtime source updates.
+3. Verify initialization path in `initializeInstances` and runtime source updates (mutation/write routing behavior is defined in [EventCache Contract](../system/eventcache.md)).
 
 ## Step 4: Choose load priority intentionally
 
-Load priority controls staged loading behavior:
+Load priority controls staged loading behavior (profiling context: [Calendar Load Profiling Audit](../dev-logs/devlog_calendar_load_profiling_2026-04-11.md)):
 
 - Lower values load earlier and improve perceived first render.
 - Higher values can defer expensive or non-critical providers.
@@ -44,8 +46,10 @@ Minimum expectation before merge:
 
 - Unit tests for parser/serializer or source edge cases.
 - Integration tests for cache-provider mutation path.
-- Architecture docs update in Provider Architecture section.
+- Architecture docs update in [Provider Architecture](architecture.md) and, when behavior is specialized, [Provider Implementations and Patches](provider-implementations.md).
 - User docs update if the provider is user-configurable.
+
+Validation expectations and documentation sync policy are defined in [Testing and Validation](../system/testing.md).
 
 !!! warning "Contributor contract"
     Append or modify only relevant documentation sections. Do not rewrite unrelated architecture pages when adding a provider.

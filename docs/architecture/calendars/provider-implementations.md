@@ -25,6 +25,8 @@ Parses list items under configured heading and performs line-targeted updates. I
 
 Single provider supports both remote URLs (`http`, `https`, `webcal`) and local vault `.ics` files. It is intentionally read-only and normalizes remote/local acquisition into one contract surface.
 
+Timezone and recurrence edge handling rationale is documented in [RRULE Timezone Date-Shift Fix](../dev-logs/devlog_rrule_timezone_patch.md).
+
 ### CalDAV Provider (protocol patch behavior)
 
 Uses direct REPORT/GET flow with robust XML namespace handling and fallback retrieval paths when calendar-data is not returned inline. This is intentionally defensive due to server variability.
@@ -33,9 +35,13 @@ Uses direct REPORT/GET flow with robust XML namespace handling and fallback retr
 
 Uses OAuth-backed authenticated requests, handles recurrence cancellation edge cases (`cancelled` instances merged into skip dates), and keeps provider-facing payload conversion isolated in parser/auth modules.
 
+For token and permission boundaries, see [API Architecture](../system/api-architecture.md).
+
 ### Tasks Provider (non-standard surgical writer)
 
 Not a simple calendar source: it integrates with Tasks plugin cache, supports task-completion toggles, time-token parsing in task text, and surgical markdown line rewrites while preserving task metadata patterns.
+
+Full flow and invariants are detailed in [Tasks Integration Architecture](tasks-integration.md).
 
 #### Tasks date-field integration contract
 
@@ -106,11 +112,15 @@ TaskNotes create delegation path:
 
 This prevents duplicate modal UX and keeps provider-specific behavior outside dispatcher logic.
 
+The mutation lifecycle this relies on is defined in [EventCache Contract](../system/eventcache.md#mutation-lifecycle-authoritative-path).
+
 ## Cross-provider orchestration constraints
 
 - Registry is the only runtime router for provider read/write operations.
 - Providers expose capabilities (`canCreate`, `canEdit`, `canDelete`) and optional custom hooks (`toggleComplete`, `canBeScheduledAt`).
 - Persistent event identity must be surfaced through `getEventHandle()` so global identifier mapping remains stable.
+
+Provider contract and registration rules are specified in [Provider Architecture](architecture.md) and [Provider Blueprint](provider-blueprint.md).
 
 ## Provider-agnostic recurring instance semantics
 
@@ -140,6 +150,8 @@ When adding recurring-instance semantics to another provider (CalDAV, Google, Ta
 3. Map backend-native state to `RecurringInstanceState` in `getRecurringInstanceState(...)`.
 4. Map normalized target state back to backend-native write operations in `setRecurringInstanceState(...)`.
 5. Avoid introducing provider-type checks in shared UI/core pathways.
+
+This no-provider-branching rule aligns with [Data Flow](../system/data-flow.md#flow-invariants) and [Events Architecture](../events/architecture.md#design-boundaries).
 
 ### Current adoption
 
