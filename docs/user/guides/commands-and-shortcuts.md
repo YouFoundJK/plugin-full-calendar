@@ -6,7 +6,7 @@ This page lists user-facing commands and high-value shortcuts.
 
 Open command palette with Ctrl/Cmd + P and search for these commands:
 
-- **[`Full Calendar: New Event`](../features/nlp.md)** — The **Natural Language Orchestrator**. Use this for almost everything: creating events, navigating views, and syncing data.
+- **`Full Calendar: New Event`** — The **[Natural Language Orchestrator](../features/nlp.md)**. Use this for almost everything: creating events, navigating views, and syncing data.
 - `Full Calendar: Open Calendar` — opens the main [Calendar View](../views/index.md)
 - `Full Calendar: Open in sidebar` — opens the [Sidebar View](../views/index.md)
 - `Full Calendar: Reset Event Cache` — performs a deep reload (see [Data Integrity](../reference/data_integrity.md))

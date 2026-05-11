@@ -1,6 +1,9 @@
 # FCR Command — Natural Language Orchestrator
 
-The **FCR Command** is your single point of control for Full Calendar Remastered. Open it from the [Command Palette](../guides/commands-and-shortcuts.md) (`Ctrl/Cmd + P → "FCR Command"`) and use natural language to do anything: [create events](../events/manage.md), [navigate views](../views/index.md), [open settings](../settings/index.md), [sync data](../reference/data_integrity.md), and more.
+The **FCR Command** is your single point of control for Full Calendar Remastered. 
+
+!!! tip "Usage"
+    Open it from the [Command Palette](../guides/commands-and-shortcuts.md) (`Ctrl/Cmd + P → "FCR Command"`) and use natural language to do anything: [create events](../events/manage.md), [navigate views](../views/index.md), [open settings](../settings/index.md), [sync data](../reference/data_integrity.md), and more.
 
 ---
 
@@ -89,16 +92,13 @@ Both modes prefill TaskNotes with parsed NLP text so you can quickly confirm and
 
 ---
 
-## Smart Calendar Matching
+!!! example "Smart Calendar Matching"
+    **Input:** `Tomorrow at 4pm Matthews 2 in daily1`
 
-When you type `in <name>` at the end of your input, the system checks if `<name>` matches any of your [configured calendars](../settings/sources.md) (case-insensitive). If it does, the event is routed to that calendar and the `in <name>` is stripped from the title.
+    - **If `daily1` is a calendar** → Title = "Matthews 2", Calendar = "daily1"
+    - **If `daily1` is NOT a calendar** → Title = "Matthews 2 in daily1" (left as-is)
 
-> **Input:** `Tomorrow at 4pm Matthews 2 in daily1`
->
-> - If `daily1` is a calendar → Title = "Matthews 2", Calendar = "daily1"
-> - If `daily1` is NOT a calendar → Title = "Matthews 2 in daily1" (left as-is)
-
-You can also use the explicit form `in Work calendar` which always works regardless of name matching.
+    You can also use the explicit form `in Work calendar` which always works regardless of name matching.
 
 ---
 
@@ -138,38 +138,33 @@ You can also use the explicit form `in Work calendar` which always works regardl
 
 ---
 
-## Combining Phrases
+!!! example "Combining Phrases"
+    **Input:** `next tuesday at 4 pm Team sync in Work calendar`
 
-You can combine multiple phrases in a single input. The engine processes them left-to-right and strips matched fragments, leaving the remainder as the event title:
-
-> **Input:** `next tuesday at 4 pm Team sync in Work calendar`
->
-> **Result:** Title = "Team sync", Date = next Tuesday, Time = 4:00 PM, Calendar = "Work"
+    **Result:** Title = "Team sync", Date = next Tuesday, Time = 4:00 PM, Calendar = "Work"
 
 ---
 
-## Supported Languages
+!!! info "Supported Languages"
+    The FCR Command follows the same [internationalization pipeline](i18n.md) as the rest of the plugin:
 
-The FCR Command follows the same [internationalization pipeline](i18n.md) as the rest of the plugin:
+    - **Maximal support**: English
+    - **Basic support**: French, German, Spanish, Italian (_help improve it on [GitHub](https://github.com/YouFoundJK/plugin-full-calendar)_)
 
-- Maximal support: **English**
-- Basic support: French, German, Spanish, Italian (_help improve it on [Github](https://github.com/YouFoundJK/plugin-full-calendar)_)
-
-The language is automatically detected from your Obsidian language setting. Non-English payloads are fetched on first use and cached locally.
+    The language is automatically detected from your Obsidian language setting. Non-English payloads are fetched on first use and cached locally.
 
 ---
 
-## Tips
-
-- **Title placement**: Put the event title anywhere — the engine strips matched patterns and uses whatever's left
-- **Anchored time parsing**: Time is prioritized with `at` or `from` triggers to avoid accidental matches from title numbers
-- **Category keyword placement**: `category <name>` works both at the beginning and later in the sentence
-- **Category typo tolerance**: Common typos in `category <name>` are fuzzy-matched to your saved categories
-- **Live preview is your safety net**: Always check the preview card before running — it shows exactly what will happen
-- **"in" calendar smart matching**: Type `in <calendar_name>` at the end without needing to write "calendar"
-- **Relative date rollover**: "on 9th" will resolve to this month if it's the 7th, but next month if it's already the 10th
-- **No match is safe**: If the engine doesn't recognize any patterns, the entire input becomes the event title
-- **Time math works**: "for 7 hrs" at 3 PM correctly sets the end time to 10 PM
+!!! tip "Power User Tips"
+    - **Title placement**: Put the event title anywhere — the engine strips matched patterns and uses whatever's left.
+    - **Anchored time parsing**: Time is prioritized with `at` or `from` triggers to avoid accidental matches from title numbers.
+    - **Category keyword placement**: `category <name>` works both at the beginning and later in the sentence.
+    - **Category typo tolerance**: Common typos in `category <name>` are fuzzy-matched to your saved categories.
+    - **Live preview is your safety net**: Always check the preview card before running — it shows exactly what will happen.
+    - **"in" calendar smart matching**: Type `in <calendar_name>` at the end without needing to write "calendar".
+    - **Relative date rollover**: "on 9th" will resolve to this month if it's the 7th, but next month if it's already the 10th.
+    - **No match is safe**: If the engine doesn't recognize any patterns, the entire input becomes the event title.
+    - **Time math works**: "for 7 hrs" at 3 PM correctly sets the end time to 10 PM.
 
 ---
 

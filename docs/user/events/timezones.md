@@ -22,9 +22,9 @@ Changing this is useful for:
 
 The plugin works to find the "source of truth" for an event's time and then convert it to your chosen display timezone.
 
--   **Remote Calendars (ICS/CalDAV):** Events from sources like Google Calendar almost always have timezone information embedded in them (e.g., `TZID=America/New_York`). The plugin reads this information and performs a precise conversion. UTC events are also handled correctly.
+-   **Remote Calendars (ICS/CalDAV):** Events from sources like [Google Calendar](../calendars/gcal.md) almost always have timezone information embedded in them (e.g., `TZID=America/New_York`). The plugin reads this information and performs a precise conversion. UTC events are also handled correctly.
     -   **Recurring Events:** To prevent time drift during Daylight Saving Time (DST) transitions, recurring patterns are passed directly to the calendar view to be expanded dynamically using the *source* timezone, guaranteeing precision.
--   **Full Note & Daily Note Calendars:** When you create or edit a timed event in a local note, the plugin automatically stamps it with your current display timezone in the frontmatter (e.g., `timezone: Europe/London`). This anchors the event to a specific moment in time.
+-   **[Full Note](../calendars/local.md) & [Daily Note](../calendars/dailynote.md) Calendars:** When you create or edit a timed event in a local note, the plugin automatically stamps it with your current display timezone in the frontmatter (e.g., `timezone: Europe/London`). This anchors the event to a specific moment in time.
 
 ### Legacy Note Auto-Upgrade
 

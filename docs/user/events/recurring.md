@@ -15,7 +15,7 @@ The recurring event system in Full Calendar is designed to be both powerful and 
 <!-- TODO: Add GIF of new recurring modal with "Repeats" dropdown -->
 
 !!! note "Daily Notes Limitation"
-    Recurring events are not supported in "Daily Note" calendars. Please use a "Full Note" calendar for recurring events.
+    Recurring events are not supported in "[Daily Note](../calendars/dailynote.md)" calendars. Please use a "[Full Note](../calendars/local.md)" calendar for recurring events.
 
 ---
 

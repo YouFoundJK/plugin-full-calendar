@@ -20,16 +20,16 @@ Drag the endpoint of event to change ending time
 When using the modal to create or edit an event, the plugin validates inputs in real time:
 
 - Duplicate detection: If an event with the same date and final title would collide in its target calendar:
-	- Full Note calendars: creation is blocked because the underlying filename would be identical (see below).
-	- Daily Note calendars: duplicates are not allowed; another list item with the same visible title on that date under the configured heading will be flagged.
-	- Note: Duplicate checks in Daily Notes compare the visible title (category prefix is ignored if Advanced Categories are enabled).
+	- [Full Note calendars](../calendars/local.md): creation is blocked because the underlying filename would be identical (see below).
+	- [Daily Note calendars](../calendars/dailynote.md): duplicates are not allowed; another list item with the same visible title on that date under the configured heading will be flagged.
+	- Note: Duplicate checks in Daily Notes compare the visible title (category prefix is ignored if [Advanced Categories](categories.md) are enabled).
 - Category-aware titles: If Advanced Categories are enabled, the Title field accepts "SubCategory - Title" and the Category is selected separately. The plugin reconstructs the full title when writing.
 - Literal titles when disabled: If Advanced Categories are disabled, the Title field is treated as plain text and is not split by ` - `.
 
 Limitations applied by calendar type during editing:
 
-- Daily Note calendars do not support recurring events or multi-day single events.
-- Recurring instance overrides inherit some properties (e.g., title/category) from the parent; attempting to edit those fields prompts to open the parent.
+- [Daily Note calendars](../calendars/dailynote.md) do not support recurring events or multi-day single events.
+- [Recurring instance overrides](recurring.md) inherit some properties (e.g., title/category) from the parent; attempting to edit those fields prompts to open the parent.
 
 ---
 

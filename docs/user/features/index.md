@@ -1,7 +1,7 @@
 # Core Features
 
 !!! info "Power User Router"
-    Explore the advanced capabilities of Full Calendar Remastered: natural language orchestration, keyboard/mouse gestures, reminders, and global localization.
+    Explore the advanced capabilities of Full Calendar Remastered: [natural language orchestration](nlp.md), [keyboard/mouse gestures](interactions.md), [reminders](reminders.md), and [global localization](i18n.md).
 
 ## Feature Matrix
 
@@ -12,6 +12,7 @@
 | Track long-term progress | [Milestones and Progress](milestones.md) | Read-only progression based on successful event operations |
 | Never miss an event | [Reminders and Notifications](reminders.md) | Default and per-event notification behavior |
 | Use in your native language | [Internationalization (i18n)](i18n.md) | Multi-language support and automatic translation |
+| Glance at next event | [Status Bar Integration](statusbar.md) | Quick countdown to your next meeting in the Obsidian status bar |
 
 ## Feature Directory
 
@@ -20,6 +21,7 @@
 - Progression: [Milestones and Progress](milestones.md)
 - Alerting: [Reminders and Notifications](reminders.md)
 - Global: [Internationalization (i18n)](i18n.md)
+- UI: [Status Bar Integration](statusbar.md)
 
 ## Related Sections
 
@@ -30,4 +32,4 @@
 
 ---
 
-[NLP](nlp.md) · [Interactions](interactions.md) · [Milestones](milestones.md) · [Reminders](reminders.md) · [i18n](i18n.md) · [NLP Architecture](../../architecture/system/features/nlp-architecture.md)
+[NLP](nlp.md) · [Interactions](interactions.md) · [Milestones](milestones.md) · [Reminders](reminders.md) · [i18n](i18n.md) · [Status Bar](statusbar.md) · [NLP Architecture](../../architecture/system/features/nlp-architecture.md)

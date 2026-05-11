@@ -24,13 +24,13 @@ Whether you're tracking complex work projects, building consistent habits, or ai
 The Chrono Analyser adapts to your workflow. It operates in one of two modes, depending on your main Full Calendar plugin settings.
 
 !!! success "Mode 1: Category-Based Analysis (Recommended)"
-    -   **Requirement:** The **"Category Coloring"** feature is **enabled** in the main plugin settings.
+    -   **Requirement:** The **["Category Coloring"](../events/categories.md)** feature is **enabled** in the main plugin settings.
     -   **How it Works:** The analyser uses the `Category` of your events as the top-level grouping (`Hierarchy`). This is the most powerful mode.
-    -   **Supported Calendars:** ✅ **All of them!** Full Note, Daily Note, Google Calendar, CalDAV, and ICS calendars are all included in the analysis, giving you a complete picture of your time.
+    -   **Supported Calendars:** ✅ **All of them!** [Full Note](../calendars/local.md), [Daily Note](../calendars/dailynote.md), [Google Calendar](../calendars/gcal.md), [CalDAV](../calendars/caldav.md), and [ICS](../calendars/ics.md) calendars are all included in the analysis, giving you a complete picture of your time.
 
 !!! info "Mode 2: Folder-Based Analysis (Legacy)"
     -   **Requirement:** The **"Category Coloring"** feature is **disabled**.
-    -   **How it Works:** The analyser uses the **folder path** of your `FullNoteCalendar` sources as the `Hierarchy`.
+    -   **How it Works:** The analyser uses the **folder path** of your **[Full Note calendars](../calendars/local.md)** as the `Hierarchy`.
     -   **Supported Calendars:** ⚠️ Only events from **Full Note Calendars** are processed in this mode.
 
 ---

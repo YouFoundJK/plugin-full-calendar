@@ -4,7 +4,7 @@ This page gives fast, practical usage patterns.
 
 ## Workflow 0: The Natural Language Orchestrator (Fastest)
 
-1. Open the **FCR Command** (`Ctrl/Cmd + P` → "FCR Command").
+1. Open the **[FCR Command](../features/nlp.md)** (`Ctrl/Cmd + P` → "FCR Command").
 2. Type your intention: *"Team sync tomorrow at 10 am"* or *"open weekly view"*.
 3. Hit **Enter** to execute. This is the fastest way to manage your entire calendar with minimal mouse.
 

@@ -33,12 +33,12 @@ This means canceled operations, provider failures, optimistic placeholders that 
 Milestones evaluate total activity and source-specific activity. This includes:
 
 - Local calendars
-- Daily Note calendars
+- [Daily Note calendars](../calendars/dailynote.md)
 - ICS, CalDAV, and Google calendars
-- Tasks and TaskNotes calendars
+- [Tasks](../calendars/tasks-plugin-integration.md) and [TaskNotes](../calendars/tasknotes.md) calendars
 - Bases for provider-threshold milestones
 
-Some milestones also evaluate behavioral metadata such as recurring-series creation, NLP-based creation volume, distinct timezone usage, active remote source count, and streak-like activity patterns.
+Some milestones also evaluate behavioral metadata such as recurring-series creation, [NLP-based](nlp.md) creation volume, distinct timezone usage, active remote source count, and streak-like activity patterns.
 
 ## Notifications
 
@@ -50,8 +50,7 @@ When a milestone unlocks, a non-blocking notice toast is shown. Multiple unlocks
 - Unlock state and counters persist in plugin settings data.
 - Progress is computed from current persisted state at render time.
 
-## Related Docs
 
-- [Display and Behavior](../settings/fc_config.md)
-- [Settings and Customization](../settings/index.md)
-- [Milestones Architecture](../../architecture/system/features/milestones-architecture.md)
+---
+
+[Display and Behavior](../settings/fc_config.md) · [Settings and Customization](../settings/index.md) · [Milestones Architecture](../../architecture/system/features/milestones-architecture.md)

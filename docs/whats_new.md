@@ -1,12 +1,14 @@
 # What's New in Full Calendar
 
-This page highlights the latest major features and improvements to help you get the most out of the plugin.  
+This page highlights the latest **major features and improvements** to help you get the most out of the plugin.  
 For a detailed version-by-version breakdown, see the [Changelog](changelog.md).
 
 
 ## 📡 ActivityWatch Sync
 
-ActivityWatch now has a dedicated sync engine that can turn local activity data into calendar blocks with continuity-aware updates, auto-sync scheduling, and dynamic title templating.
+ActivityWatch now has a dedicated sync engine that can turn local activity data into calendar blocks with continuity-aware updates, auto-sync scheduling, and dynamic title templating. 
+
+➡️ Learn more about **[ActivityWatch Sync](user/calendars/activitywatch.md)**.
 
 ---
 
@@ -25,7 +27,9 @@ CalDAV imports now verify that the URL is a real calendar collection via PROPFIN
 
 ## 🌐 Multi-Language Support
 
-Full Calendar now supports multiple languages! The UI will automatically switch based on your Obsidian language setting. Developers can contribute new translations using the i18n system with type-safe keys. See [i18n documentation](user/features/i18n.md).
+Full Calendar now supports multiple languages! The UI will automatically switch based on your Obsidian language setting. Developers can contribute new translations using the i18n system with type-safe keys. 
+
+➡️ Learn more about [i18n documentation](user/features/i18n.md).
 
 ---
 
@@ -42,9 +46,9 @@ The integration with the **Obsidian Tasks plugin** has been completely overhaule
 
 ---
 
-## 🔔 Event Reminder System
+## 🔔 [Event Reminder System](user/features/reminders.md)
 
-Never miss an important meeting again! The new **Event Reminder System** brings native desktop notifications to Full Calendar. Get notified 10 minutes before your events start, and optionally before they end.
+Never miss an important meeting again! The new **[Event Reminder System](user/features/reminders.md)** brings native desktop notifications to Full Calendar. Get notified 10 minutes before your events start, and optionally before they end.
 
 - **Smart Notifications:** Native desktop notifications work across all operating systems
 - **Flexible Timing:** 10-minute advance warning with optional end-time reminders

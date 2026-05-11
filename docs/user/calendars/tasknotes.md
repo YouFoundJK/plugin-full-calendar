@@ -20,7 +20,7 @@ The TaskNotes provider connects to the TaskNotes internal cache. It interprets a
 
 ## NLP Endpoint Modes
 
-When an NLP create command targets a TaskNotes calendar, Full Calendar delegates creation to TaskNotes UI.
+When an [NLP create command](../features/nlp.md) targets a TaskNotes calendar, Full Calendar delegates creation to TaskNotes UI.
 
 The endpoint mode is configurable at **Settings → Integrations → TaskNotes Integration**:
 

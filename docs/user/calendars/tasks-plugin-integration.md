@@ -108,7 +108,7 @@ Where `<date marker>` is one of `⏳ YYYY-MM-DD`, `🛫 YYYY-MM-DD`, or `📅 YY
 
 The integration includes several automatic behaviors to keep your calendar clean:
 
-*   **Title Cleaning**: If enabled in settings, Full Calendar can automatically strip `#tags` from task titles on the calendar view for a cleaner look.
+*   **Title Cleaning**: If enabled in [settings](../settings/index.md), Full Calendar can automatically strip `#tags` from task titles on the calendar view for a cleaner look.
 *   **Default Durations**: Timed tasks without an end-time (e.g., `(14:30)`) are assigned a default **30-minute duration**.
 *   **Multi-Day & Custom Statuses**: Tasks spanning multiple days or using custom statuses (e.g., `/`, `>`, `-`) are correctly parsed and rendered.
 

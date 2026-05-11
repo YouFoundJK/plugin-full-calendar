@@ -4,24 +4,16 @@ Milestones are implemented as a feature-layer policy that consumes canonical plu
 
 ## Four Single Sources Of Truth
 
-1. Persistent milestone state in settings
-   - Location: settings.milestones
-   - Shape: counters and unlockedAt maps
-   - Responsibility: durable progress and unlock history
+1. **Persistent milestone state in settings** (1)
+2. **Milestone rule definitions** (2)
+3. **Success-only mutation hooks** (3)
+4. **Settings-page presentation flow** (4)
+{ .annotate }
 
-2. Milestone rule definitions
-   - Location: src/features/milestones/milestones.ts
-   - Anchor: MILESTONE_DEFINITIONS
-   - Responsibility: milestone ids, i18n keys, and compute functions
-
-3. Success-only mutation hooks
-   - Location: src/core/cache/CacheMutationHandler.ts
-   - Anchor: recordMilestoneAction calls after confirmed provider success
-   - Responsibility: robust increment semantics and rollback safety
-
-4. Settings-page presentation flow
-   - Locations: src/core/PluginState.ts, src/ui/settings/LazySettingsTab.ts, src/ui/settings/SettingsTab.tsx, src/ui/settings/sections/renderAppearance.ts
-   - Responsibility: navigation to milestones page, read-only rendering, and shared settings footer behavior
+1.  Stored in `settings.milestones` (counters and `unlockedAt` maps).
+2.  Located in `src/features/milestones/milestones.ts`.
+3.  Integrated into `src/core/cache/CacheMutationHandler.ts`.
+4.  Handled by `LazySettingsTab.ts` and `SettingsTab.tsx`.
 
 ## Data Model
 
@@ -38,13 +30,22 @@ Counters include categories such as:
 
 ## Tracking Pipeline
 
-1. A cache mutation path executes an event operation.
-2. Provider operation is attempted through registry delegation.
-3. On confirmed success, CacheMutationHandler calls recordMilestoneAction.
-4. milestones.ts updates scoped counters and metadata.
-5. Unlock evaluation runs against MILESTONE_DEFINITIONS.
-6. Settings persistence is executed through PluginState.persistData.
-7. Newly unlocked milestones are queued into the toast notifier.
+1. Cache mutation executes operation (1)
+2. Provider attempted through registry (2)
+3. CacheMutationHandler calls recordMilestoneAction (3)
+4. `milestones.ts` updates counters (4)
+5. Unlock evaluation runs (5)
+6. Persistence via `PluginState.persistData` (6)
+7. New unlocks queued to toast notifier (7)
+{ .annotate }
+
+1.  Triggered by user actions like creating or editing events.
+2.  Delegation ensures the underlying source handles the persistence first.
+3.  Only called after confirmed success to avoid false positives.
+4.  Updates both scoped counters and metadata.
+5.  Evaluated against `MILESTONE_DEFINITIONS`.
+6.  Ensures progress is saved even if Obsidian crashes.
+7.  Immediate user feedback for achievements.
 
 Failure paths and delegated action rollbacks do not commit milestone progress.
 
@@ -90,6 +91,6 @@ To add a new milestone:
 ## Related Docs
 
 - [Features Architecture](index.md)
-- [Settings Architecture](../../../settings/architecture.md)
-- [Event Cache](../../eventcache.md)
-- [User Guide: Milestones and Progress](../../../../user/features/milestones.md)
+- [Settings Architecture](../../settings/architecture.md)
+- [Event Cache](../eventcache.md)
+- [User Guide: Milestones and Progress](../../../user/features/milestones.md)
