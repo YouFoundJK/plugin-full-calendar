@@ -87,6 +87,7 @@ nav:
                 - user/features/index.md
                 - FCR Command (NLP): user/features/nlp.md
                 - Interactions and Gestures: user/features/interactions.md
+                - Milestones and Progress: user/features/milestones.md
                 - Reminders and Notifications: user/features/reminders.md
                 - Status Bar Integration: user/features/statusbar.md
                 - Internationalization: user/features/i18n.md
@@ -134,6 +135,7 @@ nav:
                 - Timezone Architecture: architecture/system/features/timezone-architecture.md
                 - Reminders Architecture: architecture/system/features/reminders-architecture.md
                 - NLP Architecture: architecture/system/features/nlp-architecture.md
+                - Milestones Architecture: architecture/system/features/milestones-architecture.md
                 - ActivityWatch Architecture: architecture/activitywatch/index.md
                 - ActivityWatch Implementation: architecture/activitywatch/implementation.md
           - Views Architecture:

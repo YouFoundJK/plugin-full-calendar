@@ -27,6 +27,7 @@ These settings allow you to focus on your active hours and clean up the UI:
 ## Interaction & UI
 
 *   **Click to Create Event (Month View)**: If enabled, clicking an empty date cell in month view immediately opens the [event creation modal](../events/manage.md).
+*   **Milestones and Progress**: Open the milestones page from Appearance to review read-only progress cards and unlock status. See [Milestones and Progress](../features/milestones.md).
 *   **Initial View (Desktop/Mobile)**: Define which [view mode](../views/index.md) (e.g., `timeGridWeek`, `listMonth`) the plugin opens by default on different devices.
 *   **Show Event in Status Bar**: Display the current or upcoming event in the Obsidian status bar. See: [Reminders](reminders.md).
 *   **Highlight Current/Next Event**: Visually emphasize the event happening now or starting soon.

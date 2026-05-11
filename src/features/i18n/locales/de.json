@@ -185,6 +185,10 @@
       "invalidSourceId": "TaskNotes provider source ID must follow tasknotes_[n] pattern (received: {{sourceId}}).",
       "createModalUnavailable": "TaskNotes plugin is unavailable or does not expose create modal integration.",
       "selectorUnavailable": "TaskNotes plugin is unavailable or does not expose selector integration."
+    },
+    "milestones": {
+      "unlockedTitle": "Meilenstein freigeschaltet",
+      "unlockedBody": "{{title}} - {{description}}"
     }
   },
   "eventCache": {
@@ -368,7 +372,136 @@
         "description": "Zeigt den Titel des aktuell laufenden Ereignisses in der Obsidian-Statusleiste an."
       },
       "highlightCurrentOrNextEvent": "Highlight current or next event",
-      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active."
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active.",
+      "milestones": {
+        "label": "Meilensteine",
+        "description": "Schreibgeschützte lokale Meilensteine, die erfolgreiche Ereignisaktivitäten über alle Kalender hinweg verfolgen.",
+        "openButton": "Meilensteine öffnen",
+        "modal": {
+          "title": "Meilensteine",
+          "description": "Meilensteine sind anonym, lokal und schreibgeschützt. Sie werden freigeschaltet, wenn erfolgreiche Aktionen abgeschlossen werden.",
+          "completed": "Abgeschlossen",
+          "inProgress": "In Arbeit",
+          "progress": "{{current}} erledigt"
+        },
+        "definitions": {
+          "createdCentury": {
+            "title": "Jahrhundert-Macher",
+            "description": "Erfolgreich 100 Ereignisse erstellen.",
+            "target": "Ziel: 100 erstellte Ereignisse"
+          },
+          "createdMaster": {
+            "title": "Ereignis-Architekt",
+            "description": "Erfolgreich 500 Ereignisse erstellen.",
+            "target": "Ziel: 500 erstellte Ereignisse"
+          },
+          "createdLegend": {
+            "title": "Kalender-Titan",
+            "description": "Erfolgreich 5.000 Ereignisse erstellen.",
+            "target": "Ziel: 5.000 erstellte Ereignisse"
+          },
+          "deletedCentury": {
+            "title": "Schnitt-Lehrling",
+            "description": "Erfolgreich 100 Ereignisse löschen.",
+            "target": "Ziel: 100 gelöschte Ereignisse"
+          },
+          "deletedMaster": {
+            "title": "Tresor-Gärtner",
+            "description": "Erfolgreich 500 Ereignisse löschen.",
+            "target": "Ziel: 500 gelöschte Ereignisse"
+          },
+          "updatedMaster": {
+            "title": "Verfeinerungs-Engine",
+            "description": "Erfolgreich 500 Ereignisse aktualisieren.",
+            "target": "Ziel: 500 aktualisierte Ereignisse"
+          },
+          "updatedLegend": {
+            "title": "Präzisions-Umschreiber",
+            "description": "Erfolgreich 5.000 Ereignisse aktualisieren.",
+            "target": "Ziel: 5.000 aktualisierte Ereignisse"
+          },
+          "movedMaster": {
+            "title": "Zeitlinien-Choreograf",
+            "description": "Erfolgreich 500 Ereignisse zwischen Kalendern verschieben.",
+            "target": "Ziel: 500 verschobene Ereignisse"
+          },
+          "remoteArchitect": {
+            "title": "Remote-Architekt",
+            "description": "500 Ereignisse über ICS-, CalDAV- und Google-Provider erstellen.",
+            "target": "Ziel: 500 remote erstellte Ereignisse"
+          },
+          "taskOrchestrator": {
+            "title": "Aufgaben-Orchestrator",
+            "description": "1.000 Ereignisse über Tasks- und TaskNotes-Integrationen erstellen.",
+            "target": "Ziel: 1.000 durch Aufgaben-Integration erstellte Ereignisse"
+          },
+          "polyglotBuilder": {
+            "title": "Polyglotter Erbauer",
+            "description": "500 erstellte Ereignisse in 3 verschiedenen Provider-Typen erreichen.",
+            "target": "Ziel: 3 Provider mit jeweils 500 erstellten Ereignissen"
+          },
+          "cycleMaster": {
+            "title": "Zyklus-Meister",
+            "description": "Sowohl 500 erstellte als auch 500 gelöschte Ereignisse erreichen.",
+            "target": "Ziel: 500 Erstellen/Löschen-Gleichgewicht"
+          },
+          "opsLegend": {
+            "title": "Operations-Legende",
+            "description": "10.000 erfolgreiche Operationen insgesamt erreichen (Erstellen/Löschen/Aktualisieren/Verschieben).",
+            "target": "Ziel: 10.000 erfolgreiche Operationen"
+          },
+          "habitualPlanner": {
+            "title": "Gewohnheitsplaner",
+            "description": "Kalenderaktionen an 20 aufeinanderfolgenden Tagen durchführen.",
+            "target": "Ziel: 20-Tage-Aktionssträhne"
+          },
+          "dedicated": {
+            "title": "Der Engagierte",
+            "description": "Mindestens 3 Monate zwischen der ersten und der letzten aufgezeichneten Aktion einhalten.",
+            "target": "Ziel: 90-Tage-Historie"
+          },
+          "marathoner": {
+            "title": "Marathonläufer",
+            "description": "Insgesamt 100.000 erfolgreiche Operationen erreichen.",
+            "target": "Ziel: 100.000 Operationen"
+          },
+          "nlpSavant": {
+            "title": "NLP-Gelehrter",
+            "description": "1.000 Ereignisse mittels NLP-Eingabe erstellen.",
+            "target": "Ziel: 1.000 NLP-erstellte Ereignisse"
+          },
+          "globalCitizen": {
+            "title": "Weltbürger",
+            "description": "Ereignisse in 3 oder mehr verschiedenen Zeitzonen erstellen.",
+            "target": "Ziel: 3 verschiedene Zeitzonen"
+          },
+          "syncSpecialist": {
+            "title": "Sync-Spezialist",
+            "description": "5 oder mehr aktive Remote-Kalender (Google/ICS/CalDAV) unterhalten.",
+            "target": "Ziel: 5 aktive Remote-Kalender"
+          },
+          "recurringMaster": {
+            "title": "Meister der Wiederholung",
+            "description": "30 wiederkehrende Ereignisserien erstellen.",
+            "target": "Ziel: 30 wiederkehrende Serien"
+          },
+          "greatMigration": {
+            "title": "Die große Völkerwanderung",
+            "description": "200 Ereignisse zwischen verschiedenen Kalendern verschieben.",
+            "target": "Ziel: 200 verschobene Ereignisse"
+          },
+          "perfectionist": {
+            "title": "Der Perfektionist",
+            "description": "Eine perfekte Woche mit mindestens 3 erstellten Ereignissen an jedem Tag von Montag bis Sonntag haben.",
+            "target": "Ziel: 7/7 Tage mit 3+ Ereignissen"
+          },
+          "digitalLibrarian": {
+            "title": "Digitaler Bibliothekar",
+            "description": "Über 10.000 nicht gelöschte Ereignisse in lokalen Kalendern unterhalten.",
+            "target": "Ziel: 10.000 aktive lokale Ereignisse"
+          }
+        }
+      }
     },
     "calendars": {
       "title": "Kalender verwalten",
@@ -457,13 +590,24 @@
         "adding": "Wird hinzugefügt...",
         "cancel": "Abbrechen",
         "dispatchMode": {
-          "label": "NLP Dispatch Endpoint",
-          "description": "Choose where Full Calendar forwards TaskNotes-targeted NLP requests.",
+          "label": "NLP-Versand-Endpunkt",
+          "description": "Wählen Sie, wohin Full Calendar NLP-Anfragen für TaskNotes weiterleitet.",
           "options": {
-            "search": "Search + Create (selector modal)",
-            "create": "Direct Create (task creation modal NLP)"
+            "search": "Suchen + Erstellen (Auswahl-Modal)",
+            "create": "Direktes Erstellen (Aufgabenerstellungs-Modal NLP)"
           }
         }
+      },
+      "docs": {
+        "providerGuides": "Anbieter-Leitfäden: ",
+        "fullNote": "Vollständiger Notiz-Kalender",
+        "dailyNote": "Tagesnotiz-Kalender",
+        "ics": "ICS-Kalender",
+        "caldav": "CalDAV-Kalender",
+        "google": "Google-Kalender",
+        "tasks": "Tasks-Integration",
+        "bases": "Bases-Kalender",
+        "taskNotes": "TaskNote-Integration"
       }
     },
     "categorization": {
@@ -599,25 +743,25 @@
       "raiseIssue": "🐛 Problem melden"
     },
     "tasknotesIntegration": {
-      "title": "TaskNotes Integration",
-      "descriptionConfigured": "Configure how NLP dispatches to TaskNotes.",
-      "descriptionMissingSource": "TaskNotes integration is available. Add a TaskNotes calendar source to configure it.",
-      "docsLink": "TaskNotes integration",
-      "configButton": "Configure TaskNotes integration",
-      "noSource": "Add a TaskNotes calendar source first before configuring TaskNotes integration.",
+      "title": "TaskNotes-Integration",
+      "descriptionConfigured": "Konfigurieren Sie, wie NLP an TaskNotes versendet wird.",
+      "descriptionMissingSource": "TaskNotes-Integration ist verfügbar. Fügen Sie eine TaskNotes-Kalenderquelle hinzu, um sie zu konfigurieren.",
+      "docsLink": "TaskNotes-Integration",
+      "configButton": "TaskNotes-Integration konfigurieren",
+      "noSource": "Fügen Sie zuerst eine TaskNotes-Kalenderquelle hinzu, bevor Sie die TaskNotes-Integration konfigurieren.",
       "modal": {
-        "title": "TaskNotes Integration"
+        "title": "TaskNotes-Integration"
       },
       "source": {
-        "label": "TaskNotes Calendar Source",
-        "description": "Select which TaskNotes calendar source to configure."
+        "label": "TaskNotes-Kalenderquelle",
+        "description": "Wählen Sie aus, welche TaskNotes-Kalenderquelle konfiguriert werden soll."
       },
       "dispatchMode": {
-        "label": "NLP Dispatch Endpoint",
-        "description": "Choose whether Full Calendar should open TaskNotes search NLP or create NLP.",
+        "label": "NLP-Versand-Endpunkt",
+        "description": "Wählen Sie aus, ob Full Calendar TaskNotes Search NLP oder Create NLP öffnen soll.",
         "options": {
-          "search": "Search + Create (selector modal)",
-          "create": "Direct Create (task creation modal NLP)"
+          "search": "Suchen + Erstellen (Auswahl-Modal)",
+          "create": "Direktes Erstellen (Aufgabenerstellungs-Modal NLP)"
         }
       }
     }
@@ -928,41 +1072,41 @@
         "auto": "Seit der letzten Prüfung synchronisieren",
         "custom": "Benutzerdefinierter Datumsbereich",
         "datePlaceholder": "Start- und Enddatum auswählen",
-        "lastSynced": "Last checked",
-        "neverSynced": "Never checked",
-        "autoSyncEnabled": "Enable automatic sync",
-        "autoSyncIntervalMins": "Auto-sync interval (minutes)",
-        "autoDescription": "Manual and automatic syncs update the last checked time.",
-        "customDescription": "Debug-only manual range. It never updates the last checked time and cannot run automatically."
+        "lastSynced": "Zuletzt geprüft",
+        "neverSynced": "Nie geprüft",
+        "autoSyncEnabled": "Automatische Synchronisierung aktivieren",
+        "autoSyncIntervalMins": "Auto-Sync-Intervall (Minuten)",
+        "autoDescription": "Manuelle und automatische Synchronisierungen aktualisieren die Zeit der letzten Prüfung.",
+        "customDescription": "Debug-Bereich für manuelle Synchronisierung. Aktualisiert niemals die Zeit der letzten Prüfung und kann nicht automatisch ausgeführt werden."
       },
       "buttons": {
         "save": "Speichern",
         "cancel": "Abbrechen"
       },
-      "apiUrl": "API URL",
-      "targetCalendar": "Target Calendar",
-      "unselected": "Unselected",
+      "apiUrl": "API-URL",
+      "targetCalendar": "Zielkalender",
+      "unselected": "Nicht ausgewählt",
       "profiles": {
-        "title": "Context Profiles (Best-Fit FSM)",
-        "config": "Profile Configuration",
-        "btnDelete": "Delete",
-        "name": "Profile Name",
-        "category": "Category (Color tag)",
-        "activationThreshold": "Activation Threshold (Mins)",
-        "softBreakLimit": "Soft Break Limit (Mins)",
-        "titleTemplate": "Title Template",
-        "titleTemplatePlaceholder": "e.g. Work - {app}",
-        "primaryEvidenceRules": "Primary Evidence Rules (Can start and sustain sessions)",
-        "supportingEvidenceRules": "Supporting Evidence Rules (Can sustain, but cannot start)",
-        "hardBreakRules": "Hard Break Rules (Instantly end the session)",
-        "btnAddProfile": "+ Add Context Profile"
+        "title": "Kontextprofile (Best-Fit FSM)",
+        "config": "Profilkonfiguration",
+        "btnDelete": "Löschen",
+        "name": "Profilname",
+        "category": "Kategorie (Farb-Tag)",
+        "activationThreshold": "Aktivierungsschwelle (Min.)",
+        "softBreakLimit": "Soft-Break-Limit (Min.)",
+        "titleTemplate": "Titelvorlage",
+        "titleTemplatePlaceholder": "z.B. Arbeit - {app}",
+        "primaryEvidenceRules": "Primäre Beweisregeln (Können Sitzungen starten und erhalten)",
+        "supportingEvidenceRules": "Unterstützende Beweisregeln (Können erhalten, aber nicht starten)",
+        "hardBreakRules": "Harte Abbruchregeln (Beenden die Sitzung sofort)",
+        "btnAddProfile": "+ Kontextprofil hinzufügen"
       },
       "rules": {
-        "bucketPlaceholder": "Bucket (e.g. window)",
-        "fieldPlaceholder": "Field (e.g. app)",
-        "matchPatternPlaceholder": "Match Pattern",
+        "bucketPlaceholder": "Bucket (z.B. Fenster)",
+        "fieldPlaceholder": "Feld (z.B. App)",
+        "matchPatternPlaceholder": "Suchmuster",
         "regex": "Regex",
-        "btnAdd": "+ Add Rule"
+        "btnAdd": "+ Regel hinzufügen"
       }
     }
   },

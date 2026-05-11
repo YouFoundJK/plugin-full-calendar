@@ -68,6 +68,22 @@ export function renderAppearanceSettings(
       });
     });
 
+  new Setting(containerEl)
+    .setName(t('settings.appearance.milestones.label'))
+    .setDesc(
+      createDescWithDocs(t('settings.appearance.milestones.description'), [
+        { text: 'Milestones guide', path: 'user/features/milestones/' }
+      ])
+    )
+    .addExtraButton(button => {
+      button
+        .setIcon('gear')
+        .setTooltip(t('settings.appearance.milestones.openButton'))
+        .onClick(() => {
+          PluginState.showMilestones();
+        });
+    });
+
   // Business Hours Settings
   new Setting(containerEl)
     .setName(t('settings.appearance.businessHours.enable.label'))

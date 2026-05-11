@@ -240,5 +240,7 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
   }
 
   const createEventData = buildCreateEvent(resolved);
-  await PluginState.getCache().addEvent(calendarId, createEventData);
+  await PluginState.getCache().addEvent(calendarId, createEventData, {
+    milestoneMeta: { viaNlp: true }
+  });
 }

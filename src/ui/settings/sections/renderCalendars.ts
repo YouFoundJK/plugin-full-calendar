@@ -57,16 +57,19 @@ export function renderCalendarManagement(
   new Setting(containerEl).setDesc(
     createDocsLinksFragment(
       [
-        { text: 'Full Note calendar', path: 'user/calendars/local' },
-        { text: 'Daily Note calendar', path: 'user/calendars/dailynote' },
-        { text: 'ICS calendars', path: 'user/calendars/ics' },
-        { text: 'CalDAV calendars', path: 'user/calendars/caldav' },
-        { text: 'Google calendar', path: 'user/calendars/gcal' },
-        { text: 'Tasks integration', path: 'user/calendars/tasks-plugin-integration' },
-        { text: 'Bases calendar', path: 'user/calendars/bases' },
-        { text: 'TaskNote integration', path: 'user/calendars/tasknotes' }
+        { text: t('settings.calendars.docs.fullNote'), path: 'user/calendars/local' },
+        { text: t('settings.calendars.docs.dailyNote'), path: 'user/calendars/dailynote' },
+        { text: t('settings.calendars.docs.ics'), path: 'user/calendars/ics' },
+        { text: t('settings.calendars.docs.caldav'), path: 'user/calendars/caldav' },
+        { text: t('settings.calendars.docs.google'), path: 'user/calendars/gcal' },
+        {
+          text: t('settings.calendars.docs.tasks'),
+          path: 'user/calendars/tasks-plugin-integration'
+        },
+        { text: t('settings.calendars.docs.bases'), path: 'user/calendars/bases' },
+        { text: t('settings.calendars.docs.taskNotes'), path: 'user/calendars/tasknotes' }
       ],
-      'Provider guides: '
+      t('settings.calendars.docs.providerGuides')
     )
   );
 }

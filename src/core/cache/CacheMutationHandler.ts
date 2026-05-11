@@ -8,6 +8,10 @@ import { CacheContext } from './CacheSyncHandler';
 import { EventPathLocation } from '../EventStore';
 import { DateTime } from 'luxon';
 import { DelegatedProviderActionError } from '../../providers/Provider';
+import {
+  recordMilestoneAction,
+  type MilestoneRecordOptions
+} from '../../features/milestones/milestones';
 
 export interface MutationContext extends CacheContext {
   calendars: Map<string, CalendarProvider<unknown>>;
@@ -51,7 +55,7 @@ export class CacheMutationHandler {
   async addEvent(
     calendarId: string,
     event: OFCEvent,
-    options?: { silent: boolean }
+    options?: MilestoneRecordOptions
   ): Promise<boolean> {
     if (!event.allDay && !event.timezone) {
       const displayTimezone =
@@ -117,6 +121,13 @@ export class CacheMutationHandler {
       PluginState.getProviderRegistry().addMapping(authoritativeEvent, calendarId, optimisticId);
 
       this.ctx.timeEngine.scheduleCacheRebuild();
+      await recordMilestoneAction('created', calendarId, {
+        ...options,
+        milestoneMeta: {
+          ...options?.milestoneMeta,
+          event: authoritativeEvent
+        }
+      });
       return true;
     } catch (e) {
       if (e instanceof DelegatedProviderActionError) {
@@ -152,7 +163,7 @@ export class CacheMutationHandler {
 
   async deleteEvent(
     eventId: string,
-    options?: { silent?: boolean; instanceDate?: string; force?: boolean }
+    options?: MilestoneRecordOptions & { instanceDate?: string }
   ): Promise<void> {
     const originalDetails = this.ctx.store.getEventDetails(eventId);
     if (!originalDetails) {
@@ -194,6 +205,7 @@ export class CacheMutationHandler {
     try {
       await PluginState.getProviderRegistry().deleteEventInProvider(eventId, event, calendarId);
       this.ctx.timeEngine.scheduleCacheRebuild();
+      await recordMilestoneAction('deleted', calendarId, options);
     } catch (e) {
       console.error(`Failed to delete event with provider. Rolling back cache state.`, {
         eventId,
@@ -241,7 +253,7 @@ export class CacheMutationHandler {
   async updateEventWithId(
     eventId: string,
     newEvent: OFCEvent,
-    options?: { silent: boolean }
+    options?: MilestoneRecordOptions
   ): Promise<boolean> {
     if (!newEvent.allDay && !newEvent.timezone) {
       const displayTimezone =
@@ -341,6 +353,7 @@ export class CacheMutationHandler {
         );
 
         this.ctx.timeEngine.scheduleCacheRebuild();
+        await recordMilestoneAction('updated', calendarId, options);
         return true;
       } catch (e) {
         console.error(`Failed to update event with provider. Rolling back cache state.`, {
@@ -412,14 +425,15 @@ export class CacheMutationHandler {
     }
 
     const eventToCreate = newEventData || originalDetails.event;
-    const success = await this.addEvent(newCalendarId, eventToCreate);
+    const success = await this.addEvent(newCalendarId, eventToCreate, { trackMilestone: false });
 
     if (!success) {
       throw new Error(`Failed to move event: Could not create event in destination calendar.`);
     }
 
     try {
-      await this.deleteEvent(eventId);
+      await this.deleteEvent(eventId, { trackMilestone: false });
+      await recordMilestoneAction('moved', newCalendarId);
     } catch (e) {
       console.error('Failed to delete event from old calendar after moving it.', e);
       new Notice(t('eventCache.movePartialSuccess'));

@@ -9,6 +9,7 @@
 |---|---|---|
 | Timezone | Source/display/system timezone correctness and recurrence patch behavior. | `EventEnhancer`, `TimeEngine`, provider parsing paths |
 | Reminders | Time-tick driven notification policy and deduplicated reminder delivery. | `TimeEngine`, `EventCache`, Notification APIs |
+| Milestones | Success-only progress tracking, unlock evaluation, and read-only settings presentation. | `CacheMutationHandler`, `PluginState`, `settings.milestones`, settings UI |
 | Recurrence | Instance overrides and parent-child lifecycle semantics. | `EventCache`, provider mutation paths |
 | Workspaces | View-level filtering and setting overrides for presentation segmentation. | `ViewEnhancer`, settings |
 | Category | Parsing, normalization, and bulk categorization workflows. | `EventEnhancer`, settings, UI controls |
@@ -26,5 +27,6 @@ Feature modules may transform, filter, and react, but they must not replace core
 
 - [Timezone Architecture](timezone-architecture.md)
 - [Reminders Architecture](reminders-architecture.md)
+- [Milestones Architecture](milestones-architecture.md)
 - [NLP Engine Architecture](nlp-architecture.md)
 - [ActivityWatch Architecture](../../activitywatch/index.md)

@@ -226,7 +226,7 @@ export async function createContinuityBlocksAndReplacePriorEvent(
 
   for (const sessionId of resolvedDeletes) {
     try {
-      await PluginState.getCache().deleteEvent(sessionId, { force: true });
+      await PluginState.getCache().deleteEvent(sessionId, { force: true, trackMilestone: false });
     } catch (err) {
       console.error(
         'ActivityWatch continuity rewrite failed: detected a continuous session but could not delete the prior event before rewriting.',
@@ -249,7 +249,8 @@ export async function createContinuityBlocksAndReplacePriorEvent(
   for (const block of sortedBlocks) {
     const created = await PluginState.getCache().addEvent(
       targetCalendarId,
-      materializeBlockAsEvent(block)
+      materializeBlockAsEvent(block),
+      { trackMilestone: false }
     );
     if (created) {
       createdBlocks.push(block);
@@ -330,7 +331,10 @@ export async function createOrUpdateBlock(
       if (!sessionId) continue;
 
       try {
-        await PluginState.getCache().deleteEvent(sessionId, { force: true });
+        await PluginState.getCache().deleteEvent(sessionId, {
+          force: true,
+          trackMilestone: false
+        });
         existing.sessionId = sessionId;
 
         const idx = existingOverlapEvents.indexOf(existing);
@@ -344,7 +348,9 @@ export async function createOrUpdateBlock(
   }
 
   const ofcEvent = materializeBlockAsEvent(block);
-  const created = await PluginState.getCache().addEvent(targetCalendarId, ofcEvent);
+  const created = await PluginState.getCache().addEvent(targetCalendarId, ofcEvent, {
+    trackMilestone: false
+  });
 
   if (created) {
     const recoveredCreatedSessionId = recoverSessionIdFromStore(sessionIndex, block);

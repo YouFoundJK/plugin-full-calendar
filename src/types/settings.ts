@@ -49,6 +49,11 @@ export interface TasksIntegrationSettings {
   taskDisplayFormat?: TasksDisplayFormat;
 }
 
+export interface MilestonesSettings {
+  counters: Record<string, number>;
+  unlockedAt: Record<string, number>;
+}
+
 export type ApiScope =
   | 'ui:open-calendar'
   | 'ui:open-sidebar'
@@ -157,6 +162,7 @@ export interface FullCalendarSettings {
   dayMaxEvents?: number | boolean; // Max events per day in month view (true = no limit, false = default, number = limit)
   activityWatch: ActivityWatchSettings;
   tasksIntegration: TasksIntegrationSettings;
+  milestones: MilestonesSettings;
   apiTokens?: Record<string, ApiTokenRecord>;
   authorizedTokens?: Record<string, { pluginId: string; reason: string; grantedAt: number }>;
 
@@ -220,6 +226,10 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
     calendarDisplayDateTarget: 'scheduledDate',
     openEditModalAfterBacklogDrop: false,
     taskDisplayFormat: 'dayPlanner'
+  },
+  milestones: {
+    counters: {},
+    unlockedAt: {}
   },
   apiTokens: {},
   authorizedTokens: {},
