@@ -531,6 +531,12 @@
         "button": "加载更早版本",
         "loading": "加载中...",
         "errorOffline": "加载更早版本失败。您可能处于离线状态。"
+      },
+      "modal": {
+        "title": "FCR 新功能",
+        "seeAllButton": "查看所有更新日志",
+        "donationMessage": "FCR 是通过 AI 增强工程高速构建的。如果它为您提供了价值，请考虑每月捐助 25 美元，以帮助维持这种可持续的发展速度。",
+        "donationButton": "透明度报告与捐赠"
       }
     },
     "utils": {

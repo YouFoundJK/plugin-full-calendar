@@ -529,6 +529,12 @@
       "whatsNew": "What's new",
       "viewFull": "View full changelog",
       "versionWithNumber": "Version {{version}}",
+      "modal": {
+        "title": "What's New in FCR",
+        "seeAllButton": "See all changelogs",
+        "donationMessage": "FCR is built at high velocity with AI-augmented engineering. If this has provided value to you, consider contributing to $25/month subsidy to help keep this pace sustainable.",
+        "donationButton": "Transparency Report & Donation"
+      },
       "whatsNewPageLink": "What's New page",
       "changelogPageLink": "Changelog",
       "loadOlder": {

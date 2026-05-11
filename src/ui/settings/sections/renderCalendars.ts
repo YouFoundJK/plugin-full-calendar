@@ -63,7 +63,8 @@ export function renderCalendarManagement(
         { text: 'CalDAV calendars', path: 'user/calendars/caldav' },
         { text: 'Google calendar', path: 'user/calendars/gcal' },
         { text: 'Tasks integration', path: 'user/calendars/tasks-plugin-integration' },
-        { text: 'Bases calendar', path: 'user/calendars/bases' }
+        { text: 'Bases calendar', path: 'user/calendars/bases' },
+        { text: 'TaskNote integration', path: 'user/calendars/tasknotes' }
       ],
       'Provider guides: '
     )

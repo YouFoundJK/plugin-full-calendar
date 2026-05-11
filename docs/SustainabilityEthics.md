@@ -29,7 +29,8 @@ While the software is free, the infrastructure required to build it at a high ve
 With contributions attributed to roughly
 
 - **75%** Agentic coding agents Orchestration
-- **25%** Architecture and System Design; Manual Refactor, docs, cleanup
+- **20%** Architecture and System Design; Manual Refactor, docs, cleanup
+- **5%** Repo Maintainance; Community support, Issues, PRs (Rapidly increasing)
 
 ![Activity ChronoAnalyzer](assets/chrono-analyser/2025-26-FCR-development.png){ style="display: block; margin: 0 auto;" }
 

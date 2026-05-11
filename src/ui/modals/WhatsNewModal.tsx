@@ -1,4 +1,4 @@
-import { App, Modal, Setting, ButtonComponent } from 'obsidian';
+import { App, Modal, ButtonComponent } from 'obsidian';
 import * as ReactDOM from 'react-dom/client';
 import { createElement } from 'react';
 import { changelogData } from '../settings/changelogs/changelogData';
@@ -6,6 +6,7 @@ import { VersionSection } from '../settings/changelogs/Changelog';
 import '../settings/changelogs/changelog.css';
 import FullCalendarPlugin from '../../main';
 import { PluginState } from '../../core/PluginState';
+import { t } from '../../features/i18n/i18n';
 
 type SettingsManager = {
   open: () => void;
@@ -16,6 +17,7 @@ type AppWithSettings = App & { setting: SettingsManager };
 
 export class WhatsNewModal extends Modal {
   private plugin: FullCalendarPlugin;
+  private reactRoot: ReactDOM.Root | null = null;
 
   constructor(app: App, plugin: FullCalendarPlugin) {
     super(app);
@@ -28,15 +30,31 @@ export class WhatsNewModal extends Modal {
       contentEl.empty();
       contentEl.addClass('full-calendar-whats-new-modal');
 
-      contentEl.createEl('h2', { text: "What's new in full calendar" });
+      const bodyEl = contentEl.createDiv('full-calendar-whats-new-body');
+      const valueContainer = bodyEl.createDiv('full-calendar-whats-new-value');
+
+      const headerRow = valueContainer.createDiv('full-calendar-whats-new-header-row');
+      headerRow.createEl('h2', { text: t('settings.changelog.modal.title') });
+      const seeAllButtonWrap = headerRow.createDiv('full-calendar-whats-new-header-actions');
+      new ButtonComponent(seeAllButtonWrap)
+        .setButtonText(t('settings.changelog.modal.seeAllButton'))
+        .onClick(() => {
+          this.close();
+          PluginState.showChangelog();
+          const settingsManager = (this.plugin.app as AppWithSettings).setting;
+          settingsManager.open();
+          settingsManager.openTabById(this.plugin.manifest.id);
+        });
+
+      const valueContent = valueContainer.createDiv('full-calendar-whats-new-content');
 
       // Render the React component for the latest version
-      const reactRootInfo = contentEl.createDiv('full-calendar-whats-new-react-root');
-      const root = ReactDOM.createRoot(reactRootInfo);
+      const reactRootInfo = valueContent.createDiv('full-calendar-whats-new-react-root');
+      this.reactRoot = ReactDOM.createRoot(reactRootInfo);
 
       const latestVersion = changelogData[0];
 
-      root.render(
+      this.reactRoot.render(
         createElement(
           'div',
           {},
@@ -48,34 +66,29 @@ export class WhatsNewModal extends Modal {
         )
       );
 
-      // Add "See all" button
-      const footer = contentEl.createDiv('full-calendar-whats-new-footer');
-      new Setting(footer)
-        .addButton((btn: ButtonComponent) =>
-          btn.setButtonText('See all changelogs').onClick(() => {
-            this.close();
-            // Open settings to changelog
-            PluginState.showChangelog();
-            // Open settings
-            const settingsManager = (this.plugin.app as AppWithSettings).setting;
-            settingsManager.open();
-            settingsManager.openTabById(this.plugin.manifest.id);
-          })
-        )
-        .addButton((btn: ButtonComponent) =>
-          btn
-            .setButtonText('Close')
-            .setCta()
-            .onClick(() => {
-              this.close();
-            })
-        );
+      const donationFooter = bodyEl.createDiv('full-calendar-whats-new-donation-footer');
+      donationFooter.createEl('p', {
+        text: t('settings.changelog.modal.donationMessage'),
+        cls: 'full-calendar-whats-new-donation-message'
+      });
+
+      const donationActions = donationFooter.createDiv('full-calendar-whats-new-donation-actions');
+      new ButtonComponent(donationActions)
+        .setButtonText(t('settings.changelog.modal.donationButton'))
+        .setCta()
+        .onClick(() => {
+          window.open(
+            'https://youfoundjk.github.io/plugin-full-calendar/SustainabilityEthics/',
+            '_blank'
+          );
+        });
     })();
   }
 
   onClose() {
+    this.reactRoot?.unmount();
+    this.reactRoot = null;
     const { contentEl } = this;
-    ReactDOM.createRoot(contentEl).unmount(); // Cleanup React
     contentEl.empty();
   }
 }

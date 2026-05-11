@@ -531,6 +531,12 @@
         "button": "Ältere Versionen laden",
         "loading": "Wird geladen...",
         "errorOffline": "Ältere Versionen konnten nicht geladen werden. Möglicherweise sind Sie offline."
+      },
+      "modal": {
+        "title": "Was gibt's Neues in FCR",
+        "seeAllButton": "Alle Änderungsprotokolle anzeigen",
+        "donationMessage": "FCR wird mit hoher Geschwindigkeit durch KI-gestützte Entwicklung erstellt. Wenn Ihnen dies einen Mehrwert bietet, erwägen Sie bitte einen Beitrag von 25 $/Monat, um dieses Tempo nachhaltig zu unterstützen.",
+        "donationButton": "Transparenzbericht & Spende"
       }
     },
     "utils": {

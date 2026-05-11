@@ -531,6 +531,12 @@
         "button": "Carica versioni precedenti",
         "loading": "Caricamento...",
         "errorOffline": "Impossibile caricare le versioni precedenti. Potresti essere offline."
+      },
+      "modal": {
+        "title": "Novità in FCR",
+        "seeAllButton": "Vedi tutti i log delle modifiche",
+        "donationMessage": "FCR è costruito ad alta velocità con ingegneria aumentata dall'IA. Se questo ti ha fornito valore, considera di contribuire a un sussidio di 25 $/mese per aiutare a mantenere questo ritmo sostenibile.",
+        "donationButton": "Rapporto sulla trasparenza e donazione"
       }
     },
     "utils": {
