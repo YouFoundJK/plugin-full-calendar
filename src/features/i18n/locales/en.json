@@ -1249,6 +1249,7 @@
       "OPEN_SETTINGS": "⚙️ Open Settings",
       "OPEN_CHRONO": "📊 Open ChronoAnalyser",
       "SHOW_CHANGELOG": "📋 Show Changelog",
+      "SHOW_MILESTONES": "🏅 Show Milestones",
       "RESET_CACHE": "🗑️ Reset Event Cache",
       "REVALIDATE_REMOTE": "🔄 Revalidate Remote Calendars",
       "SYNC_ACTIVITYWATCH": "⏱️ Sync ActivityWatch",
@@ -1258,6 +1259,7 @@
       "OPEN_SETTINGS": "Opens the Full Calendar settings tab.",
       "OPEN_CHRONO": "Launches the ChronoAnalyser dashboard.",
       "SHOW_CHANGELOG": "Displays the latest release notes.",
+      "SHOW_MILESTONES": "Opens the milestones page in settings.",
       "RESET_CACHE": "Clears and rebuilds the event cache.",
       "REVALIDATE_REMOTE": "Forces a fresh sync of all remote calendars.",
       "SYNC_ACTIVITYWATCH": "Pulls latest data from ActivityWatch."

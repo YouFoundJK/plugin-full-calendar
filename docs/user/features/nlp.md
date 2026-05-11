@@ -62,6 +62,7 @@ The **FCR Command** is your single point of control for Full Calendar Remastered
 | `open settings` | Opens Full Calendar [settings tab](../settings/index.md) |
 | `open chrono` / `show analyser` | Opens the [Chrono Analyser](../chrono_analyser/introduction.md) dashboard ([Config](../chrono_analyser/settings.md)) |
 | `show changelog` / `show whats new` | Displays the [changelog](../../whats_new.md) |
+| `open milestones` / `show achievements` | Opens the [milestones page](milestones.md) |
 | `reset cache` / `clear event cache` | Clears and rebuilds the [event cache](../reference/data_integrity.md) |
 | `refresh calendars` / `revalidate remote calendars` | Resyncs all [remote calendars](../calendars/index.md) |
 | `sync activitywatch` / `sync aw` | Pulls latest data from [ActivityWatch](../calendars/activitywatch.md) / [TaskNotes](../calendars/tasknotes.md) |

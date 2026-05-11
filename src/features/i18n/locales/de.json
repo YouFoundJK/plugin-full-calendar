@@ -1252,7 +1252,8 @@
       "RESET_CACHE": "🗑️ Ereignis-Cache zurücksetzen",
       "REVALIDATE_REMOTE": "🔄 Remote-Kalender aktualisieren",
       "SYNC_ACTIVITYWATCH": "⏱️ ActivityWatch synchronisieren",
-      "GOTO_DATE": "📆 Gehe zum Datum"
+      "GOTO_DATE": "📆 Gehe zum Datum",
+      "SHOW_MILESTONES": "🏅 Show Milestones"
     },
     "descriptions": {
       "OPEN_SETTINGS": "Öffnet den Einstellungen-Tab von Full Calendar.",
@@ -1260,7 +1261,8 @@
       "SHOW_CHANGELOG": "Zeigt die neuesten Versionshinweise an.",
       "RESET_CACHE": "Löscht und baut den Ereignis-Cache neu auf.",
       "REVALIDATE_REMOTE": "Erzwingt eine frische Synchronisierung aller Remote-Kalender.",
-      "SYNC_ACTIVITYWATCH": "Ruft die neuesten Daten von ActivityWatch ab."
+      "SYNC_ACTIVITYWATCH": "Ruft die neuesten Daten von ActivityWatch ab.",
+      "SHOW_MILESTONES": "Opens the milestones page in settings."
     },
     "preview": {
       "target": "Ziel",

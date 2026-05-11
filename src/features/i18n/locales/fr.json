@@ -1252,7 +1252,8 @@
       "RESET_CACHE": "🗑️ Réinitialiser le cache des événements",
       "REVALIDATE_REMOTE": "🔄 Réactualiser les calendriers distants",
       "SYNC_ACTIVITYWATCH": "⏱️ Synchroniser ActivityWatch",
-      "GOTO_DATE": "📆 Aller à la date"
+      "GOTO_DATE": "📆 Aller à la date",
+      "SHOW_MILESTONES": "🏅 Show Milestones"
     },
     "descriptions": {
       "OPEN_SETTINGS": "Ouvre l'onglet des paramètres de Full Calendar.",
@@ -1260,7 +1261,8 @@
       "SHOW_CHANGELOG": "Affiche les dernières notes de mise à jour.",
       "RESET_CACHE": "Efface et reconstruit le cache des événements.",
       "REVALIDATE_REMOTE": "Force une nouvelle synchronisation de tous les calendriers distants.",
-      "SYNC_ACTIVITYWATCH": "Récupère les dernières données d'ActivityWatch."
+      "SYNC_ACTIVITYWATCH": "Récupère les dernières données d'ActivityWatch.",
+      "SHOW_MILESTONES": "Opens the milestones page in settings."
     },
     "preview": {
       "target": "Cible",

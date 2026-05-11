@@ -178,6 +178,12 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
     return;
   }
 
+  if (action.intent === 'SHOW_MILESTONES') {
+    PluginState.showMilestones();
+    new Notice(t('nlp.parseSuccess'));
+    return;
+  }
+
   if (action.intent === 'RESET_CACHE') {
     PluginState.getCache().reset();
     new Notice(t('nlp.notices.cacheReset'));

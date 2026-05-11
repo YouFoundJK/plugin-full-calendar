@@ -431,6 +431,22 @@ describe('NLP engine', () => {
       expect(result.intent).toBe('SHOW_CHANGELOG');
     });
 
+    it('short-circuits on SHOW_MILESTONES', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('open milestones', payloadEn, now);
+
+      expect(result.intent).toBe('SHOW_MILESTONES');
+      expect(result.title).toBe('');
+      expect(result.matchedRules).toEqual(['show_milestones']);
+    });
+
+    it('recognizes "show achievements"', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('show achievements', payloadEn, now);
+
+      expect(result.intent).toBe('SHOW_MILESTONES');
+    });
+
     it('short-circuits on RESET_CACHE', () => {
       const now = new Date('2026-05-07T10:00:00');
       const result = processNaturalLanguage('reset cache', payloadEn, now);

@@ -1252,7 +1252,8 @@
       "RESET_CACHE": "🗑️ Reset Event Cache",
       "REVALIDATE_REMOTE": "🔄 Revalidate Remote Calendars",
       "SYNC_ACTIVITYWATCH": "⏱️ Sync ActivityWatch",
-      "GOTO_DATE": "📆 Go to Date"
+      "GOTO_DATE": "📆 Go to Date",
+      "SHOW_MILESTONES": "🏅 Show Milestones"
     },
     "descriptions": {
       "OPEN_SETTINGS": "Opens the Full Calendar settings tab.",
@@ -1260,7 +1261,8 @@
       "SHOW_CHANGELOG": "Displays the latest release notes.",
       "RESET_CACHE": "Clears and rebuilds the event cache.",
       "REVALIDATE_REMOTE": "Forces a fresh sync of all remote calendars.",
-      "SYNC_ACTIVITYWATCH": "Pulls latest data from ActivityWatch."
+      "SYNC_ACTIVITYWATCH": "Pulls latest data from ActivityWatch.",
+      "SHOW_MILESTONES": "Opens the milestones page in settings."
     },
     "preview": {
       "target": "Target",

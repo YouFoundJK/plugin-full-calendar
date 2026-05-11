@@ -57,6 +57,12 @@
       "actions": ["SET_INTENT(SHOW_CHANGELOG)"]
     },
     {
+      "name": "show_milestones",
+      "regex": "^(?:show|open|view)\\s+(?:the\\s+)?(?:milestones?|achievements?)\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(SHOW_MILESTONES)"]
+    },
+    {
       "name": "reset_cache",
       "regex": "^(?:reset|clear|flush)\\s+(?:the\\s+)?(?:event\\s+)?cache\\b",
       "flags": "i",
