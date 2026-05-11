@@ -56,7 +56,14 @@ export function getWritableCalendarNames(): string[] {
  * by checking if a time-related rule was matched.
  */
 export function hasExplicitTime(action: NLPActionObject): boolean {
-  const timeRules = ['time_exact_ampm', 'time_noon', 'time_midnight', 'in_hours', 'in_minutes'];
+  const timeRules = [
+    'time_exact_ampm',
+    'time_range_ampm',
+    'time_noon',
+    'time_midnight',
+    'in_hours',
+    'in_minutes'
+  ];
   return action.matchedRules.some(rule => timeRules.includes(rule));
 }
 

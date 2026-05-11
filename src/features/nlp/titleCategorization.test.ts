@@ -34,6 +34,26 @@ describe('normalizeNLPEventTitleWithCategories', () => {
     expect(result).toBe('Work - seminar - whatever');
   });
 
+  it('supports leading "category <name>" and preserves remaining title text', () => {
+    const result = normalizeNLPEventTitleWithCategories('category work FINA 3203 N19', {
+      enableAdvancedCategorization: true,
+      categoryNames: ['Work', 'Personal'],
+      payload: payloadEn
+    });
+
+    expect(result).toBe('Work - FINA 3203 N19');
+  });
+
+  it('fuzzy-matches explicit category typos from leading category phrase', () => {
+    const result = normalizeNLPEventTitleWithCategories('category wrok FINA 3203 N19', {
+      enableAdvancedCategorization: true,
+      categoryNames: ['Work', 'Personal'],
+      payload: payloadEn
+    });
+
+    expect(result).toBe('Work - FINA 3203 N19');
+  });
+
   it('keeps non-canonical category spelling when categorization is disabled', () => {
     const result = normalizeNLPEventTitleWithCategories('work dash seminar dash whatever', {
       enableAdvancedCategorization: false,

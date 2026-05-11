@@ -52,6 +52,14 @@ Make sure the plugin is up to date. Search for "FCR Command" in the command pale
 ### Phrase conflicts
 Rules are ordered by specificity — "in 3 hours" will not accidentally match "in Work calendar".
 
+### Category phrase at the start not applied
+Use `category <name>` with your title text after it (for example: `category work FINA 3203 N19 at 5pm in work`).
+If category coloring is enabled, the NLP layer fuzzy-matches to saved category names.
+
+### Time not parsed as expected
+Prefer anchored time phrases like `at 5pm` or `from 3pm to 5pm`.
+Compact forms such as `430pm` are supported when preceded by `at` or `from`.
+
 ### Calendar not matched
 Smart matching is case-insensitive. Check that the name exactly matches your calendar's display name in [Settings](../settings/index.md).
 

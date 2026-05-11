@@ -32,6 +32,10 @@ The **FCR Command** is your single point of control for Full Calendar Remastered
 | `on 9th at 3 pm for 7 hrs Working` | Creates "Working" on the upcoming 9th, lasting 7 hours |
 | `add event tomorrow Dentist` | Strips "add event" prefix, creates "Dentist" tomorrow |
 | `create event Lunch for 30 mins` | Strips "create event" prefix, sets duration to 30 mins |
+| `category work FINA 3203 N19 at 5pm in work` | Creates "Work - FINA 3203 N19" at 5:00 PM in calendar "work" |
+| `FINA 3203 N19 category work at 5pm in work` | Same as above, category can be stated at the start or later in the phrase |
+| `Focus from 3pm to 5 pm` | Creates "Focus" with explicit start 3:00 PM and end 5:00 PM |
+| `Call at 430pm` | Parses compact time and creates "Call" at 4:30 PM |
 
 ### 🧭 Navigate Views
 
@@ -102,6 +106,8 @@ You can also use the explicit form `in Work calendar` which always works regardl
 | Phrase | Meaning |
 |---|---|
 | `at 4 pm` / `at 4:30 pm` | Sets time to 4:00 PM / 4:30 PM |
+| `at 430pm` | Compact format for 4:30 PM |
+| `from 3pm to 5 pm` | Sets explicit start/end time range |
 | `at 12 am` | Midnight (00:00) |
 | `at 12 pm` | Noon (12:00) |
 | `at noon` | 12:00 PM |
@@ -155,6 +161,9 @@ The language is automatically detected from your Obsidian language setting. Non-
 ## Tips
 
 - **Title placement**: Put the event title anywhere — the engine strips matched patterns and uses whatever's left
+- **Anchored time parsing**: Time is prioritized with `at` or `from` triggers to avoid accidental matches from title numbers
+- **Category keyword placement**: `category <name>` works both at the beginning and later in the sentence
+- **Category typo tolerance**: Common typos in `category <name>` are fuzzy-matched to your saved categories
 - **Live preview is your safety net**: Always check the preview card before running — it shows exactly what will happen
 - **"in" calendar smart matching**: Type `in <calendar_name>` at the end without needing to write "calendar"
 - **Relative date rollover**: "on 9th" will resolve to this month if it's the 7th, but next month if it's already the 10th

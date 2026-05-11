@@ -58,6 +58,8 @@ export type NLPExecutionContext = {
   date: Date;
   durationHours: number | null;
   durationMinutes: number | null;
+  explicitEndHours: number | null;
+  explicitEndMinutes: number | null;
   intent: NLPIntent;
   targetCalendar: string | null;
   recurrence: NLPRecurrence | null;
