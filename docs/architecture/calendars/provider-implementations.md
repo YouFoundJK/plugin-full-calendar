@@ -105,10 +105,17 @@ Key contracts:
 
 TaskNotes create delegation path:
 
-1. NLP resolves target calendar and calls `EventCache.addEvent(...)`.
-2. Registry routes to `TaskNotesProvider.createEvent(...)`.
-3. Provider opens TaskNotes UI, prefills NLP query, then throws `DelegatedProviderActionError`.
-4. Cache mutation handler treats this as intentional handoff and rolls back optimistic placeholder state without generic failure notice.
+```text
+1. NLP resolves target and calls EventCache.addEvent (1)
+2. Registry routes to TaskNotesProvider.createEvent (2)
+3. Provider opens UI and throws DelegatedProviderActionError (3)
+4. Cache handler rolls back optimistic state (4)
+```
+
+1.  Determines which calendar should handle the request based on the NLP result.
+2.  The registry acts as the central router for all provider operations.
+3.  The error signal tells the core that the action has been successfully handed off.
+4.  Ensures no "ghost" events remain in the UI while the user is in the other plugin's modal.
 
 This prevents duplicate modal UX and keeps provider-specific behavior outside dispatcher logic.
 

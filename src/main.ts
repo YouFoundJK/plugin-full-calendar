@@ -80,29 +80,42 @@ export default class FullCalendarPlugin extends Plugin {
     PluginState.setProviderRegistry(new ProviderRegistry(this));
     PluginState.setInternalAPI(new InternalAPI());
     PluginState.setSaveSettings(() => this.#saveSettings());
+    PluginState.setPersistData(() => this.#persistData());
     PluginState.setLoadSettings(() => this.#loadSettings());
     PluginState.setNonBlockingProcess((files, processor, description) =>
       this.#nonBlockingProcess(files, processor, description)
     );
-    PluginState.setDisplaySettingsTab(() => {
+
+    const openPluginSettingsTab = (): boolean => {
       const setting = (this.app as AppWithSettings).setting;
-      if (setting) {
-        setting.open();
-        setting.openTabById(this.manifest.id);
-      } else {
+      if (!setting) return false;
+      setting.open();
+      setting.openTabById(this.manifest.id);
+      return true;
+    };
+
+    const openPluginSettingsSubview = (openSubview: (tab: LazySettingsTab) => void): void => {
+      openPluginSettingsTab();
+      if (this.#settingsTab) {
+        openSubview(this.#settingsTab);
+      }
+    };
+
+    PluginState.setDisplaySettingsTab(() => {
+      if (!openPluginSettingsTab()) {
         this.#settingsTab?.display();
       }
     });
-    PluginState.setShowChangelog(() => {
-      const setting = (this.app as AppWithSettings).setting;
-      if (setting) {
-        setting.open();
-        setting.openTabById(this.manifest.id);
-        this.#settingsTab?.showChangelog();
-      } else {
-        this.#settingsTab?.showChangelog();
-      }
-    });
+    PluginState.setShowChangelog(() =>
+      openPluginSettingsSubview(tab => {
+        tab.showChangelog();
+      })
+    );
+    PluginState.setShowMilestones(() =>
+      openPluginSettingsSubview(tab => {
+        tab.showMilestones();
+      })
+    );
     PluginState.setIsMobile(() => this.#isMobile);
 
     this.api = new PublicAPI(this);
@@ -418,6 +431,11 @@ export default class FullCalendarPlugin extends Plugin {
     // if (this.notificationManager) {
     //   this.notificationManager.update(PluginState.getSettings());
     // }
+  }
+
+  async #persistData() {
+    await super.saveData(PluginState.getSettings());
+    this.#loadedSettings = JSON.stringify(PluginState.getSettings());
   }
 
   #clearActivityWatchAutoSync(): void {

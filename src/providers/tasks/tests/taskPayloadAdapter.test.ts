@@ -1,6 +1,11 @@
 import { EventEnhancer } from '../../../core/EventEnhancer';
 import { DEFAULT_SETTINGS } from '../../../types/settings';
-import { getCleanTaskTitle, taskToCalendarTask, TasksPluginTask } from '../taskPayloadAdapter';
+import {
+  getCleanTaskTitle,
+  taskToCalendarTask,
+  TasksPluginTask,
+  tasksToCalendarTasks
+} from '../taskPayloadAdapter';
 
 const taskDate = (date: string) => ({
   toDate: () => new Date(`${date}T00:00:00`)
@@ -73,5 +78,27 @@ describe('taskPayloadAdapter', () => {
     expect(taskToCalendarTask(task).scheduledDate?.toISOString()).toBe(
       new Date('2025-10-06T00:00:00').toISOString()
     );
+  });
+
+  it('deduplicates mirrored Tasks entries when native task id is shared', () => {
+    const sourceTask = {
+      id: '7f6c8f0d',
+      path: 'Daily.md',
+      description: '#task Mirrored task',
+      taskLocation: { lineNumber: 4 },
+      originalMarkdown: '- [ ] #task Mirrored task ⏳ 2026-05-11',
+      scheduledDate: taskDate('2026-05-11')
+    } satisfies TasksPluginTask;
+
+    const mirroredTask = {
+      ...sourceTask,
+      path: 'Queries.md',
+      taskLocation: { lineNumber: 27 }
+    } satisfies TasksPluginTask;
+
+    const mapped = tasksToCalendarTasks([sourceTask, mirroredTask]);
+
+    expect(mapped).toHaveLength(1);
+    expect(mapped[0].id).toBe('Daily.md::4');
   });
 });

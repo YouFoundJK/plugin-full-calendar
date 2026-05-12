@@ -185,6 +185,10 @@
       "invalidSourceId": "TaskNotes provider source ID must follow tasknotes_[n] pattern (received: {{sourceId}}).",
       "createModalUnavailable": "TaskNotes plugin is unavailable or does not expose create modal integration.",
       "selectorUnavailable": "TaskNotes plugin is unavailable or does not expose selector integration."
+    },
+    "milestones": {
+      "unlockedTitle": "成就已达成",
+      "unlockedBody": "{{title}} - {{description}}"
     }
   },
   "eventCache": {
@@ -368,7 +372,136 @@
         "description": "在 Obsidian 状态栏显示当前正在运行的事件标题。"
       },
       "highlightCurrentOrNextEvent": "Highlight current or next event",
-      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active."
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active.",
+      "milestones": {
+        "label": "里程碑",
+        "description": "只读本地里程碑，追踪所有日历中的成功事件活动。",
+        "openButton": "打开里程碑",
+        "modal": {
+          "title": "里程碑",
+          "description": "里程碑是匿名的、本地的且只读的。它们会随着成功操作的完成而解锁。",
+          "completed": "已完成",
+          "inProgress": "进行中",
+          "progress": "已完成 {{current}}"
+        },
+        "definitions": {
+          "createdCentury": {
+            "title": "百次创造者",
+            "description": "成功创建 100 个事件。",
+            "target": "目标：100 个创建的事件"
+          },
+          "createdMaster": {
+            "title": "事件建筑师",
+            "description": "成功创建 500 个事件。",
+            "target": "目标：500 个创建的事件"
+          },
+          "createdLegend": {
+            "title": "日历巨人",
+            "description": "成功创建 5,000 个事件。",
+            "target": "目标：5,000 个创建的事件"
+          },
+          "deletedCentury": {
+            "title": "清理学徒",
+            "description": "成功删除 100 个事件。",
+            "target": "目标：100 个删除的事件"
+          },
+          "deletedMaster": {
+            "title": "仓库园丁",
+            "description": "成功删除 500 个事件。",
+            "target": "目标：500 个删除的事件"
+          },
+          "updatedMaster": {
+            "title": "精炼引擎",
+            "description": "成功更新 500 个事件。",
+            "target": "目标：500 个更新的事件"
+          },
+          "updatedLegend": {
+            "title": "精准重写者",
+            "description": "成功更新 5,000 个事件。",
+            "target": "目标：5,000 个更新的事件"
+          },
+          "movedMaster": {
+            "title": "时间线编舞师",
+            "description": "在日历间成功移动 500 个事件。",
+            "target": "目标：500 个移动的事件"
+          },
+          "remoteArchitect": {
+            "title": "远程建筑师",
+            "description": "在 ICS、CalDAV 和 Google 提供商中创建 500 个事件。",
+            "target": "目标：500 个远程创建的事件"
+          },
+          "taskOrchestrator": {
+            "title": "任务协调员",
+            "description": "通过 Tasks + TaskNotes 集成创建 1,000 个事件。",
+            "target": "目标：1,000 个通过任务集成创建的事件"
+          },
+          "polyglotBuilder": {
+            "title": "多语言构建者",
+            "description": "在 3 种不同的提供商类型中各达到 500 个创建事件。",
+            "target": "目标：3 个提供商各创建 500 个"
+          },
+          "cycleMaster": {
+            "title": "循环大师",
+            "description": "同时达到 500 个创建事件和 500 个删除事件。",
+            "target": "目标：500 个创建/删除平衡"
+          },
+          "opsLegend": {
+            "title": "操作传奇",
+            "description": "总计达到 10,000 次成功操作（创建/删除/更新/移动）。",
+            "target": "目标：10,000 次成功操作"
+          },
+          "habitualPlanner": {
+            "title": "习惯规划师",
+            "description": "连续 20 天执行日历操作。",
+            "target": "目标：连续 20 天的操作记录"
+          },
+          "dedicated": {
+            "title": "专注者",
+            "description": "第一次和最近一次记录的操作之间保持至少 3 个月的时间跨度。",
+            "target": "目标：90 天的历史跨度"
+          },
+          "marathoner": {
+            "title": "马拉松选手",
+            "description": "达到 100,000 次总成功操作。",
+            "target": "目标：100,000 次操作"
+          },
+          "nlpSavant": {
+            "title": "NLP 专家",
+            "description": "使用 NLP 输入创建 1,000 个事件。",
+            "target": "目标：1,000 个通过 NLP 创建的事件"
+          },
+          "globalCitizen": {
+            "title": "世界公民",
+            "description": "在 3 个或更多不同的时区创建事件。",
+            "target": "目标：3 个不同的时区"
+          },
+          "syncSpecialist": {
+            "title": "同步专家",
+            "description": "维护 5 个或更多活跃的远程日历 (Google/ICS/CalDAV)。",
+            "target": "目标：5 个活跃的远程日历"
+          },
+          "recurringMaster": {
+            "title": "循环大师",
+            "description": "创建 30 个循环事件系列。",
+            "target": "目标：30 个循环系列"
+          },
+          "greatMigration": {
+            "title": "大迁徙",
+            "description": "在不同日历之间移动 200 个事件。",
+            "target": "目标：200 个移动的事件"
+          },
+          "perfectionist": {
+            "title": "完美主义者",
+            "description": "拥有完美的一周，从周一到周日每天至少创建 3 个事件。",
+            "target": "目标：7/7 天，每天 3+ 事件"
+          },
+          "digitalLibrarian": {
+            "title": "数字图书管理员",
+            "description": "在本地日历中维护超过 10,000 个未删除的事件。",
+            "target": "目标：10,000 个活跃的本地事件"
+          }
+        }
+      }
     },
     "calendars": {
       "title": "管理日历",
@@ -442,28 +575,39 @@
       },
       "tasknotes": {
         "zeroConfig": {
-          "label": "Zero Configuration Required",
-          "description": "This provider reads TaskNotes tasks directly from your vault and maps scheduled tasks to calendar events."
+          "label": "无需配置",
+          "description": "此提供者直接从您的库中读取 TaskNotes 任务，并将计划的任务映射到日历事件。"
         },
         "calendarName": {
-          "label": "Calendar Name",
-          "description": "Display name for this calendar",
+          "label": "日历名称",
+          "description": "此日历的显示名称",
           "placeholder": "TaskNotes"
         },
         "dispatchMode": {
-          "label": "NLP Dispatch Endpoint",
-          "description": "Choose where Full Calendar forwards TaskNotes-targeted NLP requests.",
+          "label": "NLP 调度终点",
+          "description": "选择 Full Calendar 将 TaskNotes 目标 NLP 请求转发到何处。",
           "options": {
-            "search": "Search + Create (selector modal)",
-            "create": "Direct Create (task creation modal NLP)"
+            "search": "搜索 + 创建 (选择器模态框)",
+            "create": "直接创建 (任务创建模态框 NLP)"
           }
         },
         "readOnly": {
-          "label": "Events",
-          "description": "Event edits open the TaskNotes editor. Drag-and-drop updates scheduled date and duration without showing a modal."
+          "label": "事件",
+          "description": "编辑事件将打开 TaskNotes 编辑器。拖放操作将更新计划日期和持续时间，不显示模态框。"
         },
-        "adding": "Adding...",
-        "cancel": "Cancel"
+        "adding": "正在添加...",
+        "cancel": "取消"
+      },
+      "docs": {
+        "providerGuides": "提供商指南：",
+        "fullNote": "完整笔记日历",
+        "dailyNote": "日记日历",
+        "ics": "ICS 日历",
+        "caldav": "CalDAV 日历",
+        "google": "Google 日历",
+        "tasks": "Tasks 集成",
+        "bases": "Bases 日历",
+        "taskNotes": "TaskNote 集成"
       }
     },
     "categorization": {
@@ -531,6 +675,12 @@
         "button": "加载更早版本",
         "loading": "加载中...",
         "errorOffline": "加载更早版本失败。您可能处于离线状态。"
+      },
+      "modal": {
+        "title": "FCR 新功能",
+        "seeAllButton": "查看所有更新日志",
+        "donationMessage": "FCR 是通过 AI 增强工程高速构建的。如果它为您提供了价值，请考虑每月捐助 25 美元，以帮助维持这种可持续的发展速度。",
+        "donationButton": "透明度报告与捐赠"
       }
     },
     "utils": {
@@ -587,33 +737,33 @@
       }
     },
     "tasknotesIntegration": {
-      "title": "TaskNotes Integration",
-      "descriptionConfigured": "Configure how NLP dispatches to TaskNotes.",
-      "descriptionMissingSource": "TaskNotes integration is available. Add a TaskNotes calendar source to configure it.",
-      "docsLink": "TaskNotes integration",
-      "configButton": "Configure TaskNotes integration",
-      "noSource": "Add a TaskNotes calendar source first before configuring TaskNotes integration.",
+      "title": "TaskNotes 集成",
+      "descriptionConfigured": "配置 NLP 如何调度到 TaskNotes。",
+      "descriptionMissingSource": "TaskNotes 集成可用。添加 TaskNotes 日历源以进行配置。",
+      "docsLink": "TaskNotes 集成",
+      "configButton": "配置 TaskNotes 集成",
+      "noSource": "在配置 TaskNotes 集成之前，请先添加 TaskNotes 日历源。",
       "modal": {
-        "title": "TaskNotes Integration"
+        "title": "TaskNotes 集成"
       },
       "source": {
-        "label": "TaskNotes Calendar Source",
-        "description": "Select which TaskNotes calendar source to configure."
+        "label": "TaskNotes 日历源",
+        "description": "选择要配置的 TaskNotes 日历源。"
       },
       "dispatchMode": {
-        "label": "NLP Dispatch Endpoint",
-        "description": "Choose whether Full Calendar should open TaskNotes search NLP or create NLP.",
+        "label": "NLP 调度终点",
+        "description": "选择 Full Calendar 应该打开 TaskNotes 搜索 NLP 还是创建 NLP。",
         "options": {
-          "search": "Search + Create (selector modal)",
-          "create": "Direct Create (task creation modal NLP)"
+          "search": "搜索 + 创建 (选择器模态框)",
+          "create": "直接创建 (任务创建模态框 NLP)"
         }
       }
     },
     "footer": {
-      "message": "Do you like what you see?",
-      "buyMeACoffee": "☕ Buy me a coffee",
-      "suggestFeature": "💡 Suggest a new feature",
-      "raiseIssue": "🐛 Raise an issue"
+      "message": "喜欢您所看到的吗？",
+      "buyMeACoffee": "☕ 请我喝杯咖啡",
+      "suggestFeature": "💡 建议新功能",
+      "raiseIssue": "🐛 反馈问题"
     }
   },
   "modals": {
@@ -1102,7 +1252,8 @@
       "RESET_CACHE": "🗑️ Reset Event Cache",
       "REVALIDATE_REMOTE": "🔄 Revalidate Remote Calendars",
       "SYNC_ACTIVITYWATCH": "⏱️ Sync ActivityWatch",
-      "GOTO_DATE": "📆 Go to Date"
+      "GOTO_DATE": "📆 Go to Date",
+      "SHOW_MILESTONES": "🏅 Show Milestones"
     },
     "descriptions": {
       "OPEN_SETTINGS": "Opens the Full Calendar settings tab.",
@@ -1110,7 +1261,8 @@
       "SHOW_CHANGELOG": "Displays the latest release notes.",
       "RESET_CACHE": "Clears and rebuilds the event cache.",
       "REVALIDATE_REMOTE": "Forces a fresh sync of all remote calendars.",
-      "SYNC_ACTIVITYWATCH": "Pulls latest data from ActivityWatch."
+      "SYNC_ACTIVITYWATCH": "Pulls latest data from ActivityWatch.",
+      "SHOW_MILESTONES": "Opens the milestones page in settings."
     },
     "preview": {
       "target": "Target",

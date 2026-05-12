@@ -1,6 +1,7 @@
 # Reminders and Notifications
 
-Full Calendar provides a robust, native notification system to keep you on track. It integrates with your operating system's notification center and provides interactive modals for immediate action.
+!!! abstract "Feature Overview"
+    Full Calendar provides a robust, native notification system to keep you on track. It integrates with your operating system's notification center and provides interactive modals for immediate action.
 
 ## Configuration
 
@@ -33,11 +34,11 @@ When you click a system notification (or when a reminder triggers while Obsidian
 
 Full Calendar uses a **destructive snooze** strategy to ensure your notifications remain synchronized across all your devices and external calendars (like Google or CalDAV).
 
-> [!CAUTION]
-> Snoozing an event **modifies the source data** in your note or remote calendar. This ensures you aren't "re-notified" by other apps for a task you have already addressed on one device.
+!!! danger "How Snooze Works"
+    Snoozing an event **modifies the source data** in your note or remote calendar. This ensures you aren't "re-notified" by other apps for a task you have already addressed on one device.
 
 For a detailed breakdown of how different event types are shifted during a snooze, see the **[Reminders Architecture](../../architecture/system/features/reminders-architecture.md#destructive-snooze-implementation)**.
 
 ---
 
-[Status Bar Integration](statusbar.md) · [Technical Architecture](../../architecture/system/notifications.md) · [Troubleshooting](../guides/troubleshooting.md#why-are-my-reminders-not-firing)
+[Status Bar Integration](statusbar.md) · [Technical Architecture](../../architecture/system/features/reminders-architecture.md) · [Troubleshooting](../guides/troubleshooting.md#why-are-my-reminders-not-firing)

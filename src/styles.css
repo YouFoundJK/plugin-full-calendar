@@ -420,6 +420,110 @@
   color: var(--text-faint);
 }
 
+/* Milestones page */
+
+.ofc-milestone-badge {
+  font-size: 0.72rem;
+  border-radius: 999px;
+  padding: 3px 8px;
+  border: 1px solid var(--background-modifier-border);
+  white-space: nowrap;
+}
+
+.ofc-milestone-badge.is-unlocked {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+
+.ofc-milestone-badge.is-locked {
+  color: var(--text-muted);
+  background: var(--background-primary);
+}
+
+.ofc-milestone-progress-track {
+  height: 8px;
+  margin-top: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--background-primary-alt);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.ofc-milestone-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--interactive-accent) 70%, #ffffff 30%), var(--interactive-accent));
+  transition: width 220ms ease;
+}
+
+.ofc-milestone-progress-label {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--text-faint);
+}
+
+/* Milestone celebration toast */
+#ofc-milestone-toast-root {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.ofc-milestone-toast {
+  width: min(340px, calc(100vw - 32px));
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 45%, var(--background-modifier-border));
+  background: linear-gradient(140deg, color-mix(in srgb, var(--interactive-accent) 20%, var(--background-secondary)), var(--background-primary));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--interactive-accent) 25%, #000000 75%);
+  padding: 11px 12px;
+  animation: ofc-milestone-toast-in 260ms ease;
+}
+
+.ofc-milestone-toast-title {
+  font-size: 0.84rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+.ofc-milestone-toast-body {
+  margin-top: 4px;
+  color: var(--text-normal);
+  font-size: 0.93rem;
+}
+
+.ofc-milestone-toast-hide {
+  animation: ofc-milestone-toast-out 260ms ease forwards;
+}
+
+@keyframes ofc-milestone-toast-in {
+  from {
+    transform: translateX(12px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ofc-milestone-toast-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(10px);
+    opacity: 0;
+  }
+}
+
 .ofc-nlp-preview-description {
   color: var(--text-muted);
   font-size: 0.88em;

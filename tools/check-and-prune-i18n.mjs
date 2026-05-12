@@ -45,6 +45,8 @@ function getFiles(dir, files_) {
 const allFiles = getFiles(path.join('src'));
 
 const regex = /\bt\((['"`])([^'"`]+)\1[^\)]*\)/g;
+const dynamicKeyPropertyRegex =
+  /\b(?:titleKey|descriptionKey|targetKey|i18nKey|translationKey)\s*:\s*(['"`])([^'"`]+)\1/g;
 const foundKeys = new Set();
 const missingKeys = [];
 
@@ -52,6 +54,16 @@ allFiles.forEach(file => {
   const content = fs.readFileSync(file, 'utf8');
   let m;
   while ((m = regex.exec(content)) !== null) {
+    const key = m[2];
+    foundKeys.add(key);
+    if (!keySet.has(key)) {
+      missingKeys.push({ file, key });
+    }
+  }
+
+  // Detect statically-declared dynamic key mappings used later via t(variable).
+  // This keeps pruning strict while supporting patterns like milestone definitions.
+  while ((m = dynamicKeyPropertyRegex.exec(content)) !== null) {
     const key = m[2];
     foundKeys.add(key);
     if (!keySet.has(key)) {

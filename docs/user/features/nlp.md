@@ -1,6 +1,9 @@
 # FCR Command — Natural Language Orchestrator
 
-The **FCR Command** is your single point of control for Full Calendar Remastered. Open it from the [Command Palette](../guides/commands-and-shortcuts.md) (`Ctrl/Cmd + P → "FCR Command"`) and use natural language to do anything: [create events](../events/manage.md), [navigate views](../views/index.md), [open settings](../settings/index.md), [sync data](../reference/data_integrity.md), and more.
+The **FCR Command** is your single point of control for Full Calendar Remastered. 
+
+!!! tip "Usage"
+    Open it from the [Command Palette](../guides/commands-and-shortcuts.md) (`Ctrl/Cmd + P → "FCR Command"`) and use natural language to do anything: [create events](../events/manage.md), [navigate views](../views/index.md), [open settings](../settings/index.md), [sync data](../reference/data_integrity.md), and more.
 
 ---
 
@@ -32,6 +35,10 @@ The **FCR Command** is your single point of control for Full Calendar Remastered
 | `on 9th at 3 pm for 7 hrs Working` | Creates "Working" on the upcoming 9th, lasting 7 hours |
 | `add event tomorrow Dentist` | Strips "add event" prefix, creates "Dentist" tomorrow |
 | `create event Lunch for 30 mins` | Strips "create event" prefix, sets duration to 30 mins |
+| `category work FINA 3203 N19 at 5pm in work` | Creates "Work - FINA 3203 N19" at 5:00 PM in calendar "work" |
+| `FINA 3203 N19 category work at 5pm in work` | Same as above, category can be stated at the start or later in the phrase |
+| `Focus from 3pm to 5 pm` | Creates "Focus" with explicit start 3:00 PM and end 5:00 PM |
+| `Call at 430pm` | Parses compact time and creates "Call" at 4:30 PM |
 
 ### 🧭 Navigate Views
 
@@ -58,6 +65,7 @@ The **FCR Command** is your single point of control for Full Calendar Remastered
 | `open settings` | Opens Full Calendar [settings tab](../settings/index.md) |
 | `open chrono` / `show analyser` | Opens the [Chrono Analyser](../chrono_analyser/introduction.md) dashboard ([Config](../chrono_analyser/settings.md)) |
 | `show changelog` / `show whats new` | Displays the [changelog](../../whats_new.md) |
+| `open milestones` / `show achievements` | Opens the [milestones page](milestones.md) |
 | `reset cache` / `clear event cache` | Clears and rebuilds the [event cache](../reference/data_integrity.md) |
 | `refresh calendars` / `revalidate remote calendars` | Resyncs all [remote calendars](../calendars/index.md) |
 | `sync activitywatch` / `sync aw` | Pulls latest data from [ActivityWatch](../calendars/activitywatch.md) / [TaskNotes](../calendars/tasknotes.md) |
@@ -84,16 +92,13 @@ Both modes prefill TaskNotes with parsed NLP text so you can quickly confirm and
 
 ---
 
-## Smart Calendar Matching
+!!! example "Smart Calendar Matching"
+    **Input:** `Tomorrow at 4pm Matthews 2 in daily1`
 
-When you type `in <name>` at the end of your input, the system checks if `<name>` matches any of your [configured calendars](../settings/sources.md) (case-insensitive). If it does, the event is routed to that calendar and the `in <name>` is stripped from the title.
+    - **If `daily1` is a calendar** → Title = "Matthews 2", Calendar = "daily1"
+    - **If `daily1` is NOT a calendar** → Title = "Matthews 2 in daily1" (left as-is)
 
-> **Input:** `Tomorrow at 4pm Matthews 2 in daily1`
->
-> - If `daily1` is a calendar → Title = "Matthews 2", Calendar = "daily1"
-> - If `daily1` is NOT a calendar → Title = "Matthews 2 in daily1" (left as-is)
-
-You can also use the explicit form `in Work calendar` which always works regardless of name matching.
+    You can also use the explicit form `in Work calendar` which always works regardless of name matching.
 
 ---
 
@@ -102,6 +107,8 @@ You can also use the explicit form `in Work calendar` which always works regardl
 | Phrase | Meaning |
 |---|---|
 | `at 4 pm` / `at 4:30 pm` | Sets time to 4:00 PM / 4:30 PM |
+| `at 430pm` | Compact format for 4:30 PM |
+| `from 3pm to 5 pm` | Sets explicit start/end time range |
 | `at 12 am` | Midnight (00:00) |
 | `at 12 pm` | Noon (12:00) |
 | `at noon` | 12:00 PM |
@@ -131,35 +138,33 @@ You can also use the explicit form `in Work calendar` which always works regardl
 
 ---
 
-## Combining Phrases
+!!! example "Combining Phrases"
+    **Input:** `next tuesday at 4 pm Team sync in Work calendar`
 
-You can combine multiple phrases in a single input. The engine processes them left-to-right and strips matched fragments, leaving the remainder as the event title:
-
-> **Input:** `next tuesday at 4 pm Team sync in Work calendar`
->
-> **Result:** Title = "Team sync", Date = next Tuesday, Time = 4:00 PM, Calendar = "Work"
+    **Result:** Title = "Team sync", Date = next Tuesday, Time = 4:00 PM, Calendar = "Work"
 
 ---
 
-## Supported Languages
+!!! info "Supported Languages"
+    The FCR Command follows the same [internationalization pipeline](i18n.md) as the rest of the plugin:
 
-The FCR Command follows the same [internationalization pipeline](i18n.md) as the rest of the plugin:
+    - **Maximal support**: English
+    - **Basic support**: French, German, Spanish, Italian (_help improve it on [GitHub](https://github.com/YouFoundJK/plugin-full-calendar)_)
 
-- Maximal support: **English**
-- Basic support: French, German, Spanish, Italian (_help improve it on [Github](https://github.com/YouFoundJK/plugin-full-calendar)_)
-
-The language is automatically detected from your Obsidian language setting. Non-English payloads are fetched on first use and cached locally.
+    The language is automatically detected from your Obsidian language setting. Non-English payloads are fetched on first use and cached locally.
 
 ---
 
-## Tips
-
-- **Title placement**: Put the event title anywhere — the engine strips matched patterns and uses whatever's left
-- **Live preview is your safety net**: Always check the preview card before running — it shows exactly what will happen
-- **"in" calendar smart matching**: Type `in <calendar_name>` at the end without needing to write "calendar"
-- **Relative date rollover**: "on 9th" will resolve to this month if it's the 7th, but next month if it's already the 10th
-- **No match is safe**: If the engine doesn't recognize any patterns, the entire input becomes the event title
-- **Time math works**: "for 7 hrs" at 3 PM correctly sets the end time to 10 PM
+!!! tip "Power User Tips"
+    - **Title placement**: Put the event title anywhere — the engine strips matched patterns and uses whatever's left.
+    - **Anchored time parsing**: Time is prioritized with `at` or `from` triggers to avoid accidental matches from title numbers.
+    - **Category keyword placement**: `category <name>` works both at the beginning and later in the sentence.
+    - **Category typo tolerance**: Common typos in `category <name>` are fuzzy-matched to your saved categories.
+    - **Live preview is your safety net**: Always check the preview card before running — it shows exactly what will happen.
+    - **"in" calendar smart matching**: Type `in <calendar_name>` at the end without needing to write "calendar".
+    - **Relative date rollover**: "on 9th" will resolve to this month if it's the 7th, but next month if it's already the 10th.
+    - **No match is safe**: If the engine doesn't recognize any patterns, the entire input becomes the event title.
+    - **Time math works**: "for 7 hrs" at 3 PM correctly sets the end time to 10 PM.
 
 ---
 

@@ -56,7 +56,14 @@ export function getWritableCalendarNames(): string[] {
  * by checking if a time-related rule was matched.
  */
 export function hasExplicitTime(action: NLPActionObject): boolean {
-  const timeRules = ['time_exact_ampm', 'time_noon', 'time_midnight', 'in_hours', 'in_minutes'];
+  const timeRules = [
+    'time_exact_ampm',
+    'time_range_ampm',
+    'time_noon',
+    'time_midnight',
+    'in_hours',
+    'in_minutes'
+  ];
   return action.matchedRules.some(rule => timeRules.includes(rule));
 }
 
@@ -171,6 +178,12 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
     return;
   }
 
+  if (action.intent === 'SHOW_MILESTONES') {
+    PluginState.showMilestones();
+    new Notice(t('nlp.parseSuccess'));
+    return;
+  }
+
   if (action.intent === 'RESET_CACHE') {
     PluginState.getCache().reset();
     new Notice(t('nlp.notices.cacheReset'));
@@ -233,5 +246,7 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
   }
 
   const createEventData = buildCreateEvent(resolved);
-  await PluginState.getCache().addEvent(calendarId, createEventData);
+  await PluginState.getCache().addEvent(calendarId, createEventData, {
+    milestoneMeta: { viaNlp: true }
+  });
 }

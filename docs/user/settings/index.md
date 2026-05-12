@@ -9,6 +9,7 @@
 |---|---|---|
 | Add/remove/reprioritize calendar sources | [Calendar Sources](sources.md) | [Calendars](../calendars/index.md) |
 | Adjust display, timezones, and view limits | [Display and Behavior](fc_config.md) | [Views](../views/index.md) |
+| Track long-term progress and unlocks | [Milestones and Progress](../features/milestones.md) | [Milestones Architecture](../../architecture/system/features/milestones-architecture.md) |
 | Manage colors and smart tagging | [Advanced Categorization](categories.md) | [Event Management](../events/manage.md) |
 | Save view/filter presets | [Workspaces](workspaces.md) | [Timeline View Usage](../views/timeline_view.md) |
 | Tune reminder and notification behavior | [Reminders](reminders.md) | [Feature: Reminders](../features/reminders.md) |
@@ -34,7 +35,8 @@
 - [Getting Started](../../getting_started.md)
 - [Troubleshooting](../guides/troubleshooting.md)
 - [Architecture Docs](../../architecture/settings/architecture.md)
+- [Milestones and Progress](../features/milestones.md)
 
 ---
 
-[Calendar Sources](sources.md) · [Display and Behavior](fc_config.md) · [Advanced Categorization](categories.md) · [Workspaces](workspaces.md) · [Reminders](reminders.md) · [API](api.md)
+[Calendar Sources](sources.md) · [Display and Behavior](fc_config.md) · [Milestones](../features/milestones.md) · [Advanced Categorization](categories.md) · [Workspaces](workspaces.md) · [Reminders](reminders.md) · [API](api.md)

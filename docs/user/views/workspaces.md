@@ -4,9 +4,9 @@ Save and switch between customized calendar setups with Workspaces. A workspace 
 
 ## What is saved in a Workspace
 
-- Selected calendar sources (Local, Daily Notes, ICS, CalDAV, Google)
-- Filters: categories/sub-categories, tasks visibility, all‑day toggles
-- Display options: view type (month/week/day/timeline), week start, time grid settings
+- Selected calendar sources (Local, [Daily Notes](../calendars/dailynote.md), ICS, CalDAV, [Google](../calendars/gcal.md))
+- Filters: [categories](../events/categories.md)/sub-categories, tasks visibility, all‑day toggles
+- Display options: view type (month/week/day/[timeline](timeline_view.md)), week start, time grid settings
 - Optional: default start date range for the view
 
 ## Create and manage

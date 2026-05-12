@@ -13,7 +13,7 @@ Access these settings in **Full Calendar Settings → Reminders**.
 
 ## Interaction Behavior
 
-*   **Show Event in Status Bar**: If enabled, the time remaining until your next event is shown in the bottom status bar.
+*   **Show Event in Status Bar**: If enabled, the time remaining until your next event is shown in the bottom [status bar](../features/statusbar.md).
 *   **Highlight Current/Next Event**: Visually distinguishes the active event in the calendar grid.
 
 ## System Integration

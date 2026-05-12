@@ -30,6 +30,7 @@ import { CacheSubscriptionManager } from './cache/CacheSubscriptionManager';
 import { CacheSyncHandler, CacheContext } from './cache/CacheSyncHandler';
 import { CacheMutationHandler, MutationContext } from './cache/CacheMutationHandler';
 import { CacheEntry, UpdateViewCallback, OFCEventSource, CachedEvent } from './cache/types';
+import type { MilestoneRecordOptions } from '../features/milestones/milestones';
 
 // Re-export types for backward compatibility with external modules
 export type { CacheEntry, UpdateViewCallback, OFCEventSource, CachedEvent };
@@ -267,13 +268,17 @@ export default class EventCache {
    * @param event Event details
    * @returns Returns true if successful, false otherwise.
    */
-  addEvent(calendarId: string, event: OFCEvent, options?: { silent: boolean }): Promise<boolean> {
+  addEvent(
+    calendarId: string,
+    event: OFCEvent,
+    options?: MilestoneRecordOptions
+  ): Promise<boolean> {
     return this.mutationHandler.addEvent(calendarId, event, options);
   }
 
   deleteEvent(
     eventId: string,
-    options?: { silent?: boolean; instanceDate?: string; force?: boolean }
+    options?: MilestoneRecordOptions & { instanceDate?: string }
   ): Promise<void> {
     return this.mutationHandler.deleteEvent(eventId, options);
   }
@@ -281,7 +286,7 @@ export default class EventCache {
   updateEventWithId(
     eventId: string,
     newEvent: OFCEvent,
-    options?: { silent: boolean }
+    options?: MilestoneRecordOptions
   ): Promise<boolean> {
     return this.mutationHandler.updateEventWithId(eventId, newEvent, options);
   }

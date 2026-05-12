@@ -63,6 +63,36 @@ describe('NLP engine', () => {
       expect(result.minutes).toBe(30);
       expect(result.title).toBe('Call');
     });
+
+    it('parses compact time token like 430pm', () => {
+      const now = new Date('2026-05-07T09:00:00');
+      const result = processNaturalLanguage('Call at 430pm', payloadEn, now);
+
+      expect(result.hours).toBe(16);
+      expect(result.minutes).toBe(30);
+      expect(result.title).toBe('Call');
+    });
+
+    it('parses explicit range from 3pm to 5 pm', () => {
+      const now = new Date('2026-05-07T09:00:00');
+      const result = processNaturalLanguage('Focus from 3pm to 5 pm', payloadEn, now);
+
+      expect(result.hours).toBe(15);
+      expect(result.minutes).toBe(0);
+      expect(result.endHours).toBe(17);
+      expect(result.endMinutes).toBe(0);
+      expect(result.title).toBe('Focus');
+      expect(result.matchedRules).toContain('time_range_ampm');
+    });
+
+    it('prefers anchored trigger and keeps title numbers untouched', () => {
+      const now = new Date('2026-05-07T09:00:00');
+      const result = processNaturalLanguage('FINA 3203 N19 at 5pm', payloadEn, now);
+
+      expect(result.hours).toBe(17);
+      expect(result.minutes).toBe(0);
+      expect(result.title).toBe('FINA 3203 N19');
+    });
   });
 
   describe('named time anchors', () => {
@@ -399,6 +429,22 @@ describe('NLP engine', () => {
       const result = processNaturalLanguage('show whats new', payloadEn, now);
 
       expect(result.intent).toBe('SHOW_CHANGELOG');
+    });
+
+    it('short-circuits on SHOW_MILESTONES', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('open milestones', payloadEn, now);
+
+      expect(result.intent).toBe('SHOW_MILESTONES');
+      expect(result.title).toBe('');
+      expect(result.matchedRules).toEqual(['show_milestones']);
+    });
+
+    it('recognizes "show achievements"', () => {
+      const now = new Date('2026-05-07T10:00:00');
+      const result = processNaturalLanguage('show achievements', payloadEn, now);
+
+      expect(result.intent).toBe('SHOW_MILESTONES');
     });
 
     it('short-circuits on RESET_CACHE', () => {

@@ -12,6 +12,7 @@ let _cache: EventCache | null = null;
 let _providerRegistry: ProviderRegistry | null = null;
 let _internalAPI: InternalAPI | null = null;
 let _saveSettings: (() => Promise<void>) | null = null;
+let _persistData: (() => Promise<void>) | null = null;
 let _loadSettings: (() => Promise<void>) | null = null;
 let _nonBlockingProcess:
   | ((
@@ -22,6 +23,7 @@ let _nonBlockingProcess:
   | null = null;
 let _displaySettingsTab: (() => void) | null = null;
 let _showChangelog: (() => void) | null = null;
+let _showMilestones: (() => void) | null = null;
 let _isMobile: (() => boolean) | null = null;
 
 function syncProviderSources(): void {
@@ -84,6 +86,14 @@ export const PluginState = {
     _saveSettings = saveSettings;
   },
 
+  persistData(): Promise<void> {
+    if (!_persistData) throw new Error('PluginState: persistData not initialized');
+    return _persistData();
+  },
+  setPersistData(persistData: () => Promise<void>) {
+    _persistData = persistData;
+  },
+
   loadSettings(): Promise<void> {
     if (!_loadSettings) throw new Error('PluginState: loadSettings not initialized');
     return _loadSettings();
@@ -128,6 +138,14 @@ export const PluginState = {
     _showChangelog = showChangelog;
   },
 
+  showMilestones() {
+    if (!_showMilestones) throw new Error('PluginState: milestones view not initialized');
+    _showMilestones();
+  },
+  setShowMilestones(showMilestones: () => void) {
+    _showMilestones = showMilestones;
+  },
+
   isMobile(): boolean {
     if (!_isMobile) throw new Error('PluginState: mobile detector not initialized');
     return _isMobile();
@@ -143,10 +161,12 @@ export const PluginState = {
     _providerRegistry = null;
     _internalAPI = null;
     _saveSettings = null;
+    _persistData = null;
     _loadSettings = null;
     _nonBlockingProcess = null;
     _displaySettingsTab = null;
     _showChangelog = null;
+    _showMilestones = null;
     _isMobile = null;
   }
 };

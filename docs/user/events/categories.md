@@ -1,6 +1,6 @@
 # Advanced Categories
 
-The Advanced Categories feature is a powerful system for organizing and visualizing your events. It works by parsing a `Category` and optional `Sub-Category` from your event titles, unlocking features like fine-grained color-coding and the upcoming Timeline View.
+The Advanced Categories feature is a powerful system for organizing and visualizing your events. It works by parsing a `Category` and optional `Sub-Category` from your event titles, unlocking features like fine-grained color-coding and the [Timeline View](../views/timeline_view.md).
 
 This system is designed to work across **all calendar sources**, including remote calendars like Google Calendar and iCal feeds, making it a universal standard for your vault.
 
@@ -27,8 +27,8 @@ When displayed on the calendar, the `Category` is stripped from the title to kee
 
 Storage details:
 
-- Daily Note calendars: The category and sub-category are part of the list item text (the title). Inline fields do not include a separate category key.
-- Full Note calendars: The category and sub-category are encoded in the `title` field of frontmatter; separate `category`/`subCategory` keys are not persisted in frontmatter.
+- [Daily Note calendars](../calendars/dailynote.md): The category and sub-category are part of the list item text (the title). Inline fields do not include a separate category key.
+- [Full Note calendars](../calendars/local.md): The category and sub-category are encoded in the `title` field of frontmatter; separate `category`/`subCategory` keys are not persisted in frontmatter.
 
 !!! tip "Why this format?"
     This title-based approach was chosen for maximum compatibility. Most remote calendar systems (like Google Calendar) don't have a dedicated "category" field that syncs externally. By embedding the category in the title, you can organize events from *any* source, and the plugin will recognize them.

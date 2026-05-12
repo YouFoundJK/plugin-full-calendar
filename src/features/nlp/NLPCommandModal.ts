@@ -50,6 +50,8 @@ function getIntentLabel(intent: string): string {
       return t('nlp.intents.OPEN_CHRONO');
     case 'SHOW_CHANGELOG':
       return t('nlp.intents.SHOW_CHANGELOG');
+    case 'SHOW_MILESTONES':
+      return t('nlp.intents.SHOW_MILESTONES');
     case 'RESET_CACHE':
       return t('nlp.intents.RESET_CACHE');
     case 'REVALIDATE_REMOTE':
@@ -75,6 +77,8 @@ function getIntentDescription(intent: string): string | null {
       return t('nlp.descriptions.OPEN_CHRONO');
     case 'SHOW_CHANGELOG':
       return t('nlp.descriptions.SHOW_CHANGELOG');
+    case 'SHOW_MILESTONES':
+      return t('nlp.descriptions.SHOW_MILESTONES');
     case 'RESET_CACHE':
       return t('nlp.descriptions.RESET_CACHE');
     case 'REVALIDATE_REMOTE':

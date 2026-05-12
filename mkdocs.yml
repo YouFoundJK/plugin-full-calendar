@@ -13,9 +13,17 @@ theme:
         text: Work Sans
     features:
         - navigation.instant
+        - navigation.tracking
         - navigation.indexes
         - navigation.tabs
         - navigation.tabs.sticky
+        - navigation.top
+        - search.suggest
+        - search.highlight
+        - content.code.copy
+        - content.code.select
+        - content.code.annotate
+        - content.tool.feedback
     palette:
         - media: "(prefers-color-scheme: light)"
           scheme: default
@@ -34,7 +42,24 @@ theme:
 markdown_extensions:
     - toc:
           permalink: true
-    - admonition # Add admonition for notes and warnings
+    - admonition
+    - pymdownx.details
+    - pymdownx.superfences:
+          custom_fences:
+            - name: mermaid
+              class: mermaid
+              format: !!python/name:pymdownx.superfences.fence_code_format
+    - pymdownx.emoji:
+          emoji_index: !!python/name:material.extensions.emoji.twemoji
+          emoji_generator: !!python/name:material.extensions.emoji.to_svg
+    - pymdownx.tabbed:
+          alternate_style: true
+    - pymdownx.tasklist:
+          custom_checkbox: true
+    - pymdownx.inlinehilite
+    - pymdownx.snippets
+    - pymdownx.keys
+    - pymdownx.caret
     - attr_list
 
 extra_javascript:
@@ -45,6 +70,34 @@ extra_css:
       - assets/stylesheets/site-polish.css
       - assets/stylesheets/nav-section-links.css
       - assets/stylesheets/custom-footer.css
+
+plugins:
+    - search
+    - git-revision-date-localized:
+          enable_creation_date: true
+          type: datetime
+    - git-committers:
+          repository: YouFoundJK/plugin-full-calendar
+          branch: main
+
+extra:
+    analytics:
+        provider: google
+        property: G-X3N9HF1H5Y
+        feedback:
+            title: Was this page helpful?
+            ratings:
+                - icon: material/emoticon-happy-outline
+                  name: This page was helpful
+                  data: 1
+                  note: >-
+                    Thanks for your feedback!
+                - icon: material/emoticon-sad-outline
+                  name: This page was not helpful
+                  data: 0
+                  note: >-
+                    Thanks for your feedback!
+
 
 nav:
     - Home: 
@@ -87,6 +140,7 @@ nav:
                 - user/features/index.md
                 - FCR Command (NLP): user/features/nlp.md
                 - Interactions and Gestures: user/features/interactions.md
+                - Milestones and Progress: user/features/milestones.md
                 - Reminders and Notifications: user/features/reminders.md
                 - Status Bar Integration: user/features/statusbar.md
                 - Internationalization: user/features/i18n.md
@@ -124,7 +178,6 @@ nav:
                 - Tasks Integration: architecture/calendars/tasks-integration.md
           - Events:
                 - architecture/events/architecture.md
-                - architecture/events/manage.md
           - Implementations:
                 - architecture/calendars/provider-implementations.md
                 - New Provider Blueprint: architecture/calendars/provider-blueprint.md
@@ -134,6 +187,7 @@ nav:
                 - Timezone Architecture: architecture/system/features/timezone-architecture.md
                 - Reminders Architecture: architecture/system/features/reminders-architecture.md
                 - NLP Architecture: architecture/system/features/nlp-architecture.md
+                - Milestones Architecture: architecture/system/features/milestones-architecture.md
                 - ActivityWatch Architecture: architecture/activitywatch/index.md
                 - ActivityWatch Implementation: architecture/activitywatch/implementation.md
           - Views Architecture:

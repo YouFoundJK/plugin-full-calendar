@@ -18,18 +18,18 @@ import { createMarkdownLinksFragment } from '../linkTextFragments';
  * This should be called after settings are loaded.
  */
 export function checkAndShowWhatsNew(plugin: FullCalendarPlugin): void {
-  const latestVersion = changelogData[0].version;
+  const releaseVersion = plugin.manifest.version;
 
   // Defer to onLayoutReady to ensure the UI is initialized before showing the modal
   plugin.app.workspace.onLayoutReady(async () => {
     if (
       PluginState.getSettings().currentVersion === null ||
-      PluginState.getSettings().currentVersion !== latestVersion
+      PluginState.getSettings().currentVersion !== releaseVersion
     ) {
       new WhatsNewModal(plugin.app, plugin).open();
 
       // Update the persisted version
-      PluginState.getSettings().currentVersion = latestVersion;
+      PluginState.getSettings().currentVersion = releaseVersion;
       await PluginState.saveSettings();
     }
   });

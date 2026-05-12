@@ -14,7 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3 # Use a more recent version of checkout
+        uses: actions/checkout@v4 # Use a more recent version of checkout
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4 # Use a more recent version of setup-python
@@ -22,7 +24,7 @@ jobs:
           python-version: 3.x
 
       - name: Install dependencies
-        run: pip install mkdocs-material
+        run: pip install mkdocs-material mkdocs-git-revision-date-localized-plugin mkdocs-git-committers-plugin-2
 
       - name: Build MkDocs site
         run: mkdocs build

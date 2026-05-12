@@ -125,6 +125,79 @@ function setTime(date: Date, hoursRaw: string, minutesRaw: string, meridiemRaw: 
   date.setHours(hours, minutes, 0, 0);
 }
 
+function to24Hour(hours: number, meridiemRaw: string): number {
+  const meridiem = meridiemRaw.toLowerCase();
+  let adjusted = hours;
+  if (meridiem === 'pm' && adjusted < 12) {
+    adjusted += 12;
+  } else if (meridiem === 'am' && adjusted === 12) {
+    adjusted = 0;
+  }
+  return adjusted;
+}
+
+function parseTimeToken(
+  tokenRaw: string,
+  meridiemRaw: string
+): { hours: number; minutes: number } | null {
+  const token = normalizeWhitespace(tokenRaw).toLowerCase();
+  const meridiem = normalizeWhitespace(meridiemRaw).toLowerCase();
+  if (!token || (meridiem !== 'am' && meridiem !== 'pm')) {
+    return null;
+  }
+
+  if (/^\d{3,4}$/.test(token)) {
+    const compact = Number(token);
+    const hours12 = Math.floor(compact / 100);
+    const minutes = compact % 100;
+    if (hours12 < 1 || hours12 > 12 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+    return { hours: to24Hour(hours12, meridiem), minutes };
+  }
+
+  const exactMatch = /^(\d{1,2})(?::(\d{2}))?$/.exec(token);
+  if (!exactMatch) {
+    return null;
+  }
+
+  const hours12 = toNumber(exactMatch[1] ?? '', 0);
+  const minutes = toNumber(exactMatch[2] ?? '0', 0);
+  if (hours12 < 1 || hours12 > 12 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+
+  return { hours: to24Hour(hours12, meridiem), minutes };
+}
+
+function setTimeFromToken(context: NLPExecutionContext, tokenRaw: string, meridiemRaw: string) {
+  const parsed = parseTimeToken(tokenRaw, meridiemRaw);
+  if (!parsed) {
+    return;
+  }
+  context.date.setHours(parsed.hours, parsed.minutes, 0, 0);
+}
+
+function setTimeRangeFromTokens(
+  context: NLPExecutionContext,
+  startTokenRaw: string,
+  startMeridiemRaw: string,
+  endTokenRaw: string,
+  endMeridiemRaw: string
+) {
+  const parsedStart = parseTimeToken(startTokenRaw, startMeridiemRaw);
+  const parsedEnd = parseTimeToken(endTokenRaw, endMeridiemRaw);
+
+  if (parsedStart) {
+    context.date.setHours(parsedStart.hours, parsedStart.minutes, 0, 0);
+  }
+
+  if (parsedEnd) {
+    context.explicitEndHours = parsedEnd.hours;
+    context.explicitEndMinutes = parsedEnd.minutes;
+  }
+}
+
 function setRecurrence(
   context: NLPExecutionContext,
   freqRaw: string,
@@ -173,6 +246,20 @@ function executeCommand(command: string, captures: string[], context: NLPExecuti
     }
     case 'SET_TIME': {
       setTime(context.date, rawArgs[0] ?? '', rawArgs[1] ?? '', rawArgs[2] ?? '');
+      return;
+    }
+    case 'SET_TIME_TOKEN': {
+      setTimeFromToken(context, rawArgs[0] ?? '', rawArgs[1] ?? '');
+      return;
+    }
+    case 'SET_TIME_RANGE': {
+      setTimeRangeFromTokens(
+        context,
+        rawArgs[0] ?? '',
+        rawArgs[1] ?? '',
+        rawArgs[2] ?? '',
+        rawArgs[3] ?? ''
+      );
       return;
     }
     case 'NEXT_WEEKDAY': {
@@ -287,6 +374,8 @@ export function processNaturalLanguage(
     date: new Date(now.getTime()),
     durationHours: null,
     durationMinutes: null,
+    explicitEndHours: null,
+    explicitEndMinutes: null,
     intent: 'CREATE_EVENT',
     targetCalendar: null,
     recurrence: null,
@@ -303,9 +392,13 @@ export function processNaturalLanguage(
   }
 
   // Finalize end time if duration was specified
-  let endHours: number | null = null;
-  let endMinutes: number | null = null;
-  if (context.durationHours !== null || context.durationMinutes !== null) {
+  let endHours: number | null = context.explicitEndHours;
+  let endMinutes: number | null = context.explicitEndMinutes;
+  if (
+    endHours === null &&
+    endMinutes === null &&
+    (context.durationHours !== null || context.durationMinutes !== null)
+  ) {
     const endDate = new Date(context.date.getTime());
     endDate.setHours(endDate.getHours() + (context.durationHours ?? 0));
     endDate.setMinutes(endDate.getMinutes() + (context.durationMinutes ?? 0));

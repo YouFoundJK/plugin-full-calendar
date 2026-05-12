@@ -185,6 +185,10 @@
       "invalidSourceId": "TaskNotes provider source ID must follow tasknotes_[n] pattern (received: {{sourceId}}).",
       "createModalUnavailable": "TaskNotes plugin is unavailable or does not expose create modal integration.",
       "selectorUnavailable": "TaskNotes plugin is unavailable or does not expose selector integration."
+    },
+    "milestones": {
+      "unlockedTitle": "Jalon débloqué",
+      "unlockedBody": "{{title}} - {{description}}"
     }
   },
   "eventCache": {
@@ -368,7 +372,136 @@
         "description": "Afficher le titre de l'événement en cours dans la barre d'état d'Obsidian."
       },
       "highlightCurrentOrNextEvent": "Highlight current or next event",
-      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active."
+      "highlightCurrentOrNextEventDesc": "Highlights the current timed event, or the immediate next timed event if none is active.",
+      "milestones": {
+        "label": "Jalons",
+        "description": "Jalons locaux en lecture seule qui suivent l'activité des événements réussis sur tous les calendriers.",
+        "openButton": "Ouvrir les jalons",
+        "modal": {
+          "title": "Jalons",
+          "description": "Les jalons sont anonymes, locaux et en lecture seule. Ils se débloquent au fur et à mesure que les actions réussies sont terminées.",
+          "completed": "Terminé",
+          "inProgress": "En cours",
+          "progress": "{{current}} fait(s)"
+        },
+        "definitions": {
+          "createdCentury": {
+            "title": "Maître du Siècle",
+            "description": "Créer avec succès 100 événements.",
+            "target": "Objectif : 100 événements créés"
+          },
+          "createdMaster": {
+            "title": "Architecte d'Événements",
+            "description": "Créer avec succès 500 événements.",
+            "target": "Objectif : 500 événements créés"
+          },
+          "createdLegend": {
+            "title": "Titan du Calendrier",
+            "description": "Créer avec succès 5 000 événements.",
+            "target": "Objectif : 5 000 événements créés"
+          },
+          "deletedCentury": {
+            "title": "Apprenti Élagueur",
+            "description": "Supprimer avec succès 100 événements.",
+            "target": "Objectif : 100 événements supprimés"
+          },
+          "deletedMaster": {
+            "title": "Jardinier du Coffre",
+            "description": "Supprimer avec succès 500 événements.",
+            "target": "Objectif : 500 événements supprimés"
+          },
+          "updatedMaster": {
+            "title": "Moteur de Raffinement",
+            "description": "Mettre à jour avec succès 500 événements.",
+            "target": "Objectif : 500 événements mis à jour"
+          },
+          "updatedLegend": {
+            "title": "Réécrivain de Précision",
+            "description": "Mettre à jour avec succès 5 000 événements.",
+            "target": "Objectif : 5 000 événements mis à jour"
+          },
+          "movedMaster": {
+            "title": "Chorégraphe de Chronologie",
+            "description": "Déplacer avec succès 500 événements entre calendriers.",
+            "target": "Objectif : 500 événements déplacés"
+          },
+          "remoteArchitect": {
+            "title": "Architecte Distant",
+            "description": "Créer 500 événements via les fournisseurs ICS, CalDAV et Google.",
+            "target": "Objectif : 500 événements distants créés"
+          },
+          "taskOrchestrator": {
+            "title": "Orchestrateur de Tâches",
+            "description": "Créer 1 000 événements via les intégrations Tasks + TaskNotes.",
+            "target": "Objectif : 1 000 événements créés via l'intégration des tâches"
+          },
+          "polyglotBuilder": {
+            "title": "Bâtisseur Polyglotte",
+            "description": "Atteindre 500 événements créés dans 3 types de fournisseurs différents.",
+            "target": "Objectif : 3 fournisseurs à 500 créations chacun"
+          },
+          "cycleMaster": {
+            "title": "Maître du Cycle",
+            "description": "Atteindre à la fois 500 événements créés et 500 événements supprimés.",
+            "target": "Objectif : Équilibre de 500 créations/suppressions"
+          },
+          "opsLegend": {
+            "title": "Légende des Opérations",
+            "description": "Atteindre 10 000 opérations réussies au total (création/suppression/mise à jour/déplacement).",
+            "target": "Objectif : 10 000 opérations réussies"
+          },
+          "habitualPlanner": {
+            "title": "Planificateur Habituel",
+            "description": "Effectuer des actions sur le calendrier pendant 20 jours consécutifs.",
+            "target": "Objectif : série de 20 jours d'actions"
+          },
+          "dedicated": {
+            "title": "Le Dévoué",
+            "description": "Maintenir au moins 3 mois entre la première et la dernière action enregistrée.",
+            "target": "Objectif : historique de 90 jours"
+          },
+          "marathoner": {
+            "title": "Marathonien",
+            "description": "Atteindre un total de 100 000 opérations réussies.",
+            "target": "Objectif : 100 000 opérations"
+          },
+          "nlpSavant": {
+            "title": "Savant du NLP",
+            "description": "Créer 1 000 événements en utilisant la saisie NLP.",
+            "target": "Objectif : 1 000 événements créés par NLP"
+          },
+          "globalCitizen": {
+            "title": "Citoyen du Monde",
+            "description": "Créer des événements dans 3 fuseaux horaires différents ou plus.",
+            "target": "Objectif : 3 fuseaux horaires distincts"
+          },
+          "syncSpecialist": {
+            "title": "Spécialiste de la Sync",
+            "description": "Maintenir 5 calendriers distants actifs ou plus (Google/ICS/CalDAV).",
+            "target": "Objectif : 5 calendriers distants actifs"
+          },
+          "recurringMaster": {
+            "title": "Maître de la Récurrence",
+            "description": "Créer 30 séries d'événements récurrents.",
+            "target": "Objectif : 30 séries récurrentes"
+          },
+          "greatMigration": {
+            "title": "La Grande Migration",
+            "description": "Déplacer 200 événements entre différents calendriers.",
+            "target": "Objectif : 200 événements déplacés"
+          },
+          "perfectionist": {
+            "title": "Le Perfectionniste",
+            "description": "Avoir une semaine parfaite avec au moins 3 événements créés chaque jour du lundi au dimanche.",
+            "target": "Objectif : 7/7 jours avec 3+ événements"
+          },
+          "digitalLibrarian": {
+            "title": "Bibliothécaire Numérique",
+            "description": "Maintenir plus de 10 000 événements non supprimés dans les calendriers locaux.",
+            "target": "Objectif : 10 000 événements locaux actifs"
+          }
+        }
+      }
     },
     "calendars": {
       "title": "Gérer les calendriers",
@@ -457,13 +590,24 @@
         "adding": "Ajout...",
         "cancel": "Annuler",
         "dispatchMode": {
-          "label": "NLP Dispatch Endpoint",
-          "description": "Choose where Full Calendar forwards TaskNotes-targeted NLP requests.",
+          "label": "Point de Terminaison NLP",
+          "description": "Choisissez où Full Calendar redirige les requêtes NLP destinées à TaskNotes.",
           "options": {
-            "search": "Search + Create (selector modal)",
-            "create": "Direct Create (task creation modal NLP)"
+            "search": "Rechercher + Créer (modal de sélection)",
+            "create": "Création Directe (modal de création de tâche NLP)"
           }
         }
+      },
+      "docs": {
+        "providerGuides": "Guides des fournisseurs : ",
+        "fullNote": "Calendrier note complète",
+        "dailyNote": "Calendrier note quotidienne",
+        "ics": "Calendriers ICS",
+        "caldav": "Calendriers CalDAV",
+        "google": "Agenda Google",
+        "tasks": "Intégration Tasks",
+        "bases": "Calendrier Bases",
+        "taskNotes": "Intégration TaskNote"
       }
     },
     "categorization": {
@@ -531,6 +675,12 @@
         "button": "Charger les versions plus anciennes",
         "loading": "Chargement...",
         "errorOffline": "Impossible de charger les versions plus anciennes. Vous êtes peut-être hors ligne."
+      },
+      "modal": {
+        "title": "Quoi de neuf dans FCR",
+        "seeAllButton": "Voir tous les journaux de modifications",
+        "donationMessage": "FCR est construit à grande vitesse grâce à l'ingénierie augmentée par l'IA. Si cela vous a apporté de la valeur, envisagez de contribuer à une subvention de 25 $/mois pour aider à maintenir ce rythme durable.",
+        "donationButton": "Rapport de transparence et don"
       }
     },
     "utils": {
@@ -593,25 +743,25 @@
       "raiseIssue": "🐛 Signaler un problème"
     },
     "tasknotesIntegration": {
-      "title": "TaskNotes Integration",
-      "descriptionConfigured": "Configure how NLP dispatches to TaskNotes.",
-      "descriptionMissingSource": "TaskNotes integration is available. Add a TaskNotes calendar source to configure it.",
-      "docsLink": "TaskNotes integration",
-      "configButton": "Configure TaskNotes integration",
-      "noSource": "Add a TaskNotes calendar source first before configuring TaskNotes integration.",
+      "title": "Intégration TaskNotes",
+      "descriptionConfigured": "Configurez comment le NLP est transmis à TaskNotes.",
+      "descriptionMissingSource": "L'intégration TaskNotes est disponible. Ajoutez une source de calendrier TaskNotes pour la configurer.",
+      "docsLink": "Intégration TaskNotes",
+      "configButton": "Configurer l'intégration TaskNotes",
+      "noSource": "Ajoutez d'abord une source de calendrier TaskNotes avant de configurer l'intégration TaskNotes.",
       "modal": {
-        "title": "TaskNotes Integration"
+        "title": "Intégration TaskNotes"
       },
       "source": {
-        "label": "TaskNotes Calendar Source",
-        "description": "Select which TaskNotes calendar source to configure."
+        "label": "Source de Calendrier TaskNotes",
+        "description": "Sélectionnez la source de calendrier TaskNotes à configurer."
       },
       "dispatchMode": {
-        "label": "NLP Dispatch Endpoint",
-        "description": "Choose whether Full Calendar should open TaskNotes search NLP or create NLP.",
+        "label": "Point de Terminaison NLP",
+        "description": "Choisissez si Full Calendar doit ouvrir la recherche NLP TaskNotes ou la création NLP.",
         "options": {
-          "search": "Search + Create (selector modal)",
-          "create": "Direct Create (task creation modal NLP)"
+          "search": "Rechercher + Créer (modal de sélection)",
+          "create": "Création Directe (modal de création de tâche NLP)"
         }
       }
     }
@@ -922,41 +1072,41 @@
         "auto": "Synchroniser depuis la dernière vérification",
         "custom": "Plage de dates personnalisée",
         "datePlaceholder": "Sélectionner la date de début et de fin",
-        "lastSynced": "Last checked",
-        "neverSynced": "Never checked",
-        "autoSyncEnabled": "Enable automatic sync",
-        "autoSyncIntervalMins": "Auto-sync interval (minutes)",
-        "autoDescription": "Manual and automatic syncs update the last checked time.",
-        "customDescription": "Debug-only manual range. It never updates the last checked time and cannot run automatically."
+        "lastSynced": "Dernière vérification",
+        "neverSynced": "Jamais vérifié",
+        "autoSyncEnabled": "Activer la synchronisation automatique",
+        "autoSyncIntervalMins": "Intervalle de synchronisation automatique (minutes)",
+        "autoDescription": "Les synchronisations manuelles et automatiques mettent à jour l'heure de la dernière vérification.",
+        "customDescription": "Plage manuelle pour le débogage uniquement. Ne met jamais à jour l'heure de la dernière vérification et ne peut pas s'exécuter automatiquement."
       },
       "buttons": {
         "save": "Enregistrer",
         "cancel": "Annuler"
       },
-      "apiUrl": "API URL",
-      "targetCalendar": "Target Calendar",
-      "unselected": "Unselected",
+      "apiUrl": "URL de l'API",
+      "targetCalendar": "Calendrier Cible",
+      "unselected": "Non sélectionné",
       "profiles": {
-        "title": "Context Profiles (Best-Fit FSM)",
-        "config": "Profile Configuration",
-        "btnDelete": "Delete",
-        "name": "Profile Name",
-        "category": "Category (Color tag)",
-        "activationThreshold": "Activation Threshold (Mins)",
-        "softBreakLimit": "Soft Break Limit (Mins)",
-        "titleTemplate": "Title Template",
-        "titleTemplatePlaceholder": "e.g. Work - {app}",
-        "primaryEvidenceRules": "Primary Evidence Rules (Can start and sustain sessions)",
-        "supportingEvidenceRules": "Supporting Evidence Rules (Can sustain, but cannot start)",
-        "hardBreakRules": "Hard Break Rules (Instantly end the session)",
-        "btnAddProfile": "+ Add Context Profile"
+        "title": "Profils de Contexte (Best-Fit FSM)",
+        "config": "Configuration du Profil",
+        "btnDelete": "Supprimer",
+        "name": "Nom du Profil",
+        "category": "Catégorie (Tag de couleur)",
+        "activationThreshold": "Seuil d'Activation (Min)",
+        "softBreakLimit": "Limite de Pause Douce (Min)",
+        "titleTemplate": "Modèle de Titre",
+        "titleTemplatePlaceholder": "ex: Travail - {app}",
+        "primaryEvidenceRules": "Règles de Preuve Primaire (Peuvent démarrer et maintenir des sessions)",
+        "supportingEvidenceRules": "Règles de Preuve de Soutien (Peuvent maintenir, mais pas démarrer)",
+        "hardBreakRules": "Règles de Rupture Brute (Terminent la session instantanément)",
+        "btnAddProfile": "+ Ajouter un Profil de Contexte"
       },
       "rules": {
-        "bucketPlaceholder": "Bucket (e.g. window)",
-        "fieldPlaceholder": "Field (e.g. app)",
-        "matchPatternPlaceholder": "Match Pattern",
+        "bucketPlaceholder": "Bucket (ex: fenêtre)",
+        "fieldPlaceholder": "Champ (ex: app)",
+        "matchPatternPlaceholder": "Motif de Correspondance",
         "regex": "Regex",
-        "btnAdd": "+ Add Rule"
+        "btnAdd": "+ Ajouter une Règle"
       }
     }
   },
@@ -1102,7 +1252,8 @@
       "RESET_CACHE": "🗑️ Réinitialiser le cache des événements",
       "REVALIDATE_REMOTE": "🔄 Réactualiser les calendriers distants",
       "SYNC_ACTIVITYWATCH": "⏱️ Synchroniser ActivityWatch",
-      "GOTO_DATE": "📆 Aller à la date"
+      "GOTO_DATE": "📆 Aller à la date",
+      "SHOW_MILESTONES": "🏅 Show Milestones"
     },
     "descriptions": {
       "OPEN_SETTINGS": "Ouvre l'onglet des paramètres de Full Calendar.",
@@ -1110,7 +1261,8 @@
       "SHOW_CHANGELOG": "Affiche les dernières notes de mise à jour.",
       "RESET_CACHE": "Efface et reconstruit le cache des événements.",
       "REVALIDATE_REMOTE": "Force une nouvelle synchronisation de tous les calendriers distants.",
-      "SYNC_ACTIVITYWATCH": "Récupère les dernières données d'ActivityWatch."
+      "SYNC_ACTIVITYWATCH": "Récupère les dernières données d'ActivityWatch.",
+      "SHOW_MILESTONES": "Opens the milestones page in settings."
     },
     "preview": {
       "target": "Cible",

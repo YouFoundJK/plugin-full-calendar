@@ -39,7 +39,8 @@ import { makeDefaultPartialCalendarSource } from '../../types/calendar_settings'
 
 import { generateCalendarId } from '../../types/calendar_settings';
 import { t } from '../../features/i18n/i18n';
-import { createDocsLinksFragment } from './docsLinks';
+import { createDescWithDocs, createDocsLinksFragment } from './docsLinks';
+import { getMilestoneCards } from '../../features/milestones/milestones';
 
 // Import the new React components
 import './changelogs/changelog.css';
@@ -96,6 +97,15 @@ function getCategoryDescription(id: SettingsCategoryId): string {
     case 'integrations':
       return t('settings.categories.integrations.description');
   }
+}
+
+const UNLOCKED_MILESTONE_ICONS = ['🏆', '✨', '🚀', '🌟', '🎉', '🥇'];
+const LOCKED_MILESTONE_ICONS = ['🎯', '🧩', '📌', '📈', '🛠️', '🗓️'];
+
+function selectMilestoneIcon(id: string, unlocked: boolean): string {
+  const source = unlocked ? UNLOCKED_MILESTONE_ICONS : LOCKED_MILESTONE_ICONS;
+  const hash = Array.from(id).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return source[hash % source.length];
 }
 
 export function addCalendarButton(
@@ -273,6 +283,7 @@ export function addCalendarButton(
 export class FullCalendarSettingTab extends PluginSettingTab {
   plugin: FullCalendarPlugin;
   private showFullChangelog = false;
+  private showMilestonesPage = false;
   private activeCategory: SettingsCategoryId = 'general';
   private searchQuery = '';
   private searchExpanded = false;
@@ -292,6 +303,8 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       this.containerEl.empty();
       if (this.showFullChangelog) {
         await this._renderFullChangelog();
+      } else if (this.showMilestonesPage) {
+        await this._renderMilestonesPage();
       } else {
         await this._renderMainSettings();
       }
@@ -300,6 +313,13 @@ export class FullCalendarSettingTab extends PluginSettingTab {
 
   public showChangelog(): void {
     this.showFullChangelog = true;
+    this.showMilestonesPage = false;
+    void this.display();
+  }
+
+  public showMilestones(): void {
+    this.showMilestonesPage = true;
+    this.showFullChangelog = false;
     void this.display();
   }
 
@@ -453,6 +473,67 @@ export class FullCalendarSettingTab extends PluginSettingTab {
 
     const { renderFooter } = await import('./sections/calendars/renderFooter');
     renderFooter(shellEl);
+  }
+
+  private async _renderMilestonesPage(): Promise<void> {
+    const wrapper = this.containerEl.createDiv('full-calendar-changelog-wrapper');
+    const header = wrapper.createDiv('full-calendar-changelog-header');
+
+    const backButton = header.createEl('button', { text: '<' });
+    backButton.type = 'button';
+    backButton.addEventListener('click', () => {
+      this.showMilestonesPage = false;
+      void this.display();
+    });
+
+    new Setting(header)
+      .setName(t('settings.appearance.milestones.modal.title'))
+      .setHeading()
+      .setDesc(
+        createDescWithDocs(t('settings.appearance.milestones.modal.description'), [
+          { text: 'Milestones guide', path: 'user/features/milestones/' }
+        ])
+      );
+
+    const cards = getMilestoneCards();
+    const content = wrapper.createDiv({ cls: 'full-calendar-version-content' });
+
+    for (const card of cards) {
+      const cardEl = content.createDiv({
+        cls: `full-calendar-change-item ${card.unlocked ? 'change-type-new' : 'change-type-improvement'}`
+      });
+
+      cardEl.createDiv({ text: selectMilestoneIcon(card.id, card.unlocked), cls: 'change-icon' });
+      const cardContent = cardEl.createDiv({ cls: 'change-content u-flex-grow-1' });
+
+      const topRow = cardContent.createDiv({ cls: 'full-calendar-whats-new-header' });
+      topRow.createDiv({ text: card.title, cls: 'setting-item-name' });
+      topRow.createEl('span', {
+        text: card.unlocked
+          ? t('settings.appearance.milestones.modal.completed')
+          : t('settings.appearance.milestones.modal.inProgress'),
+        cls: `ofc-milestone-badge ${card.unlocked ? 'is-unlocked' : 'is-locked'}`
+      });
+
+      cardContent.createEl('div', {
+        text: `${card.targetLabel} • ${card.description}`,
+        cls: 'change-description'
+      });
+
+      const progressTrack = cardContent.createDiv({ cls: 'ofc-milestone-progress-track' });
+      progressTrack.createDiv({
+        cls: 'ofc-milestone-progress-fill',
+        attr: { style: `width: ${card.percent.toFixed(1)}%` }
+      });
+
+      cardContent.createEl('div', {
+        text: t('settings.appearance.milestones.modal.progress', { current: card.current }),
+        cls: 'ofc-milestone-progress-label'
+      });
+    }
+
+    const { renderFooter } = await import('./sections/calendars/renderFooter');
+    renderFooter(wrapper);
   }
 
   private async _renderSettingsContent(containerEl: HTMLElement): Promise<void> {

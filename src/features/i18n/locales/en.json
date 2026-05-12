@@ -189,6 +189,10 @@
       "invalidSourceId": "TaskNotes provider source ID must follow tasknotes_[n] pattern (received: {{sourceId}}).",
       "createModalUnavailable": "TaskNotes plugin is unavailable or does not expose create modal integration.",
       "selectorUnavailable": "TaskNotes plugin is unavailable or does not expose selector integration."
+    },
+    "milestones": {
+      "unlockedTitle": "Milestone unlocked",
+      "unlockedBody": "{{title}} - {{description}}"
     }
   },
   "eventCache": {
@@ -372,6 +376,135 @@
       "showEventInStatusBar": {
         "label": "Show current event in status bar",
         "description": "Display the title of the currently running event in the Obsidian status bar."
+      },
+      "milestones": {
+        "label": "Milestones",
+        "description": "Read-only local milestones that track successful event activity across calendars.",
+        "openButton": "Open milestones",
+        "modal": {
+          "title": "Milestones",
+          "description": "Milestones are anonymous, local, and read-only. They unlock as successful actions are completed.",
+          "completed": "Completed",
+          "inProgress": "In progress",
+          "progress": "{{current}} done"
+        },
+        "definitions": {
+          "createdCentury": {
+            "title": "Century Maker",
+            "description": "Successfully create 100 events.",
+            "target": "Target: 100 created events"
+          },
+          "createdMaster": {
+            "title": "Event Architect",
+            "description": "Successfully create 500 events.",
+            "target": "Target: 500 created events"
+          },
+          "createdLegend": {
+            "title": "Calendar Titan",
+            "description": "Successfully create 5,000 events.",
+            "target": "Target: 5,000 created events"
+          },
+          "deletedCentury": {
+            "title": "Pruning Apprentice",
+            "description": "Successfully delete 100 events.",
+            "target": "Target: 100 deleted events"
+          },
+          "deletedMaster": {
+            "title": "Vault Gardener",
+            "description": "Successfully delete 500 events.",
+            "target": "Target: 500 deleted events"
+          },
+          "updatedMaster": {
+            "title": "Refinement Engine",
+            "description": "Successfully update 500 events.",
+            "target": "Target: 500 updated events"
+          },
+          "updatedLegend": {
+            "title": "Precision Rewriter",
+            "description": "Successfully update 5,000 events.",
+            "target": "Target: 5,000 updated events"
+          },
+          "movedMaster": {
+            "title": "Timeline Choreographer",
+            "description": "Successfully move 500 events between calendars.",
+            "target": "Target: 500 moved events"
+          },
+          "remoteArchitect": {
+            "title": "Remote Architect",
+            "description": "Create 500 events across ICS, CalDAV, and Google providers.",
+            "target": "Target: 500 remote created events"
+          },
+          "taskOrchestrator": {
+            "title": "Task Orchestrator",
+            "description": "Create 1,000 events through Tasks + TaskNotes integrations.",
+            "target": "Target: 1,000 task-integration created events"
+          },
+          "polyglotBuilder": {
+            "title": "Polyglot Builder",
+            "description": "Reach 500 created events in 3 different provider types.",
+            "target": "Target: 3 providers at 500 created each"
+          },
+          "cycleMaster": {
+            "title": "Cycle Master",
+            "description": "Reach both 500 created and 500 deleted events.",
+            "target": "Target: 500 create/delete balance"
+          },
+          "opsLegend": {
+            "title": "Operations Legend",
+            "description": "Reach 10,000 total successful operations (create/delete/update/move).",
+            "target": "Target: 10,000 successful operations"
+          },
+          "habitualPlanner": {
+            "title": "Habitual Planner",
+            "description": "Perform calendar actions on 20 consecutive days.",
+            "target": "Target: 20-day action streak"
+          },
+          "dedicated": {
+            "title": "The Dedicated",
+            "description": "Maintain at least 3 months between first and latest recorded action.",
+            "target": "Target: 90-day history span"
+          },
+          "marathoner": {
+            "title": "Marathoner",
+            "description": "Reach 100,000 total successful operations.",
+            "target": "Target: 100,000 operations"
+          },
+          "nlpSavant": {
+            "title": "NLP Savant",
+            "description": "Create 1,000 events using NLP input.",
+            "target": "Target: 1,000 NLP-created events"
+          },
+          "globalCitizen": {
+            "title": "Global Citizen",
+            "description": "Create events in 3 or more different time zones.",
+            "target": "Target: 3 distinct time zones"
+          },
+          "syncSpecialist": {
+            "title": "Sync Specialist",
+            "description": "Maintain 5 or more active remote calendars (Google/ICS/CalDAV).",
+            "target": "Target: 5 active remote calendars"
+          },
+          "recurringMaster": {
+            "title": "Recurring Master",
+            "description": "Create 30 recurring event series.",
+            "target": "Target: 30 recurring series"
+          },
+          "greatMigration": {
+            "title": "The Great Migration",
+            "description": "Move 200 events between different calendars.",
+            "target": "Target: 200 moved events"
+          },
+          "perfectionist": {
+            "title": "The Perfectionist",
+            "description": "Have a perfect week with at least 3 created events every day Monday-Sunday.",
+            "target": "Target: 7/7 days with 3+ events"
+          },
+          "digitalLibrarian": {
+            "title": "Digital Librarian",
+            "description": "Maintain over 10,000 non-deleted events across local calendars.",
+            "target": "Target: 10,000 live local events"
+          }
+        }
       }
     },
     "calendars": {
@@ -468,6 +601,17 @@
         },
         "adding": "Adding...",
         "cancel": "Cancel"
+      },
+      "docs": {
+        "providerGuides": "Provider guides: ",
+        "fullNote": "Full Note calendar",
+        "dailyNote": "Daily Note calendar",
+        "ics": "ICS calendars",
+        "caldav": "CalDAV calendars",
+        "google": "Google calendar",
+        "tasks": "Tasks integration",
+        "bases": "Bases calendar",
+        "taskNotes": "TaskNote integration"
       }
     },
     "categorization": {
@@ -529,6 +673,12 @@
       "whatsNew": "What's new",
       "viewFull": "View full changelog",
       "versionWithNumber": "Version {{version}}",
+      "modal": {
+        "title": "What's New in FCR",
+        "seeAllButton": "See all changelogs",
+        "donationMessage": "FCR is built at high velocity with AI-augmented engineering. If this has provided value to you, consider contributing to $25/month subsidy to help keep this pace sustainable.",
+        "donationButton": "Transparency Report & Donation"
+      },
       "whatsNewPageLink": "What's New page",
       "changelogPageLink": "Changelog",
       "loadOlder": {
@@ -1099,6 +1249,7 @@
       "OPEN_SETTINGS": "⚙️ Open Settings",
       "OPEN_CHRONO": "📊 Open ChronoAnalyser",
       "SHOW_CHANGELOG": "📋 Show Changelog",
+      "SHOW_MILESTONES": "🏅 Show Milestones",
       "RESET_CACHE": "🗑️ Reset Event Cache",
       "REVALIDATE_REMOTE": "🔄 Revalidate Remote Calendars",
       "SYNC_ACTIVITYWATCH": "⏱️ Sync ActivityWatch",
@@ -1108,6 +1259,7 @@
       "OPEN_SETTINGS": "Opens the Full Calendar settings tab.",
       "OPEN_CHRONO": "Launches the ChronoAnalyser dashboard.",
       "SHOW_CHANGELOG": "Displays the latest release notes.",
+      "SHOW_MILESTONES": "Opens the milestones page in settings.",
       "RESET_CACHE": "Clears and rebuilds the event cache.",
       "REVALIDATE_REMOTE": "Forces a fresh sync of all remote calendars.",
       "SYNC_ACTIVITYWATCH": "Pulls latest data from ActivityWatch."

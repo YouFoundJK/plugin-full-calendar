@@ -17,6 +17,7 @@ export interface TasksPluginTaskDate {
 }
 
 export interface TasksPluginTask {
+  id?: string;
   path: string;
   description: string;
   descriptionWithoutTags?: string;
@@ -174,5 +175,22 @@ export function taskToCalendarTask(task: TasksPluginTask): CalendarTask {
 }
 
 export function tasksToCalendarTasks(tasks: TasksPluginTask[] | undefined): CalendarTask[] {
-  return tasks?.map(taskToCalendarTask) ?? [];
+  if (!tasks) {
+    return [];
+  }
+
+  const dedupedTasks = new Map<string, CalendarTask>();
+
+  for (const task of tasks) {
+    const calendarTask = taskToCalendarTask(task);
+    const nativeTaskId = typeof task.id === 'string' ? task.id.trim() : '';
+    const dedupeKey = nativeTaskId ? `native:${nativeTaskId}` : `location:${calendarTask.id}`;
+
+    // Keep first-seen entry for stability and backward compatibility.
+    if (!dedupedTasks.has(dedupeKey)) {
+      dedupedTasks.set(dedupeKey, calendarTask);
+    }
+  }
+
+  return Array.from(dedupedTasks.values());
 }

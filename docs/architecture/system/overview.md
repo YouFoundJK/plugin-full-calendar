@@ -28,71 +28,58 @@
 | Provider Layer | Translate shared contracts into local/remote source reads and writes. | UI-specific decision making.
 | Adapter Layer | Isolate Obsidian APIs behind testable abstractions. | Cross-module business rules.
 
-## Full System Diagram
+```mermaid
+graph TD
+    subgraph UI ["UI Layer"]
+        View["CalendarView + React UI"]
+    end
 
-```text
-.--------------------------.        .--------------------------.
-| LEGEND                   |        | DATA FLOWS               |
-| ──►  Direct Call         |        | ┌──> User-Initiated Write|
-| ◄──► Internal R/W        |        | ├──> Filesystem Sync     |
-| ◄──  Service Call        |        | └──> Remote Sync         |
-| ..> Pub/Sub Notification |        '--------------------------'
-| ~>  Specialized Link     |
-'--------------------------'
+    subgraph Presentation ["Presentation Layer"]
+        VE["ViewEnhancer (Filtering/VM)"]
+    end
 
-                         ┌───────────────────────────────────────┐
-               ┌───────► │  UI Layer (CalendarView + React UI)   │
-               |         └───────────────────────────────────────┘
-.─────────────────────.                   |                  
-|     ViewEnhancer    |                   │ (User clicks/edit modal)
-| (Filtering/View VM) |                   │      "CRUD Ops"
-'─────────────────────'                   ▼                  
-               ▲         ┌───────────────────────────────────────────┐        
-(..> Pub/Sub   │         │    CORE Layer: EventCache (Single SoT)    │         ┌───────────────────┐
-update notify) │         │  - Optimistic updates                     │ <.....> |  ChronoAnalyser   |
-               └──────── │  - Orchestrates C/U/D                     │         └───────────────────┘
-                         │  - Pub/Sub hub                            │
-                         └───────────────────────────────────────────┘
-                                            │
-                                            │ (Delegate I/O)
-                                            ▼
-                            ┌─────────────────────────────────┐
-                            │         EventEnhancer           │
-                            │   (Stateless Data Transformer)  │     (Potential location of
-                            │ - Enhance raw → canonical       │        new features)
-                            │ - Prepare canonical → raw       │
-                            └─────────────────────────────────┘
-                                            │
-                                            │ (Provider dispatch)
-                                            ▼
-                            ┌─────────────────────────────────┐
-                            │    ProviderRegistry (I/O Hub)   │
-                            │ - Calls providers getEvents()   │
-                            │ - Maps IDs ↔ session IDs        │
-                            │ - Routes read/write ops         │
-                            └─────────────────────────────────┘
-                                          │
-                        ┌─────────────────┴───────────────┐
-                        ▼                                 ▼  
-            ┌────────────────────┐              ┌────────────────────┐
-            │  local Providers   │              │ remote Providers   │
-            │                    │              │ - Google API auth  │
-            └────────────────────┘              └────────────────────┘ 
-                    │                                    │                
-                    │ "Delegate File Ops"                │ 
-                    ▼                                    |                     
-        ┌───────────────────────────┐                    |
-        │      ObsidianAdapter      │                    |
-        │ - Wraps vault + file API  │                    |  "Remote Sync"            
-        └───────────────────────────┘                    |
-                        │                                |
-                        |   "Filesystem Sync"            |
-                        ▼                                ▼
-           ┌───────────────────────────┐       ┌────────────────────┐
-           │   Obsidian Vault APIs*    │       │     Internet*      │
-           └───────────────────────────┘       └────────────────────┘
+    subgraph Core ["Core Layer (Single Source of Truth)"]
+        EC["EventCache (Orchestrator)"]
+        ES["EventStore (In-Memory Index)"]
+        EE["EventEnhancer (Data Transformer)"]
+    end
 
- * Components with an asterisk are not part of the plugin's code.
+    subgraph Provider ["Provider Layer"]
+        PR["ProviderRegistry (I/O Hub)"]
+        LP["Local Providers"]
+        RP["Remote Providers"]
+    end
+
+    subgraph Adapter ["Adapter Layer"]
+        OA["ObsidianAdapter"]
+    end
+
+    subgraph External ["External Systems"]
+        Vault["Obsidian Vault APIs"]
+        Net["Internet (Google/CalDAV)"]
+    end
+
+    %% Flow: User Action
+    View -- "CRUD Ops" --> EC
+    EC -- "Query/Index" --> ES
+    EC -- "Normalize" --> EE
+    EC -- "Dispatch I/O" --> PR
+
+    %% Flow: Storage
+    PR --> LP
+    PR --> RP
+    LP -- "File Ops" --> OA
+    OA -- "Sync" --> Vault
+    RP -- "Remote Sync" --> Net
+
+    %% Flow: Notifications
+    EC -. "Pub/Sub Update" .-> VE
+    VE -. "Reactive Refresh" .-> View
+
+    classDef core fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef provider fill:#bbf,stroke:#333,stroke-width:1px;
+    class EC,ES,EE core;
+    class PR,LP,RP provider;
 ```
 
 ## Stable Entry Points

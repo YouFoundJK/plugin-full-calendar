@@ -8,6 +8,7 @@ export type NLPIntent =
   | 'OPEN_SETTINGS'
   | 'OPEN_CHRONO'
   | 'SHOW_CHANGELOG'
+  | 'SHOW_MILESTONES'
   | 'RESET_CACHE'
   | 'REVALIDATE_REMOTE'
   | 'SYNC_ACTIVITYWATCH'
@@ -58,6 +59,8 @@ export type NLPExecutionContext = {
   date: Date;
   durationHours: number | null;
   durationMinutes: number | null;
+  explicitEndHours: number | null;
+  explicitEndMinutes: number | null;
   intent: NLPIntent;
   targetCalendar: string | null;
   recurrence: NLPRecurrence | null;

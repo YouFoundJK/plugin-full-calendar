@@ -57,6 +57,12 @@
       "actions": ["SET_INTENT(SHOW_CHANGELOG)"]
     },
     {
+      "name": "show_milestones",
+      "regex": "^(?:show|open|view)\\s+(?:the\\s+)?(?:milestones?|achievements?)\\b",
+      "flags": "i",
+      "actions": ["SET_INTENT(SHOW_MILESTONES)"]
+    },
+    {
       "name": "reset_cache",
       "regex": "^(?:reset|clear|flush)\\s+(?:the\\s+)?(?:event\\s+)?cache\\b",
       "flags": "i",
@@ -147,10 +153,16 @@
       "actions": ["ADD_WEEKS($1)"]
     },
     {
-      "name": "time_exact_ampm",
-      "regex": "(?:\\bat\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?\\b",
+      "name": "time_range_ampm",
+      "regex": "\\bfrom\\s+(\\d{1,2}(?::\\d{2})?|\\d{3,4})\\s*(am|pm)\\s+to\\s+(\\d{1,2}(?::\\d{2})?|\\d{3,4})\\s*(am|pm)\\b",
       "flags": "i",
-      "actions": ["SET_TIME($1,$2,$3)"]
+      "actions": ["SET_TIME_RANGE($1,$2,$3,$4)"]
+    },
+    {
+      "name": "time_exact_ampm",
+      "regex": "\\b(?:at|from)\\s+(\\d{1,2}(?::\\d{2})?|\\d{3,4})\\s*(am|pm)\\b",
+      "flags": "i",
+      "actions": ["SET_TIME_TOKEN($1,$2)"]
     },
     {
       "name": "next_week",

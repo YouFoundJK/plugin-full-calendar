@@ -61,7 +61,9 @@ function normalizeDashWords(title: string, payload: NLPPayload): string {
 
 function extractExplicitCategory(
   title: string,
-  payload: NLPPayload
+  payload: NLPPayload,
+  categoryNames: string[],
+  enableAdvancedCategorization: boolean
 ): { strippedTitle: string; explicitCategory: string | null } {
   const explicitCategoryRegex = payload.categoryParsing?.explicitCategoryRegex;
   if (!explicitCategoryRegex) {
@@ -80,13 +82,78 @@ function extractExplicitCategory(
     };
   }
 
+  const captured = normalizeWhitespace(match[1] ?? '');
+  if (!captured) {
+    return {
+      strippedTitle: title,
+      explicitCategory: null
+    };
+  }
+
+  const words = captured.split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return {
+      strippedTitle: title,
+      explicitCategory: null
+    };
+  }
+
+  const boundaryWords = new Set([
+    'at',
+    'from',
+    'to',
+    'in',
+    'on',
+    'for',
+    'every',
+    'next',
+    'today',
+    'tomorrow',
+    'yesterday'
+  ]);
+
+  let consumedWords = 1;
+  let explicitCategory = words[0];
+
+  if (enableAdvancedCategorization && categoryNames.length > 0) {
+    let bestResolved: string | null = null;
+    let bestConsumed = 0;
+    const maxCandidateWords = Math.min(4, words.length);
+    for (let i = 1; i <= maxCandidateWords; i += 1) {
+      const candidateWords = words.slice(0, i);
+      if (candidateWords.some(word => boundaryWords.has(word.toLowerCase()))) {
+        break;
+      }
+      const candidate = candidateWords.join(' ');
+      const resolved = fuzzyResolveCategory(candidate, categoryNames, {
+        allowPrefixContainment: false
+      });
+      if (resolved) {
+        bestResolved = resolved;
+        bestConsumed = i;
+      }
+    }
+
+    if (bestResolved && bestConsumed > 0) {
+      explicitCategory = bestResolved;
+      consumedWords = bestConsumed;
+    }
+  }
+
+  const remainder = words.slice(consumedWords).join(' ');
+  const prefix = title.slice(0, match.index);
+
   return {
-    strippedTitle: normalizeWhitespace(title.slice(0, match.index)),
-    explicitCategory: normalizeWhitespace(match[1] ?? '') || null
+    strippedTitle: normalizeWhitespace(`${prefix} ${remainder}`),
+    explicitCategory: normalizeWhitespace(explicitCategory) || null
   };
 }
 
-function fuzzyResolveCategory(inputCategory: string, categoryNames: string[]): string | null {
+function fuzzyResolveCategory(
+  inputCategory: string,
+  categoryNames: string[],
+  options?: { allowPrefixContainment?: boolean }
+): string | null {
   const normalizedInput = normalizeForCompare(inputCategory);
   if (!normalizedInput) {
     return null;
@@ -98,13 +165,16 @@ function fuzzyResolveCategory(inputCategory: string, categoryNames: string[]): s
     }
   }
 
-  for (const category of categoryNames) {
-    const normalizedCategory = normalizeForCompare(category);
-    if (
-      normalizedCategory.startsWith(normalizedInput) ||
-      normalizedInput.startsWith(normalizedCategory)
-    ) {
-      return category;
+  const allowPrefixContainment = options?.allowPrefixContainment ?? true;
+  if (allowPrefixContainment) {
+    for (const category of categoryNames) {
+      const normalizedCategory = normalizeForCompare(category);
+      if (
+        normalizedCategory.startsWith(normalizedInput) ||
+        normalizedInput.startsWith(normalizedCategory)
+      ) {
+        return category;
+      }
     }
   }
 
@@ -123,7 +193,10 @@ function fuzzyResolveCategory(inputCategory: string, categoryNames: string[]): s
     return null;
   }
 
-  const threshold = Math.max(1, Math.floor(Math.max(normalizedInput.length, 4) * 0.34));
+  const threshold =
+    normalizedInput.length <= 5
+      ? 2
+      : Math.max(1, Math.floor(Math.max(normalizedInput.length, 4) * 0.34));
   return bestDistance <= threshold ? bestMatch : null;
 }
 
@@ -134,7 +207,9 @@ export function normalizeNLPEventTitleWithCategories(
   const dashNormalizedTitle = normalizeDashWords(rawTitle, options.payload);
   const { strippedTitle, explicitCategory } = extractExplicitCategory(
     dashNormalizedTitle,
-    options.payload
+    options.payload,
+    options.categoryNames,
+    options.enableAdvancedCategorization
   );
   const parts = strippedTitle
     .split(CATEGORY_TITLE_DELIMITER)

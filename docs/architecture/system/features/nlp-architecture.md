@@ -52,6 +52,7 @@ Raw Input String
 │            │  REVALIDATE_*     → ProviderRegistry.revalidateRemoteCalendars()
 │            │  SYNC_*           → activitywatch/sync
 │            │  SHOW_CHANGELOG   → PluginState.showChangelog()
+│            │  SHOW_MILESTONES  → PluginState.showMilestones()
 └────────────┘
 ```
 
@@ -69,6 +70,7 @@ Raw Input String
 | `OPEN_SETTINGS` | Yes | `PluginState.displaySettingsTab()` |
 | `OPEN_CHRONO` | Yes | Lazy-loads `AnalysisView`, opens in new tab |
 | `SHOW_CHANGELOG` | Yes | `PluginState.showChangelog()` |
+| `SHOW_MILESTONES` | Yes | `PluginState.showMilestones()` |
 | `RESET_CACHE` | Yes | `EventCache.reset()` + Notice |
 | `REVALIDATE_REMOTE` | Yes | `ProviderRegistry.revalidateRemoteCalendars()` |
 | `SYNC_ACTIVITYWATCH` | Yes | Lazy-loads `activitywatch/sync`, checks enabled |
