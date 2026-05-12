@@ -110,7 +110,7 @@ export class OutlookProvider implements CalendarProvider<OutlookProviderConfig>,
     return event.uid || JSON.stringify(event);
   }
 
-  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
+  private async getAccessToken(): Promise<string> {
     const token = await this.authManager.getTokenForSource({
       type: 'outlook',
       id: this.source.id,
@@ -120,17 +120,21 @@ export class OutlookProvider implements CalendarProvider<OutlookProviderConfig>,
       color: ''
     } as Extract<CalendarInfo, { type: 'outlook' }>);
 
+    if (!token) {
+      throw new OutlookApiError('Cannot perform Outlook operation: not authenticated.');
+    }
+
+    return token;
+  }
+
+  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
+    const token = await this.getAccessToken().catch(() => null);
     if (!token) return [];
 
     try {
-      const timeMin = range?.start || DateTime.now().minus({ months: 12 }).toJSDate();
-      const timeMax = range?.end || DateTime.now().plus({ months: 12 }).toJSDate();
-
       const url = new URL(
-        `https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(this.source.calendarId)}/calendarView`
+        `https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(this.source.calendarId)}/events`
       );
-      url.searchParams.set('startDateTime', timeMin.toISOString());
-      url.searchParams.set('endDateTime', timeMax.toISOString());
       url.searchParams.set('$top', '1000');
 
       const response = await makeAuthenticatedRequest<{ value?: OutlookEventLike[] }>(
@@ -159,18 +163,7 @@ export class OutlookProvider implements CalendarProvider<OutlookProviderConfig>,
   }
 
   async createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
-    const token = await this.authManager.getTokenForSource({
-      type: 'outlook',
-      id: this.source.id,
-      name: this.source.name,
-      calendarId: this.source.calendarId,
-      microsoftAccountId: this.source.microsoftAccountId,
-      color: ''
-    } as Extract<CalendarInfo, { type: 'outlook' }>);
-
-    if (!token) {
-      throw new OutlookApiError('Cannot create event: not authenticated.');
-    }
+    const token = await this.getAccessToken();
 
     const created = await makeAuthenticatedRequest<OutlookEventLike>(
       token,
@@ -192,17 +185,32 @@ export class OutlookProvider implements CalendarProvider<OutlookProviderConfig>,
     oldEventData: OFCEvent,
     newEventData: OFCEvent
   ): Promise<EventLocation | null> {
-    const token = await this.authManager.getTokenForSource({
-      type: 'outlook',
-      id: this.source.id,
-      name: this.source.name,
-      calendarId: this.source.calendarId,
-      microsoftAccountId: this.source.microsoftAccountId,
-      color: ''
-    } as Extract<CalendarInfo, { type: 'outlook' }>);
+    const token = await this.getAccessToken();
 
-    if (!token) {
-      throw new OutlookApiError('Cannot update event: not authenticated.');
+    const newSkipDates = new Set(
+      newEventData.type === 'rrule' || newEventData.type === 'recurring'
+        ? newEventData.skipDates
+        : []
+    );
+    const oldSkipDates = new Set(
+      oldEventData.type === 'rrule' || oldEventData.type === 'recurring'
+        ? oldEventData.skipDates
+        : []
+    );
+
+    let cancelledDate: string | undefined;
+    if (newSkipDates.size > oldSkipDates.size) {
+      for (const date of newSkipDates) {
+        if (!oldSkipDates.has(date)) {
+          cancelledDate = date;
+          break;
+        }
+      }
+    }
+
+    if (cancelledDate) {
+      await this.cancelInstance(oldEventData, cancelledDate);
+      return null;
     }
 
     await makeAuthenticatedRequest(
@@ -216,18 +224,7 @@ export class OutlookProvider implements CalendarProvider<OutlookProviderConfig>,
   }
 
   async deleteEvent(handle: EventHandle): Promise<void> {
-    const token = await this.authManager.getTokenForSource({
-      type: 'outlook',
-      id: this.source.id,
-      name: this.source.name,
-      calendarId: this.source.calendarId,
-      microsoftAccountId: this.source.microsoftAccountId,
-      color: ''
-    } as Extract<CalendarInfo, { type: 'outlook' }>);
-
-    if (!token) {
-      throw new OutlookApiError('Cannot delete event: not authenticated.');
-    }
+    const token = await this.getAccessToken();
 
     await makeAuthenticatedRequest(
       token,
@@ -236,14 +233,106 @@ export class OutlookProvider implements CalendarProvider<OutlookProviderConfig>,
     );
   }
 
-  createInstanceOverride(
+  private async findOccurrenceId(
+    token: string,
+    masterEventId: string,
+    instanceDate: string,
+    timeZone?: string,
+    startTime?: string
+  ): Promise<string | null> {
+    const zone = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const startAt = startTime || '00:00';
+    const startDateTime = DateTime.fromISO(`${instanceDate}T${startAt}`, { zone });
+    const endDateTime = startDateTime.plus({ days: 1 });
+
+    const url = new URL(
+      `https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(this.source.calendarId)}/events/${encodeURIComponent(masterEventId)}/instances`
+    );
+    url.searchParams.set('startDateTime', startDateTime.toISO() || `${instanceDate}T00:00:00`);
+    url.searchParams.set('endDateTime', endDateTime.toISO() || `${instanceDate}T23:59:59`);
+    url.searchParams.set('$top', '200');
+
+    const response = await makeAuthenticatedRequest<{ value?: OutlookEventLike[] }>(
+      token,
+      url.toString()
+    );
+    if (!Array.isArray(response.value)) {
+      return null;
+    }
+
+    const match = response.value.find(item => {
+      if (!item.id || !item.start?.dateTime) return false;
+      const dt = DateTime.fromISO(item.start.dateTime, { setZone: true });
+      return dt.isValid && dt.toISODate() === instanceDate;
+    });
+
+    return match?.id || null;
+  }
+
+  private async cancelInstance(masterEvent: OFCEvent, instanceDate: string): Promise<void> {
+    if (!masterEvent.uid) {
+      throw new Error('Cannot cancel an instance of a recurring event that has no master UID.');
+    }
+
+    const token = await this.getAccessToken();
+    const startTime =
+      !masterEvent.allDay && 'startTime' in masterEvent ? masterEvent.startTime : undefined;
+    const occurrenceId = await this.findOccurrenceId(
+      token,
+      masterEvent.uid,
+      instanceDate,
+      masterEvent.timezone,
+      startTime
+    );
+
+    if (!occurrenceId) {
+      throw new Error('Could not locate recurring instance to cancel in Outlook.');
+    }
+
+    await makeAuthenticatedRequest(
+      token,
+      `https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(this.source.calendarId)}/events/${encodeURIComponent(occurrenceId)}`,
+      'DELETE'
+    );
+  }
+
+  async createInstanceOverride(
     masterEvent: OFCEvent,
     instanceDate: string,
     newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
-    return Promise.reject(
-      new Error('Single-instance overrides are not yet supported for Outlook calendars.')
+    if (!masterEvent.uid) {
+      throw new Error('Cannot create instance override without a recurring master UID.');
+    }
+
+    const token = await this.getAccessToken();
+    const startTime =
+      !masterEvent.allDay && 'startTime' in masterEvent ? masterEvent.startTime : undefined;
+    const occurrenceId = await this.findOccurrenceId(
+      token,
+      masterEvent.uid,
+      instanceDate,
+      masterEvent.timezone,
+      startTime
     );
+
+    if (!occurrenceId) {
+      throw new Error('Could not locate recurring instance to modify in Outlook.');
+    }
+
+    const updated = await makeAuthenticatedRequest<OutlookEventLike>(
+      token,
+      `https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(this.source.calendarId)}/events/${encodeURIComponent(occurrenceId)}`,
+      'PATCH',
+      toOutlookEvent(newEventData)
+    );
+
+    const parsed = fromOutlookEvent(updated);
+    if (!parsed) {
+      throw new Error('Could not parse Outlook instance override response.');
+    }
+
+    return [parsed, null];
   }
 
   getConfigurationComponent(): FCReactComponent<OutlookConfigProps> {
