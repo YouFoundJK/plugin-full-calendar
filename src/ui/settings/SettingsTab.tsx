@@ -128,6 +128,7 @@ export function addCalendarButton(
           caldav: t('settings.calendars.types.caldav'),
           ical: t('settings.calendars.types.ical'),
           google: t('settings.calendars.types.google'),
+          outlook: t('settings.calendars.types.outlook'),
           tasks: t('settings.calendars.types.tasks'),
           tasknotes: t('settings.calendars.types.tasknotes'),
           bases: t('settings.calendars.types.bases')
@@ -253,9 +254,13 @@ export function addCalendarButton(
                     ...partialSource,
                     ...finalConfig,
                     id: newSettingsId,
-                    ...(accountId && { googleAccountId: accountId }),
+                    ...(providerType === 'google' && accountId && { googleAccountId: accountId }),
+                    ...(providerType === 'outlook' &&
+                      accountId && { microsoftAccountId: accountId }),
                     // For Google, the config's 'id' is the calendarId for the API.
-                    ...(providerType === 'google' && { calendarId: finalConfig.id as string })
+                    ...((providerType === 'google' || providerType === 'outlook') && {
+                      calendarId: finalConfig.id as string
+                    })
                   } as CalendarInfo;
 
                   // Add the provider instance to the registry BEFORE updating the UI.
@@ -713,12 +718,14 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         const [
           { renderActivityWatchSettings },
           { renderGoogleSettings },
+          { renderOutlookSettings },
           { renderTasksIntegrationSettings },
           { renderTaskNotesIntegrationSettings },
           { renderApiAccessSettings }
         ] = await Promise.all([
           import('../../features/activitywatch/ui/renderActivityWatch'),
           import('../../providers/google/ui/renderGoogle'),
+          import('../../providers/outlook/ui/renderOutlook'),
           import('../../providers/tasks/renderTasksIntegration'),
           import('../../providers/tasknotes/renderTaskNotesIntegration'),
           import('./sections/renderApiAccess')
@@ -734,6 +741,9 @@ export class FullCalendarSettingTab extends PluginSettingTab {
           void this.display();
         });
         renderGoogleSettings(containerEl, this.plugin, () => {
+          void this.display();
+        });
+        renderOutlookSettings(containerEl, this.plugin, () => {
           void this.display();
         });
         renderApiAccessSettings(containerEl, this.plugin, () => {

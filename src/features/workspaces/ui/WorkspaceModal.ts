@@ -217,6 +217,9 @@ export class WorkspaceModal extends Modal {
         case 'google':
           displayName = `${t('modals.workspace.calendarTypes.google')} ${calendar.name}`;
           break;
+        case 'outlook':
+          displayName = `${t('modals.workspace.calendarTypes.outlook')} ${calendar.name}`;
+          break;
         default:
           displayName = `${calendar.type}: ${calendar.name || calendar.id}`;
       }

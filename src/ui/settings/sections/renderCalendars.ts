@@ -62,6 +62,7 @@ export function renderCalendarManagement(
         { text: t('settings.calendars.docs.ics'), path: 'user/calendars/ics' },
         { text: t('settings.calendars.docs.caldav'), path: 'user/calendars/caldav' },
         { text: t('settings.calendars.docs.google'), path: 'user/calendars/gcal' },
+        { text: t('settings.calendars.docs.outlook'), path: 'user/calendars/outlook' },
         {
           text: t('settings.calendars.docs.tasks'),
           path: 'user/calendars/tasks-plugin-integration'

@@ -51,6 +51,10 @@ export function migrateAndSanitizeSettings(settings: unknown): {
     googleClientId: raw.googleClientId ?? '',
     googleClientSecret: raw.googleClientSecret ?? '',
     googleAccounts: raw.googleAccounts || [],
+    useCustomMicrosoftClient: raw.useCustomMicrosoftClient ?? false,
+    microsoftClientId: raw.microsoftClientId ?? '',
+    microsoftProxyBaseUrl: raw.microsoftProxyBaseUrl ?? '',
+    microsoftAccounts: raw.microsoftAccounts || [],
     businessHours: raw.businessHours || {
       enabled: false,
       daysOfWeek: [1, 2, 3, 4, 5],

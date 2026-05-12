@@ -238,7 +238,7 @@
       },
       "integrations": {
         "label": "Integrations",
-        "description": "Connect external services like Google and ActivityWatch."
+        "description": "Connect external services like Google, Outlook, and ActivityWatch."
       }
     },
     "general": {
@@ -522,6 +522,7 @@
         "caldav": "CalDAV",
         "ical": "ICS",
         "google": "Google Calendar",
+        "outlook": "Outlook Calendar",
         "tasks": "Obsidian Tasks",
         "tasknotes": "TaskNotes",
         "bases": "Obsidian Bases"
@@ -609,6 +610,7 @@
         "ics": "ICS calendars",
         "caldav": "CalDAV calendars",
         "google": "Google calendar",
+        "outlook": "Outlook calendar",
         "tasks": "Tasks integration",
         "bases": "Bases calendar",
         "taskNotes": "TaskNote integration"
@@ -1040,7 +1042,8 @@
         "dailyNotes": "Daily Notes:",
         "ics": "ICS:",
         "caldav": "CalDAV:",
-        "google": "Google:"
+        "google": "Google:",
+        "outlook": "Outlook:"
       },
       "buttons": {
         "save": "Save",
@@ -1156,6 +1159,68 @@
       "title": "Select Calendars from {{email}}",
       "noCalendars": "No new calendars found, or all calendars from this account have been added.",
       "description": "Choose which calendars you would like to add to Obsidian."
+    },
+    "loading": "Loading..."
+  },
+  "outlook": {
+    "auth": {
+      "expired": "Outlook authentication expired. Please reconnect your account.",
+      "authFailed": "Could not authenticate Outlook calendar. Please re-add it in settings.",
+      "desktopOnly": "Outlook sign-in is currently available on desktop only.",
+      "clientIdMissing": "Microsoft Client ID is required. Configure it in Integrations > Outlook.",
+      "proxyMissing": "Microsoft proxy URL is required. Configure it in Integrations > Outlook.",
+      "stateMismatch": "Outlook authentication failed. State mismatch.",
+      "success": "Successfully connected Outlook account!",
+      "failed": "Failed to connect Outlook account. Check the developer console for details.",
+      "callbackSuccess": "Authentication successful! Please return to Obsidian.",
+      "callbackFailed": "Authentication failed. Check Obsidian console and try again."
+    },
+    "title": "Outlook Accounts",
+    "docs": {
+      "setupGuide": "Outlook calendar setup"
+    },
+    "customCredentials": {
+      "enable": {
+        "label": "Use custom Microsoft credentials",
+        "description": "Use your own Microsoft Client ID and proxy URL instead of the built-in defaults."
+      }
+    },
+    "config": {
+      "clientId": {
+        "label": "Microsoft Client ID",
+        "description": "OAuth app Client ID used for Microsoft login."
+      },
+      "proxyUrl": {
+        "label": "Vercel proxy URL",
+        "description": "Base URL for your Microsoft token proxy (for example: https://your-app.vercel.app).",
+        "placeholder": "https://your-app.vercel.app"
+      },
+      "clientIdPlaceholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    },
+    "misc": {
+      "settingsSourcesLink": "Calendar sources settings"
+    },
+    "noAccounts": "No Outlook accounts connected. Add an Outlook calendar in Calendars to connect one.",
+    "accountDescription": "Connected account. ID: {{id}}",
+    "buttons": {
+      "disconnect": "Disconnect",
+      "selectCalendars": "Select Calendars",
+      "connectAccount": "Connect Outlook Account",
+      "backToAccounts": "Back to Accounts",
+      "addCalendars": "Add {{count}} Calendar",
+      "addCalendarsPlural": "Add {{count}} Calendars"
+    },
+    "selectAccount": {
+      "title": "Connect an Outlook Account"
+    },
+    "selectCalendars": {
+      "title": "Select Calendars from {{email}}",
+      "noCalendars": "No new calendars found, or all calendars from this account have already been added.",
+      "description": "Choose which Outlook calendars you would like to add to Obsidian."
+    },
+    "errors": {
+      "fetchCalendars": "Failed to fetch Outlook calendars for {{email}}. {{message}}",
+      "unknown": "Unknown error"
     },
     "loading": "Loading..."
   },

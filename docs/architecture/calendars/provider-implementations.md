@@ -8,7 +8,7 @@
 | Family      | Providers             | Notes                                                                   |
 | ----------- | --------------------- | ----------------------------------------------------------------------- |
 | Local       | Full Note, Daily Note | Vault-backed, file-centric parsing and persistence.                     |
-| Remote      | Google, CalDAV, ICS   | Network-backed with auth/protocol handling and staged loading behavior. |
+| Remote      | Google, Outlook, CalDAV, ICS   | Network-backed with auth/protocol handling and staged loading behavior. |
 | Integration | Tasks, TaskNotes, Bases | Plugin/API integration with custom semantics beyond simple event files. |
 
 ## Key implementation notes
@@ -36,6 +36,14 @@ Uses direct REPORT/GET flow with robust XML namespace handling and fallback retr
 Uses OAuth-backed authenticated requests, handles recurrence cancellation edge cases (`cancelled` instances merged into skip dates), and keeps provider-facing payload conversion isolated in parser/auth modules.
 
 For token and permission boundaries, see [API Architecture](../system/api-architecture.md).
+
+### Outlook Provider
+
+Uses OAuth Authorization Code + PKCE with proxy-backed token and refresh exchange. Parsing and payload mapping are isolated in parser/auth modules similar to Google provider boundaries.
+
+Outlook provider intentionally normalizes nullable Graph recurrence linkage (`seriesMasterId`) into optional event fields expected by core validation.
+
+Current limitation: recurring single-instance override write path is not yet implemented.
 
 ### Tasks Provider (non-standard surgical writer)
 

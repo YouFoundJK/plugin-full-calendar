@@ -120,6 +120,7 @@ nav:
                 - ICS (Remote and Local): user/calendars/ics.md
                 - CalDAV: user/calendars/caldav.md
                 - Google Calendar: user/calendars/gcal.md
+                - Outlook Calendar: user/calendars/outlook.md
                 - Tasks Plugin Integration: user/calendars/tasks-plugin-integration.md
                 - TaskNotes Integration: user/calendars/tasknotes.md
                 - ActivityWatch Integration: user/calendars/activitywatch.md
@@ -175,6 +176,7 @@ nav:
                 - Backward Compatibility: architecture/system/backward-compatibility.md
           - Provider Architecture:
                 - architecture/calendars/architecture.md
+                - Outlook Provider: architecture/calendars/outlook.md
                 - Tasks Integration: architecture/calendars/tasks-integration.md
           - Events:
                 - architecture/events/architecture.md

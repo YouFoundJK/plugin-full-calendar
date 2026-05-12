@@ -520,7 +520,8 @@
         "google": "Google 日历",
         "tasks": "Obsidian Tasks",
         "bases": "Obsidian Bases",
-        "tasknotes": "TaskNotes"
+        "tasknotes": "TaskNotes",
+        "outlook": "Outlook Calendar"
       },
       "fullNote": {
         "directory": {
@@ -607,7 +608,8 @@
         "google": "Google 日历",
         "tasks": "Tasks 集成",
         "bases": "Bases 日历",
-        "taskNotes": "TaskNote 集成"
+        "taskNotes": "TaskNote 集成",
+        "outlook": "Outlook calendar"
       }
     },
     "categorization": {
@@ -1036,7 +1038,8 @@
         "dailyNotes": "日记：",
         "ics": "ICS：",
         "caldav": "CalDAV：",
-        "google": "Google："
+        "google": "Google：",
+        "outlook": "Outlook:"
       },
       "buttons": {
         "save": "保存",
@@ -1279,5 +1282,67 @@
       "cacheReset": "Event cache has been reset.",
       "awNotEnabled": "ActivityWatch is not enabled. Enable it in settings first."
     }
+  },
+  "outlook": {
+    "auth": {
+      "expired": "Outlook authentication expired. Please reconnect your account.",
+      "authFailed": "Could not authenticate Outlook calendar. Please re-add it in settings.",
+      "desktopOnly": "Outlook sign-in is currently available on desktop only.",
+      "clientIdMissing": "Microsoft Client ID is required. Configure it in Integrations > Outlook.",
+      "proxyMissing": "Microsoft proxy URL is required. Configure it in Integrations > Outlook.",
+      "stateMismatch": "Outlook authentication failed. State mismatch.",
+      "success": "Successfully connected Outlook account!",
+      "failed": "Failed to connect Outlook account. Check the developer console for details.",
+      "callbackSuccess": "Authentication successful! Please return to Obsidian.",
+      "callbackFailed": "Authentication failed. Check Obsidian console and try again."
+    },
+    "title": "Outlook Accounts",
+    "docs": {
+      "setupGuide": "Outlook calendar setup"
+    },
+    "customCredentials": {
+      "enable": {
+        "label": "Use custom Microsoft credentials",
+        "description": "Use your own Microsoft Client ID and proxy URL instead of the built-in defaults."
+      }
+    },
+    "config": {
+      "clientId": {
+        "label": "Microsoft Client ID",
+        "description": "OAuth app Client ID used for Microsoft login."
+      },
+      "proxyUrl": {
+        "label": "Vercel proxy URL",
+        "description": "Base URL for your Microsoft token proxy (for example: https://your-app.vercel.app).",
+        "placeholder": "https://your-app.vercel.app"
+      },
+      "clientIdPlaceholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    },
+    "misc": {
+      "settingsSourcesLink": "Calendar sources settings"
+    },
+    "noAccounts": "No Outlook accounts connected. Add an Outlook calendar in Calendars to connect one.",
+    "accountDescription": "Connected account. ID: {{id}}",
+    "buttons": {
+      "disconnect": "Disconnect",
+      "selectCalendars": "Select Calendars",
+      "connectAccount": "Connect Outlook Account",
+      "backToAccounts": "Back to Accounts",
+      "addCalendars": "Add {{count}} Calendar",
+      "addCalendarsPlural": "Add {{count}} Calendars"
+    },
+    "selectAccount": {
+      "title": "Connect an Outlook Account"
+    },
+    "selectCalendars": {
+      "title": "Select Calendars from {{email}}",
+      "noCalendars": "No new calendars found, or all calendars from this account have already been added.",
+      "description": "Choose which Outlook calendars you would like to add to Obsidian."
+    },
+    "errors": {
+      "fetchCalendars": "Failed to fetch Outlook calendars for {{email}}. {{message}}",
+      "unknown": "Unknown error"
+    },
+    "loading": "Loading..."
   }
 }
