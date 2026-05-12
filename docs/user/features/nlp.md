@@ -149,7 +149,7 @@ Both modes prefill TaskNotes with parsed NLP text so you can quickly confirm and
     The FCR Command follows the same [internationalization pipeline](i18n.md) as the rest of the plugin:
 
     - **Maximal support**: English
-    - **Basic support**: French, German, Spanish, Italian (_help improve it on [GitHub](https://github.com/YouFoundJK/plugin-full-calendar)_)
+    - **Basic support**: French, German, Spanish, Italian (_help improve it on [GitHub](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar)_)
 
     The language is automatically detected from your Obsidian language setting. Non-English payloads are fetched on first use and cached locally.
 

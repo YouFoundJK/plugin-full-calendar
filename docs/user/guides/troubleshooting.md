@@ -70,7 +70,7 @@ Use this page as a first response checklist for common issues.
 
 If the above steps don't resolve your issue, please feel free to reach out.
 
-[:material-github: Submit an issue on GitHub](https://github.com/YouFoundJK/plugin-full-calendar/issues){ .md-button .md-button--primary }
+[:material-github: Submit an issue on GitHub](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues){ .md-button .md-button--primary }
 
 ---
 

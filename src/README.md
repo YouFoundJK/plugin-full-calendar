@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/Version-v0.12.7-blue)](https://github.com/YouFoundJK/plugin-full-calendar)
+[![Version](https://img.shields.io/badge/Version-v0.12.7-blue)](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar)
 
 > This page is now depreciated in favour of replacing it with a more accessible documentation at [Architectural Docs](https://youfoundjk.github.io/plugin-full-calendar/architecture/system/).
 

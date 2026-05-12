@@ -18,14 +18,14 @@ export function renderFooter(containerEl: HTMLElement): void {
   linksContainer.createEl('a', {
     text: t('settings.footer.suggestFeature'),
     attr: {
-      href: 'https://github.com/YouFoundJK/plugin-full-calendar/discussions/'
+      href: 'https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/discussions/'
     },
     cls: 'settings-footer-link'
   });
   linksContainer.createEl('a', {
     text: t('settings.footer.raiseIssue'),
     attr: {
-      href: 'https://github.com/YouFoundJK/plugin-full-calendar/issues/new?template=bug_report.yaml'
+      href: 'https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/new?template=bug_report.yaml'
     },
     cls: 'settings-footer-link'
   });

@@ -1,6 +1,6 @@
 
 <div align="right">
-  <img src="https://img.shields.io/github/downloads/YouFoundJK/plugin-full-calendar/total?label=Downloads" alt="Downloads" />
+  <img src="https://img.shields.io/github/downloads/obsidian-full-calendar-remastered/plugin-full-calendar/total?label=Downloads" alt="Downloads" />
   <a href="#contributors-"><img src="https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square" alt="All Contributors" /></a>
   <a href="https://youfoundjk.github.io/plugin-full-calendar/"><img src="https://img.shields.io/badge/Version-v_0.12.9-blue" alt="Version" /></a>
 </div>
@@ -27,7 +27,7 @@ Full Calendar supports multiple calendar sources:
 - [**Tasks Plugin**](https://youfoundjk.github.io/plugin-full-calendar/calendars/tasks-plugin-integration/): Sync with the Obsidian Tasks plugin
 
 
-![Sample Calendar](https://raw.githubusercontent.com/YouFoundJK/plugin-full-calendar/main/docs/assets/guides/sample-calendar.png)
+![Sample Calendar](https://raw.githubusercontent.com/obsidian-full-calendar-remastered/plugin-full-calendar/main/docs/assets/guides/sample-calendar.png)
 
 The FullCalendar library is released under the [GPLv3 license](https://fullcalendar.io/license). It's an awesome piece of work, and it would not have been possible to make something like this plugin so easily without it.
 
@@ -46,12 +46,12 @@ If this project has helped you consider supporting:
 
 ## Installation
 
-You can also head over to the [releases page](https://github.com/YouFoundJK/plugin-full-calendar/releases/latest) and unzip the latest release inside of the `.obsidian/plugins` directory inside your vault.
+You can also head over to the [releases page](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/releases/latest) and unzip the latest release inside of the `.obsidian/plugins` directory inside your vault.
 
 Or install via **BRAT**:
 
 1. Install the [Obsidian42 BRAT](https://github.com/TfTHacker/obsidian42-brat) community plugin.
-2. In BRAT, add this repo URL: `https://github.com/YouFoundJK/plugin-full-calendar`.
+2. In BRAT, add this repo URL: `https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar`.
 3. Click **Add Plugin** and let Obsidian download it. Restart if prompted.
 
 
@@ -65,11 +65,11 @@ Thanks goes to these wonderful people ([✨](https://allcontributors.org/docs/en
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="8.33%"><a href="https://discord.gg/QFp6B74ASr?%20%3C--%20Blobbo%20and%20Chrono"><img src="https://avatars.githubusercontent.com/u/19922066?v=4?s=40" width="40px;" alt="Hadrian Tang"/><br /><sub><b>Hadrian Tang</b></sub></a><br /><a href="https://github.com/YouFoundJK/plugin-full-calendar/commits?author=Happypig375" title="Documentation">📖</a></td>
-      <td align="center" valign="top" width="8.33%"><a href="https://github.com/kapej42"><img src="https://avatars.githubusercontent.com/u/26510924?v=4?s=40" width="40px;" alt="Klaas-Pieter (K.P.) Majoor"/><br /><sub><b>Klaas-Pieter (K.P.) Majoor</b></sub></a><br /><a href="https://github.com/YouFoundJK/plugin-full-calendar/commits?author=kapej42" title="Code">💻</a> <a href="#content-kapej42" title="Content">🖋</a></td>
-      <td align="center" valign="top" width="8.33%"><a href="https://mivanit.github.io/"><img src="https://avatars.githubusercontent.com/u/19347900?v=4?s=40" width="40px;" alt="mivanit"/><br /><sub><b>mivanit</b></sub></a><br /><a href="https://github.com/YouFoundJK/plugin-full-calendar/commits?author=mivanit" title="Code">💻</a></td>
-      <td align="center" valign="top" width="8.33%"><a href="https://drostan.org/"><img src="https://avatars.githubusercontent.com/u/223935?v=4?s=40" width="40px;" alt="Rolf Kleef"/><br /><sub><b>Rolf Kleef</b></sub></a><br /><a href="https://github.com/YouFoundJK/plugin-full-calendar/commits?author=rolfkleef" title="Code">💻</a> <a href="https://github.com/YouFoundJK/plugin-full-calendar/commits?author=rolfkleef" title="Documentation">📖</a> <a href="https://github.com/YouFoundJK/plugin-full-calendar/commits?author=rolfkleef" title="Tests">⚠️</a></td>
-      <td align="center" valign="top" width="8.33%"><a href="https://github.com/oskardotglobal"><img src="https://avatars.githubusercontent.com/u/52569953?v=4?s=40" width="40px;" alt="Oskar Manhart"/><br /><sub><b>Oskar Manhart</b></sub></a><br /><a href="https://github.com/YouFoundJK/plugin-full-calendar/commits?author=oskardotglobal" title="Code">💻</a></td>
+      <td align="center" valign="top" width="8.33%"><a href="https://discord.gg/QFp6B74ASr?%20%3C--%20Blobbo%20and%20Chrono"><img src="https://avatars.githubusercontent.com/u/19922066?v=4?s=40" width="40px;" alt="Hadrian Tang"/><br /><sub><b>Hadrian Tang</b></sub></a><br /><a href="https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/commits?author=Happypig375" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="8.33%"><a href="https://github.com/kapej42"><img src="https://avatars.githubusercontent.com/u/26510924?v=4?s=40" width="40px;" alt="Klaas-Pieter (K.P.) Majoor"/><br /><sub><b>Klaas-Pieter (K.P.) Majoor</b></sub></a><br /><a href="https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/commits?author=kapej42" title="Code">💻</a> <a href="#content-kapej42" title="Content">🖋</a></td>
+      <td align="center" valign="top" width="8.33%"><a href="https://mivanit.github.io/"><img src="https://avatars.githubusercontent.com/u/19347900?v=4?s=40" width="40px;" alt="mivanit"/><br /><sub><b>mivanit</b></sub></a><br /><a href="https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/commits?author=mivanit" title="Code">💻</a></td>
+      <td align="center" valign="top" width="8.33%"><a href="https://drostan.org/"><img src="https://avatars.githubusercontent.com/u/223935?v=4?s=40" width="40px;" alt="Rolf Kleef"/><br /><sub><b>Rolf Kleef</b></sub></a><br /><a href="https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/commits?author=rolfkleef" title="Code">💻</a> <a href="https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/commits?author=rolfkleef" title="Documentation">📖</a> <a href="https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/commits?author=rolfkleef" title="Tests">⚠️</a></td>
+      <td align="center" valign="top" width="8.33%"><a href="https://github.com/oskardotglobal"><img src="https://avatars.githubusercontent.com/u/52569953?v=4?s=40" width="40px;" alt="Oskar Manhart"/><br /><sub><b>Oskar Manhart</b></sub></a><br /><a href="https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/commits?author=oskardotglobal" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

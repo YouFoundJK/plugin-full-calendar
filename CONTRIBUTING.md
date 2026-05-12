@@ -65,7 +65,7 @@ All build output will appear in the plugin directory created above.
 
 > 💡 **Recommended:** Use the [Hot Reload plugin](https://github.com/pjeby/hot-reload) to make development smoother — it auto-reloads your plugin changes.
 
-> 📘 **Start Here:** To understand the architecture and get familiar with the codebase, read our [Architecture Guide](https://github.com/YouFoundJK/plugin-full-calendar/blob/main/src/README.md).
+> 📘 **Start Here:** To understand the architecture and get familiar with the codebase, read our [Architecture Guide](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/blob/main/src/README.md).
 
 > 📱 **Android Testing** For testing Android devices use `adb` together with `chrome://inspect/#devices` to see the console on the PC.
 

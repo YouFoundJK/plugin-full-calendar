@@ -39,4 +39,4 @@ These scopes are required to enable synchronization between Google Calendar and 
 
 ## Contact
 
-If you have any questions or concerns about this Privacy Policy or data handling practices, please contact us at [here](https://github.com/YouFoundJK/plugin-full-calendar).
+If you have any questions or concerns about this Privacy Policy or data handling practices, please contact us at [here](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar).

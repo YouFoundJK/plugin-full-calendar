@@ -1,7 +1,7 @@
 # mkdocs.yaml
 site_name: Full Calendar Remastered
-repo_url: https://github.com/YouFoundJK/plugin-full-calendar
-repo_name: YouFoundJK/plugin-full-calendar
+repo_url: https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar
+repo_name: obsidian-full-calendar-remastered/plugin-full-calendar
 theme:
     name: material
     custom_dir: docs/overrides
@@ -77,7 +77,7 @@ plugins:
           enable_creation_date: true
           type: datetime
     - git-committers:
-          repository: YouFoundJK/plugin-full-calendar
+          repository: obsidian-full-calendar-remastered/plugin-full-calendar
           branch: main
 
 extra:
