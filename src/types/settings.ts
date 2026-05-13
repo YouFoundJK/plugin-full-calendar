@@ -123,6 +123,14 @@ export interface GoogleAccount {
   expiryDate: number | null;
 }
 
+export interface MicrosoftAccount {
+  id: string;
+  email: string;
+  refreshToken: string | null;
+  accessToken: string | null;
+  expiryDate: number | null;
+}
+
 export interface FullCalendarSettings {
   calendarSources: CalendarInfo[];
   defaultCalendar: number;
@@ -142,6 +150,10 @@ export interface FullCalendarSettings {
   googleClientId: string;
   googleClientSecret: string;
   googleAccounts: GoogleAccount[];
+  useCustomMicrosoftClient: boolean;
+  microsoftClientId: string;
+  microsoftProxyBaseUrl: string;
+  microsoftAccounts: MicrosoftAccount[];
   businessHours: BusinessHoursSettings;
   enableBackgroundEvents: boolean;
   enableReminders: boolean;
@@ -188,6 +200,10 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
   googleClientId: '',
   googleClientSecret: '',
   googleAccounts: [],
+  useCustomMicrosoftClient: false,
+  microsoftClientId: '',
+  microsoftProxyBaseUrl: '',
+  microsoftAccounts: [],
   businessHours: {
     enabled: false,
     daysOfWeek: [1, 2, 3, 4, 5], // Monday to Friday

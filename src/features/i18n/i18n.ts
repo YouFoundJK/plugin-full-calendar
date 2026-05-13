@@ -67,7 +67,7 @@ export async function initializeI18n(app: App, pluginId: string): Promise<void> 
         localeDataStr = await app.vault.adapter.read(localeFile);
       } else {
         // If not found, download it once from the stable GitHub main branch
-        const url = `https://raw.githubusercontent.com/YouFoundJK/plugin-full-calendar/main/src/features/i18n/locales/${detectedLanguage}.json`;
+        const url = `https://raw.githubusercontent.com/obsidian-full-calendar-remastered/plugin-full-calendar/main/src/features/i18n/locales/${detectedLanguage}.json`;
         const response = await requestUrl(url);
         localeDataStr = response.text;
 

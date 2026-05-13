@@ -12,7 +12,7 @@
 | Family | Providers | Design note |
 |---|---|---|
 | Local | Full Note, Daily Note | Vault-backed parsing and write paths with file/location identity. |
-| Remote | Google, CalDAV, ICS | Network-backed ingestion and protocol/auth handling. |
+| Remote | Google, Outlook, CalDAV, ICS | Network-backed ingestion and protocol/auth handling. |
 | Integration | [Tasks](tasks-integration.md), [TaskNotes](provider-implementations.md#tasknotes-provider-provider-owned-nlp-endpoint), Bases | Plugin-integrated sources with custom semantics beyond plain calendar files. |
 
 ## Runtime flow (provider perspective)
@@ -33,6 +33,7 @@ Important implementation-specific behavior is documented in the implementation d
 - Recurrence/timezone behavior tracked in [RRULE Timezone Date-Shift Fix](../dev-logs/devlog_rrule_timezone_patch.md).
 
 See: [Provider Implementations and Patches](provider-implementations.md)
+See: [Outlook Provider Architecture](outlook.md)
 
 ## New provider onboarding
 
@@ -47,6 +48,7 @@ See: [Provider Blueprint](provider-blueprint.md)
 - `src/providers/fullnote/`
 - `src/providers/dailynote/`
 - `src/providers/google/`
+- `src/providers/outlook/`
 - `src/providers/caldav/`
 - `src/providers/ics/`
 - `src/providers/tasks/`

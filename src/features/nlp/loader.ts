@@ -46,7 +46,7 @@ export async function loadNLPPayload(app: App, pluginId: string): Promise<NLPPay
     if (await app.vault.adapter.exists(payloadFile)) {
       payloadData = await app.vault.adapter.read(payloadFile);
     } else {
-      const url = `https://raw.githubusercontent.com/YouFoundJK/plugin-full-calendar/main/src/features/nlp/payloads/${resolvedLanguage}.json`;
+      const url = `https://raw.githubusercontent.com/obsidian-full-calendar-remastered/plugin-full-calendar/main/src/features/nlp/payloads/${resolvedLanguage}.json`;
       const response = await requestUrl(url);
       payloadData = response.text;
 

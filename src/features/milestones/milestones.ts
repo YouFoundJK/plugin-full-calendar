@@ -52,7 +52,7 @@ interface MilestoneState {
   unlockedAt: Record<string, number>;
 }
 
-const REMOTE_PROVIDER_TYPES: ProviderType[] = ['ical', 'caldav', 'google'];
+const REMOTE_PROVIDER_TYPES: ProviderType[] = ['ical', 'caldav', 'google', 'outlook'];
 const LOCAL_TRACKED_PROVIDER_TYPES: ProviderType[] = ['local', 'dailynote', 'tasks', 'tasknotes'];
 const ALL_PROVIDER_TYPES: ProviderType[] = [
   'local',
@@ -60,6 +60,7 @@ const ALL_PROVIDER_TYPES: ProviderType[] = [
   'ical',
   'caldav',
   'google',
+  'outlook',
   'tasks',
   'tasknotes',
   'bases'

@@ -481,6 +481,88 @@ describe('FullNoteCalendar Tests', () => {
     expect(newContent).toContain('category: Work');
   });
 
+  it('preserves wikilink frontmatter formatting across consecutive time updates', async () => {
+    const filename = '2026-05-14 FullNote event example.md';
+    const initialEvent = parseEvent({
+      title: 'FullNote event example',
+      date: '2026-05-14',
+      allDay: false,
+      startTime: '10:00',
+      endTime: '11:00',
+      timezone: 'Europe/Berlin'
+    });
+
+    const app = MockAppBuilder.make()
+      .folder(
+        new MockAppBuilder('events').file(filename, new FileBuilder().frontmatter(initialEvent))
+      )
+      .done();
+    const obsidian = makeApp(app);
+
+    const calendar = new FullNoteProvider(
+      { directory: dirName, id: 'local_1' },
+      makePlugin({ enableAdvancedCategorization: false }),
+      obsidian
+    );
+
+    const originalPage = `---
+title: FullNote event example
+startTime: 10:00
+endTime: 11:00
+date: 2026-05-14
+timezone: Europe/Berlin
+
+list_property:
+  - Test1
+  - "[[Test2]]"
+# preserve-comment
+text_property: "[[example]]"
+---
+`;
+
+    const firstUpdate = parseEvent({
+      ...initialEvent,
+      startTime: '10:30',
+      endTime: '11:30'
+    });
+
+    const secondUpdate = parseEvent({
+      ...initialEvent,
+      startTime: '11:00',
+      endTime: '12:00'
+    });
+
+    await calendar.updateEvent({ persistentId: `events/${filename}` }, initialEvent, firstUpdate);
+    await calendar.updateEvent({ persistentId: `events/${filename}` }, firstUpdate, secondUpdate);
+
+    const mockRewrite = (obsidian as unknown as MockObsidian).rewrite;
+    expect(mockRewrite).toHaveBeenCalledTimes(2);
+
+    const [, firstRewrite] = mockRewrite.mock.calls[0] as [TFile, (content: string) => string];
+    const [, secondRewrite] = mockRewrite.mock.calls[1] as [TFile, (content: string) => string];
+
+    const afterFirstDrag = firstRewrite(originalPage);
+    const afterSecondDrag = secondRewrite(afterFirstDrag);
+
+    expect(afterFirstDrag).toContain('startTime: 10:30');
+    expect(afterFirstDrag).toContain('endTime: 11:30');
+    expect(afterFirstDrag).toContain('timezone: Europe/Berlin\n\nlist_property:');
+    expect(afterFirstDrag).toContain('list_property:\n  - Test1\n  - "[[Test2]]"');
+    expect(afterFirstDrag).toContain('# preserve-comment');
+    expect(afterFirstDrag).toContain('text_property: "[[example]]"');
+
+    expect(afterSecondDrag).toContain('startTime: 11:00');
+    expect(afterSecondDrag).toContain('endTime: 12:00');
+    expect(afterSecondDrag).toContain('timezone: Europe/Berlin\n\nlist_property:');
+    expect(afterSecondDrag).toContain('list_property:\n  - Test1\n  - "[[Test2]]"');
+    expect(afterSecondDrag).toContain('# preserve-comment');
+    expect(afterSecondDrag).toContain('text_property: "[[example]]"');
+    expect(afterSecondDrag).not.toContain('list_property: [Test1,[[Test2]]]');
+    expect(afterSecondDrag).not.toContain('list_property: [Test1,Test2]');
+    expect(afterSecondDrag).not.toContain('text_property: [[example]]');
+    expect(afterSecondDrag).not.toContain('text_property: [example]');
+  });
+
   it('should correctly determine file relevance', () => {
     const obsidian = makeApp(MockAppBuilder.make().done());
     const calendar = new FullNoteProvider(
@@ -592,7 +674,10 @@ describe('FullNoteCalendar Tests', () => {
     const mockObsidian = obsidian as unknown as MockObsidian;
     const mockRewrite = mockObsidian.rewrite;
     const [, rewriteCallback] = mockRewrite.mock.calls[0] as [string, (content: string) => string];
-    const newContent = rewriteCallback('');
+    const file = obsidian.getFileByPath(`events/${filename}`);
+    if (!file) throw new Error(`Expected file events/${filename} to exist`);
+    const existingContent = await obsidian.read(file);
+    const newContent = rewriteCallback(existingContent);
 
     expect(newContent).toContain('startTime: 14:00');
     expect(newContent).toContain('timezone: Europe/Berlin');

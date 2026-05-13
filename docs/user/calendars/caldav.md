@@ -36,7 +36,7 @@ Your URL should look something like this:
 
 ![](../../assets/calendars/sync-setup-caldav.gif)
 
-> Thanks to [@FlyByNite17](https://github.com/FlyByNite17) ([Issue #211](https://github.com/YouFoundJK/plugin-full-calendar/issues/211)) for the iCloud url docs.
+> Thanks to [@FlyByNite17](https://github.com/FlyByNite17) ([Issue #211](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/211)) for the iCloud url docs.
 
 ## Fastmail
 

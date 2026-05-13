@@ -15,7 +15,6 @@
  */
 
 import { OFCEvent } from '../../types';
-import { parseYaml } from 'obsidian';
 
 const FRONTMATTER_SEPARATOR = '---';
 
@@ -91,15 +90,64 @@ export function newFrontmatter(fields: Partial<OFCEvent>): string {
 
 export function modifyFrontmatterString(page: string, modifications: Partial<OFCEvent>): string {
   const frontmatter = extractFrontmatter(page);
-  const existingData = frontmatter ? (parseYaml(frontmatter) as Record<string, unknown>) : {};
-  const newData = { ...existingData, ...modifications } as Record<string, unknown>;
+  const sourceLines = frontmatter ? frontmatter.split('\n') : [];
 
-  // Remove properties that are null or undefined to keep frontmatter clean
-  Object.keys(newData).forEach(key => {
-    if (newData[key] === null || newData[key] === undefined) {
-      delete newData[key];
+  if (sourceLines[0] === '') {
+    sourceLines.shift();
+  }
+  if (sourceLines[sourceLines.length - 1] === '') {
+    sourceLines.pop();
+  }
+
+  const lines = [...sourceLines];
+  const topLevelKeyPattern = /^[^\s#][^:]*:\s*(.*)?$/;
+
+  const findKeyBlockRange = (key: string): { start: number; end: number } | null => {
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const keyPattern = new RegExp(`^${escapedKey}:\\s*(.*)?$`);
+
+    for (let i = 0; i < lines.length; i++) {
+      if (!keyPattern.test(lines[i])) {
+        continue;
+      }
+
+      let end = i + 1;
+      while (end < lines.length) {
+        const candidate = lines[end];
+        if (
+          topLevelKeyPattern.test(candidate) ||
+          candidate.trim() === '' ||
+          candidate.startsWith('#')
+        ) {
+          break;
+        }
+        end++;
+      }
+
+      return { start: i, end };
     }
-  });
 
-  return replaceFrontmatter(page, newFrontmatter(newData));
+    return null;
+  };
+
+  for (const [key, rawValue] of Object.entries(modifications)) {
+    const value = rawValue as PrintableAtom | undefined;
+    const range = findKeyBlockRange(key);
+
+    if (value === undefined || value === null) {
+      if (range) {
+        lines.splice(range.start, range.end - range.start);
+      }
+      continue;
+    }
+
+    const replacement = stringifyYamlLine(key, value);
+    if (range) {
+      lines.splice(range.start, range.end - range.start, replacement);
+    } else {
+      lines.push(replacement);
+    }
+  }
+
+  return replaceFrontmatter(page, lines.join('\n'));
 }

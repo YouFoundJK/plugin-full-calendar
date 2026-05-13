@@ -26,7 +26,7 @@ export const changelogData: Version[] = [
         type: 'improvement',
         title: 'Tasks integrations',
         description:
-          'Checkout [Tasks Integration docs](https://youfoundjk.github.io/plugin-full-calendar/user/calendars/tasks-plugin-integration/). Expanded Tasks backlog and display settings, plus payload handling and workflow improvements. ([#142](https://github.com/YouFoundJK/plugin-full-calendar/issues/142), [#166](https://github.com/YouFoundJK/plugin-full-calendar/issues/166), [#175](https://github.com/YouFoundJK/plugin-full-calendar/issues/175))'
+          'Checkout [Tasks Integration docs](https://youfoundjk.github.io/plugin-full-calendar/user/calendars/tasks-plugin-integration/). Expanded Tasks backlog and display settings, plus payload handling and workflow improvements. ([#142](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/142), [#166](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/166), [#175](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/175))'
       },
       {
         type: 'improvement',
