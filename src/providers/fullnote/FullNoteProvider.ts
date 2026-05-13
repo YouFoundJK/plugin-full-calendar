@@ -82,6 +82,51 @@ const basenameFromEvent = (event: OFCEvent, settings: TitleSettingsLike): string
 const filenameForEvent = (event: OFCEvent, settings: TitleSettingsLike) =>
   `${basenameFromEvent(event, settings)}.md`;
 
+const areFieldValuesEqual = (a: unknown, b: unknown): boolean => {
+  if (a === b) {
+    return true;
+  }
+
+  if (a === null || b === null || a === undefined || b === undefined) {
+    return false;
+  }
+
+  if (typeof a === 'object' && typeof b === 'object') {
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+};
+
+const getChangedFrontmatterFields = (
+  oldEventData: OFCEvent,
+  newEventData: OFCEvent
+): Partial<OFCEvent> => {
+  const changed: Record<string, unknown> = {};
+  const keys = new Set<keyof OFCEvent>([
+    ...(Object.keys(oldEventData) as (keyof OFCEvent)[]),
+    ...(Object.keys(newEventData) as (keyof OFCEvent)[])
+  ]);
+
+  keys.forEach(key => {
+    if (key === 'uid') {
+      return;
+    }
+
+    const oldValue = oldEventData[key];
+    const newValue = newEventData[key];
+    if (!areFieldValuesEqual(oldValue, newValue)) {
+      changed[key as string] = newValue;
+    }
+  });
+
+  return changed as Partial<OFCEvent>;
+};
+
 const SUFFIX_PATTERN = '-_-_-';
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
@@ -312,9 +357,11 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
       fileToRewrite = renamedFile;
     }
 
-    // The `newEventData` from the cache always has a clean title.
-    // Write this clean data to the frontmatter.
-    await this.app.rewrite(fileToRewrite, page => modifyFrontmatterString(page, newEventData));
+    const changedFields = getChangedFrontmatterFields(oldEventData, newEventData);
+
+    if (Object.keys(changedFields).length > 0) {
+      await this.app.rewrite(fileToRewrite, page => modifyFrontmatterString(page, changedFields));
+    }
 
     // The location returned must have the final, potentially new, path.
     return { file: { path: finalPath }, lineNumber: undefined };
