@@ -14,6 +14,9 @@ Fast track through [Installation](#installation) · [First-Time Setup](#first-ti
 !!! example "Master the FCR Command"
     For the fastest experience, skip the buttons and use the **[FCR Command (NLP Orchestrator)](user/features/nlp.md)**. Open it with via the command palette `Ctrl/Cmd + P` (or add custom keyboard shortcut for direct access) and type naturally: *"Team sync tomorrow at 3pm"* or *"go to next week"*. It's the "brain" of the plugin and the most efficient way to get things done QUICK.
 
+!!! note "Task Integration"
+    Seamlessly merge your task management and calendar planning using **[TaskNotes](user/calendars/tasknotes.md)** or the **[Tasks Plugin](user/calendars/tasks-plugin-integration.md)** integrations.
+
 ## Installation
 
 === "BRAT (Recommended)"
@@ -44,6 +47,8 @@ It's recommended to start with a [local calendar type](user/calendars/index.md),
 -   **[Full Note Calendar](user/calendars/local.md):** The most powerful option. Each event is a separate note in your vault.
 
 -   **[Daily Note Calendar](user/calendars/dailynote.md):** Store events as checklist items in your daily notes, in a efficient and compact way.
+
+-   **Remote & Integrations:** Connect your existing schedules with **[Outlook](user/calendars/outlook.md)**, **[Google Calendar](user/calendars/gcal.md)**, or **[CalDAV](user/calendars/caldav.md)**. Or sync your scheduled tasks directly onto your calendar with **[TaskNotes](user/calendars/tasknotes.md)**.
 
 ![Welcome page](assets/settings/welcome-settings.gif)
 

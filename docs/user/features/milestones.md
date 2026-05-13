@@ -1,56 +1,42 @@
 # Milestones and Progress
 
-Milestones provide long-horizon progress tracking across event operations. The feature is read-only from the user view and is designed to reward consistent calendar usage without inflating counts from failed operations.
+!!! success "Reward Your Consistency"
+    Milestones provide long-horizon progress tracking across all your calendar activities. Designed to reward consistent usage without artificially inflating counts from failed operations, they gamify your productivity.
 
-## Where To Open It
+## Accessing Milestones
 
-1. Open Full Calendar settings.
-2. Go to Appearance.
-3. Use the milestones gear action to open the dedicated milestones page.
-4. Use Back to settings at the top when finished.
+=== "FCR Command (Fastest)"
 
-## What The Page Shows
+    The absolute fastest way to view your progress is to use the **[FCR Command](nlp.md)**. Just open the command palette (`Ctrl/Cmd + P`), select the FCR Command, and type `open milestones` or `show achievements`.
 
-- Milestone cards sorted with unlocked cards first.
-- A status badge for each card.
-- Target and description text for each milestone.
-- A progress bar based on normalized percentage.
-- A numeric progress label.
+=== "Settings Menu"
 
-## What Increments Progress
+    1. Open **Full Calendar Settings**.
+    2. Navigate to the **Appearance** tab.
+    3. Click the gear icon next to Milestones to open the dedicated page.
+    4. Click **Back to settings** at the top when you are finished.
 
-Progress updates only after successful provider-backed operations. Tracked operations include:
+## Dashboard Overview
 
-- Event created
-- Event updated
-- Event deleted
-- Event moved
+The Milestones dashboard provides a beautifully crafted view of your calendar journey. It displays interactive **Milestone cards** that automatically sort your unlocked achievements to the top. Each card features a clear **status badge**, descriptive target text, and a visual **progress bar** paired with a precise numeric label to track exactly how close you are to your next goal.
 
-This means canceled operations, provider failures, optimistic placeholders that roll back, and disabled tracking paths do not inflate counters.
+## Progression Mechanics
 
-## Coverage Across Sources
+Your progress securely updates in the background after every successful, provider-backed operation. 
 
-Milestones evaluate total activity and source-specific activity. This includes:
+!!! info "Tracked Operations"
+    Creating, updating, moving, or deleting events will increment your milestone counters. To ensure fairness, canceled operations, provider failures, and optimistic rollbacks do not inflate your stats.
 
-- Local calendars
-- [Daily Note calendars](../calendars/dailynote.md)
-- ICS, CalDAV, and Google calendars
-- [Tasks](../calendars/tasks-plugin-integration.md) and [TaskNotes](../calendars/tasknotes.md) calendars
-- Bases for provider-threshold milestones
+**Comprehensive Source Coverage:**
+Whether you're scheduling in [Local](../calendars/local.md) or [Daily Note](../calendars/dailynote.md) calendars, syncing with remote sources like Google and CalDAV, or managing productivity via [TaskNotes](../calendars/tasknotes.md), your activity counts. The system even evaluates behavioral metadata, rewarding advanced usages like recurring-series creation, heavy [NLP](nlp.md) utilization, distinct timezone tracking, and consistent daily streaks.
 
-Some milestones also evaluate behavioral metadata such as recurring-series creation, [NLP-based](nlp.md) creation volume, distinct timezone usage, active remote source count, and streak-like activity patterns.
+## Achievement Notifications
 
-## Notifications
+When your hard work pays off and a milestone unlocks, you will be celebrated with a non-blocking toast notification. If you unlock multiple milestones simultaneously, they elegantly queue and display in sequence, ensuring you never miss a reward.
 
-When a milestone unlocks, a non-blocking notice toast is shown. Multiple unlocks in one operation are queued and displayed in sequence.
-
-## Design Constraints
-
-- Milestones are read-only from the UI.
-- Unlock state and counters persist in plugin settings data.
-- Progress is computed from current persisted state at render time.
-
+!!! note "Under the Hood"
+    Milestones are strictly read-only from the UI. Your unlock states and counters safely persist within the plugin's settings data, and your progress is dynamically computed from this secure state every time the dashboard renders. For technical details, see the [Milestones Architecture](../../architecture/system/features/milestones-architecture.md).
 
 ---
 
-[Display and Behavior](../settings/fc_config.md) · [Settings and Customization](../settings/index.md) · [Milestones Architecture](../../architecture/system/features/milestones-architecture.md)
+[Display and Behavior](../settings/fc_config.md) · [Settings and Customization](../settings/index.md)

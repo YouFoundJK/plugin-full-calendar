@@ -8,17 +8,51 @@ Corresponds to
 
 
 
-## v0.12.9
+## v0.13.0
 
 ### New Features
+
+-   **[Natural Language Processing (NLP)](user/features/nlp.md)** ([#253](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/253), [#255](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/255))  
+    _Introduced the FCR Command NLP engine for natural language scheduling. Features include duration parsing, next-occurring day logic, recurrence, smart calendar matching, and explicit category/time extraction._
+
+-   **[TaskNotes Integration](user/calendars/tasknotes.md)** ([#245](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/245), [#253](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/253))  
+    _Added seamless integration with the TaskNotes plugin. Supports event sync, updates, completion handling, recurring task creation, and NLP-driven task selector prefilling._
+
+-   **[Milestones System](user/features/milestones.md)** ([#255](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/255))  
+    _Introduced a brand new Milestones tracking system to reward user actions (creating, moving, updating events) with a dedicated UI modal, toast notifications, and NLP intent integration._
+
+-   **[Outlook Integration](user/calendars/outlook.md)** ([#259](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/259))  
+    _Added robust Outlook integration featuring OAuth2 with PKCE, full recurrence support, and improved frontmatter/metadata handling._
+
+-   **[FullCalendar API](user/settings/api.md)** ([#253](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/253))  
+    _Exposed a public API for programmatic calendar control, secured by scoped access and token management._
+
+### Improvements & Fixes
+
+-   **Tasks Plugin Enhancements** ([#208](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/208), [#250](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/250), [#254](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/254))  
+    _Added Day Planner format support, 24h time prefix serialization, and a bulk migration action. Also added deduplication for mirrored tasks and fuzzy search/filtering in the task backlog._
+
+-   **CalDAV Enhancements** ([#234](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/234), [#251](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/251))  
+    _Hardened mobile auth with a runtime-safe fallback, improved import UX with structured error reporting, and fixed calendar object fetching._
+
+-   **Event Cache & Core Refactoring** ([#253](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/253))  
+    _Completely refactored (implementation logic untouched) the Event Cache into `CacheMutationHandler`, `CacheSubscriptionManager`, and `CacheSyncHandler` for optimistic UI updates and improved recurring event handling._
+
+-   **General Event Fixes** ([#244](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/244), [#256](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/256))  
+    _Fixed 1-hour duration default when converting all-day to timed events, fixed DailyNote UID collisions on moves, hardened ICS `RECURRENCE-ID` handling, and improved frontmatter parsing reliability._
+
+-   **i18n & UI** ([#246](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/246), [#249](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/249), [#216](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/216))  
+    _Added Chinese (zh) localization, translated remaining hardcoded text, unified modal styles, and anchored drag mirrors to the viewport for better event handling._
+
+---
+
+## v0.12.9
 
 -   **ActivityWatch sync** ([#238](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/238))  
     _Added a dedicated ActivityWatch sync engine with continuity-aware ingestion, auto-sync scheduling, and title templating._
 
 -   **Tasks integrations** ([#142](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/142), [#166](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/166), [#175](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/175))  
     _Expanded Tasks backlog and display settings, plus payload handling and workflow improvements._
-
-### Improvements & Fixes
 
 -   **Core sync identity** ([#238](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/238))  
     _Switched sync handling to keyed identity diffs with reverse lookup maps and safer continuity replacement to reduce churn and duplicate blocks._

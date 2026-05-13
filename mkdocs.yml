@@ -78,6 +78,7 @@ plugins:
           type: datetime
     - git-committers:
           repository: obsidian-full-calendar-remastered/plugin-full-calendar
+          cache_dir: .cache/plugin/git-committers
           branch: main
 
 extra:

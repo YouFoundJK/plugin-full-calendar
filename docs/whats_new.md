@@ -4,6 +4,22 @@ This page highlights the latest **major features and improvements** to help you 
 For a detailed version-by-version breakdown, see the [Changelog](changelog.md).
 
 
+## 🚀 NLP & Milestones System
+
+Full Calendar now features an advanced Natural Language Processing (NLP) engine for smarter event parsing, along with a brand new Milestones system to track and reward your productivity achievements. We've also deeply integrated TaskNotes to keep your workflows seamless.
+
+➡️ Learn more about **[NLP](user/features/nlp.md)**, **[Milestones](user/features/milestones.md)**, and **[TaskNotes](user/calendars/tasknotes.md)**.
+
+---
+
+## 📧 Outlook Integration
+
+You can now synchronize your Outlook calendars directly into Obsidian. This integration comes with full recurrence support and improved metadata/frontmatter handling.
+
+➡️ Learn more about **[Outlook Integration](user/calendars/outlook.md)**.
+
+---
+
 ## 📡 ActivityWatch Sync
 
 ActivityWatch now has a dedicated sync engine that can turn local activity data into calendar blocks with continuity-aware updates, auto-sync scheduling, and dynamic title templating. 

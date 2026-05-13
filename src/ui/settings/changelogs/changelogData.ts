@@ -1,7 +1,7 @@
 // src/ui/changelogs/changelogData.ts
 
 export interface Change {
-  type: 'new' | 'fix' | 'improvement' | 'overhaul';
+  type: 'new' | 'fix' | 'improvement';
   title: string;
   description: string;
 }
@@ -13,6 +13,47 @@ export interface Version {
 
 // Add new versions to the TOP of this array.
 export const changelogData: Version[] = [
+  {
+    version: '0.13.0',
+    changes: [
+      {
+        type: 'new',
+        title: 'Natural language processing (NLP)',
+        description:
+          'RECOMMENDED: Introducing [NLP](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/features/nlp/) for keyboard free orchestration.'
+      },
+      {
+        type: 'new',
+        title: 'Outlook Integration',
+        description:
+          'Added Outlook integration with full recurrence support and improved frontmatter/metadata handling. ([#259](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/259))'
+      },
+      {
+        type: 'new',
+        title: 'Major Feature Expansions',
+        description:
+          'Introduced a new [Milestones](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/features/milestones/) system, [TaskNotes integration](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/tasknotes/), and comprehensive Calendar [API](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/settings/api/) & Cache refactoring'
+      },
+      {
+        type: 'improvement',
+        title: 'i18n and Documentation',
+        description:
+          'Added Chinese (zh) localization and restructured the documentation suite for better navigation. ([#246](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/246))'
+      },
+      {
+        type: 'improvement',
+        title: 'Tasks Plugin Enhancements',
+        description:
+          'Added Day Planner format support, 24h time prefix serialization, deduplication for mirrored tasks, and fuzzy search in the tasks backlog.'
+      },
+      {
+        type: 'fix',
+        title: 'CalDAV & Event fixes',
+        description:
+          'Hardened mobile CalDAV authentication, improved import UX diagnostics, and resolved DailyNote UID collisions on move. Converting all-day to timed events now defaults to 1-hour duration.'
+      }
+    ]
+  },
   {
     version: '0.12.9',
     changes: [
@@ -120,41 +161,6 @@ export const changelogData: Version[] = [
         title: 'UI Fixes and LiveSync Compatibility',
         description:
           'Improved mobile responsiveness across various views. Fixed UI injection conflicts with the Self-Hosted LiveSync plugin.'
-      }
-    ]
-  },
-  {
-    version: '0.12.6',
-    changes: [
-      {
-        type: 'new',
-        title: 'Full CalDAV Two-Way Sync',
-        description:
-          'CalDAV calendars now support two-way synchronization. Create, edit, and delete events directly in Obsidian.'
-      },
-      {
-        type: 'new',
-        title: 'Mobile Improvements',
-        description:
-          'Workspaces and Monthly View are now fully supported on mobile devices with an improved UI.'
-      },
-      {
-        type: 'new',
-        title: 'Rich Read-Only Modal',
-        description:
-          'The event viewer for read-only events now displays full details including descriptions and attendees.'
-      },
-      {
-        type: 'improvement',
-        title: 'ICS Parsing Hardening',
-        description:
-          'Robust parsing for Outlook/Exchange timezones, better date validation, and crash prevention for invalid ICS feeds.'
-      },
-      {
-        type: 'fix',
-        title: 'Google Calendar Credentials Menu',
-        description:
-          'Fixed an issue where the Google Calendar settings menu for credentials was not displaying correctly.'
       }
     ]
   }

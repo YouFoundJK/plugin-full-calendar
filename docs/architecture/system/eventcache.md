@@ -9,13 +9,13 @@
 
 ## Responsibilities
 
-| Responsibility | Practical behavior |
+| Responsibility | Component / Practical behavior |
 |---|---|
-| Staged population | Calls `ProviderRegistry.fetchAllByPriority()` and progressively syncs provider results. |
-| State ownership | Persists canonical event state in `EventStore` and exposes query APIs for views/features. |
-| Mutation orchestration | Executes optimistic add/update/delete, then commits or rolls back based on provider result (e.g., [Tasks Optimistic Flow](../calendars/tasks-integration.md#optimistic-ui-updates)). |
-| Publish/subscribe hub | Emits `update` payloads (`events`, `calendar`, `resync`) and `time-tick` state for reminder/time UI flows. |
-| Identifier bridge | Uses `ProviderRegistry` to map persistent provider identifiers to session IDs used by the UI. |
+| Staged population | `CacheSyncHandler`: Calls `ProviderRegistry.fetchAllByPriority()` and progressively syncs provider results. |
+| State ownership | `EventCache` & `EventStore`: Persists canonical event state and exposes query APIs for views/features. |
+| Mutation orchestration | `CacheMutationHandler`: Executes optimistic add/update/delete, then commits or rolls back based on provider result (e.g., [Tasks Optimistic Flow](../calendars/tasks-integration.md#optimistic-ui-updates)). |
+| Publish/subscribe hub | `CacheSubscriptionManager`: Emits `update` payloads (`events`, `calendar`, `resync`) and `time-tick` state for reminder/time UI flows. |
+| Identifier bridge | `EventCache`: Uses `ProviderRegistry` to map persistent provider identifiers to session IDs used by the UI. |
 
 ## Mutation lifecycle (authoritative path)
 
@@ -66,6 +66,9 @@ Consumers should subscribe/unsubscribe cleanly and must handle batched updates i
 
 - `src/core/EventCache.ts`
 - `src/core/EventStore.ts`
+- `src/core/cache/CacheMutationHandler.ts`
+- `src/core/cache/CacheSubscriptionManager.ts`
+- `src/core/cache/CacheSyncHandler.ts`
 - `src/providers/ProviderRegistry.ts`
 - `src/core/TimeEngine.ts`
 - `src/ui/view.ts`

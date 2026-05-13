@@ -9,6 +9,9 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -23,10 +26,26 @@ jobs:
         with:
           python-version: 3.x
 
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+
       - name: Install dependencies
-        run: pip install mkdocs-material mkdocs-git-revision-date-localized-plugin mkdocs-git-committers-plugin-2
+        run: pip install -r requirements.txt
+
+      - name: Cache git-committers
+        uses: actions/cache@v3
+        with:
+          path: .cache/plugin/git-committers
+          key: ${{ runner.os }}-git-committers-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-git-committers-
 
       - name: Build MkDocs site
+        env:
+          MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
         run: mkdocs build
 
       - name: Copy static files 1
