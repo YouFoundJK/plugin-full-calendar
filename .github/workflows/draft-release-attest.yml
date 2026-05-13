@@ -1,0 +1,57 @@
+name: Draft Release With Attestation
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: write
+    id-token: write
+    attestations: write
+
+jobs:
+    draft-release:
+        if: github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm install
+
+            - name: Build release artifacts
+              run: npm run prod:release
+
+            - name: Attest artifacts
+              uses: actions/attest-build-provenance@v2
+              with:
+                  subject-path: |
+                      release-artifacts/main.js
+                      release-artifacts/styles.css
+                      release-artifacts/manifest.json
+
+            - name: Compute draft release metadata
+              id: metadata
+              run: |
+                  echo "tag_name=draft-main-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+                  echo "release_name=Draft Main Build #${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+            - name: Create draft release and upload assets
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ steps.metadata.outputs.tag_name }}
+                  target_commitish: ${{ github.sha }}
+                  name: ${{ steps.metadata.outputs.release_name }}
+                  draft: true
+                  prerelease: true
+                  files: |
+                      release-artifacts/main.js
+                      release-artifacts/styles.css
+                      release-artifacts/manifest.json

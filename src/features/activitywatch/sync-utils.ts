@@ -11,8 +11,16 @@ import {
   SessionIndex
 } from './sync-types';
 
-const moment = obsidianMoment as unknown as typeof import('moment');
-
+interface MinimalMoment {
+  format(fmt?: string): string;
+  valueOf(): number;
+  isValid(): boolean;
+}
+const moment = obsidianMoment as unknown as (
+  input?: unknown,
+  format?: string,
+  strict?: boolean
+) => MinimalMoment;
 export const CONTINUITY_BUFFER_MS = 60 * 1000;
 export const LOOKBACK_SAFETY_BUFFER_MINS = 5;
 export const MIN_SYNC_LOOKBACK_MINS = 30;
@@ -121,7 +129,7 @@ export function isSameProfileBlock(existing: PriorCalendarEvent, block: DerivedA
 }
 
 export function getProfileSignature(
-  profileName: string | null | undefined,
+  _profileName: string | null | undefined,
   profileColor: string | null | undefined
 ): ProfileSignature {
   return `${profileColor || ''}`;
@@ -149,7 +157,7 @@ export function isKnownActivityWatchProfileEvent(
 }
 
 export async function getCalendarEventsInRange(
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   targetCalendarId: string,
   rangeStart: Date,
   rangeEnd: Date
@@ -193,7 +201,7 @@ export async function getCalendarEventsInRange(
 }
 
 export async function extendEventEndIfNeeded(
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   eventId: string,
   newEndMs: number
 ): Promise<boolean> {
@@ -270,7 +278,7 @@ export function findReplaceableExistingEvents(
 }
 
 export function buildSessionIndex(
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   targetCalendarId: string,
   knownProfileSignatures: Set<ProfileSignature>
 ): SessionIndex {

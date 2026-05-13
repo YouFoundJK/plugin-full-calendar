@@ -11,7 +11,7 @@
  */
 
 import i18next from 'i18next';
-import { App, requestUrl, normalizePath } from 'obsidian';
+import { App, requestUrl, normalizePath, getLanguage } from 'obsidian';
 
 // Load English as default and fallback statically
 import en from './locales/en.json';
@@ -39,7 +39,7 @@ function getObsidianLanguage(_app: App): string {
   // NOTE: app.loadLocalStorage() is plugin-scoped and prefixes keys with the plugin ID,
   // so it would look for 'full-calendar-remastered-language' which is NOT what we want.
   try {
-    const language = window.localStorage.getItem('language');
+    const language = getLanguage();
     return typeof language === 'string' && language.length > 0 ? language : 'en';
   } catch {
     return 'en';

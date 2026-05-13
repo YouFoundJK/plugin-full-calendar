@@ -17,7 +17,7 @@ const calendars = [
   }
 ];
 
-const submit = async function (event: OFCEvent, calendarIndex: number): Promise<void> {
+const submit = async function (_event: OFCEvent, _calendarIndex: number): Promise<void> {
   // alert('Event submitted, see console for details');
 };
 

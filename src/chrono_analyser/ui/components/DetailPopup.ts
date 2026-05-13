@@ -20,13 +20,33 @@ export class DetailPopup {
     private app: App,
     private rootEl: HTMLElement
   ) {
-    this.popupEl = this.rootEl.querySelector<HTMLElement>('#detailPopup')!;
-    this.overlayEl = this.rootEl.querySelector<HTMLElement>('#detailOverlay')!;
-    this.titleEl = this.rootEl.querySelector<HTMLElement>('#popupTitle')!;
-    this.statsEl = this.rootEl.querySelector<HTMLElement>('#popupSummaryStats')!;
-    this.tableBodyEl = this.rootEl.querySelector<HTMLTableSectionElement>('#popupTableBody')!;
-    this.closeBtn = this.rootEl.querySelector<HTMLElement>('#popupCloseBtn')!;
-    this.popupBodyEl = this.rootEl.querySelector<HTMLElement>('.popup-body')!;
+    const popupEl = this.rootEl.querySelector<HTMLElement>('#detailPopup');
+    const overlayEl = this.rootEl.querySelector<HTMLElement>('#detailOverlay');
+    const titleEl = this.rootEl.querySelector<HTMLElement>('#popupTitle');
+    const statsEl = this.rootEl.querySelector<HTMLElement>('#popupSummaryStats');
+    const tableBodyEl = this.rootEl.querySelector<HTMLTableSectionElement>('#popupTableBody');
+    const closeBtn = this.rootEl.querySelector<HTMLElement>('#popupCloseBtn');
+    const popupBodyEl = this.rootEl.querySelector<HTMLElement>('.popup-body');
+
+    if (
+      !popupEl ||
+      !overlayEl ||
+      !titleEl ||
+      !statsEl ||
+      !tableBodyEl ||
+      !closeBtn ||
+      !popupBodyEl
+    ) {
+      throw new Error('Chrono Analyzer detail popup DOM is missing required elements.');
+    }
+
+    this.popupEl = popupEl;
+    this.overlayEl = overlayEl;
+    this.titleEl = titleEl;
+    this.statsEl = statsEl;
+    this.tableBodyEl = tableBodyEl;
+    this.closeBtn = closeBtn;
+    this.popupBodyEl = popupBodyEl;
 
     this.setupEventListeners();
   }
@@ -60,12 +80,12 @@ export class DetailPopup {
 
     const createStatCard = (value: string, label: string) => {
       if (typeof this.statsEl.createDiv !== 'function') {
-        const wrapper = document.createElement('div');
+        const wrapper = this.statsEl.ownerDocument.createElement('div');
         wrapper.className = 'summary-stat';
-        const valEl = document.createElement('div');
+        const valEl = this.statsEl.ownerDocument.createElement('div');
         valEl.className = 'summary-stat-value';
         valEl.textContent = value;
-        const labelEl = document.createElement('div');
+        const labelEl = this.statsEl.ownerDocument.createElement('div');
         labelEl.className = 'summary-stat-label';
         labelEl.textContent = label;
         wrapper.appendChild(valEl);
@@ -97,13 +117,13 @@ export class DetailPopup {
 
       // --- MODIFIED: Safe, programmatic creation of the file path cell ---
       const pathCell = row.insertCell();
-      if (typeof pathCell.createSpan === 'function')
+      if (typeof pathCell.createSpan === 'function') {
         pathCell.createSpan({
           cls: 'file-path-cell',
           text: record.path,
           attr: { title: record.path }
         });
-      else pathCell.textContent = record.path;
+      } else pathCell.textContent = record.path;
       // --- END MODIFICATION ---
     });
 

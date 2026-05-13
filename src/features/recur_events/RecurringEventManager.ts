@@ -1,3 +1,4 @@
+import { showNotice } from '../../utils/showNotice';
 /**
  * @file RecurringEventManager.ts
  * @brief Manages all complex business logic related to recurring events.
@@ -13,7 +14,6 @@
  */
 
 import { PluginState } from '../../core/PluginState';
-import { Notice } from 'obsidian';
 
 import { OFCEvent } from '../../types';
 import EventCache from '../../core/EventCache';
@@ -66,7 +66,7 @@ export class RecurringEventManager {
   private hasModifiedTiming(
     overrideEvent: OFCEvent,
     masterEvent: OFCEvent,
-    instanceDate: string
+    _instanceDate: string
   ): boolean {
     if (overrideEvent.type !== 'single') return false;
     if (masterEvent.type !== 'recurring' && masterEvent.type !== 'rrule') return false;
@@ -131,7 +131,7 @@ export class RecurringEventManager {
       return;
     }
 
-    new Notice(t('recurEvents.promotingChildren', { count: children.length }));
+    showNotice(t('recurEvents.promotingChildren', { count: children.length }));
     for (const child of children) {
       await this.cache.processEvent(
         child.id,
@@ -146,12 +146,12 @@ export class RecurringEventManager {
     // Now delete the original master event
     await this.cache.deleteEvent(masterEventId, { force: true, silent: true });
     this.cache.flushUpdateQueue([], []);
-    new Notice(t('recurEvents.deletedAndPromoted'));
+    showNotice(t('recurEvents.deletedAndPromoted'));
   }
 
   public async deleteAllRecurring(masterEventId: string): Promise<void> {
     const children = this.findRecurringChildren(masterEventId);
-    new Notice(t('recurEvents.deletingWithChildren', { count: children.length }));
+    showNotice(t('recurEvents.deletingWithChildren', { count: children.length }));
 
     for (const child of children) {
       await this.cache.deleteEvent(child.id, { force: true, silent: true });
@@ -160,7 +160,7 @@ export class RecurringEventManager {
     // Finally, delete the master event itself
     await this.cache.deleteEvent(masterEventId, { force: true, silent: true });
     this.cache.flushUpdateQueue([], []);
-    new Notice(t('recurEvents.deletedAll'));
+    showNotice(t('recurEvents.deletedAll'));
   }
 
   /**
@@ -252,11 +252,15 @@ export class RecurringEventManager {
         options?.instanceDate
           ? () => {
               void (async () => {
+                const instanceDate = options.instanceDate;
+                if (!instanceDate) {
+                  return;
+                }
                 const updated = await this.cache.processEvent(eventId, e => {
                   if (e.type !== 'recurring' && e.type !== 'rrule') return e;
-                  const skipDates = e.skipDates?.includes(options.instanceDate!)
+                  const skipDates = e.skipDates?.includes(instanceDate)
                     ? e.skipDates
-                    : [...(e.skipDates || []), options.instanceDate!];
+                    : [...(e.skipDates || []), instanceDate];
                   return { ...e, skipDates };
                 });
 
@@ -500,7 +504,7 @@ export class RecurringEventManager {
             this.hasModifiedTiming(clickedEventDetails.event, masterEvent, instanceDate)
           ) {
             // Timing has been modified, preserve the override but change completion status
-            new Notice(t('recurEvents.preservingTiming'));
+            showNotice(t('recurEvents.preservingTiming'));
             await this.cache.updateEventWithId(
               eventId,
               toggleTask(clickedEventDetails.event, false)
@@ -511,7 +515,7 @@ export class RecurringEventManager {
       }
 
       // Original logic: delete the override to revert to main recurring sequence
-      new Notice(t('recurEvents.revertingControl'));
+      showNotice(t('recurEvents.revertingControl'));
       await this.cache.deleteEvent(eventId);
     }
   }
@@ -546,7 +550,7 @@ export class RecurringEventManager {
       return;
     }
 
-    new Notice(t('recurEvents.updatingChildren', { count: childrenToUpdate.length }));
+    showNotice(t('recurEvents.updatingChildren', { count: childrenToUpdate.length }));
 
     for (const childStoredEvent of childrenToUpdate) {
       const childDetails = this.cache.store.getEventDetails(childStoredEvent.id);
@@ -695,7 +699,7 @@ export class RecurringEventManager {
       });
     } catch (e) {
       console.error('Error during recurring parent rename operation:', e);
-      new Notice(t('recurEvents.updateError'));
+      showNotice(t('recurEvents.updateError'));
       // The finally block will still run to clean up.
     } finally {
       this.cache.isBulkUpdating = false;
@@ -783,7 +787,7 @@ export class RecurringEventManager {
       }
 
       if (children.length > 0 && newLinkId) {
-        new Notice(t('recurEvents.movingChildren', { count: children.length }));
+        showNotice(t('recurEvents.movingChildren', { count: children.length }));
 
         for (const child of children) {
           const childEvent = child.event;

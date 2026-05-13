@@ -22,7 +22,7 @@ import type {
   EventSourceInput
 } from '@fullcalendar/core';
 
-import { Menu } from 'obsidian';
+import { Menu, activeDocument } from 'obsidian';
 import type { PluginDef } from '@fullcalendar/core';
 import type { RecurringInstanceState } from '../../../../providers/Provider';
 import { createDateNavigation } from '../../../../features/navigation/DateNavigation';
@@ -294,8 +294,9 @@ export async function renderCalendar(
     };
   }
 
-  const customButtonConfig: Record<string, { text: string; click: (ev: MouseEvent) => void }> =
-    Object.assign({}, customButtons);
+  const customButtonConfig: Record<string, { text: string; click: (ev: MouseEvent) => void }> = {
+    ...customButtons
+  };
 
   let dateNavigation: ReturnType<typeof createDateNavigation> | null = null;
 
@@ -422,15 +423,13 @@ export async function renderCalendar(
   // See: https://fullcalendar.io/license for details
   // Narrow dynamic imports to expected shapes without pervasive any usage.
   const CalendarCtor = (core as { Calendar: typeof Calendar }).Calendar;
-  const dayGridPlugin = (daygrid as { default: PluginDef }).default;
-  const timeGridPlugin = (timegrid as { default: PluginDef }).default;
-  const listPlugin = (list as { default: PluginDef }).default;
-  const rrulePlugin = (rrule as { default: PluginDef }).default;
+  const dayGridPlugin = daygrid.default;
+  const timeGridPlugin = timegrid.default;
+  const listPlugin = list.default;
+  const rrulePlugin = rrule.default;
   const interactionPlugin = (interaction as { default: PluginDef }).default;
   const luxonPlugin = (luxon as { default: PluginDef }).default;
-  const resourceTimelinePlugin = resourceTimeline
-    ? (resourceTimeline as { default: PluginDef }).default
-    : null;
+  const resourceTimelinePlugin = resourceTimeline ? resourceTimeline.default : null;
 
   let currentUpcomingEventIds = new Set<string>();
 
@@ -559,7 +558,7 @@ export async function renderCalendar(
     // Business hours configuration
     ...(businessHours && { businessHours }),
 
-    eventAllow: (dropInfo, draggedEvent) => {
+    eventAllow: (dropInfo, _draggedEvent) => {
       // dropInfo.resource is the resource that the event is being dropped on
       const resource = (dropInfo as { resource?: { extendedProps?: { isParent?: boolean } } })
         .resource;
@@ -624,7 +623,7 @@ export async function renderCalendar(
 
     editable: modifyEvent && true,
     // Keep drag mirror anchored to the viewport, not transformed Obsidian panes.
-    fixedMirrorParent: document.body,
+    fixedMirrorParent: activeDocument.body,
     eventDrop: modifyEventCallback,
     eventResize: modifyEventCallback,
 
@@ -652,7 +651,7 @@ export async function renderCalendar(
       });
       if (toggleTask) {
         if (event.extendedProps.isTask) {
-          const checkbox = document.createElement('input');
+          const checkbox = activeDocument.createEl('input');
           checkbox.type = 'checkbox';
           checkbox.checked = !!event.extendedProps.taskCompleted;
 
@@ -686,7 +685,7 @@ export async function renderCalendar(
           }
 
           // Make the checkbox more visible against different color events.
-          if (textColor == 'black') {
+          if (textColor === 'black') {
             checkbox.addClass('ofc-checkbox-black');
           } else {
             checkbox.addClass('ofc-checkbox-white');
@@ -711,7 +710,7 @@ export async function renderCalendar(
     viewDidMount: () => {
       onViewChange?.();
       updateCurrentOrNextEventHighlight();
-      requestAnimationFrame(() => ensureToolbarSearchControl());
+      window.requestAnimationFrame(() => ensureToolbarSearchControl());
     },
 
     eventsSet: () => {
@@ -742,7 +741,7 @@ export async function renderCalendar(
       currentToolbarMode = nextToolbarLayout.mode;
       cal.setOption('headerToolbar', nextToolbarLayout.headerToolbar);
       cal.setOption('footerToolbar', nextToolbarLayout.footerToolbar);
-      requestAnimationFrame(() => ensureToolbarSearchControl());
+      window.requestAnimationFrame(() => ensureToolbarSearchControl());
     }
 
     cal.updateSize();
@@ -800,20 +799,20 @@ export async function renderCalendar(
     const inputWrapEl =
       keepWrapEl ||
       (() => {
-        const wrapEl = document.createElement('div');
+        const wrapEl = activeDocument.createDiv();
         wrapEl.className = 'ofc-toolbar-search-input-wrap';
         wrapEl.setCssProps({
           width: searchExpanded || searchQuery ? '180px' : '0px'
         });
 
-        const inputEl = document.createElement('input');
+        const inputEl = activeDocument.createEl('input');
         inputEl.className = 'ofc-toolbar-search-input';
         inputEl.type = 'text';
         inputEl.placeholder = 'Search events...';
         inputEl.value = searchQuery;
         inputEl.ariaLabel = 'Search events';
 
-        const clearEl = document.createElement('button');
+        const clearEl = activeDocument.createEl('button');
         clearEl.className = 'clickable-icon ofc-toolbar-search-clear';
         clearEl.type = 'button';
         clearEl.ariaLabel = 'Clear search';
@@ -916,7 +915,7 @@ export async function renderCalendar(
       return;
     }
 
-    if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) {
+    if (isEditableTarget(event.target) || isEditableTarget(activeDocument.activeElement)) {
       return;
     }
 
@@ -982,11 +981,11 @@ export async function renderCalendar(
   updateCurrentOrNextEventHighlight();
   const activeHighlightInterval = window.setInterval(updateCurrentOrNextEventHighlight, 60_000);
   const onVisibilityChange = () => {
-    if (document.visibilityState === 'visible') {
+    if (activeDocument.visibilityState === 'visible') {
       updateCurrentOrNextEventHighlight();
     }
   };
-  document.addEventListener('visibilitychange', onVisibilityChange);
+  activeDocument.addEventListener('visibilitychange', onVisibilityChange);
 
   const originalDestroy = cal.destroy.bind(cal);
   cal.destroy = () => {
@@ -996,7 +995,7 @@ export async function renderCalendar(
     containerEl.removeEventListener('touchstart', onTouchStartNavigate);
     containerEl.removeEventListener('touchend', onTouchEndNavigate);
     window.clearInterval(activeHighlightInterval);
-    document.removeEventListener('visibilitychange', onVisibilityChange);
+    activeDocument.removeEventListener('visibilitychange', onVisibilityChange);
     originalDestroy();
   };
 

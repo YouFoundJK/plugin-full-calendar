@@ -1,3 +1,4 @@
+import { showNotice } from '../../utils/showNotice';
 import * as React from 'react';
 import { useState } from 'react';
 import { UrlInput } from '../../ui/components/forms/UrlInput';
@@ -6,7 +7,6 @@ import { PasswordInput } from '../../ui/components/forms/PasswordInput';
 import { CalDAVProviderConfig } from './typesCalDAV';
 import { importCalendars } from './import_caldav';
 import { t } from '../../features/i18n/i18n';
-import { Notice } from 'obsidian';
 
 interface CalDAVConfigComponentProps {
   config: Partial<CalDAVProviderConfig>;
@@ -35,13 +35,13 @@ export const CalDAVConfigComponent: React.FC<CalDAVConfigComponentProps> = ({
 
     try {
       const sources = await importCalendars({ type: 'basic', username, password }, url, []);
-      onSave(sources as CalDAVProviderConfig[]);
+      onSave(sources);
       shouldResetFormState = false;
       onClose();
     } catch (error) {
       console.error('Failed to import CalDAV calendars', error);
       const details = error instanceof Error ? error.message : String(error);
-      new Notice(`${t('settings.calendars.caldav.importFailed')}: ${details}`);
+      showNotice(`${t('settings.calendars.caldav.importFailed')}: ${details}`);
     } finally {
       if (shouldResetFormState) {
         setSubmitText(t('settings.calendars.caldav.importButton'));

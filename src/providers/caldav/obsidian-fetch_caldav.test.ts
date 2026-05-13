@@ -1,5 +1,21 @@
 /// <reference types="jest" />
 
+class MockResponse {
+  status: number;
+  headers: Record<string, string>;
+  constructor(
+    public body: string | null,
+    public init: { status?: number; headers?: Record<string, string> }
+  ) {
+    this.status = init?.status || 200;
+    this.headers = init?.headers || {};
+  }
+  text(): Promise<string> {
+    return Promise.resolve(this.body ?? '');
+  }
+}
+window.Response = MockResponse as unknown as typeof Response;
+
 const mockRequestUrl = jest.fn();
 const mockRequest = jest.fn();
 const mockPlatform = { isMobile: false };

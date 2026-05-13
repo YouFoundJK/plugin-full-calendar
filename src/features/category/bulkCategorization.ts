@@ -1,3 +1,4 @@
+import { showNotice } from '../../utils/showNotice';
 /**
  * @file bulkCategorization.ts
  * @brief Provides stateless bulk action functions for managing event categories.
@@ -13,7 +14,7 @@
  */
 
 import { PluginState } from '../../core/PluginState';
-import { Notice, TFile, TFolder } from 'obsidian';
+import { TFile, TFolder } from 'obsidian';
 import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
 
 import FullCalendarPlugin from '../../main';
@@ -101,7 +102,7 @@ export async function bulkUpdateCategories(
   const force = choice !== 'smart';
   const files = getFilesToProcess(plugin);
   if (files.length === 0) {
-    new Notice(t('notices.bulkCategorization.noNotesFound'));
+    showNotice(t('notices.bulkCategorization.noNotesFound'));
     return;
   }
 
@@ -145,8 +146,10 @@ export async function bulkUpdateCategories(
         for (const item of listItems) {
           const lineNumber = item.position.start.line;
           const line = lines[lineNumber];
+          if (typeof line !== 'string') continue;
           const existingEvent = getInlineEventFromLine(line, {});
           if (!existingEvent) continue;
+          if (typeof existingEvent.title !== 'string') continue;
 
           if (shouldSkipBulkCategorization(existingEvent, choice)) continue;
 
@@ -188,7 +191,7 @@ export async function bulkUpdateCategories(
   };
 
   await PluginState.nonBlockingProcess(files, combinedProcessor, 'Categorizing event notes');
-  new Notice(t('notices.bulkCategorization.complete'));
+  showNotice(t('notices.bulkCategorization.complete'));
 }
 
 /**
@@ -200,7 +203,7 @@ export async function bulkRemoveCategories(plugin: FullCalendarPlugin): Promise<
   );
   const files = getFilesToProcess(plugin);
   if (files.length === 0) {
-    new Notice(t('notices.bulkDecategorization.noNotesFound'));
+    showNotice(t('notices.bulkDecategorization.noNotesFound'));
     return;
   }
 
@@ -249,8 +252,10 @@ export async function bulkRemoveCategories(plugin: FullCalendarPlugin): Promise<
         for (const item of listItems) {
           const lineNumber = item.position.start.line;
           const line = lines[lineNumber];
+          if (typeof line !== 'string') continue;
           const eventWithCategory = getInlineEventFromLine(line, {});
           if (!eventWithCategory) continue;
+          if (typeof eventWithCategory.title !== 'string') continue;
 
           const { category, title: cleanTitle } = parseTitle(
             eventWithCategory.title,
@@ -282,5 +287,5 @@ export async function bulkRemoveCategories(plugin: FullCalendarPlugin): Promise<
   };
 
   await PluginState.nonBlockingProcess(files, combinedProcessor, 'De-categorizing event notes');
-  new Notice(t('notices.bulkDecategorization.complete'));
+  showNotice(t('notices.bulkDecategorization.complete'));
 }

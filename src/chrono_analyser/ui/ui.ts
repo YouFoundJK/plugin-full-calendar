@@ -1,6 +1,7 @@
+import { showNotice } from '../../utils/showNotice';
 // src/chrono_analyser/modules/ui.ts
 
-import { App, Modal, Setting, TFolder, SuggestModal, Notice } from 'obsidian';
+import { App, Modal, Setting, TFolder, SuggestModal } from 'obsidian';
 import { t } from '../../features/i18n/i18n';
 
 // DATA STRUCTURES
@@ -62,7 +63,11 @@ class AutocompleteComponent {
     getDataFunc: () => string[]
   ) {
     this.wrapperEl = wrapperEl;
-    this.inputEl = wrapperEl.querySelector('input')!;
+    const inputEl = wrapperEl.querySelector('input');
+    if (!inputEl) {
+      throw new Error('AutocompleteComponent requires an input element in its wrapper.');
+    }
+    this.inputEl = inputEl;
     this.onSelectCallback = onSelectCallback;
     this.getDataFunc = getDataFunc;
 
@@ -80,7 +85,7 @@ class AutocompleteComponent {
 
   private onBlur = () => {
     // Delay hiding to allow click events on suggestions to fire
-    setTimeout(() => {
+    window.setTimeout(() => {
       this.suggestionsEl.removeClass('is-visible');
       this.suggestionsEl.addClass('is-hidden');
     }, 200);
@@ -88,7 +93,7 @@ class AutocompleteComponent {
 
   private onKeyDown = (e: KeyboardEvent) => {
     const suggestions = Array.from(this.suggestionsEl.children).filter(
-      (child): child is HTMLElement => child instanceof HTMLElement
+      (child): child is HTMLElement => child.instanceOf(HTMLElement)
     );
     if (suggestions.length === 0 && e.key !== 'Enter' && e.key !== 'Escape') return;
 
@@ -139,8 +144,8 @@ class AutocompleteComponent {
     this.activeSuggestionIndex = -1;
 
     if (suggestions.length > 0) {
-      suggestions.forEach((item, idx) => {
-        const div = document.createElement('div');
+      suggestions.forEach((item, _idx) => {
+        const div = this.suggestionsEl.ownerDocument.createElement('div');
         div.textContent = item;
         div.classList.add('autocomplete-suggestion-item');
 
@@ -239,7 +244,7 @@ export class InsightConfigModal extends Modal {
       // Cast to legacy config for safe migration
       const legacyConfig = migratedConfig as unknown as LegacyInsightsConfig;
 
-      Object.entries(legacyConfig.insightGroups).forEach(([groupName, group]) => {
+      Object.entries(legacyConfig.insightGroups).forEach(([_groupName, group]) => {
         if (group) {
           // Safely add persona if missing
           if (group.persona === undefined) {
@@ -357,7 +362,7 @@ export class InsightConfigModal extends Modal {
     const groupContainer = container.createDiv({ cls: 'insight-group-setting' });
     groupContainer.toggleClass('is-expanded', isExpanded);
 
-    groupContainer.addEventListener('click', evt => {
+    groupContainer.addEventListener('click', _evt => {
       // Only expand if collapsed. Collapsing is handled by the header's click listener.
       if (!isExpanded) {
         this.expandedGroupName = currentGroupName;
@@ -389,7 +394,7 @@ export class InsightConfigModal extends Modal {
             return;
           }
           if (this.config.insightGroups[newNameTrimmed]) {
-            new Notice(t('chrono.ui.errors.groupExists', { name: newNameTrimmed }));
+            showNotice(t('chrono.ui.errors.groupExists', { name: newNameTrimmed }));
             text.inputEl.value = currentGroupName;
             return;
           }
@@ -651,9 +656,9 @@ export class FolderSuggestModal extends SuggestModal<TFolder> {
       );
   }
   renderSuggestion(folder: TFolder, el: HTMLElement) {
-    el.createEl('div', { text: folder.path });
+    el.createDiv({ text: folder.path });
   }
-  onChooseSuggestion(folder: TFolder, evt: MouseEvent | KeyboardEvent) {
+  onChooseSuggestion(folder: TFolder, _evt: MouseEvent | KeyboardEvent) {
     this.onChoose(folder);
   }
 }

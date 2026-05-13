@@ -1,3 +1,4 @@
+import { showNotice } from '../../../utils/showNotice';
 /**
  * @file BulkCategorizeModal.ts
  * @brief Modal dialog for bulk categorizing events in local calendars.
@@ -24,7 +25,7 @@
  * @public
  */
 
-import { App, Modal, Notice, Setting, TextComponent } from 'obsidian';
+import { App, Modal, Setting, TextComponent } from 'obsidian';
 import { t } from '../../i18n/i18n';
 
 // This modal presents the 3 bulk-update choices to the user.
@@ -91,7 +92,7 @@ export class BulkCategorizeModal extends Modal {
           .onClick(() => {
             const categoryValue = textInput.getValue().trim();
             if (categoryValue === '') {
-              new Notice(t('modals.bulkCategorize.forcedDefault.errorEmpty'));
+              showNotice(t('modals.bulkCategorize.forcedDefault.errorEmpty'));
               return;
             }
             this.onSubmit('force_default', categoryValue);

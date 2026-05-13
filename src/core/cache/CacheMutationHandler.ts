@@ -1,6 +1,7 @@
+import { showNotice } from '../../utils/showNotice';
 import { PluginState } from '../PluginState';
 import { OFCEvent } from '../../types';
-import { Notice } from 'obsidian';
+
 import { t } from '../../features/i18n/i18n';
 import { CacheEntry } from './types';
 import { CalendarProvider } from '../../providers/Provider';
@@ -65,17 +66,17 @@ export class CacheMutationHandler {
     }
     const calendarInfo = PluginState.getProviderRegistry().getSource(calendarId);
     if (!calendarInfo) {
-      new Notice(t('eventCache.calendarNotFound', { calendarId }));
+      showNotice(t('eventCache.calendarNotFound', { calendarId }));
       return false;
     }
     const capabilities = PluginState.getProviderRegistry().getCapabilities(calendarId);
     if (!capabilities) {
-      new Notice(t('eventCache.providerNotFound', { type: calendarInfo.type }));
+      showNotice(t('eventCache.providerNotFound', { type: calendarInfo.type }));
       return false;
     }
 
     if (!capabilities.canCreate) {
-      new Notice(t('eventCache.readOnly'));
+      showNotice(t('eventCache.readOnly'));
       return false;
     }
 
@@ -156,7 +157,7 @@ export class CacheMutationHandler {
         this.ctx.flushUpdateQueue([optimisticId], []);
       }
 
-      new Notice(t('eventCache.createFailed'));
+      showNotice(t('eventCache.createFailed'));
       return false;
     }
   }
@@ -245,7 +246,7 @@ export class CacheMutationHandler {
         this.ctx.flushUpdateQueue([], [cacheEntry]);
       }
 
-      new Notice(t('eventCache.deleteFailed'));
+      showNotice(t('eventCache.deleteFailed'));
       throw e;
     }
   }
@@ -396,7 +397,7 @@ export class CacheMutationHandler {
           this.ctx.flushUpdateQueue([eventId], [originalCacheEntry]);
         }
 
-        new Notice(t('eventCache.updateFailed'));
+        showNotice(t('eventCache.updateFailed'));
         return false;
       }
     } finally {
@@ -436,7 +437,7 @@ export class CacheMutationHandler {
       await recordMilestoneAction('moved', newCalendarId);
     } catch (e) {
       console.error('Failed to delete event from old calendar after moving it.', e);
-      new Notice(t('eventCache.movePartialSuccess'));
+      showNotice(t('eventCache.movePartialSuccess'));
       throw e;
     }
   }

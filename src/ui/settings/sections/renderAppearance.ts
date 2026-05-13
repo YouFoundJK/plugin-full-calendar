@@ -22,7 +22,7 @@ const WEEKDAYS_KEYS = [
 
 export function renderAppearanceSettings(
   containerEl: HTMLElement,
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   rerender: () => void
 ): void {
   new Setting(containerEl)

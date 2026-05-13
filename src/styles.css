@@ -63,7 +63,7 @@
 
 .event-details-content {
   flex-grow: 1;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .event-details-content.description {
@@ -545,3 +545,31 @@
   cursor: not-allowed;
 }
 
+/* Settings Search & Tabs */
+.full-calendar-settings-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.full-calendar-settings-search-wrap-style {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.full-calendar-settings-search-button-style {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 4px;
+  background-color: var(--background-secondary-alt);
+}
+
+.full-calendar-settings-search-input-style {
+  width: 100%;
+  padding: 6px 28px 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+}

@@ -1,3 +1,4 @@
+/* global console */
 const mockPropfindResponse = `
       <d:multistatus xmlns:d="DAV:">
         <d:response>

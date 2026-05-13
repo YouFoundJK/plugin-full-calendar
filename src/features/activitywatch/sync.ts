@@ -1,6 +1,7 @@
+import { showNotice } from '../../utils/showNotice';
 import { PluginState } from '../../core/PluginState';
 import FullCalendarPlugin from '../../main';
-import { Notice, requestUrl } from 'obsidian';
+import { requestUrl } from 'obsidian';
 import { t } from '../i18n/i18n';
 import { AWBucket } from './api';
 import { SeedState } from './fsm';
@@ -44,14 +45,14 @@ export async function syncActivityWatch(
 
   if (!isActivityWatchSyncAllowed(settings, options)) return;
   if (!settings.targetCalendarId) {
-    new Notice(t('settings.activityWatch.sync.targetNotSet'));
+    showNotice(t('settings.activityWatch.sync.targetNotSet'));
     return;
   }
 
   const calendarInstance = PluginState.getProviderRegistry().getInstance(settings.targetCalendarId);
   if (!calendarInstance || !calendarInstance.getCapabilities()?.canCreate) {
     if (!options?.suppressNotices) {
-      new Notice(
+      showNotice(
         t('settings.activityWatch.sync.targetNotFoundOrReadOnly', {
           calendarId: settings.targetCalendarId
         })
@@ -61,7 +62,7 @@ export async function syncActivityWatch(
   }
 
   if (!options?.suppressNotices) {
-    new Notice(t('settings.activityWatch.sync.fetchingData'));
+    showNotice(t('settings.activityWatch.sync.fetchingData'));
   }
 
   try {
@@ -223,7 +224,7 @@ export async function syncActivityWatch(
         }
 
         if (Date.now() - lastYieldTime > 16) {
-          await new Promise(r => setTimeout(r, 0));
+          await new Promise(r => window.setTimeout(r, 0));
           lastYieldTime = Date.now();
         }
       }
@@ -236,17 +237,17 @@ export async function syncActivityWatch(
     }
 
     if (!options?.suppressNotices) {
-      new Notice(t('settings.activityWatch.sync.addedEvents', { count: addedCount.toString() }));
+      showNotice(t('settings.activityWatch.sync.addedEvents', { count: addedCount.toString() }));
     }
   } catch (err: unknown) {
     if (err instanceof Error) {
       if (!options?.suppressNotices) {
-        new Notice(t('settings.activityWatch.sync.failedWithError', { message: err.message }));
+        showNotice(t('settings.activityWatch.sync.failedWithError', { message: err.message }));
       }
       console.error('ActivityWatch sync error:', err);
     } else {
       if (!options?.suppressNotices) {
-        new Notice(t('settings.activityWatch.sync.failed'));
+        showNotice(t('settings.activityWatch.sync.failed'));
       }
     }
   }

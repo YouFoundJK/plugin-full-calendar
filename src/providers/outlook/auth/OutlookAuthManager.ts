@@ -1,4 +1,5 @@
-import { requestUrl, Notice } from 'obsidian';
+import { showNotice } from '../../../utils/showNotice';
+import { requestUrl } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { PluginState } from '../../../core/PluginState';
 import { CalendarInfo } from '../../../types';
@@ -31,7 +32,7 @@ export class OutlookAuthManager {
 
     const { proxyBaseUrl, isCustom } = resolveOutlookAuthConfig(PluginState.getSettings());
     if (isCustom && !proxyBaseUrl) {
-      new Notice(t('outlook.auth.proxyMissing'));
+      showNotice(t('outlook.auth.proxyMissing'));
       return null;
     }
 
@@ -61,7 +62,7 @@ export class OutlookAuthManager {
         account.refreshToken = null;
         account.expiryDate = null;
         await PluginState.saveSettings();
-        new Notice(t('outlook.auth.expired'));
+        showNotice(t('outlook.auth.expired'));
       }
       return null;
     } catch (error) {
@@ -72,7 +73,7 @@ export class OutlookAuthManager {
 
   public async getTokenForSource(source: OutlookCalendarInfo): Promise<string | null> {
     if (!source.microsoftAccountId) {
-      new Notice(t('outlook.auth.authFailed'));
+      showNotice(t('outlook.auth.authFailed'));
       return null;
     }
 

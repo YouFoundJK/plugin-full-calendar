@@ -68,13 +68,10 @@ interface CreateOptions {
 function safeCreateEl(element: HTMLElement, tag: string, options?: CreateOptions): HTMLElement {
   const maybe = element as Partial<ObsidianHTMLElement>;
   if (typeof maybe.createEl === 'function') {
-    return maybe.createEl(
-      tag as keyof HTMLElementTagNameMap,
-      options as CreateOptions
-    ) as HTMLElement;
+    return maybe.createEl(tag as keyof HTMLElementTagNameMap, options) as HTMLElement;
   }
 
-  const newEl = document.createElement(tag);
+  const newEl = element.ownerDocument.createElement(tag);
   if (options) {
     if (options.cls) newEl.className = options.cls;
     if (options.text) newEl.textContent = options.text;
@@ -167,8 +164,11 @@ export function renderChartMessage(rootEl: HTMLElement, message: string) {
   safeCreateEl(mainChartEl, 'p', { cls: 'chart-message', text: message });
 }
 
-function getThemedLayout(chartLayout: Partial<Plotly.Layout>): Partial<Plotly.Layout> {
-  const isDarkMode = document.body.classList.contains('theme-dark');
+function getThemedLayout(
+  chartLayout: Partial<Plotly.Layout>,
+  ownerDocument: Document
+): Partial<Plotly.Layout> {
+  const isDarkMode = ownerDocument.body.classList.contains('theme-dark');
   const theme = isDarkMode ? PLOTLY_DARK_THEME : PLOTLY_LIGHT_THEME;
   return { ...PLOTLY_BASE_LAYOUT, ...theme, ...chartLayout };
 }
@@ -179,7 +179,7 @@ function plotChart(
   layout: Partial<Plotly.Layout>,
   useReact: boolean
 ) {
-  const finalLayout = getThemedLayout(layout);
+  const finalLayout = getThemedLayout(layout, mainChartEl.ownerDocument);
   if (useReact) {
     void Plotly.react(mainChartEl, data, finalLayout, { responsive: true });
   } else {
@@ -236,8 +236,9 @@ export function renderPieChartDisplay(
     const point = points?.[0];
     if (!point || point.label === undefined) return;
     const categoryName = String(point.label);
-    if (pieData.recordsByCategory.has(categoryName)) {
-      showDetailPopup(categoryName, pieData.recordsByCategory.get(categoryName)!, {
+    const recordsForCategory = pieData.recordsByCategory.get(categoryName);
+    if (recordsForCategory) {
+      showDetailPopup(categoryName, recordsForCategory, {
         type: 'pie',
         value: typeof point.value === 'number' ? point.value : Number(point.value) || null
       });
@@ -281,7 +282,7 @@ export function renderSunburstChartDisplay(
       branchvalues: 'total',
       hoverinfo: 'text'
       // Note: insidetextorientation property exists in Plotly but not in TypeScript types
-    } as Plotly.PlotData
+    }
   ];
 
   const layout: Partial<Plotly.Layout> = {
@@ -299,8 +300,9 @@ export function renderSunburstChartDisplay(
     const points = (eventData as PlotlyEvent)?.points;
     const point = points?.[0];
     if (!point || point.id === undefined || point.label === undefined) return;
-    if (sunburstData.recordsByLabel.has(String(point.id))) {
-      showDetailPopup(String(point.label), sunburstData.recordsByLabel.get(String(point.id))!, {
+    const recordsForPoint = sunburstData.recordsByLabel.get(String(point.id));
+    if (recordsForPoint) {
+      showDetailPopup(String(point.label), recordsForPoint, {
         type: 'sunburst',
         value: typeof point.value === 'number' ? point.value : Number(point.value) || null
       });
@@ -345,14 +347,15 @@ export function renderTimeSeriesChart(
 
     let periodKey: string | null;
     if (granularity === 'daily') periodKey = Utils.getISODate(record.date);
-    else if (granularity === 'weekly')
+    else if (granularity === 'weekly') {
       periodKey = Utils.getISODate(Utils.getWeekStartDate(record.date));
-    else periodKey = Utils.getISODate(Utils.getMonthStartDate(record.date));
+    } else periodKey = Utils.getISODate(Utils.getMonthStartDate(record.date));
 
     if (!periodKey) return;
 
     if (!dataByPeriod.has(periodKey)) dataByPeriod.set(periodKey, { total: 0, categories: {} });
-    const periodData = dataByPeriod.get(periodKey)!;
+    const periodData = dataByPeriod.get(periodKey);
+    if (!periodData) return;
     periodData.total += value;
 
     if (chartType === 'stackedArea') {
@@ -374,7 +377,7 @@ export function renderTimeSeriesChart(
   if (chartType === 'line') {
     traces.push({
       x: sortedPeriods,
-      y: sortedPeriods.map(p => Number(dataByPeriod.get(p)!.total.toFixed(2))),
+      y: sortedPeriods.map(p => Number((dataByPeriod.get(p)?.total ?? 0).toFixed(2))),
       type: 'scatter',
       mode: 'lines+markers',
       name: metric === 'count' ? 'Total Events' : 'Total Hours'
@@ -382,7 +385,7 @@ export function renderTimeSeriesChart(
   } else {
     const allCategories = new Set<string>();
     sortedPeriods.forEach(p =>
-      Object.keys(dataByPeriod.get(p)!.categories).forEach(cat => allCategories.add(cat))
+      Object.keys(dataByPeriod.get(p)?.categories ?? {}).forEach(cat => allCategories.add(cat))
     );
 
     Array.from(allCategories)
@@ -391,7 +394,7 @@ export function renderTimeSeriesChart(
         traces.push({
           x: sortedPeriods,
           y: sortedPeriods.map(p =>
-            Number((dataByPeriod.get(p)!.categories[category] || 0).toFixed(2))
+            Number((dataByPeriod.get(p)?.categories[category] || 0).toFixed(2))
           ),
           type: 'scatter',
           mode: 'lines',
@@ -413,7 +416,7 @@ export function renderTimeSeriesChart(
     margin: { t: 50, b: 80, l: 60, r: 30 },
     hovermode: 'x unified'
   };
-  plotChart(mainChartEl, traces as Plotly.Data[], layout, useReact);
+  plotChart(mainChartEl, traces, layout, useReact);
 }
 
 export function renderActivityPatternChart(
@@ -537,7 +540,7 @@ export function renderActivityPatternChart(
     if (!plotData.length) return true;
     const firstData = plotData[0];
     if (plotType === 'heatmap' && firstData && 'z' in firstData && Array.isArray(firstData.z)) {
-      const zData = firstData.z as Array<Array<string | null>>;
+      const zData = firstData.z as (string | null)[][];
       return zData.flat().every(val => val === null);
     }
     return false;
@@ -547,7 +550,7 @@ export function renderActivityPatternChart(
     renderChartMessage(rootEl, `No data to plot for ${analysisTypeName}.`);
     return;
   }
-  plotChart(mainChartEl, data as Plotly.Data[], layout, useReact);
+  plotChart(mainChartEl, data, layout, useReact);
 
   setupPlotlyEvents(mainChartEl, 'plotly_click', (eventData: unknown) => {
     const points = (eventData as PlotlyEvent)?.points;
@@ -589,8 +592,9 @@ export function renderActivityPatternChart(
         clickedDayIndex === -1 ||
         !clickedValue ||
         clickedValue === 0
-      )
+      ) {
         return;
+      }
       const nextHour = (clickedHour + 1) % 24;
       categoryNameForPopup = `Activity: ${point.y}, ${String(clickedHour).padStart(2, '0')}:00 - ${String(nextHour).padStart(2, '0')}:00`;
       recordsForPopup = filteredRecords.filter(r => {
@@ -613,7 +617,7 @@ export function renderActivityPatternChart(
 export function renderErrorLog(
   rootEl: HTMLElement,
   processingErrors: ProcessingError[],
-  recordsCount: number
+  _recordsCount: number
 ) {
   const errorLogContainer = rootEl.querySelector<HTMLElement>('#errorLogContainer');
   const errorLogSummary = rootEl.querySelector<HTMLElement>('#errorLogSummary');
@@ -643,11 +647,13 @@ export function renderErrorLog(
     summary.textContent = `⚠️ ${err.file || 'Unknown file'}`;
 
     safeCreateEl(content, 'strong', { text: 'Path: ' });
-    content.appendChild(document.createTextNode(err.path || 'N/A'));
+    content.appendChild(content.ownerDocument.createTextNode(err.path || 'N/A'));
     safeCreateEl(content, 'br');
 
     safeCreateEl(content, 'strong', { text: 'Reason: ' });
-    content.appendChild(document.createTextNode(err.reason || 'No specific reason provided.'));
+    content.appendChild(
+      content.ownerDocument.createTextNode(err.reason || 'No specific reason provided.')
+    );
   });
   errorLogContainer.removeClass('is-hidden');
   errorLogContainer.addClass('is-visible');

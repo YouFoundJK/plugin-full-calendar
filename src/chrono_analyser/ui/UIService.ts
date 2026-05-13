@@ -135,13 +135,21 @@ export class UIService {
     this.insightsConfig = PluginState.getSettings().chrono_analyser_config || null;
   }
 
+  private requireElement<T extends Element>(selector: string): T {
+    const element = this.rootEl.querySelector<T>(selector);
+    if (!element) {
+      throw new Error(`Chrono Analyzer UI element not found: ${selector}`);
+    }
+    return element;
+  }
+
   public setControlPanelState(payload: FilterPayload) {
     // Clear inputs first
-    this.rootEl.querySelector<HTMLInputElement>('#hierarchyFilterInput')!.value = '';
-    this.rootEl.querySelector<HTMLInputElement>('#projectFilterInput')!.value = '';
-    this.rootEl.querySelector<HTMLInputElement>('#patternInput')!.value = '';
+    this.requireElement<HTMLInputElement>('#hierarchyFilterInput').value = '';
+    this.requireElement<HTMLInputElement>('#projectFilterInput').value = '';
+    this.requireElement<HTMLInputElement>('#patternInput').value = '';
     // Default metric to duration if not specified
-    this.rootEl.querySelector<HTMLSelectElement>('#metricSelect')!.value = 'duration';
+    this.requireElement<HTMLSelectElement>('#metricSelect').value = 'duration';
 
     for (const key in payload) {
       if (key === 'dateRangePicker') {
@@ -184,7 +192,7 @@ export class UIService {
       const loadingContainer: HTMLElement = container.createDiv
         ? container.createDiv({ cls: 'loading-container' })
         : (() => {
-            const div = document.createElement('div');
+            const div = container.ownerDocument.createElement('div');
             div.className = 'loading-container';
             resultContainer.appendChild(div);
             return div;
@@ -198,10 +206,10 @@ export class UIService {
         maybeCreateDiv.call(loadingContainer, { cls: 'loading-spinner' });
         maybeCreateDiv.call(loadingContainer, { text: 'Analyzing your data...' });
       } else {
-        const spinner = document.createElement('div');
+        const spinner = container.ownerDocument.createElement('div');
         spinner.className = 'loading-spinner';
         loadingContainer.appendChild(spinner);
-        const text = document.createElement('div');
+        const text = container.ownerDocument.createElement('div');
         text.textContent = 'Analyzing your data...';
         loadingContainer.appendChild(text);
       }
@@ -228,7 +236,7 @@ export class UIService {
     recordsList: TimeRecord[],
     context: { type?: ChartType; value?: number | null } = {}
   ) => {
-    this.detailPopup.show(categoryName, recordsList, context as Record<string, unknown>);
+    this.detailPopup.show(categoryName, recordsList, context);
   };
 
   public destroy(): void {
@@ -322,15 +330,13 @@ export class UIService {
   }
 
   public showMainContainers(): void {
-    this.rootEl.querySelector<HTMLElement>('#statsGrid')!.classList.remove('hidden-controls');
-    this.rootEl
-      .querySelector<HTMLElement>('#mainChartContainer')!
-      .classList.remove('hidden-controls');
+    this.requireElement<HTMLElement>('#statsGrid').classList.remove('hidden-controls');
+    this.requireElement<HTMLElement>('#mainChartContainer').classList.remove('hidden-controls');
   }
 
   public hideMainContainers(): void {
-    this.rootEl.querySelector<HTMLElement>('#statsGrid')!.classList.add('hidden-controls');
-    this.rootEl.querySelector<HTMLElement>('#mainChartContainer')!.classList.add('hidden-controls');
+    this.requireElement<HTMLElement>('#statsGrid').classList.add('hidden-controls');
+    this.requireElement<HTMLElement>('#mainChartContainer').classList.add('hidden-controls');
   }
 
   private setupEventListeners = () => {
@@ -394,7 +400,7 @@ export class UIService {
       ?.addEventListener('change', this.onFilterChange);
   };
 
-  public saveState = (lastFolderPath: string | null) => {
+  public saveState = (_lastFolderPath: string | null) => {
     const getElValue = (id: string) =>
       this.rootEl.querySelector<HTMLInputElement | HTMLSelectElement>(`#${id}`)?.value;
     const state: Record<string, unknown> = {
@@ -420,7 +426,7 @@ export class UIService {
     }
     this.app.saveLocalStorage(
       this.uiStateKey,
-      JSON.stringify(Object.fromEntries(Object.entries(state).filter(([_, v]) => v != null)))
+      JSON.stringify(Object.fromEntries(Object.entries(state).filter(([_, v]) => v !== null)))
     );
   };
 
@@ -431,7 +437,7 @@ export class UIService {
       if (!parsed || typeof parsed !== 'object') {
         return null;
       }
-      return parsed as Partial<PersistedUIState>;
+      return parsed;
     } catch (error) {
       console.error('[ChronoAnalyzer] Error loading UI state:', error);
       return null;
@@ -467,7 +473,7 @@ export class UIService {
     const endDate = asString(state.endDate);
     if (startDate && endDate && this.flatpickrInstance) {
       const dateRange: [string, string] = [startDate, endDate];
-      setTimeout(() => this.flatpickrInstance?.setDate(dateRange, false), 0);
+      window.setTimeout(() => this.flatpickrInstance?.setDate(dateRange, false), 0);
     }
     setVal('levelSelect_pie', state.levelSelect_pie);
     setVal('levelSelect', state.levelSelect);
@@ -607,7 +613,7 @@ export class UIService {
       if (!this.proTipTextEl) return;
       this.proTipTextEl.removeClass('is-opaque');
       this.proTipTextEl.addClass('is-transparent');
-      setTimeout(() => {
+      window.setTimeout(() => {
         if (!this.proTipTextEl) return;
         this.currentTipIndex = (this.currentTipIndex + 1) % this.proTips.length;
         this.proTipTextEl.textContent = this.proTips[this.currentTipIndex];

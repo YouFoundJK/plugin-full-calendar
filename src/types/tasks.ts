@@ -38,9 +38,8 @@ export const toggleTask = (event: OFCEvent, isDone: boolean): OFCEvent => {
   if (event.type === 'single') {
     if (isDone) {
       return { ...event, completed: DateTime.now().toISO() };
-    } else {
-      return { ...event, completed: false };
     }
+    return { ...event, completed: false };
   }
 
   if (event.type === 'recurring' || event.type === 'rrule') {

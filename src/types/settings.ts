@@ -257,7 +257,7 @@ export const DEFAULT_SETTINGS: FullCalendarSettings = {
 
 // Utility functions for workspace management
 export function generateWorkspaceId(): string {
-  return 'workspace_' + Math.random().toString(36).slice(2, 11);
+  return `workspace_${Math.random().toString(36).slice(2, 11)}`;
 }
 
 export function createDefaultWorkspace(name: string): WorkspaceSettings {

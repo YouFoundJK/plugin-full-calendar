@@ -1,4 +1,5 @@
-import { Notice } from 'obsidian';
+import { showNotice } from '../../utils/showNotice';
+
 import { DateTime } from 'luxon';
 import { EventApi, EventClickArg } from '@fullcalendar/core';
 import { PluginState } from '../../core/PluginState';
@@ -90,7 +91,7 @@ export class ViewEventInteractionHandler {
     } catch (e) {
       if (e instanceof Error) {
         console.warn(e);
-        new Notice(e.message);
+        showNotice(e.message);
       }
     }
   }
@@ -121,7 +122,7 @@ export class ViewEventInteractionHandler {
     } catch (e) {
       if (e instanceof Error) {
         console.error(e);
-        new Notice(e.message);
+        showNotice(e.message);
       }
     }
   }
@@ -142,7 +143,7 @@ export class ViewEventInteractionHandler {
         const newDate = newEvent.start ? DateTime.fromJSDate(newEvent.start).toISODate() : null;
 
         if (oldDate && newDate && oldDate !== newDate) {
-          new Notice(t('ui.view.errors.moveRecurringDayError'), 6000);
+          showNotice(t('ui.view.errors.moveRecurringDayError'), 6000);
           return false;
         }
       }
@@ -152,7 +153,7 @@ export class ViewEventInteractionHandler {
         const newDate = newEvent.start ? DateTime.fromJSDate(newEvent.start).toISODate() : null;
 
         if (oldDate && newDate && oldDate !== newDate) {
-          new Notice(t('ui.view.errors.moveRecurringInstanceError'), 6000);
+          showNotice(t('ui.view.errors.moveRecurringInstanceError'), 6000);
           return false;
         }
 
@@ -173,19 +174,18 @@ export class ViewEventInteractionHandler {
           modifiedEvent
         );
         return true;
-      } else {
-        const didModify = await PluginState.getCache().updateEventWithId(
-          oldEvent.id,
-          fromEventApi(newEvent, PluginState.getSettings(), newResource)
-        );
-        return !!didModify;
       }
+      const didModify = await PluginState.getCache().updateEventWithId(
+        oldEvent.id,
+        fromEventApi(newEvent, PluginState.getSettings(), newResource)
+      );
+      return !!didModify;
     } catch (e: unknown) {
       console.error(e);
       if (e instanceof Error) {
-        new Notice(e.message);
+        showNotice(e.message);
       } else {
-        new Notice(t('ui.view.errors.modifyEventFailed'));
+        showNotice(t('ui.view.errors.modifyEventFailed'));
       }
       return false;
     }
@@ -248,7 +248,7 @@ export class ViewEventInteractionHandler {
       return true;
     } catch (e) {
       if (e instanceof Error) {
-        new Notice(e.message);
+        showNotice(e.message);
       }
       return false;
     }
@@ -262,12 +262,12 @@ export class ViewEventInteractionHandler {
 
       const validation = await PluginState.getCache().validateTaskSchedule(taskId, date);
       if (!validation.isValid) {
-        new Notice(validation.reason || 'This task cannot be scheduled on this date.');
+        showNotice(validation.reason || 'This task cannot be scheduled on this date.');
         return;
       }
 
       await PluginState.getCache().scheduleTask(taskId, date);
-      new Notice(t('ui.view.success.taskScheduled'));
+      showNotice(t('ui.view.success.taskScheduled'));
 
       const backlogLeaves = this.ctx.app.workspace.getLeavesOfType(TASKS_BACKLOG_VIEW_TYPE);
       for (const leaf of backlogLeaves) {
@@ -280,7 +280,7 @@ export class ViewEventInteractionHandler {
     } catch (error) {
       console.error('Failed to schedule task:', error);
       const message = error instanceof Error ? error.message : 'Unknown error occurred';
-      new Notice(t('ui.view.errors.taskScheduleFailed', { message }));
+      showNotice(t('ui.view.errors.taskScheduleFailed', { message }));
     }
   }
 }

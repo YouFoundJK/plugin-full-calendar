@@ -1,10 +1,11 @@
-import { Menu, Notice } from 'obsidian';
+import { showNotice } from '../../utils/showNotice';
+import { Menu } from 'obsidian';
 import { PluginState } from '../../core/PluginState';
 import { t } from '../../features/i18n/i18n';
 import { ViewContext } from './ViewContext';
 
 export class ViewUIHandler {
-  private workspaceSwitchTimeout: ReturnType<typeof setTimeout> | null = null;
+  private workspaceSwitchTimeout: number | null = null;
 
   constructor(private ctx: ViewContext) {}
 
@@ -17,7 +18,7 @@ export class ViewUIHandler {
     const maxLength = PluginState.isMobile() ? 8 : 12;
     const name =
       activeWorkspace.name.length > maxLength
-        ? activeWorkspace.name.substring(0, maxLength) + '...'
+        ? `${activeWorkspace.name.substring(0, maxLength)}...`
         : activeWorkspace.name;
 
     return `${name} ▾`;
@@ -63,19 +64,19 @@ export class ViewUIHandler {
 
   public async switchToWorkspace(workspaceId: string | null) {
     if (this.workspaceSwitchTimeout) {
-      clearTimeout(this.workspaceSwitchTimeout);
+      window.clearTimeout(this.workspaceSwitchTimeout);
     }
     PluginState.getSettings().activeWorkspace = workspaceId;
     await PluginState.saveSettings();
 
-    this.workspaceSwitchTimeout = setTimeout(() => {
+    this.workspaceSwitchTimeout = window.setTimeout(() => {
       void this.ctx.refreshView();
     }, 100);
   }
 
   public async activateChronoAnalyser(): Promise<void> {
     if (PluginState.isMobile()) {
-      new Notice(t('ui.view.errors.chronoAnalyserDesktopOnly'));
+      showNotice(t('ui.view.errors.chronoAnalyserDesktopOnly'));
       return;
     }
     try {
@@ -83,7 +84,7 @@ export class ViewUIHandler {
       await activateAnalysisView(this.ctx.app);
     } catch (err) {
       console.error('Full Calendar: Failed to activate Chrono Analyser view', err);
-      new Notice(t('ui.view.errors.chronoAnalyserFailed'));
+      showNotice(t('ui.view.errors.chronoAnalyserFailed'));
     }
   }
 }

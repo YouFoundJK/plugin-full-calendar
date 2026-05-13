@@ -156,12 +156,12 @@ export class TasksBacklogView extends ItemView {
     const container = this.containerEl;
     container.empty();
 
-    container.createEl('div', {
+    container.createDiv({
       text: 'No tasks calendar configured.',
       attr: { class: 'tasks-backlog-empty' }
     });
 
-    container.createEl('div', {
+    container.createDiv({
       text: 'Add a tasks calendar source to use the backlog view.',
       attr: { class: 'tasks-backlog-help' }
     });
@@ -178,8 +178,8 @@ export class TasksBacklogView extends ItemView {
     container.addClass('tasks-backlog-view');
 
     // Header
-    const header = container.createEl('div', { cls: 'tasks-backlog-header' });
-    const headerTitleRow = header.createEl('div', { cls: 'tasks-backlog-title-row' });
+    const header = container.createDiv({ cls: 'tasks-backlog-header' });
+    const headerTitleRow = header.createDiv({ cls: 'tasks-backlog-title-row' });
     headerTitleRow.createEl('h3', { text: 'Tasks backlog' });
     this.renderDateTargetSelector(headerTitleRow);
     this.renderSearchBar(header);
@@ -188,7 +188,7 @@ export class TasksBacklogView extends ItemView {
       const countText = this.searchQuery.trim()
         ? `${this.filteredTasks.length} of ${this.undatedTasks.length} ${this.getBacklogCountLabel()}`
         : `${this.undatedTasks.length} ${this.getBacklogCountLabel()}`;
-      header.createEl('div', {
+      header.createDiv({
         text: countText,
         cls: 'tasks-backlog-count'
       });
@@ -230,27 +230,27 @@ export class TasksBacklogView extends ItemView {
    * Renders the empty state when there are no undated tasks.
    */
   private renderEmptyState(container: HTMLElement): void {
-    const emptyState = container.createEl('div', { cls: 'tasks-backlog-empty' });
+    const emptyState = container.createDiv({ cls: 'tasks-backlog-empty' });
     if (this.undatedTasks.length > 0 && this.searchQuery.trim()) {
-      emptyState.createEl('div', {
+      emptyState.createDiv({
         text: `No tasks matched "${this.searchQuery}" for missing ${this.getBacklogDateTargetLabel()}.`
       });
-      emptyState.createEl('div', {
+      emptyState.createDiv({
         text: 'Try fewer keywords or search by part of the task title or file path.',
         cls: 'tasks-backlog-help'
       });
       return;
     }
 
-    emptyState.createEl('div', { text: `No tasks missing ${this.getBacklogDateTargetLabel()}.` });
-    emptyState.createEl('div', {
+    emptyState.createDiv({ text: `No tasks missing ${this.getBacklogDateTargetLabel()}.` });
+    emptyState.createDiv({
       text: 'Change the backlog date field above to review a different task date marker.',
       cls: 'tasks-backlog-help'
     });
   }
 
   private renderSearchBar(container: HTMLElement): void {
-    const searchRow = container.createEl('div', { cls: 'tasks-backlog-search-row' });
+    const searchRow = container.createDiv({ cls: 'tasks-backlog-search-row' });
     const input = searchRow.createEl('input', {
       cls: 'tasks-backlog-search-input',
       attr: {
@@ -273,7 +273,7 @@ export class TasksBacklogView extends ItemView {
 
   private renderDateTargetSelector(container: HTMLElement): void {
     const wrapper = container.createEl('label', { cls: 'tasks-backlog-target' });
-    wrapper.createEl('span', { text: 'Missing date' });
+    wrapper.createSpan({ text: 'Missing date' });
 
     const select = wrapper.createEl('select', {
       cls: 'tasks-backlog-target-select',
@@ -335,10 +335,10 @@ export class TasksBacklogView extends ItemView {
    * Renders the list of tasks.
    */
   private renderTasksList(container: HTMLElement): void {
-    const tasksList = container.createEl('div', { cls: 'tasks-backlog-list' });
+    const tasksList = container.createDiv({ cls: 'tasks-backlog-list' });
 
     for (const task of this.displayedTasks) {
-      const taskItem = tasksList.createEl('div', {
+      const taskItem = tasksList.createDiv({
         cls: 'tasks-backlog-item',
         attr: {
           draggable: 'true',
@@ -355,7 +355,7 @@ export class TasksBacklogView extends ItemView {
       checkbox.disabled = true; // Read-only for now
 
       // Task title
-      const title = taskItem.createEl('span', {
+      const title = taskItem.createSpan({
         text: task.title,
         cls: 'tasks-backlog-title'
       });
@@ -364,7 +364,7 @@ export class TasksBacklogView extends ItemView {
       }
 
       // Task location info
-      taskItem.createEl('div', {
+      taskItem.createDiv({
         text: `${task.location.path}:${task.location.lineNumber}`,
         cls: 'tasks-backlog-location'
       });
@@ -389,7 +389,7 @@ export class TasksBacklogView extends ItemView {
 
     if (totalPages <= 1) return;
 
-    const pagination = container.createEl('div', { cls: 'tasks-backlog-pagination' });
+    const pagination = container.createDiv({ cls: 'tasks-backlog-pagination' });
 
     // Previous button
     const prevBtn = pagination.createEl('button', {
@@ -400,7 +400,7 @@ export class TasksBacklogView extends ItemView {
     prevBtn.addEventListener('click', () => this.goToPreviousPage());
 
     // Page info
-    pagination.createEl('span', {
+    pagination.createSpan({
       text: `Page ${this.currentPage} of ${totalPages}`,
       cls: 'tasks-backlog-page-info'
     });

@@ -33,7 +33,8 @@ import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesPr
 import { DailyNoteProviderConfig } from './typesDaily';
 import { DailyNoteConfigComponent } from './DailyNoteConfigComponent';
 
-const moment = obsidianMoment as unknown as typeof import('moment');
+type MomentFactory = typeof import('moment');
+const moment = obsidianMoment as unknown as MomentFactory;
 const METADATA_WAIT_TIMEOUT_MS = 1500;
 
 export type EditableEventResponse = [OFCEvent, EventLocation | null];
@@ -51,7 +52,7 @@ const waitForMetadataWithTimeout = async (
   try {
     return await Promise.race([
       app.waitForMetadata(file),
-      new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
+      new Promise<null>(resolve => window.setTimeout(() => resolve(null), timeoutMs))
     ]);
   } catch (error) {
     console.warn(
@@ -187,7 +188,7 @@ export class DailyNoteProvider
   public isFileRelevant(file: TFile): boolean {
     // Encapsulates the logic of checking the daily note folder.
     const { folder } = getDailyNoteSettings();
-    return folder ? file.path.startsWith(folder + '/') : true;
+    return folder ? file.path.startsWith(`${folder}/`) : true;
   }
 
   getCanonicalTitle(event: OFCEvent): string {
@@ -309,12 +310,18 @@ export class DailyNoteProvider
 
     const m = moment(event.date);
     let file = getDailyNote(m, getAllDailyNotes());
-    if (!file) file = await createDailyNote(m);
+    if (!file) {
+      const createdFile = await createDailyNote(m);
+      if (!createdFile) {
+        throw new Error(`Failed to create daily note for date ${event.date}.`);
+      }
+      file = createdFile;
+    }
 
     const eventToStore = await this._assignLocalUid(file, event);
 
     const metadata = await this.app.waitForMetadata(file);
-    const headingInfo = metadata.headings?.find(h => h.heading == this.source.heading);
+    const headingInfo = metadata.headings?.find(h => h.heading === this.source.heading);
 
     const lineNumber = await this.app.rewrite(file, (contents: string) => {
       const { page, lineNumber } = addToHeading(
@@ -330,7 +337,7 @@ export class DailyNoteProvider
 
   async updateEvent(
     handle: EventHandle,
-    oldEventData: OFCEvent,
+    _oldEventData: OFCEvent,
     newEventData: OFCEvent
   ): Promise<EventLocation | null> {
     if (newEventData.type !== 'single') {
@@ -356,7 +363,13 @@ export class DailyNoteProvider
     if (newEventData.date !== oldDate) {
       const m = moment(newEventData.date);
       let newFile = getDailyNote(m, getAllDailyNotes());
-      if (!newFile) newFile = await createDailyNote(m);
+      if (!newFile) {
+        const createdFile = await createDailyNote(m);
+        if (!createdFile) {
+          throw new Error(`Failed to create daily note for date ${newEventData.date}.`);
+        }
+        newFile = createdFile;
+      }
       const eventToStore = await this._assignLocalUid(newFile, { ...newEventData, uid: undefined });
 
       Object.assign(newEventData, eventToStore);
@@ -370,7 +383,7 @@ export class DailyNoteProvider
 
       // Second, add the event to the new file and get its line number.
       const metadata = await this.app.waitForMetadata(newFile);
-      const headingInfo = metadata.headings?.find(h => h.heading == this.source.heading);
+      const headingInfo = metadata.headings?.find(h => h.heading === this.source.heading);
       // if (!headingInfo) {
       //   throw new Error(
       //     `Could not find heading ${this.source.heading} in daily note ${newFile.path}.`
@@ -388,20 +401,19 @@ export class DailyNoteProvider
 
       // Finally, return the authoritative new location to the cache.
       return { file: newFile, lineNumber: newLn };
-    } else {
-      // It's in the same file, keep existing uid or generate one.
-      const eventToStore = await this._assignLocalUid(file, newEventData);
-
-      Object.assign(newEventData, eventToStore);
-      await this.app.rewrite(file, (contents: string) => {
-        const lines = contents.split('\n');
-        const newLine = modifyListItem(lines[lineNumber], eventToStore, PluginState.getSettings());
-        if (!newLine) throw new Error('Did not successfully update line.');
-        lines[lineNumber] = newLine;
-        return lines.join('\n');
-      });
-      return { file, lineNumber };
     }
+    // It's in the same file, keep existing uid or generate one.
+    const eventToStore = await this._assignLocalUid(file, newEventData);
+
+    Object.assign(newEventData, eventToStore);
+    await this.app.rewrite(file, (contents: string) => {
+      const lines = contents.split('\n');
+      const newLine = modifyListItem(lines[lineNumber], eventToStore, PluginState.getSettings());
+      if (!newLine) throw new Error('Did not successfully update line.');
+      lines[lineNumber] = newLine;
+      return lines.join('\n');
+    });
+    return { file, lineNumber };
   }
 
   async deleteEvent(handle: EventHandle): Promise<void> {
@@ -437,7 +449,7 @@ export class DailyNoteProvider
 
   createInstanceOverride(
     masterEvent: OFCEvent,
-    instanceDate: string,
+    _instanceDate: string,
     newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
     const masterLocalId = this.getEventHandle(masterEvent)?.persistentId;

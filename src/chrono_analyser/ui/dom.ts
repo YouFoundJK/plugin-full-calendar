@@ -32,7 +32,7 @@ export function createDOMStructure(rootEl: HTMLElement): void {
     attr: { id: 'proTipsPanel', title: t('chrono.analyser.clickNextTip') }
   });
   const proTipsContent = proTipsPanel.createDiv({ cls: 'pro-tips-content' });
-  proTipsContent.createEl('span', { cls: 'pro-tips-title', text: t('chrono.analyser.proTip') });
+  proTipsContent.createSpan({ cls: 'pro-tips-title', text: t('chrono.analyser.proTip') });
   proTipsContent.createEl('p', { attr: { id: 'proTipText' } });
   proTipsPanel.createDiv({ cls: 'pro-tips-nav', text: '›' });
 

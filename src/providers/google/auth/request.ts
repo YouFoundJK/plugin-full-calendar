@@ -59,7 +59,7 @@ export async function makeAuthenticatedRequest<T = unknown>(
       return true as unknown as T;
     }
 
-    return response.json as unknown as T;
+    return response.json as T;
   } catch (e: unknown) {
     const err = e as { status?: number; body?: unknown };
     console.error('Google API Request Failed:', {

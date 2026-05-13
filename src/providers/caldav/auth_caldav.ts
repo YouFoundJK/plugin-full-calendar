@@ -36,7 +36,7 @@ function base64FromBytes(bytes: number[]): string {
 
 function encodeBase64Utf8(value: string): string {
   const maybeBuffer = (
-    globalThis as unknown as {
+    window as unknown as {
       Buffer?: {
         from: (input: string, encoding?: string) => { toString: (enc: string) => string };
       };

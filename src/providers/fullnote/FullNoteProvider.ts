@@ -124,12 +124,12 @@ const getChangedFrontmatterFields = (
     }
   });
 
-  return changed as Partial<OFCEvent>;
+  return changed;
 };
 
 const SUFFIX_PATTERN = '-_-_-';
 
-const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<void> => new Promise(resolve => window.setTimeout(resolve, ms));
 const METADATA_WAIT_TIMEOUT_MS = 1500;
 
 const waitForFileAtPath = async (
@@ -161,7 +161,7 @@ const waitForMetadataWithTimeout = async (
   try {
     return await Promise.race([
       app.waitForMetadata(file),
-      new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
+      new Promise<null>(resolve => window.setTimeout(() => resolve(null), timeoutMs))
     ]);
   } catch (error) {
     console.warn(
@@ -270,7 +270,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
   public isFileRelevant(file: TFile): boolean {
     const directory = this.source.directory;
-    return !!directory && file.path.startsWith(directory + '/');
+    return !!directory && file.path.startsWith(`${directory}/`);
   }
 
   public async getEventsInFile(file: TFile): Promise<EditableEventResponse[]> {
@@ -296,7 +296,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
     return [[event, { file, lineNumber: undefined }]];
   }
 
-  async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
+  async getEvents(_range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
     const eventFolder = this.app.getAbstractFileByPath(this.source.directory);
     if (!eventFolder || !(eventFolder instanceof TFolder)) {
       throw new Error(`${this.source.directory} is not a valid directory.`);
@@ -378,7 +378,7 @@ export class FullNoteProvider implements CalendarProvider<FullNoteProviderConfig
 
   createInstanceOverride(
     masterEvent: OFCEvent,
-    instanceDate: string,
+    _instanceDate: string,
     newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
     const masterLocalId = this.getEventHandle(masterEvent)?.persistentId;

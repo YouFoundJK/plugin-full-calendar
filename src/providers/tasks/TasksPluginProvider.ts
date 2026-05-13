@@ -1,3 +1,4 @@
+import { showNotice } from '../../utils/showNotice';
 // src/providers/tasks/TasksPluginProvider.ts
 
 /**
@@ -14,7 +15,7 @@
  */
 
 import { PluginState } from '../../core/PluginState';
-import { TFile, Notice } from 'obsidian';
+import { TFile } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
@@ -155,7 +156,7 @@ function summarizeDebugValue(value: unknown): unknown {
   };
   const summary: Record<string, unknown> = {
     type: valueWithMethods.constructor?.name,
-    keys: Object.keys(value as Record<string, unknown>)
+    keys: Object.keys(value)
   };
 
   if (typeof valueWithMethods.toDate === 'function') {
@@ -283,7 +284,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     } catch (e) {
       if (e instanceof Error) {
         console.error('Error toggling task completion:', e);
-        new Notice(e.message);
+        showNotice(e.message);
       }
       // If an error occurs, we return false. The CalendarView will revert the checkbox.
       return false;
@@ -300,7 +301,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   private isTasksCacheWarm = false;
   private tasksPromise: Promise<void> | null = null;
   private tasksPromiseResolve: (() => void) | null = null;
-  private tasksCacheTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private tasksCacheTimeoutId: number | null = null;
   private isProcessingUpdate = false; // Singleton guard for live update
 
   readonly type = 'tasks';
@@ -365,7 +366,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   private clearTasksCacheTimeout(): void {
     if (this.tasksCacheTimeoutId) {
-      clearTimeout(this.tasksCacheTimeoutId);
+      window.clearTimeout(this.tasksCacheTimeoutId);
       this.tasksCacheTimeoutId = null;
     }
   }
@@ -410,7 +411,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
         trigger: (event: string, callback: (data: TasksCacheData) => void) => void;
       };
 
-      this.tasksCacheTimeoutId = setTimeout(() => {
+      this.tasksCacheTimeoutId = window.setTimeout(() => {
         if (!this.isTasksCacheWarm) {
           didTimeout = true;
           console.error(
@@ -625,7 +626,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   // DATA-SERVING METHODS (READ)
   // ====================================================================
 
-  async getEvents(range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
+  async getEvents(_range?: { start: Date; end: Date }): Promise<EditableEventResponse[]> {
     await this._ensureTasksCacheIsWarm();
     return this.allTasks
       .map(task => this._taskToOFCEvent(task))
@@ -744,22 +745,20 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
     if (originalMarkdown.match(dateRegex)) {
       return originalMarkdown.replace(dateRegex, newDateComponent);
-    } else {
-      // Otherwise, append it, being careful to preserve any block links (^uuid).
-      const blockLinkRegex = /(\s*\^[a-zA-Z0-9-]+)$/;
-      const blockLinkMatch = originalMarkdown.match(blockLinkRegex);
-      if (blockLinkMatch) {
-        const contentWithoutBlockLink = originalMarkdown.replace(blockLinkRegex, '');
-        return `${contentWithoutBlockLink.trim()} ${newDateComponent}${blockLinkMatch[1]}`;
-      } else {
-        return `${originalMarkdown.trim()} ${newDateComponent}`;
-      }
     }
+    // Otherwise, append it, being careful to preserve any block links (^uuid).
+    const blockLinkRegex = /(\s*\^[a-zA-Z0-9-]+)$/;
+    const blockLinkMatch = originalMarkdown.match(blockLinkRegex);
+    if (blockLinkMatch) {
+      const contentWithoutBlockLink = originalMarkdown.replace(blockLinkRegex, '');
+      return `${contentWithoutBlockLink.trim()} ${newDateComponent}${blockLinkMatch[1]}`;
+    }
+    return `${originalMarkdown.trim()} ${newDateComponent}`;
   }
 
   // --- REPLACE createEvent and updateEvent with new versions ---
-  createEvent(event: OFCEvent): Promise<EditableEventResponse> {
-    new Notice(t('notices.tasks.createViaPlugin'));
+  createEvent(_event: OFCEvent): Promise<EditableEventResponse> {
+    showNotice(t('notices.tasks.createViaPlugin'));
     return Promise.reject(
       new Error(
         'Full Calendar cannot create tasks directly. Please use the Tasks plugin modal or commands.'
@@ -769,7 +768,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
 
   async updateEvent(
     handle: EventHandle,
-    oldEvent: OFCEvent,
+    _oldEvent: OFCEvent,
     newEvent: OFCEvent
   ): Promise<EventLocation | null> {
     if (newEvent.type !== 'single' || !newEvent.date) {
@@ -779,7 +778,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     const newDate = DateTime.fromISO(newEvent.date).toJSDate();
     const validation = await this.canBeScheduledAt(newEvent, newDate);
     if (!validation.isValid) {
-      new Notice(validation.reason || t('notices.tasks.defaultValidation'));
+      showNotice(validation.reason || t('notices.tasks.defaultValidation'));
       throw new Error(validation.reason || 'This task cannot be scheduled on this date.');
     }
 
@@ -889,7 +888,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       !tasksApi &&
       PluginState.getSettings().tasksIntegration.openEditModalAfterBacklogDrop
     ) {
-      new Notice(t('notices.tasks.scheduledNoModal'));
+      showNotice(t('notices.tasks.scheduledNoModal'));
     }
   }
 
@@ -905,7 +904,7 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
       }
     ).plugins?.plugins?.['obsidian-tasks-plugin']?.apiV1;
     if (!tasksApi) {
-      new Notice(t('notices.tasks.apiUnavailable'));
+      showNotice(t('notices.tasks.apiUnavailable'));
       return;
     }
 
@@ -1022,9 +1021,9 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
   }
 
   createInstanceOverride(
-    masterEvent: OFCEvent,
-    instanceDate: string,
-    newEventData: OFCEvent
+    _masterEvent: OFCEvent,
+    _instanceDate: string,
+    _newEventData: OFCEvent
   ): Promise<EditableEventResponse> {
     return Promise.reject(new Error('Tasks provider does not support recurring event overrides.'));
   }

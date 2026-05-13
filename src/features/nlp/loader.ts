@@ -1,4 +1,4 @@
-import { App, normalizePath, requestUrl } from 'obsidian';
+import { App, normalizePath, requestUrl, getLanguage } from 'obsidian';
 import baseEnPayload from './payloads/en.json';
 import type { NLPPayload, NLPSupportedLanguage } from './types';
 
@@ -10,7 +10,7 @@ const inMemoryPayloadCache = new Map<NLPSupportedLanguage, NLPPayload>([
 
 function getObsidianLanguage(_app: App): string {
   try {
-    const language = window.localStorage.getItem('language');
+    const language = getLanguage();
     return typeof language === 'string' && language.length > 0 ? language : 'en';
   } catch {
     return 'en';

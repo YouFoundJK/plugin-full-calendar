@@ -2,7 +2,7 @@ import * as React from 'react';
 import { DateTime } from 'luxon';
 import FullCalendarPlugin from '../../main';
 import { PluginState } from '../../core/PluginState';
-import { CalendarInfo, EventLocation, OFCEvent, validateEvent } from '../../types';
+import { EventLocation, OFCEvent, validateEvent } from '../../types';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { CalendarProvider, CalendarProviderCapabilities, SyncKeyProvider } from '../Provider';
 import { EventHandle, FCReactComponent, ProviderConfigContext } from '../typesProvider';
@@ -50,16 +50,13 @@ const createOutlookConfigWrapper = (
     const plugin =
       pluginFromInstance || (props as OutlookConfigProps & { plugin?: FullCalendarPlugin }).plugin;
 
-    const forwardOnSave = props.onSave as (
-      configs: OutlookProviderConfig | OutlookProviderConfig[],
-      accountId?: string
-    ) => void;
+    const forwardOnSave = props.onSave;
 
     const handleSave = (
-      selectedConfigs: Array<{ id: string; name: string; color: string }>,
-      accountId: string
+      selectedConfigs: { id: string; name: string; color: string }[],
+      _accountId: string
     ) => {
-      forwardOnSave(selectedConfigs as unknown as OutlookProviderConfig[], accountId);
+      forwardOnSave(selectedConfigs as unknown as OutlookProviderConfig[]);
     };
 
     if (!plugin) {
@@ -91,7 +88,7 @@ export class OutlookProvider implements CalendarProvider<OutlookProviderConfig>,
   readonly isRemote = true;
   readonly loadPriority = 125;
 
-  constructor(source: OutlookProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  constructor(source: OutlookProviderConfig, plugin: FullCalendarPlugin, _app?: ObsidianInterface) {
     this.plugin = plugin;
     this.source = source;
     this.authManager = new OutlookAuthManager(plugin);
@@ -118,7 +115,7 @@ export class OutlookProvider implements CalendarProvider<OutlookProviderConfig>,
       calendarId: this.source.calendarId,
       microsoftAccountId: this.source.microsoftAccountId,
       color: ''
-    } as Extract<CalendarInfo, { type: 'outlook' }>);
+    });
 
     if (!token) {
       throw new OutlookApiError('Cannot perform Outlook operation: not authenticated.');
@@ -127,7 +124,10 @@ export class OutlookProvider implements CalendarProvider<OutlookProviderConfig>,
     return token;
   }
 
-  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(_range?: {
+    start: Date;
+    end: Date;
+  }): Promise<[OFCEvent, EventLocation | null][]> {
     const token = await this.getAccessToken().catch(() => null);
     if (!token) return [];
 

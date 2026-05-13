@@ -24,7 +24,7 @@ export interface TasksConfigComponentProps {
 export const TasksConfigComponent: React.FC<TasksConfigComponentProps> = ({
   config,
   onConfigChange,
-  context,
+  context: _context,
   onSave,
   onClose
 }) => {

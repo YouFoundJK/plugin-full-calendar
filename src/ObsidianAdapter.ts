@@ -146,10 +146,9 @@ export class ObsidianIO implements ObsidianInterface {
     if (Array.isArray(result)) {
       await this.vault.modify(file, result[0]);
       return result[1];
-    } else {
-      await this.vault.modify(file, result);
-      return;
     }
+    await this.vault.modify(file, result);
+    return;
   }
 
   create(path: string, contents: string): Promise<TFile> {
@@ -176,14 +175,14 @@ export class ObsidianIO implements ObsidianInterface {
   }
 
   waitForMetadata(file: TFile): Promise<CachedMetadata> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       const cache = this.metadataCache.getFileCache(file);
       let ref: EventRef | null = null;
       if (cache) {
         resolve(cache);
         return;
       }
-      ref = this.metadataCache.on('changed', (changedFile, data, cache) => {
+      ref = this.metadataCache.on('changed', (changedFile, _data, cache) => {
         if (changedFile.path !== file.path) {
           return;
         }

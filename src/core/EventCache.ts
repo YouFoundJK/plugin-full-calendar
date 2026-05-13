@@ -345,9 +345,8 @@ export default class EventCache {
   ): UpdateViewCallback | ((state: TimeState) => void) {
     if (eventType === 'update') {
       return this.subscriptionManager.on(eventType, callback as UpdateViewCallback);
-    } else {
-      return this.subscriptionManager.on(eventType, callback as (state: TimeState) => void);
     }
+    return this.subscriptionManager.on(eventType, callback as (state: TimeState) => void);
   }
 
   off(eventType: 'update', callback: UpdateViewCallback): void;
@@ -443,8 +442,9 @@ export default class EventCache {
     if (!details) throw new Error(`Event ID ${eventId} not present in event store.`);
     const { calendarId, location, event } = details;
     const provider = this.calendars.get(calendarId);
-    if (!provider)
+    if (!provider) {
       throw new Error(`Provider for calendar ID ${calendarId} not found in cache map.`);
+    }
     const calendarInfo = PluginState.getProviderRegistry().getSource(calendarId);
     if (!calendarInfo) throw new Error(`CalendarInfo for calendar ID ${calendarId} not found.`);
     return { provider, location, event };

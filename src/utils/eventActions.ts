@@ -1,3 +1,4 @@
+import { showNotice } from './showNotice';
 /**
  * @file eventActions.ts
  * @module actions/eventActions
@@ -15,7 +16,7 @@
  */
 
 import EventCache from '../core/EventCache';
-import { MarkdownView, TFile, Vault, Workspace, Notice } from 'obsidian';
+import { MarkdownView, TFile, Vault, Workspace } from 'obsidian';
 import { t } from '../features/i18n/i18n';
 
 /**
@@ -32,7 +33,7 @@ export async function openFileForEvent(
 ) {
   const details = cache.store.getEventDetails(id);
   if (!details || !details.location) {
-    new Notice(t('notices.cannotOpenRemote'));
+    showNotice(t('notices.cannotOpenRemote'));
     return;
   }
   const {

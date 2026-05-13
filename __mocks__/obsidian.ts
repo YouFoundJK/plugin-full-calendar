@@ -89,5 +89,8 @@ export function normalizePath(path: string): string {
 }
 
 export async function requestUrl(_url: string): Promise<{ text: string }> {
+    await Promise.resolve();
     return { text: "{}" };
 }
+
+export const getLanguage = jest.fn().mockReturnValue("en");

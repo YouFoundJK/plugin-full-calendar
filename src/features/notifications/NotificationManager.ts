@@ -1,6 +1,7 @@
+import { showNotice } from '../../utils/showNotice';
 import { PluginState } from '../../core/PluginState';
 import { DateTime } from 'luxon';
-import { Notice } from 'obsidian';
+
 import { OFCEvent } from '../../types';
 import { FullCalendarSettings } from '../../types/settings';
 import FullCalendarPlugin from '../../main';
@@ -121,10 +122,10 @@ export class NotificationManager {
 
     if (type === 'custom') {
       const mins = event.notify?.value || 0;
-      body += '\n' + t('notifications.inMinutes', { mins: mins.toString() });
+      body += `\n${t('notifications.inMinutes', { mins: mins.toString() })}`;
     } else {
       const mins = PluginState.getSettings().defaultReminderMinutes;
-      body += '\n' + t('notifications.inMinutes', { mins: mins.toString() });
+      body += `\n${t('notifications.inMinutes', { mins: mins.toString() })}`;
     }
 
     try {
@@ -136,7 +137,7 @@ export class NotificationManager {
       };
     } catch (e) {
       console.error(t('notifications.failed'), e);
-      new Notice(t('notifications.errorBody'));
+      showNotice(t('notifications.errorBody'));
     }
   }
 }

@@ -1,5 +1,6 @@
+import { showNotice } from '../../../utils/showNotice';
 import { PluginState } from '../../../core/PluginState';
-import { Setting, Notice } from 'obsidian';
+import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../i18n/i18n';
 import { ActivityWatchSettingsModal } from './ActivityWatchSettingsModal';
@@ -30,7 +31,7 @@ export function renderActivityWatchSettings(
 
         // If they just toggled it ON and no target calendar is set, prompt them
         if (value && (!awSettings.targetCalendarId || awSettings.targetCalendarId === '')) {
-          new Notice(t('settings.activityWatch.sync.enabledPrompt'));
+          showNotice(t('settings.activityWatch.sync.enabledPrompt'));
         }
       });
     })

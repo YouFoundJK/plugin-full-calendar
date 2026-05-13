@@ -28,7 +28,7 @@ beforeAll(() => {
       }
     };
   })();
-  Object.defineProperty(global, 'localStorage', {
+  Object.defineProperty(window, 'localStorage', {
     value: localStorageMock,
     writable: true
   });

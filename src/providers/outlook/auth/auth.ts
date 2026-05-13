@@ -1,4 +1,5 @@
-import { Notice, Platform, requestUrl } from 'obsidian';
+import { showNotice } from '../../../utils/showNotice';
+import { Platform, requestUrl } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { PluginState } from '../../../core/PluginState';
 import { t } from '../../../features/i18n/i18n';
@@ -104,7 +105,7 @@ function startDesktopLogin(plugin: FullCalendarPlugin, authUrl: string): void {
 
 export async function startOutlookLogin(plugin: FullCalendarPlugin): Promise<void> {
   if (Platform.isMobile) {
-    new Notice(t('outlook.auth.desktopOnly'));
+    showNotice(t('outlook.auth.desktopOnly'));
     return;
   }
 
@@ -112,12 +113,12 @@ export async function startOutlookLogin(plugin: FullCalendarPlugin): Promise<voi
   const { clientId, proxyBaseUrl, isCustom } = resolveOutlookAuthConfig(settings);
 
   if (isCustom && !clientId) {
-    new Notice(t('outlook.auth.clientIdMissing'));
+    showNotice(t('outlook.auth.clientIdMissing'));
     return;
   }
 
   if (isCustom && !proxyBaseUrl) {
-    new Notice(t('outlook.auth.proxyMissing'));
+    showNotice(t('outlook.auth.proxyMissing'));
     return;
   }
 
@@ -146,7 +147,7 @@ export async function exchangeCodeForToken(
   plugin: FullCalendarPlugin
 ): Promise<void> {
   if (!pkce || state !== pkce.state) {
-    new Notice(t('outlook.auth.stateMismatch'));
+    showNotice(t('outlook.auth.stateMismatch'));
     return;
   }
 
@@ -154,7 +155,7 @@ export async function exchangeCodeForToken(
   const { proxyBaseUrl, isCustom } = resolveOutlookAuthConfig(settings);
 
   if (isCustom && !proxyBaseUrl) {
-    new Notice(t('outlook.auth.proxyMissing'));
+    showNotice(t('outlook.auth.proxyMissing'));
     return;
   }
 
@@ -191,10 +192,10 @@ export async function exchangeCodeForToken(
       expiryDate: Date.now() + data.expires_in * 1000
     });
 
-    new Notice(t('outlook.auth.success'));
+    showNotice(t('outlook.auth.success'));
   } catch (error) {
     console.error('Outlook token exchange error:', error);
-    new Notice(t('outlook.auth.failed'));
+    showNotice(t('outlook.auth.failed'));
   } finally {
     pkce = null;
   }

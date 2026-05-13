@@ -14,6 +14,7 @@ import { EventHandle, FCReactComponent } from '../typesProvider';
 import { OFCEvent, EventLocation } from '../../types';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
+import { activeDocument } from 'obsidian';
 import { TaskNotesProviderConfig } from './typesTaskNotes';
 import {
   TaskNotesConfigComponent,
@@ -97,9 +98,9 @@ export class TaskNotesProvider
   private source: TaskNotesProviderConfig;
   private isSubscribed = false;
   private tasksById: Map<string, TaskNotesTask> = new Map();
-  private subscriptionTimer: ReturnType<typeof setTimeout> | null = null;
+  private subscriptionTimer: number | null = null;
   private subscriptionAttempts = 0;
-  private reloadTimer: ReturnType<typeof setTimeout> | null = null;
+  private reloadTimer: number | null = null;
   private useEmitterEvents = false;
 
   readonly type = 'tasknotes';
@@ -127,7 +128,7 @@ export class TaskNotesProvider
   private scheduleSubscriptionRetry(): void {
     if (this.subscriptionTimer) return;
 
-    this.subscriptionTimer = setTimeout(() => {
+    this.subscriptionTimer = window.setTimeout(() => {
       this.subscriptionTimer = null;
       this.subscriptionAttempts += 1;
       this.initialize();
@@ -136,10 +137,10 @@ export class TaskNotesProvider
 
   private scheduleReload(delayMs = 500): void {
     if (this.reloadTimer) {
-      clearTimeout(this.reloadTimer);
+      window.clearTimeout(this.reloadTimer);
     }
 
-    this.reloadTimer = setTimeout(() => {
+    this.reloadTimer = window.setTimeout(() => {
       this.reloadTimer = null;
       PluginState.getProviderRegistry().reloadProviderNow(this.source.id);
     }, delayMs);
@@ -291,7 +292,7 @@ export class TaskNotesProvider
   }
 
   private prefillTaskSelectorInput(text: string, attempt = 0): void {
-    const modal = document.querySelector('.task-selector-with-create-modal');
+    const modal = activeDocument.querySelector('.task-selector-with-create-modal');
     const input = modal?.querySelector('input.prompt-input') as HTMLInputElement | null;
 
     if (input) {
@@ -318,7 +319,7 @@ export class TaskNotesProvider
         }
       | undefined;
 
-    const hasCreateModal = !!document.querySelector('.mod-tasknotes .nl-markdown-editor');
+    const hasCreateModal = !!activeDocument.querySelector('.mod-tasknotes .nl-markdown-editor');
     if (!hasCreateModal) {
       if (attempt < 20) {
         window.setTimeout(() => this.prefillTaskCreationInput(text, attempt + 1), 50);
@@ -333,7 +334,7 @@ export class TaskNotesProvider
       return;
     }
 
-    const fallbackTextarea: HTMLTextAreaElement | null = document.querySelector(
+    const fallbackTextarea: HTMLTextAreaElement | null = activeDocument.querySelector(
       '.mod-tasknotes .nl-input'
     );
     if (fallbackTextarea) {

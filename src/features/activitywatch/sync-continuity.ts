@@ -160,7 +160,7 @@ export function buildSeedStateFromBoundaryEvent(
 }
 
 export async function createContinuityBlocksAndReplacePriorEvent(
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   targetCalendarId: string,
   sessionIndex: SessionIndex,
   blocks: DerivedAWBlock[],
@@ -257,7 +257,7 @@ export async function createContinuityBlocksAndReplacePriorEvent(
     }
 
     if (Date.now() - lastYieldTime > 16) {
-      await new Promise(r => setTimeout(r, 0));
+      await new Promise(r => window.setTimeout(r, 0));
       lastYieldTime = Date.now();
     }
   }

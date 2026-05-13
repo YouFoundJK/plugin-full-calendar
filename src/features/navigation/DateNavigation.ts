@@ -226,10 +226,9 @@ export class DateNavigation {
       } else if (viewType.includes('timeGrid')) {
         // Week/day view - calculate based on column position
         return this.getDateFromTimeGrid(x, y, rect, view);
-      } else {
-        // For other views, return current date
-        return view.currentStart;
       }
+      // For other views, return current date
+      return view.currentStart;
     } catch {
       return null;
     }
@@ -253,7 +252,7 @@ export class DateNavigation {
     return targetDate;
   }
 
-  private getDateFromTimeGrid(x: number, y: number, rect: DOMRect, view: ViewApi): Date {
+  private getDateFromTimeGrid(x: number, _y: number, rect: DOMRect, view: ViewApi): Date {
     // Simple approximation for week/day view
     const startOfView = new Date(view.currentStart);
     const endOfView = new Date(view.currentEnd);

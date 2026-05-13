@@ -62,7 +62,10 @@ export class ViewTimelineHandler {
           if (!isCategoryVisible(category)) continue;
           if (!categoryMap.has(category)) categoryMap.set(category, new Set());
           const sub = subCategory || '__NONE__';
-          categoryMap.get(category)!.add(sub);
+          const subCategories = categoryMap.get(category);
+          if (subCategories) {
+            subCategories.add(sub);
+          }
         }
       }
     }
@@ -146,7 +149,7 @@ export class ViewTimelineHandler {
       let i = 0;
       const addNext = () => {
         if (i < shadowEvents.length) {
-          requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
             fullCalendarView?.addEvent(shadowEvents[i], calendarId);
             i++;
             addNext();

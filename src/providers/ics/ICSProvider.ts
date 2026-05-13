@@ -82,7 +82,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig>, SyncKey
     return this.isRemote ? 'Remote Calendar (ICS)' : 'Local Calendar (ICS)';
   }
 
-  constructor(source: ICSProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  constructor(source: ICSProviderConfig, plugin: FullCalendarPlugin, _app?: ObsidianInterface) {
     this.plugin = plugin;
     this.source = source;
   }
@@ -108,7 +108,10 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig>, SyncKey
     return event.uid || JSON.stringify(event);
   }
 
-  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(_range?: {
+    start: Date;
+    end: Date;
+  }): Promise<[OFCEvent, EventLocation | null][]> {
     const url = this.source.url;
 
     // Early return if URL is empty
@@ -142,7 +145,7 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig>, SyncKey
     // Remote URL handling
     let remoteUrl = url;
     if (remoteUrl.startsWith(WEBCAL)) {
-      remoteUrl = 'https' + remoteUrl.slice(WEBCAL.length);
+      remoteUrl = `https${remoteUrl.slice(WEBCAL.length)}`;
     }
 
     try {
@@ -158,26 +161,26 @@ export class ICSProvider implements CalendarProvider<ICSProviderConfig>, SyncKey
     }
   }
 
-  createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
+  createEvent(_event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
     return Promise.reject(new Error('Cannot create an event on a read-only ICS calendar.'));
   }
 
   updateEvent(
-    handle: EventHandle,
-    oldEventData: OFCEvent,
-    newEventData: OFCEvent
+    _handle: EventHandle,
+    _oldEventData: OFCEvent,
+    _newEventData: OFCEvent
   ): Promise<EventLocation | null> {
     return Promise.reject(new Error('Cannot update an event on a read-only ICS calendar.'));
   }
 
-  deleteEvent(handle: EventHandle): Promise<void> {
+  deleteEvent(_handle: EventHandle): Promise<void> {
     return Promise.reject(new Error('Cannot delete an event on a read-only ICS calendar.'));
   }
 
   createInstanceOverride(
-    masterEvent: OFCEvent,
-    instanceDate: string,
-    newEventData: OFCEvent
+    _masterEvent: OFCEvent,
+    _instanceDate: string,
+    _newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
     return Promise.reject(
       new Error(`Cannot create a recurring event override on a read-only calendar.`)

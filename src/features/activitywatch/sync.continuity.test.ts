@@ -116,7 +116,7 @@ describe('ActivityWatch continuity helpers', () => {
       }
     ];
 
-    const picked = __testing.pickBestReconstructedBlockForPriorEvent(blocks as never, prior);
+    const picked = __testing.pickBestReconstructedBlockForPriorEvent(blocks, prior);
     expect(picked?.title).toBe('C');
   });
 
@@ -139,7 +139,7 @@ describe('ActivityWatch continuity helpers', () => {
       }
     ];
 
-    const ok = __testing.coversPriorEventRange(blocks as never, prior, 1_000);
+    const ok = __testing.coversPriorEventRange(blocks, prior, 1_000);
     expect(ok).toBe(true);
   });
 
@@ -162,7 +162,7 @@ describe('ActivityWatch continuity helpers', () => {
       }
     ];
 
-    const ok = __testing.coversPriorEventRange(blocks as never, prior, 1_000);
+    const ok = __testing.coversPriorEventRange(blocks, prior, 1_000);
     expect(ok).toBe(false);
   });
 

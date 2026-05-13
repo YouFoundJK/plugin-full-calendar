@@ -27,8 +27,8 @@ const INITIAL_VIEW_OPTIONS = {
 
 export function renderGeneralSettings(
   containerEl: HTMLElement,
-  plugin: FullCalendarPlugin,
-  rerender: () => void
+  _plugin: FullCalendarPlugin,
+  _rerender: () => void
 ): void {
   const desktopViewOptions: { [key: string]: string } = { ...INITIAL_VIEW_OPTIONS.DESKTOP };
   if (PluginState.getSettings().enableAdvancedCategorization) {

@@ -1,5 +1,6 @@
+import { showNotice } from '../utils/showNotice';
 import { PluginState } from '../core/PluginState';
-import { TFile, Notice } from 'obsidian';
+import { TFile } from 'obsidian';
 import {
   CalendarProvider,
   CalendarProviderCapabilities,
@@ -43,7 +44,7 @@ export class ProviderRegistry {
   private providers = new Map<string, ProviderLoader>();
   private instances = new Map<string, CalendarProvider<unknown>>();
   private sources: CalendarInfo[] = [];
-  private providerRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private providerRetryTimers = new Map<string, number>();
   private providerRetryAttempts = new Map<string, number>();
 
   // Properties from IdentifierManager and for linking singletons
@@ -190,7 +191,7 @@ export class ProviderRegistry {
 
   public async initializeInstances(): Promise<void> {
     for (const timer of this.providerRetryTimers.values()) {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
     }
     this.providerRetryTimers.clear();
     this.providerRetryAttempts.clear();
@@ -350,9 +351,13 @@ export class ProviderRegistry {
     for (const [settingsId, instance] of this.instances.entries()) {
       const promise = (async () => {
         try {
+          if (!this.cache) {
+            throw new Error('Cache not set on ProviderRegistry');
+          }
+          const cache = this.cache;
           const rawEvents = await instance.getEvents();
           rawEvents.forEach(([rawEvent, location]) => {
-            const event = this.cache!.enhancer.enhance(rawEvent);
+            const event = cache.enhancer.enhance(rawEvent);
             results.push({
               calendarId: settingsId,
               event,
@@ -494,7 +499,7 @@ export class ProviderRegistry {
       return;
     }
 
-    const timer = setTimeout(() => {
+    const timer = window.setTimeout(() => {
       this.providerRetryTimers.delete(settingsId);
       this.providerRetryAttempts.set(settingsId, attempts + 1);
       void this.reloadProvider(settingsId);
@@ -528,7 +533,7 @@ export class ProviderRegistry {
   public reloadProviderNow(settingsId: string): void {
     const timer = this.providerRetryTimers.get(settingsId);
     if (timer) {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
       this.providerRetryTimers.delete(settingsId);
     }
     this.providerRetryAttempts.delete(settingsId);
@@ -623,7 +628,10 @@ export class ProviderRegistry {
     const allNewEvents: { event: OFCEvent; location: EventLocation | null; calendarId: string }[] =
       [];
     for (const { instance, settingsId } of interestedInstances) {
-      const eventsFromFile = await instance.getEventsInFile!(file);
+      if (!instance.getEventsInFile) {
+        continue;
+      }
+      const eventsFromFile = await instance.getEventsInFile(file);
       for (const [event, location] of eventsFromFile) {
         allNewEvents.push({ event, location, calendarId: settingsId });
       }
@@ -666,13 +674,16 @@ export class ProviderRegistry {
     }
 
     this.revalidating = true;
-    new Notice(t('notices.revalidatingRemotes'));
+    showNotice(t('notices.revalidatingRemotes'));
 
     const promises = remoteInstances.map(([settingsId, instance]) => {
       return instance
         .getEvents()
         .then(events => {
-          this.cache!.syncCalendar(settingsId, events);
+          if (!this.cache) {
+            return;
+          }
+          this.cache.syncCalendar(settingsId, events);
         })
         .catch((err: Error) => {
           const source = this.getSource(settingsId);
@@ -689,12 +700,12 @@ export class ProviderRegistry {
         result.status === 'rejected' ? [result.reason as Error] : []
       );
       if (errors.length > 0) {
-        new Notice(t('notices.revalidationFailed'));
+        showNotice(t('notices.revalidationFailed'));
         errors.forEach(reason => {
           console.error(`Full Calendar: Revalidation failed.`, reason);
         });
       } else {
-        new Notice(t('notices.revalidationSuccess'));
+        showNotice(t('notices.revalidationSuccess'));
       }
     });
   }
@@ -782,7 +793,7 @@ export class ProviderRegistry {
       }
     ).off('full-calendar:sources-changed', this.onSourcesChanged);
     for (const timer of this.providerRetryTimers.values()) {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
     }
     this.providerRetryTimers.clear();
     this.providerRetryAttempts.clear();

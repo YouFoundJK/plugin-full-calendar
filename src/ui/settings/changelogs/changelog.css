@@ -335,7 +335,7 @@
 }
 
 .full-calendar-settings-search-input-wrap.is-active-query .full-calendar-settings-search-input {
-    border-color: var(--text-error) !important;
+    border-color: var(--text-error);
     box-shadow: 0 0 0 2px color-mix(in srgb, white 85%, transparent),
         0 0 16px 5px color-mix(in srgb, var(--text-error) 66%, transparent),
         0 0 32px 12px color-mix(in srgb, var(--text-error) 52%, transparent);
@@ -367,3 +367,4 @@
     border-radius: var(--radius-m);
     background: var(--background-secondary);
 }
+

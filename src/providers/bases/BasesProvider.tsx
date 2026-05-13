@@ -114,7 +114,10 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig>, Syn
 
   // --- Event Extraction Logic ---
 
-  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(_range?: {
+    start: Date;
+    end: Date;
+  }): Promise<[OFCEvent, EventLocation | null][]> {
     const events: [OFCEvent, EventLocation | null][] = [];
 
     // Check if Bases plugin is enabled
@@ -230,26 +233,26 @@ export class BasesProvider implements CalendarProvider<BasesProviderConfig>, Syn
     return event.uid || JSON.stringify(event);
   }
 
-  createEvent(event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
+  createEvent(_event: OFCEvent): Promise<[OFCEvent, EventLocation | null]> {
     return Promise.reject(new Error('Not implemented'));
   }
 
   updateEvent(
-    handle: EventHandle,
-    oldEvent: OFCEvent,
-    newEvent: OFCEvent
+    _handle: EventHandle,
+    _oldEvent: OFCEvent,
+    _newEvent: OFCEvent
   ): Promise<EventLocation | null> {
     return Promise.reject(new Error('Not implemented'));
   }
 
-  deleteEvent(handle: EventHandle): Promise<void> {
+  deleteEvent(_handle: EventHandle): Promise<void> {
     return Promise.reject(new Error('Not implemented'));
   }
 
   createInstanceOverride(
-    masterEvent: OFCEvent,
-    instanceDate: string,
-    newEventData: OFCEvent
+    _masterEvent: OFCEvent,
+    _instanceDate: string,
+    _newEventData: OFCEvent
   ): Promise<[OFCEvent, EventLocation | null]> {
     return Promise.reject(new Error('Not implemented'));
   }

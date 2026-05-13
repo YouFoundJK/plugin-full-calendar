@@ -76,7 +76,7 @@ const makeFile = (
         return { start, end };
     };
 
-    let meta: CachedMetadata = {};
+    const meta: CachedMetadata = {};
 
     const frontmatter = lines.flatMap((l) =>
         l.type === "frontmatter" ? l : []
@@ -124,7 +124,7 @@ const makeFile = (
                 }
                 for (const item of makeListItems(block, lineNum)) {
                     const indent = tabChars.repeat(item.depth);
-                    let position = appendLine(
+                    const position = appendLine(
                         indent +
                         "- " +
                         (item.checkbox ? `[${item.checkbox}] ` : "") +
@@ -135,7 +135,7 @@ const makeFile = (
                         position.start.offset += indent.length - 2;
                     }
 
-                    let listItem: ListItemCache = {
+                    const listItem: ListItemCache = {
                         position,
                         parent: item.parent,
                     };

@@ -1,3 +1,4 @@
+import { showNotice } from '../../../utils/showNotice';
 /**
  * @file reminder_modal.ts
  * @brief Launcher for the Reminder Modal.
@@ -10,7 +11,6 @@ import { ReminderModal } from './ReminderModal';
 import FullCalendarPlugin from '../../../main';
 import { OFCEvent } from '../../../types';
 import { openFileForEvent } from '../../../utils/eventActions';
-import { Notice } from 'obsidian';
 
 export function launchReminderModal(
   plugin: FullCalendarPlugin,
@@ -32,7 +32,7 @@ export function launchReminderModal(
             try {
               await openFileForEvent(PluginState.getCache(), plugin.app, eventId);
             } catch (e) {
-              new Notice('Could not open event file.');
+              showNotice('Could not open event file.');
               console.error(e);
             }
             closeModal();
@@ -45,7 +45,7 @@ export function launchReminderModal(
                 if (type === 'default') {
                   // Destructive Snooze: Move Start Time
                   if (e.allDay) {
-                    new Notice('Cannot snooze start time of all-day events.');
+                    showNotice('Cannot snooze start time of all-day events.');
                     return e;
                   }
 
@@ -65,23 +65,22 @@ export function launchReminderModal(
                     ...e,
                     startTime: newStart.toFormat('HH:mm')
                   };
-                } else {
-                  // Custom Snooze: Reduce notify value
-                  const currentNotify = e.notify?.value || 0;
-                  const newNotify = Math.max(0, currentNotify - minutes);
-                  return {
-                    ...e,
-                    notify: { value: newNotify }
-                  };
                 }
+                // Custom Snooze: Reduce notify value
+                const currentNotify = e.notify?.value || 0;
+                const newNotify = Math.max(0, currentNotify - minutes);
+                return {
+                  ...e,
+                  notify: { value: newNotify }
+                };
               });
-              new Notice(`Snoozed for ${minutes} minutes.`);
+              showNotice(`Snoozed for ${minutes} minutes.`);
             } catch (e) {
               console.error('Snooze failed', e);
               if (e instanceof Error) {
-                new Notice(e.message);
+                showNotice(e.message);
               } else {
-                new Notice('Failed to snooze event.');
+                showNotice('Failed to snooze event.');
               }
             }
             closeModal();

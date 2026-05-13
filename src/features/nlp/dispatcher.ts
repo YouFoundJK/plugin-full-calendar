@@ -1,3 +1,4 @@
+import { showNotice } from '../../utils/showNotice';
 /**
  * @file dispatcher.ts
  * @brief Maps NLP action objects to concrete plugin actions.
@@ -12,7 +13,7 @@
  */
 
 import { PluginState } from '../../core/PluginState';
-import { Notice } from 'obsidian';
+
 import type { OFCEvent } from '../../types';
 import type { NLPActionObject } from './types';
 import { resolveSmartCalendar } from './smartCalendar';
@@ -134,19 +135,19 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
   // --- Navigation intents ---
   const viewName = INTENT_VIEW_MAP[action.intent];
   if (viewName) {
-    new Notice(t('nlp.navigating', { view: action.intent.split('_')[1].toLowerCase() }));
+    showNotice(t('nlp.navigating', { view: action.intent.split('_')[1].toLowerCase() }));
     await internal.changeView(viewName);
     return;
   }
 
   if (action.intent === 'OPEN_CALENDAR') {
-    new Notice(t('nlp.navigating', { view: 'calendar' }));
+    showNotice(t('nlp.navigating', { view: 'calendar' }));
     await internal.openCalendar();
     return;
   }
 
   if (action.intent === 'OPEN_SIDEBAR') {
-    new Notice(t('nlp.navigating', { view: 'sidebar' }));
+    showNotice(t('nlp.navigating', { view: 'sidebar' }));
     await internal.openSidebar();
     return;
   }
@@ -154,13 +155,13 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
   // --- Orchestrator intents ---
   if (action.intent === 'OPEN_SETTINGS') {
     PluginState.displaySettingsTab();
-    new Notice(t('nlp.parseSuccess'));
+    showNotice(t('nlp.parseSuccess'));
     return;
   }
 
   if (action.intent === 'OPEN_CHRONO') {
     if (PluginState.isMobile()) {
-      new Notice(t('notices.chronoAnalyserMobileDisabled'));
+      showNotice(t('notices.chronoAnalyserMobileDisabled'));
       return;
     }
     const plugin = PluginState.getPlugin();
@@ -174,38 +175,38 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
 
   if (action.intent === 'SHOW_CHANGELOG') {
     PluginState.showChangelog();
-    new Notice(t('nlp.parseSuccess'));
+    showNotice(t('nlp.parseSuccess'));
     return;
   }
 
   if (action.intent === 'SHOW_MILESTONES') {
     PluginState.showMilestones();
-    new Notice(t('nlp.parseSuccess'));
+    showNotice(t('nlp.parseSuccess'));
     return;
   }
 
   if (action.intent === 'RESET_CACHE') {
     PluginState.getCache().reset();
-    new Notice(t('nlp.notices.cacheReset'));
+    showNotice(t('nlp.notices.cacheReset'));
     return;
   }
 
   if (action.intent === 'REVALIDATE_REMOTE') {
     PluginState.getProviderRegistry().revalidateRemoteCalendars(true);
-    new Notice(t('nlp.parseSuccess'));
+    showNotice(t('nlp.parseSuccess'));
     return;
   }
 
   if (action.intent === 'SYNC_ACTIVITYWATCH') {
     const settings = PluginState.getSettings();
     if (!settings.activityWatch.enabled) {
-      new Notice(t('nlp.notices.awNotEnabled'));
+      showNotice(t('nlp.notices.awNotEnabled'));
       return;
     }
     const plugin = PluginState.getPlugin();
     const { syncActivityWatch } = await import('../../features/activitywatch/sync');
     await syncActivityWatch(plugin);
-    new Notice(t('nlp.parseSuccess'));
+    showNotice(t('nlp.parseSuccess'));
     return;
   }
 
@@ -213,7 +214,7 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
   if (action.intent === 'GOTO_DATE') {
     await internal.changeView('timeGridDay');
     // Allow the view to mount before calling gotoDate
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise(resolve => window.setTimeout(resolve, 150));
     try {
       const plugin = PluginState.getPlugin();
       const leaf = plugin.app.workspace.getLeavesOfType('full-calendar-view')[0];
@@ -241,7 +242,7 @@ export async function dispatchNLPAction(action: NLPActionObject): Promise<void> 
 
   const calendarId = resolveCalendarId(resolved.targetCalendar);
   if (!calendarId) {
-    new Notice(t('nlp.noCalendars'));
+    showNotice(t('nlp.noCalendars'));
     return;
   }
 

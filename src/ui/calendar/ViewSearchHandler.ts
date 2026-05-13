@@ -22,7 +22,7 @@ export class ViewSearchHandler {
       cancelAnimationFrame(this.pendingSearchApplyFrame);
     }
 
-    this.pendingSearchApplyFrame = requestAnimationFrame(() => {
+    this.pendingSearchApplyFrame = window.requestAnimationFrame(() => {
       this.pendingSearchApplyFrame = null;
       this.applyEventSearchFilter();
     });
@@ -165,10 +165,7 @@ export class ViewSearchHandler {
 
     const originalDisplay = this.eventDisplayById.get(event.id) || 'auto';
     if (event.display !== originalDisplay) {
-      event.setProp(
-        'display',
-        originalDisplay as 'auto' | 'background' | 'inverse-background' | 'block' | 'list-item'
-      );
+      event.setProp('display', originalDisplay);
     }
   }
 

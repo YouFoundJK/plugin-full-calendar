@@ -61,7 +61,7 @@ export async function obsidianFetch(
     body:
       typeof init?.body === 'string'
         ? init.body
-        : init?.body != null
+        : init?.body !== undefined && init.body !== null
           ? await new Response(init.body as BodyInit).text()
           : undefined,
     throw: false // never throw; let callers inspect status/body

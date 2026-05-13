@@ -71,7 +71,10 @@ export class DataManager {
       this.#originalHierarchyCasing.set(hierarchyKey, record.hierarchy);
     }
     // --- CHANGE 'record.path' to 'record._id' ---
-    this.#hierarchyIndex.get(hierarchyKey)!.add(record._id);
+    const hierarchySet = this.#hierarchyIndex.get(hierarchyKey);
+    if (hierarchySet) {
+      hierarchySet.add(record._id);
+    }
 
     const projectKey = record.project.toLowerCase();
     if (!this.#projectIndex.has(projectKey)) {
@@ -79,7 +82,10 @@ export class DataManager {
       this.#originalProjectCasing.set(projectKey, record.project);
     }
     // --- CHANGE 'record.path' to 'record._id' ---
-    this.#projectIndex.get(projectKey)!.add(record._id);
+    const projectSet = this.#projectIndex.get(projectKey);
+    if (projectSet) {
+      projectSet.add(record._id);
+    }
   }
 
   /**
@@ -242,8 +248,8 @@ export class DataManager {
 
     const recordsToScan: Iterable<TimeRecord> = candidatePaths
       ? Array.from(candidatePaths)
-          .map(path => this.#records.get(path)!)
-          .filter(Boolean)
+          .map(path => this.#records.get(path))
+          .filter((record): record is TimeRecord => Boolean(record))
       : this.#records.values();
 
     const uniqueFiles = new Set<string>();
@@ -255,13 +261,16 @@ export class DataManager {
       // --- NEW: Correctly apply universal category filter with AND/OR logic ---
       const targetString = record.project;
       if (exclusionRegex && exclusionRegex.test(targetString)) continue;
-      if (inclusionRegexes.length > 0 && !inclusionRegexes.every(re => re.test(targetString)))
+      if (inclusionRegexes.length > 0 && !inclusionRegexes.every(re => re.test(targetString))) {
         continue;
+      }
 
       if (record.metadata.type === 'recurring' && hasDateFilter) {
         if (expandRecurring) {
           const instances = Utils.getRecurringInstances(record, startDate, endDate);
           for (const instanceDate of instances) {
+            const isoDate = Utils.getISODate(instanceDate);
+            if (!isoDate) continue;
             let newMetadata: OFCEvent;
             const commonProperties = {
               title: record.metadata.title,
@@ -269,8 +278,8 @@ export class DataManager {
               category: record.metadata.category,
               timezone: record.metadata.timezone,
               type: 'single' as const,
-              date: Utils.getISODate(instanceDate)!,
-              endDate: Utils.getISODate(instanceDate)!
+              date: isoDate,
+              endDate: isoDate
             };
             if (record.metadata.allDay) {
               newMetadata = { ...commonProperties, allDay: true };
@@ -306,6 +315,8 @@ export class DataManager {
         if (expandRecurring) {
           const instances = Utils.getRruleInstances(record, startDate, endDate);
           for (const instanceDate of instances) {
+            const isoDate = Utils.getISODate(instanceDate);
+            if (!isoDate) continue;
             let newMetadata: OFCEvent;
             const commonProperties = {
               title: record.metadata.title,
@@ -313,8 +324,8 @@ export class DataManager {
               category: record.metadata.category,
               timezone: record.metadata.timezone,
               type: 'single' as const,
-              date: Utils.getISODate(instanceDate)!,
-              endDate: Utils.getISODate(instanceDate)!
+              date: isoDate,
+              endDate: isoDate
             };
             if (record.metadata.allDay) {
               newMetadata = { ...commonProperties, allDay: true };
@@ -395,7 +406,10 @@ export class DataManager {
       aggregation.set(key, (aggregation.get(key) || 0) + value);
 
       if (!recordsByCategory.has(key)) recordsByCategory.set(key, []);
-      recordsByCategory.get(key)!.push(record);
+      const categoryRecords = recordsByCategory.get(key);
+      if (categoryRecords) {
+        categoryRecords.push(record);
+      }
     }
 
     return { hours: aggregation, recordsByCategory, error: false };
@@ -451,7 +465,8 @@ export class DataManager {
       if (!uniqueEntries.has(leafId)) {
         uniqueEntries.set(leafId, { value: 0, records: [], inner: innerVal, outer: outerVal });
       }
-      const entry = uniqueEntries.get(leafId)!;
+      const entry = uniqueEntries.get(leafId);
+      if (!entry) continue;
       entry.value += val;
       entry.records.push(record);
     }
@@ -512,7 +527,10 @@ export class DataManager {
       // The regex check is now removed from here
       result.aggregation.set(key, (result.aggregation.get(key) || 0) + duration);
       if (!result.recordsByCategory.has(key)) result.recordsByCategory.set(key, []);
-      result.recordsByCategory.get(key)!.push(record);
+      const recordsForKey = result.recordsByCategory.get(key);
+      if (recordsForKey) {
+        recordsForKey.push(record);
+      }
     }
 
     result.records.push(record);

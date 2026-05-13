@@ -116,6 +116,21 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
       );
       return null;
     }
+    const recurringTiming = (() => {
+      if (isAllDay) {
+        return { allDay: true } as const;
+      }
+      const startTime = getLuxonTime(startDate);
+      const endTime = getLuxonTime(endDate);
+      if (!startTime || !endTime) {
+        return null;
+      }
+      return { allDay: false, startTime, endTime } as const;
+    })();
+    if (!recurringTiming) {
+      console.warn(`Full Calendar ICS Parser: Missing start or end time for event "${summary}"`);
+      return null;
+    }
 
     return {
       type: 'rrule',
@@ -127,56 +142,7 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
       startDate: startDateISO,
       endDate: endDateISO && startDateISO !== endDateISO ? endDateISO : null,
       timezone,
-      ...(isAllDay
-        ? { allDay: true }
-        : {
-            allDay: false,
-            startTime: getLuxonTime(startDate)!,
-            endTime: getLuxonTime(endDate)!
-          }),
-      description,
-      url:
-        url ||
-        (location && typeof location === 'string' && location.startsWith('http')
-          ? location
-          : undefined)
-    };
-  } else {
-    const date = getLuxonDate(startDate);
-
-    // Ensure we have a valid date
-    if (!date) {
-      console.warn(
-        `Full Calendar ICS Parser: Could not convert start date to ISO for event "${summary}"`
-      );
-      return null;
-    }
-
-    let finalEndDate: string | null | undefined = null;
-    if (specifiesEnd(input)) {
-      if (isAllDay) {
-        // For all-day events, ICS end date is exclusive. Make it inclusive by subtracting one day.
-        const inclusiveEndDate = validEndDate.minus({ days: 1 });
-        finalEndDate = getLuxonDate(inclusiveEndDate);
-      } else {
-        finalEndDate = getLuxonDate(validEndDate);
-      }
-    }
-
-    return {
-      type: 'single',
-      uid,
-      title: eventData.title,
-      date: date,
-      endDate: date !== finalEndDate ? finalEndDate || null : null,
-      timezone,
-      ...(isAllDay
-        ? { allDay: true }
-        : {
-            allDay: false,
-            startTime: getLuxonTime(startDate)!,
-            endTime: getLuxonTime(endDate)!
-          }),
+      ...recurringTiming,
       description,
       url:
         url ||
@@ -185,6 +151,58 @@ function icsToOFC(input: ical.Event): OFCEvent | null {
           : undefined)
     };
   }
+  const date = getLuxonDate(startDate);
+
+  // Ensure we have a valid date
+  if (!date) {
+    console.warn(
+      `Full Calendar ICS Parser: Could not convert start date to ISO for event "${summary}"`
+    );
+    return null;
+  }
+
+  let finalEndDate: string | null | undefined = null;
+  if (specifiesEnd(input)) {
+    if (isAllDay) {
+      // For all-day events, ICS end date is exclusive. Make it inclusive by subtracting one day.
+      const inclusiveEndDate = validEndDate.minus({ days: 1 });
+      finalEndDate = getLuxonDate(inclusiveEndDate);
+    } else {
+      finalEndDate = getLuxonDate(validEndDate);
+    }
+  }
+
+  const singleTiming = (() => {
+    if (isAllDay) {
+      return { allDay: true } as const;
+    }
+    const startTime = getLuxonTime(startDate);
+    const endTime = getLuxonTime(endDate);
+    if (!startTime || !endTime) {
+      return null;
+    }
+    return { allDay: false, startTime, endTime } as const;
+  })();
+  if (!singleTiming) {
+    console.warn(`Full Calendar ICS Parser: Missing start or end time for event "${summary}"`);
+    return null;
+  }
+
+  return {
+    type: 'single',
+    uid,
+    title: eventData.title,
+    date: date,
+    endDate: date !== finalEndDate ? finalEndDate || null : null,
+    timezone,
+    ...singleTiming,
+    description,
+    url:
+      url ||
+      (location && typeof location === 'string' && location.startsWith('http')
+        ? location
+        : undefined)
+  };
 }
 
 /**
@@ -267,13 +285,13 @@ export function getEventsFromICS(text: string): OFCEvent[] {
     events
       .filter(e => e.recurrenceId === null)
       .map(e => [e.uid, icsToOFC(e)])
-      .filter(([uid, event]) => event !== null) as [string, OFCEvent][]
+      .filter(([_uid, event]) => event !== null) as [string, OFCEvent][]
   );
 
   const recurrenceExceptions = events
     .filter(e => e.recurrenceId !== null)
     .map((e): [string, OFCEvent | null] => [e.uid, icsToOFC(e)])
-    .filter(([uid, event]) => event !== null) as [string, OFCEvent][];
+    .filter(([_uid, event]) => event !== null) as [string, OFCEvent][];
 
   for (const [uid, event] of recurrenceExceptions) {
     const baseEvent = baseEvents[uid];

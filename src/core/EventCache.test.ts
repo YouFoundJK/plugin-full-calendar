@@ -961,7 +961,8 @@ describe('editable calendars', () => {
         getEvents: jest
           .fn()
           .mockImplementation(
-            () => new Promise(resolve => setTimeout(() => resolve([[remoteEvent, null]]), 100))
+            () =>
+              new Promise(resolve => window.setTimeout(() => resolve([[remoteEvent, null]]), 100))
           ),
         getCapabilities: () => ({ canCreate: false, canEdit: false, canDelete: false }),
         getEventHandle: (e: OFCEvent) => ({ persistentId: e.title }),
@@ -1068,7 +1069,7 @@ describe('editable calendars', () => {
       expect(remoteSource!.events).toHaveLength(0);
 
       // Wait for remote provider to complete
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => window.setTimeout(resolve, 200));
 
       // Assert: syncCalendar should have been called for remote provider
       expect(syncCalendarSpy).toHaveBeenCalledWith('remote1', [[remoteEvent, null]]);
@@ -1178,7 +1179,7 @@ describe('editable calendars', () => {
 
       // Act: Call populate and wait for completion
       await cache.populate();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => window.setTimeout(resolve, 100));
 
       // Assert: Providers should have been loaded in priority order: ICS > CalDAV > Google
       expect(loadOrder).toEqual(['ical', 'caldav', 'google']);

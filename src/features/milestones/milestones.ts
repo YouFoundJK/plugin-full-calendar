@@ -2,6 +2,7 @@ import { PluginState } from '../../core/PluginState';
 import type { CalendarInfo } from '../../types/calendar_settings';
 import type { OFCEvent } from '../../types/schema';
 import { t } from '../i18n/i18n';
+import { activeDocument } from 'obsidian';
 
 type MilestoneAction = 'created' | 'deleted' | 'updated' | 'moved';
 type ProviderType = Exclude<CalendarInfo['type'], 'FOR_TEST_ONLY'>;
@@ -447,23 +448,23 @@ const MILESTONE_DEFINITIONS: MilestoneDefinition[] = [
 function queueMilestoneToast(milestone: NewlyUnlockedMilestone, index: number): void {
   const delay = index * 220;
   window.setTimeout(() => {
-    if (typeof document === 'undefined') return;
+    if (typeof activeDocument === 'undefined') return;
 
-    const existingRoot = document.getElementById('ofc-milestone-toast-root');
-    const root = existingRoot ?? document.createElement('div');
+    const existingRoot = activeDocument.getElementById('ofc-milestone-toast-root');
+    const root = existingRoot ?? activeDocument.createDiv();
     if (!existingRoot) {
       root.id = 'ofc-milestone-toast-root';
-      document.body.appendChild(root);
+      activeDocument.body.appendChild(root);
     }
 
-    const toast = document.createElement('div');
+    const toast = activeDocument.createDiv();
     toast.className = 'ofc-milestone-toast';
 
-    const titleEl = document.createElement('div');
+    const titleEl = activeDocument.createDiv();
     titleEl.className = 'ofc-milestone-toast-title';
     titleEl.textContent = t('notices.milestones.unlockedTitle');
 
-    const bodyEl = document.createElement('div');
+    const bodyEl = activeDocument.createDiv();
     bodyEl.className = 'ofc-milestone-toast-body';
     bodyEl.textContent = t('notices.milestones.unlockedBody', {
       title: milestone.title,

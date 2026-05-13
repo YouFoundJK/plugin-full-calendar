@@ -145,14 +145,14 @@ export class MockVault implements Vault {
         if (this.getAbstractFileByPath(path)) {
             throw new Error("File already exists.");
         }
-        let file = new TFile();
+        const file = new TFile();
         file.name = baseName(path);
         this.setParent(path, file);
         this.contents.set(path, data);
         return Promise.resolve(file);
     }
     createFolder(path: string): Promise<TFolder> {
-        let folder = new TFolder();
+        const folder = new TFolder();
         folder.name = baseName(path);
         this.setParent(path, folder);
         return Promise.resolve(folder);
@@ -291,6 +291,14 @@ export class MockVault implements Vault {
     append(
         file: TFile,
         data: string,
+        options?: DataWriteOptions
+    ): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+
+    appendBinary(
+        file: TFile,
+        data: ArrayBuffer,
         options?: DataWriteOptions
     ): Promise<void> {
         throw new Error("Method not implemented.");

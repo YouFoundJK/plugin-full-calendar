@@ -47,10 +47,10 @@ export class WorkspaceModal extends Modal {
     contentEl.parentElement?.addClass('settings-modal-wide');
     contentEl.parentElement?.addClass('workspace-settings-modal');
 
-    const shell = contentEl.createEl('div', {
+    const shell = contentEl.createDiv({
       cls: 'settings-modal-shell workspace-settings-shell'
     });
-    const body = shell.createEl('div', { cls: 'settings-modal-body workspace-settings-body' });
+    const body = shell.createDiv({ cls: 'settings-modal-body workspace-settings-body' });
 
     // Modal title
     body.createEl('h2', {
@@ -77,7 +77,7 @@ export class WorkspaceModal extends Modal {
   }
 
   private renderGeneralSection(containerEl: HTMLElement) {
-    const section = containerEl.createEl('div', { cls: 'workspace-modal-section' });
+    const section = containerEl.createDiv({ cls: 'workspace-modal-section' });
     section.createEl('h3', { text: t('modals.workspace.sections.general') });
 
     // Workspace name
@@ -96,7 +96,7 @@ export class WorkspaceModal extends Modal {
   }
 
   private renderViewSection(containerEl: HTMLElement) {
-    const section = containerEl.createEl('div', { cls: 'workspace-modal-section' });
+    const section = containerEl.createDiv({ cls: 'workspace-modal-section' });
     section.createEl('h3', { text: t('modals.workspace.sections.viewConfiguration') });
 
     // Desktop view
@@ -168,7 +168,7 @@ export class WorkspaceModal extends Modal {
   }
 
   private renderCalendarFilterSection(containerEl: HTMLElement) {
-    const section = containerEl.createEl('div', { cls: 'workspace-modal-section' });
+    const section = containerEl.createDiv({ cls: 'workspace-modal-section' });
     section.createEl('h3', { text: t('modals.workspace.sections.calendarFilters') });
 
     // Get available calendars
@@ -187,7 +187,7 @@ export class WorkspaceModal extends Modal {
       .setDesc(t('modals.workspace.fields.visibleCalendars.description'))
       .setClass('workspace-calendar-filter');
 
-    this.visibleCalendarsContainer = section.createEl('div', {
+    this.visibleCalendarsContainer = section.createDiv({
       cls: 'workspace-calendar-checkboxes'
     });
     this.renderCalendarCheckboxes(this.visibleCalendarsContainer, calendars);
@@ -197,7 +197,7 @@ export class WorkspaceModal extends Modal {
     const selectedIds = new Set((this.workspace.visibleCalendars || []).map(String));
 
     calendars.forEach(calendar => {
-      const checkboxContainer = container.createEl('div', { cls: 'workspace-checkbox-item' });
+      const checkboxContainer = container.createDiv({ cls: 'workspace-checkbox-item' });
 
       // Show labels in the format "<calendar type>: <user-defined name>"
       let displayName: string;
@@ -243,7 +243,7 @@ export class WorkspaceModal extends Modal {
   }
 
   private renderCategoryFilterSection(containerEl: HTMLElement) {
-    const section = containerEl.createEl('div', { cls: 'workspace-modal-section' });
+    const section = containerEl.createDiv({ cls: 'workspace-modal-section' });
     section.createEl('h3', { text: t('modals.workspace.sections.categoryFilters') });
 
     if (!PluginState.getSettings().enableAdvancedCategorization) {
@@ -286,7 +286,7 @@ export class WorkspaceModal extends Modal {
       .setName(t('modals.workspace.fields.categories.label'))
       .setDesc(t('modals.workspace.fields.categories.description'));
 
-    this.categoryFilterContainer = section.createEl('div', {
+    this.categoryFilterContainer = section.createDiv({
       cls: 'workspace-category-checkboxes'
     });
     this.renderCategoryCheckboxes();
@@ -308,7 +308,7 @@ export class WorkspaceModal extends Modal {
     }
 
     categories.forEach(category => {
-      const checkboxContainer = this.categoryFilterContainer.createEl('div', {
+      const checkboxContainer = this.categoryFilterContainer.createDiv({
         cls: 'workspace-checkbox-item'
       });
 
@@ -333,7 +333,7 @@ export class WorkspaceModal extends Modal {
   }
 
   private renderAppearanceSection(containerEl: HTMLElement) {
-    const section = containerEl.createEl('div', { cls: 'workspace-modal-section' });
+    const section = containerEl.createDiv({ cls: 'workspace-modal-section' });
     section.createEl('h3', { text: t('modals.workspace.sections.appearanceOverrides') });
 
     // Business hours override
@@ -360,7 +360,7 @@ export class WorkspaceModal extends Modal {
         });
       });
 
-    this.businessHoursContainer = section.createEl('div', {
+    this.businessHoursContainer = section.createDiv({
       cls: 'workspace-business-hours-details'
     });
     this.renderBusinessHoursDetails();
@@ -572,7 +572,7 @@ export class WorkspaceModal extends Modal {
   }
 
   private renderButtons(containerEl: HTMLElement) {
-    const buttonContainer = containerEl.createEl('div', { cls: 'workspace-modal-buttons' });
+    const buttonContainer = containerEl.createDiv({ cls: 'workspace-modal-buttons' });
 
     // Cancel button
     buttonContainer.createEl('button', { text: t('modals.workspace.buttons.cancel') }, button => {

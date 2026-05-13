@@ -1,5 +1,6 @@
+import { showNotice } from '../../utils/showNotice';
 import { PluginState } from '../../core/PluginState';
-import { Notice, Setting } from 'obsidian';
+import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { createDescWithDocs } from '../../ui/settings/docsLinks';
 import { TaskNotesIntegrationSettingsModal } from './TaskNotesIntegrationSettingsModal';
@@ -31,7 +32,7 @@ export function renderTaskNotesIntegrationSettings(
         .setTooltip(t('settings.tasknotesIntegration.configButton'))
         .onClick(() => {
           if (!hasTaskNotesCalendar) {
-            new Notice(t('notices.tasknotes.addSourceFirst'));
+            showNotice(t('notices.tasknotes.addSourceFirst'));
             return;
           }
 

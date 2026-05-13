@@ -100,13 +100,13 @@ export class StatusBarManager {
       const endsIn = currentEvent.end.diff(now);
       const relativeTime = formatRelativeTime(endsIn, 'ends');
       const title = currentEvent.event.title;
-      const truncatedTitle = title.length > 25 ? title.substring(0, 25) + '...' : title;
+      const truncatedTitle = title.length > 25 ? `${title.substring(0, 25)}...` : title;
       newText = `Event: ${truncatedTitle} (${relativeTime})`;
     } else if (nextEvent) {
       const startsIn = nextEvent.start.diff(now);
       const relativeTime = formatRelativeTime(startsIn, 'starts');
       const title = nextEvent.event.title;
-      const truncatedTitle = title.length > 25 ? title.substring(0, 25) + '...' : title;
+      const truncatedTitle = title.length > 25 ? `${title.substring(0, 25)}...` : title;
       newText = `Next: ${truncatedTitle} (${relativeTime})`;
     }
 

@@ -17,7 +17,7 @@ export const DailyNoteConfigComponent: React.FC<DailyNoteConfigComponentProps> =
   onConfigChange,
   context,
   onSave,
-  onClose // Destructure prop
+  onClose: _onClose // Destructure prop
 }) => {
   const [heading, setHeading] = React.useState(config.heading || '');
   const [isSubmitting, setIsSubmitting] = React.useState(false);

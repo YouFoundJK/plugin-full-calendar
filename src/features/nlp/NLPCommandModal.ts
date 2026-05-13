@@ -119,7 +119,7 @@ function formatTime(hours: number, minutes: number): string {
 export class NLPCommandModal extends Modal {
   #pluginId: string;
   #payload: NLPPayload | null = null;
-  #debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  #debounceTimer: number | null = null;
   #previewContainer!: HTMLElement;
   #inputEl!: HTMLInputElement;
   #submitBtn!: HTMLButtonElement;
@@ -181,16 +181,16 @@ export class NLPCommandModal extends Modal {
 
   onClose(): void {
     if (this.#debounceTimer) {
-      clearTimeout(this.#debounceTimer);
+      window.clearTimeout(this.#debounceTimer);
     }
     this.contentEl.empty();
   }
 
   #schedulePreview(): void {
     if (this.#debounceTimer) {
-      clearTimeout(this.#debounceTimer);
+      window.clearTimeout(this.#debounceTimer);
     }
-    this.#debounceTimer = setTimeout(() => this.#updatePreview(), DEBOUNCE_MS);
+    this.#debounceTimer = window.setTimeout(() => this.#updatePreview(), DEBOUNCE_MS);
   }
 
   #updatePreview(): void {

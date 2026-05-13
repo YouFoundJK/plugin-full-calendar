@@ -1,5 +1,6 @@
+import { showNotice } from '../utils/showNotice';
 import { PluginState } from '../core/PluginState';
-import { Notice, Modal, App } from 'obsidian';
+import { Modal, App } from 'obsidian';
 import type { Calendar } from '@fullcalendar/core';
 import type FullCalendarPlugin from '../main';
 import type { CalendarView } from '../ui/view';
@@ -79,14 +80,14 @@ export class InternalAPI {
     let calendar = this.#getActiveCalendar();
     if (!calendar) {
       await this.openCalendar();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => window.setTimeout(resolve, 100));
       calendar = this.#getActiveCalendar();
     }
 
     if (calendar) {
       calendar.changeView(viewName);
     } else {
-      new Notice('Failed to find active calendar view.');
+      showNotice('Failed to find active calendar view.');
     }
   }
 
@@ -165,11 +166,11 @@ function createAuthorizedApi(tokenRecord: ApiTokenRecord): AuthorizedAPI {
     },
     createEvent: (calendarId: string, event: OFCEvent, options?: { silent?: boolean }) => {
       assertScope(grantedScopes, 'events:write');
-      return cache.addEvent(calendarId, event, options as { silent: boolean } | undefined);
+      return cache.addEvent(calendarId, event, options);
     },
     updateEvent: (eventId: string, event: OFCEvent, options?: { silent?: boolean }) => {
       assertScope(grantedScopes, 'events:write');
-      return cache.updateEventWithId(eventId, event, options as { silent: boolean } | undefined);
+      return cache.updateEventWithId(eventId, event, options);
     },
     deleteEvent: (
       eventId: string,
@@ -478,7 +479,7 @@ class AuthorizationModal extends Modal {
       }
     });
 
-    const buttonContainer = contentEl.createEl('div', { cls: 'ofc-auth-buttons' });
+    const buttonContainer = contentEl.createDiv({ cls: 'ofc-auth-buttons' });
 
     const denyBtn = buttonContainer.createEl('button', {
       text: t('api.authorization.deny')

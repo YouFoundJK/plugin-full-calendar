@@ -1,10 +1,10 @@
+import { showNotice } from '../../utils/showNotice';
 /**
  * @file utils.ts
  * @brief Lightweight settings utilities that must be safe to import at plugin startup.
  * @license See LICENSE.md
  */
 
-import { Notice } from 'obsidian';
 import { FullCalendarSettings, GoogleAccount, DEFAULT_SETTINGS } from '../../types/settings';
 import { CalendarInfo, generateCalendarId } from '../../types/calendar_settings';
 import { t } from '../../features/i18n/i18n';
@@ -36,7 +36,7 @@ export function migrateAndSanitizeSettings(settings: unknown): {
   const raw = (settings as LegacySettings) || {};
   // Start from raw, ensure required arrays/objects
   let newSettings = {
-    calendarSources: (raw.calendarSources || []) as (CalendarInfo | GoogleSourceWithAuth)[],
+    calendarSources: raw.calendarSources || [],
     defaultCalendar: raw.defaultCalendar ?? 0,
     firstDay: raw.firstDay ?? 0,
     initialView: raw.initialView ?? { desktop: 'timeGridWeek', mobile: 'timeGrid3Days' },
@@ -142,17 +142,23 @@ export function migrateAndSanitizeSettings(settings: unknown): {
       const refreshToken = (source as GoogleSourceWithAuth).auth?.refreshToken;
       if (refreshToken) {
         if (refreshTokenToAccountId.has(refreshToken)) {
-          source.googleAccountId = refreshTokenToAccountId.get(refreshToken);
+          const existingAccountId = refreshTokenToAccountId.get(refreshToken);
+          if (existingAccountId) {
+            source.googleAccountId = existingAccountId;
+          }
         } else {
-          const newAccountId = `gcal_${Math.random().toString(36).slice(2, 11)}`;
-          const newAccount: GoogleAccount = {
-            id: newAccountId,
-            email: 'Migrated Account',
-            ...(source as GoogleSourceWithAuth).auth!
-          };
-          newSettings.googleAccounts.push(newAccount);
-          refreshTokenToAccountId.set(refreshToken, newAccountId);
-          source.googleAccountId = newAccountId;
+          const sourceAuth = (source as GoogleSourceWithAuth).auth;
+          if (sourceAuth) {
+            const newAccountId = `gcal_${Math.random().toString(36).slice(2, 11)}`;
+            const newAccount: GoogleAccount = {
+              id: newAccountId,
+              email: 'Migrated Account',
+              ...sourceAuth
+            };
+            newSettings.googleAccounts.push(newAccount);
+            refreshTokenToAccountId.set(refreshToken, newAccountId);
+            source.googleAccountId = newAccountId;
+          }
         }
       }
       delete (source as GoogleSourceWithAuth).auth;
@@ -207,7 +213,7 @@ export function sanitizeInitialView(settings: FullCalendarSettings): FullCalenda
     !settings.enableAdvancedCategorization &&
     settings.initialView.desktop.startsWith('resourceTimeline')
   ) {
-    new Notice(t('settings.utils.timelineDisabled'), 5000);
+    showNotice(t('settings.utils.timelineDisabled'), 5000);
     return {
       ...settings,
       initialView: {

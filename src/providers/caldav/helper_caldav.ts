@@ -3,7 +3,7 @@ import { obsidianFetch } from './obsidian-fetch_caldav';
 import { createBasicAuthHeader } from './auth_caldav';
 
 export function ensureTrailingSlash(u: string) {
-  return u.endsWith('/') ? u : u + '/';
+  return u.endsWith('/') ? u : `${u}/`;
 }
 export function stripTrailingSlash(u: string) {
   return u.endsWith('/') ? u.slice(0, -1) : u;

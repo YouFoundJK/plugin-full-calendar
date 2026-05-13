@@ -18,7 +18,7 @@ export function renderWorkspaceSettings(
   rerender: () => void
 ): void {
   // Header section
-  const workspaceSection = containerEl.createEl('div');
+  const workspaceSection = containerEl.createDiv();
 
   new Setting(workspaceSection)
     .setName(t('settings.workspaces.title'))
@@ -54,10 +54,10 @@ export function renderWorkspaceSettings(
 
   // Workspace list
   if (PluginState.getSettings().workspaces.length > 0) {
-    const workspaceList = workspaceSection.createEl('div', { cls: 'workspace-list' });
+    const workspaceList = workspaceSection.createDiv({ cls: 'workspace-list' });
 
     PluginState.getSettings().workspaces.forEach((workspace, index) => {
-      const workspaceItem = workspaceList.createEl('div', { cls: 'workspace-item' });
+      const workspaceItem = workspaceList.createDiv({ cls: 'workspace-item' });
 
       new Setting(workspaceItem)
         .setName(workspace.name)

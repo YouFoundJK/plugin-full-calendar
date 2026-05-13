@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Setting } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { PluginState } from '../../../core/PluginState';
@@ -38,7 +38,7 @@ export const OutlookConfigComponent: React.FC<OutlookConfigComponentProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const authManager = new OutlookAuthManager(plugin);
+  const authManager = useMemo(() => new OutlookAuthManager(plugin), [plugin]);
   const accountListRef = useRef<HTMLDivElement>(null);
   const calendarListRef = useRef<HTMLDivElement>(null);
 
@@ -69,49 +69,56 @@ export const OutlookConfigComponent: React.FC<OutlookConfigComponentProps> = ({
     });
   };
 
-  const handleSelectAccount = async (account: MicrosoftAccount) => {
-    setIsLoading(true);
-    setError(null);
-    setSelectedAccount(account);
+  const handleSelectAccount = useCallback(
+    async (account: MicrosoftAccount) => {
+      setIsLoading(true);
+      setError(null);
+      setSelectedAccount(account);
 
-    try {
-      if (!account.accessToken || !account.expiryDate || Date.now() >= account.expiryDate - 60000) {
-        const token = await authManager.getTokenForSource({
-          type: 'outlook',
-          id: `temp_${account.id}`,
-          name: account.email,
-          calendarId: 'primary',
-          microsoftAccountId: account.id,
-          color: ''
-        } as Extract<import('../../../types/calendar_settings').CalendarInfo, { type: 'outlook' }>);
+      try {
+        if (
+          !account.accessToken ||
+          !account.expiryDate ||
+          Date.now() >= account.expiryDate - 60000
+        ) {
+          const token = await authManager.getTokenForSource({
+            type: 'outlook',
+            id: `temp_${account.id}`,
+            name: account.email,
+            calendarId: 'primary',
+            microsoftAccountId: account.id,
+            color: ''
+          });
 
-        if (!token) {
-          throw new OutlookApiError(`Failed to refresh token for ${account.email}.`);
+          if (!token) {
+            throw new OutlookApiError(`Failed to refresh token for ${account.email}.`);
+          }
+          account.accessToken = token;
         }
-        account.accessToken = token;
+
+        const { fetchOutlookCalendarList } = await import('../auth/api');
+        const allCalendars = await fetchOutlookCalendarList(account);
+        const existingIds = new Set(
+          PluginState.getSettings()
+            .calendarSources.filter(
+              (s): s is Extract<typeof s, { type: 'outlook'; calendarId: string }> =>
+                s.type === 'outlook'
+            )
+            .map(s => s.calendarId)
+        );
+
+        setAvailableCalendars(allCalendars.filter(cal => !existingIds.has(cal.id)));
+        setView('calendar-select');
+      } catch (e) {
+        const message = e instanceof Error ? e.message : t('outlook.errors.unknown');
+        setError(t('outlook.errors.fetchCalendars', { email: account.email, message }));
+        setView('account-select');
+      } finally {
+        setIsLoading(false);
       }
-
-      const { fetchOutlookCalendarList } = await import('../auth/api');
-      const allCalendars = await fetchOutlookCalendarList(account);
-      const existingIds = new Set(
-        PluginState.getSettings()
-          .calendarSources.filter(
-            (s): s is Extract<typeof s, { type: 'outlook'; calendarId: string }> =>
-              s.type === 'outlook'
-          )
-          .map(s => s.calendarId)
-      );
-
-      setAvailableCalendars(allCalendars.filter(cal => !existingIds.has(cal.id)));
-      setView('calendar-select');
-    } catch (e) {
-      const message = e instanceof Error ? e.message : t('outlook.errors.unknown');
-      setError(t('outlook.errors.fetchCalendars', { email: account.email, message }));
-      setView('account-select');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [authManager]
+  );
 
   const handleSave = () => {
     if (!selectedAccount) return;
@@ -149,7 +156,7 @@ export const OutlookConfigComponent: React.FC<OutlookConfigComponentProps> = ({
         .setCta()
         .onClick(() => startOutlookLogin(plugin))
     );
-  }, [view, accounts, plugin]);
+  }, [view, accounts, plugin, handleSelectAccount]);
 
   useEffect(() => {
     if (view !== 'calendar-select' || !calendarListRef.current) return;

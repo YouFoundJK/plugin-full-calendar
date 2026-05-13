@@ -17,7 +17,7 @@ export const FullNoteConfigComponent: React.FC<FullNoteConfigComponentProps> = (
   onConfigChange,
   context,
   onSave,
-  onClose // Destructuring the new prop
+  onClose: _onClose // Destructuring the new prop
 }) => {
   const [directory, setDirectory] = React.useState(config.directory || '');
   const [isSubmitting, setIsSubmitting] = React.useState(false);

@@ -1,5 +1,6 @@
+import { showNotice } from '../utils/showNotice';
 import { PluginState } from '../core/PluginState';
-import { App, Notice } from 'obsidian';
+import { App } from 'obsidian';
 import FullCalendarPlugin from '../main';
 import * as Plotter from './ui/plotter';
 import { DataManager } from './data/DataManager';
@@ -57,11 +58,11 @@ export class AnalysisController {
   private async handleGenerateInsights() {
     const config = this.uiService.insightsConfig;
     if (!config || Object.keys(config.insightGroups).length === 0) {
-      new Notice(t('notices.chronoAnalyserConfigureFirst'), 5000);
+      showNotice(t('notices.chronoAnalyserConfigureFirst'), 5000);
       return;
     }
 
-    new Notice(t('notices.chronoAnalyserGeneratingInsights'));
+    showNotice(t('notices.chronoAnalyserGeneratingInsights'));
     this.uiService.setInsightsLoading(true);
 
     const allRecords = this.dataManager.getAllRecords();
@@ -70,7 +71,7 @@ export class AnalysisController {
       this.uiService.renderInsights(insights);
     } catch (error) {
       console.error('Error generating insights:', error);
-      new Notice(t('notices.chronoAnalyserInsightsFailed'));
+      showNotice(t('notices.chronoAnalyserInsightsFailed'));
     } finally {
       this.uiService.setInsightsLoading(false);
     }
@@ -86,7 +87,7 @@ export class AnalysisController {
         PluginState.getSettings().chrono_analyser_config = newConfig;
         void PluginState.saveSettings();
         this.uiService.insightsConfig = newConfig;
-        new Notice(t('notices.chronoAnalyserInsightsSaved'));
+        showNotice(t('notices.chronoAnalyserInsightsSaved'));
       }
     ).open();
   }
@@ -95,7 +96,7 @@ export class AnalysisController {
     await this.uiService.initialize();
 
     if (!PluginState.getCache().initialized) {
-      new Notice(t('notices.chronoAnalyserInitializing'), 2000);
+      showNotice(t('notices.chronoAnalyserInitializing'), 2000);
       await PluginState.getCache().populate();
     }
 
@@ -138,8 +139,9 @@ export class AnalysisController {
           if (
             this.activeTimeSeriesGranularity !== chartSpecificFilters.granularity ||
             this.activeTimeSeriesType !== chartSpecificFilters.type
-          )
+          ) {
             useReact = false;
+          }
           break;
         case 'activity':
           if (this.activeActivityPattern !== chartSpecificFilters.patternType) useReact = false;

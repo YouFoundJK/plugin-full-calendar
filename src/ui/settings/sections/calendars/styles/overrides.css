@@ -18,8 +18,8 @@
 .is-phone .ofc-calendar-shell .fc .fc-scrollgrid-sync-table,
 .is-phone .ofc-calendar-shell .fc .fc-daygrid-body,
 .is-phone .ofc-calendar-shell .fc .fc-daygrid-body table {
-    width: 100% !important;
-    min-width: 0 !important;
+    width: 100%;
+    min-width: 0;
 }
 
 .is-phone .ofc-calendar-shell .fc .fc-daygrid-day-frame {
@@ -63,22 +63,18 @@
     --fc-non-business-color: var(--background-modifier-box-shadow);
 }
 
-.fc a {
-    text-decoration-line: none;
-}
-
 .fc .fc-bg-event {
     pointer-events: auto;
 }
 
 .fc-button-active {
-    color: var(--text-on-accent) !important;
+    color: var(--text-on-accent);
 }
 
 .fc .fc-button {
-    border: 0px solid transparent !important;
-    line-height: 1 !important;
-    padding: var(--size-4-1) var(--size-4-3) !important;
+    border: 0px solid transparent;
+    line-height: 1;
+    padding: var(--size-4-1) var(--size-4-3);
 }
 
 .fc .fc-toolbar.fc-header-toolbar {
@@ -143,31 +139,25 @@
 }
 
 .ofc-has-checkbox {
-    display: flex !important;
+    display: flex;
 }
 
 .ofc-has-checkbox.fc-list-event-title {
     align-items: center;
 }
 
-.ofc-task-completed .fc-event-title {
-    text-decoration: line-through;
-}
-
-.ofc-task-completed .fc-list-event-title {
-    text-decoration: line-through;
+.ofc-task-completed .fc-event-title,
+.ofc-task-completed .fc-list-event-title,
+.ofc-task-skipped .fc-event-title,
+.ofc-task-skipped .fc-list-event-title {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 50%;
+    background-repeat: no-repeat;
+    background-size: 100% 1px;
 }
 
 .ofc-task-completed {
     opacity: 0.8;
-}
-
-.ofc-task-skipped .fc-event-title {
-    text-decoration: line-through;
-}
-
-.ofc-task-skipped .fc-list-event-title {
-    text-decoration: line-through;
 }
 
 .ofc-task-skipped {
@@ -175,13 +165,13 @@
 }
 
 .ofc-checkbox-white {
-    border-color: white !important;
-    border-width: 1px !important;
+    border-color: white;
+    border-width: 1px;
 }
 
 .ofc-checkbox-black {
-    border-color: black !important;
-    border-width: 1px !important;
+    border-color: black;
+    border-width: 1px;
 }
 
 /* Styles for the new Edit/Create Event Modal */
@@ -325,10 +315,6 @@
     margin-top: 1.5rem;
 }
 
-.full-calendar-edit-modal .options-group label:has(input[type="checkbox"]:disabled) {
-    opacity: 0.5;
-}
-
 .full-calendar-edit-modal .setting-item-control.is-override-disabled,
 .full-calendar-edit-modal .setting-item-control.is-override-disabled input {
     opacity: 0.6;
@@ -336,7 +322,7 @@
 
 .full-calendar-edit-modal .options-group label.is-disabled {
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
 /* Onboarding Screen Styles */
@@ -402,13 +388,13 @@
 
 /* Shadow events styling for resourceTimeline view */
 .fc-event-shadow {
-    opacity: 0.4 !important;
-    pointer-events: none !important;
-    cursor: default !important;
+    opacity: 0.4;
+    pointer-events: none;
+    cursor: default;
 }
 
 .fc-event-shadow .fc-event-main {
-    opacity: 0.6 !important;
+    opacity: 0.6;
 }
 
 .fc-event-shadow .fc-event-title {
@@ -418,17 +404,17 @@
 
 /* Ensure shadow events don't interfere with interactions */
 .fc-event-shadow:hover {
-    opacity: 0.4 !important;
+    opacity: 0.4;
 }
 
 /* Highlight only the current event, or the immediate next one when nothing is current. */
 .fc .fc-event.ofc-event-current-or-next,
 .fc .fc-list-event.ofc-event-current-or-next {
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85) !important,
-        0 0 24px 8px color-mix(in srgb, var(--interactive-accent) 78%, transparent) !important,
-        0 0 56px 24px color-mix(in srgb, var(--interactive-accent) 62%, transparent) !important;
-    outline: none !important;
-    overflow: visible !important;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85),
+        0 0 24px 8px color-mix(in srgb, var(--interactive-accent) 78%, transparent),
+        0 0 56px 24px color-mix(in srgb, var(--interactive-accent) 62%, transparent);
+    outline: none;
+    overflow: visible;
     isolation: isolate;
     z-index: 3;
 }
@@ -436,16 +422,16 @@
 /* Month view: daygrid events are compact and need explicit background/border highlighting. */
 .fc .fc-daygrid-event.ofc-event-current-or-next,
 .fc .fc-daygrid-dot-event.ofc-event-current-or-next {
-    background: color-mix(in srgb, var(--interactive-accent) 26%, var(--background-primary)) !important;
-    border: 1px solid color-mix(in srgb, var(--interactive-accent) 88%, white) !important;
-    border-radius: var(--radius-s) !important;
-    box-shadow: 0 0 16px 5px color-mix(in srgb, var(--interactive-accent) 66%, transparent) !important,
-        0 0 32px 12px color-mix(in srgb, var(--interactive-accent) 52%, transparent) !important;
+    background: color-mix(in srgb, var(--interactive-accent) 26%, var(--background-primary));
+    border: 1px solid color-mix(in srgb, var(--interactive-accent) 88%, white);
+    border-radius: var(--radius-s);
+    box-shadow: 0 0 16px 5px color-mix(in srgb, var(--interactive-accent) 66%, transparent),
+        0 0 32px 12px color-mix(in srgb, var(--interactive-accent) 52%, transparent);
 }
 
 .fc .fc-daygrid-dot-event.ofc-event-current-or-next .fc-event-title,
 .fc .fc-daygrid-event.ofc-event-current-or-next .fc-event-title {
-    color: var(--text-normal) !important;
+    color: var(--text-normal);
     font-weight: 700;
 }
 
@@ -453,8 +439,8 @@
 .fc .fc-timegrid-event-harness.ofc-event-current-or-next-harness,
 .fc .fc-daygrid-event-harness.ofc-event-current-or-next-harness,
 .fc .fc-timeline-event-harness.ofc-event-current-or-next-harness {
-    overflow: visible !important;
-    z-index: 12 !important;
+    overflow: visible;
+    z-index: 12;
     filter: drop-shadow(0 0 18px color-mix(in srgb, var(--interactive-accent) 72%, transparent))
         drop-shadow(0 0 30px color-mix(in srgb, var(--interactive-accent) 58%, transparent));
 }
@@ -463,7 +449,7 @@
 .fc .fc-list-event.ofc-event-current-or-next > td {
     background: linear-gradient(90deg,
             color-mix(in srgb, var(--interactive-accent) 28%, var(--background-primary)) 0%,
-            color-mix(in srgb, var(--interactive-accent) 16%, var(--background-primary)) 100%) !important;
+            color-mix(in srgb, var(--interactive-accent) 16%, var(--background-primary)) 100%);
     border-top: 1px solid color-mix(in srgb, var(--interactive-accent) 78%, white);
     border-bottom: 1px solid color-mix(in srgb, var(--interactive-accent) 78%, white);
     box-shadow: 0 0 18px 6px color-mix(in srgb, var(--interactive-accent) 58%, transparent);
@@ -554,11 +540,11 @@
 
 /* Utility class to prevent body scrolling when overlays/modals are open */
 .no-scroll {
-    overflow: hidden !important;
+    overflow: hidden;
 }
 
 .workspace-calendar-filter {
-    border-bottom: none !important;
+    border-bottom: none;
 }
 
 .workspace-calendar-checkboxes,
@@ -568,12 +554,12 @@
 }
 
 .workspace-checkbox-item {
-    border: none !important;
-    padding: 0.25rem 0 !important;
+    border: none;
+    padding: 0.25rem 0;
 }
 
 .workspace-checkbox-item .setting-item-info {
-    padding-left: 0 !important;
+    padding-left: 0;
 }
 
 .workspace-checkbox-item .setting-item-name {
@@ -592,12 +578,12 @@
 
 /* Larger, more touch-friendly toolbar buttons */
 .is-phone .fc .fc-button {
-    padding: var(--size-4-2) var(--size-4-3) !important;
-    font-size: 0.9rem !important;
-    min-height: 36px !important;
-    min-width: 40px !important;
-    border-radius: var(--radius-m) !important;
-    font-weight: 500 !important;
+    padding: var(--size-4-2) var(--size-4-3);
+    font-size: 0.9rem;
+    min-height: 36px;
+    min-width: 40px;
+    border-radius: var(--radius-m);
+    font-weight: 500;
 }
 
 /* Better button group spacing */
@@ -629,58 +615,58 @@
 
 /* Improve day header readability */
 .is-phone .fc .fc-col-header-cell {
-    padding: 10px 4px !important;
+    padding: 10px 4px;
 }
 
 .is-phone .fc .fc-col-header-cell-cushion {
-    font-size: 0.85rem !important;
-    font-weight: 600 !important;
-    color: var(--text-normal) !important;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-normal);
 }
 
 /* Better time slot visibility */
 .is-phone .fc .fc-timegrid-slot {
-    height: 2.5em !important;
+    height: 2.5em;
 }
 
 .is-phone .fc .fc-timegrid-slot-label {
-    font-size: 0.75rem !important;
-    color: var(--text-muted) !important;
+    font-size: 0.75rem;
+    color: var(--text-muted);
 }
 
 /* More prominent today column */
 .is-phone .fc .fc-day-today {
-    background-color: var(--background-modifier-hover) !important;
+    background-color: var(--background-modifier-hover);
 }
 
 .is-phone .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
-    color: var(--text-accent) !important;
-    font-weight: 700 !important;
+    color: var(--text-accent);
+    font-weight: 700;
 }
 
 /* Larger event blocks for easier tapping */
 .is-phone .fc .fc-timegrid-event {
-    border-radius: var(--radius-s) !important;
-    padding: 2px 4px !important;
-    font-size: 0.8rem !important;
+    border-radius: var(--radius-s);
+    padding: 2px 4px;
+    font-size: 0.8rem;
 }
 
 .is-phone .fc .fc-timegrid-event .fc-event-title {
-    font-weight: 500 !important;
+    font-weight: 500;
 }
 
 /* All-day section improvements */
 .is-phone .fc .fc-daygrid-day-events {
-    min-height: 2em !important;
-    padding-left: 1px !important;
-    padding-right: 1px !important;
+    min-height: 2em;
+    padding-left: 1px;
+    padding-right: 1px;
 }
 
 .is-phone .fc .fc-daygrid-event {
-    border-radius: var(--radius-s) !important;
-    padding: 3px 5px !important;
-    margin-bottom: 2px !important;
-    overflow: hidden !important;
+    border-radius: var(--radius-s);
+    padding: 3px 5px;
+    margin-bottom: 2px;
+    overflow: hidden;
 }
 
 .is-phone .fc .fc-daygrid-event .fc-event-title,
@@ -694,7 +680,7 @@
 
 .is-phone .fc .fc-view-harness,
 .is-phone .fc .fc-scroller {
-    overflow-x: hidden !important;
+    overflow-x: hidden;
 }
 
 /* -----------------------------------------------------------------------------
@@ -703,7 +689,7 @@
 
 /* Modal container - modern card-like appearance */
 .is-phone .full-calendar-edit-modal {
-    padding: 0 !important;
+    padding: 0;
 }
 
 /* Modal header - prominent with accent color */
@@ -732,7 +718,6 @@
     padding: 8px 16px;
     border-radius: var(--radius-m);
     font-weight: 500;
-    backdrop-filter: blur(4px);
 }
 
 .is-phone .full-calendar-edit-modal .modal-header button:hover {
@@ -785,27 +770,27 @@
 .is-phone .full-calendar-edit-modal .setting-item-control input[type="time"],
 .is-phone .full-calendar-edit-modal .setting-item-control input[type="number"],
 .is-phone .full-calendar-edit-modal .setting-item-control select {
-    width: 100% !important;
-    min-height: 48px !important;
-    padding: 12px 16px !important;
-    font-size: 1rem !important;
-    border-radius: var(--radius-m) !important;
-    border: 2px solid var(--background-modifier-border) !important;
-    background: var(--background-secondary) !important;
-    color: var(--text-normal) !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    border-radius: var(--radius-m);
+    border: 2px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .is-phone .full-calendar-edit-modal .setting-item-control input:focus,
 .is-phone .full-calendar-edit-modal .setting-item-control select:focus {
-    border-color: var(--interactive-accent) !important;
-    box-shadow: 0 0 0 3px rgba(var(--interactive-accent-rgb), 0.15) !important;
-    outline: none !important;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 3px rgba(var(--interactive-accent-rgb), 0.15);
+    outline: none;
 }
 
 /* Time group - horizontal with better spacing */
 .is-phone .full-calendar-edit-modal .time-group {
-    flex-direction: row !important;
+    flex-direction: row;
     flex-wrap: nowrap;
     gap: 8px;
 }
@@ -824,9 +809,9 @@
 
 /* Options group - better touch targets */
 .is-phone .full-calendar-edit-modal .options-group {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 12px !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
 }
 
 .is-phone .full-calendar-edit-modal .options-group label {
@@ -845,9 +830,9 @@
 }
 
 .is-phone .full-calendar-edit-modal .options-group input[type="checkbox"] {
-    width: 22px !important;
-    height: 22px !important;
-    margin: 0 !important;
+    width: 22px;
+    height: 22px;
+    margin: 0;
 }
 
 /* Day choice buttons - larger for mobile */
@@ -931,22 +916,22 @@
 .is-phone .full-calendar-edit-modal .options-group .u-flex-align-center .u-w-60px,
 .is-phone .full-calendar-edit-modal .options-group .u-flex-align-center select {
     flex: 1;
-    min-height: 44px !important;
-    padding: 10px 12px !important;
-    font-size: 0.95rem !important;
-    border-radius: var(--radius-s) !important;
-    border: 1px solid var(--background-modifier-border) !important;
-    background: var(--background-primary) !important;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
 }
 
 .is-phone .full-calendar-edit-modal .u-w-60px {
-    width: auto !important;
+    width: auto;
     min-width: 80px;
 }
 
 /* Date input - add left padding to prevent text overlapping with calendar icon */
 .is-phone .full-calendar-edit-modal .setting-item-control input[type="date"] {
-    padding-left: 36px !important;
+    padding-left: 36px;
 }
 
 /* Autocomplete input styling */
@@ -955,5 +940,5 @@
 }
 
 .is-phone .full-calendar-edit-modal .autocomplete-input-wrapper input {
-    width: 100% !important;
+    width: 100%;
 }

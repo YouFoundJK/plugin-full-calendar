@@ -5,7 +5,9 @@ import {
     FileManager,
     Keymap,
     MetadataCache,
+    RenderContext,
     Scope,
+    SecretStorage,
     TAbstractFile,
     TFile,
     TFolder,
@@ -97,10 +99,16 @@ export class MockApp implements App {
     scope: Scope = {} as Scope;
     workspace: Workspace = {} as Workspace;
     lastEvent: UserEvent | null = null;
+    renderContext: RenderContext = {} as RenderContext;
+    secretStorage: SecretStorage = {} as SecretStorage;
 
     fileManager: FileManager = {} as FileManager;
     metadataCache: MetadataCache;
     vault: MockVault;
+    isDarkMode(): boolean {
+        return false;
+    }
+
     loadLocalStorage(): void {
         // mock implementation
     }
@@ -151,7 +159,7 @@ export class MockAppBuilder {
     }
 
     file(filename: string, builder: FileBuilder): MockAppBuilder {
-        let file = new TFile();
+        const file = new TFile();
         file.name = filename;
 
         const [contents, metadata] = builder.done();
@@ -174,7 +182,7 @@ export class MockAppBuilder {
     }
 
     private makeFolder(): TFolder {
-        let folder = new TFolder();
+        const folder = new TFolder();
         folder.name = this.path === "/" ? "" : baseName(this.path);
         if (folder.name === "") {
             (folder as unknown as { isRootVal: boolean }).isRootVal = true;

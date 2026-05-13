@@ -143,7 +143,7 @@ export class InsightsEngine {
       const batch = records.slice(i, i + BATCH_SIZE);
       const processedBatch = batch.map(record => this._tagRecord(record, config));
       taggedRecords = taggedRecords.concat(processedBatch);
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => window.setTimeout(resolve, 0));
     }
     return taggedRecords;
   }
@@ -219,7 +219,10 @@ export class InsightsEngine {
         if (!projectDistribution.has(record.hierarchy)) {
           projectDistribution.set(record.hierarchy, new Map());
         }
-        const projectsInHierarchy = projectDistribution.get(record.hierarchy)!;
+        const projectsInHierarchy = projectDistribution.get(record.hierarchy);
+        if (!projectsInHierarchy) {
+          continue;
+        }
         projectsInHierarchy.set(
           record.project,
           (projectsInHierarchy.get(record.project) || 0) + record.duration
@@ -342,7 +345,10 @@ export class InsightsEngine {
         if (!projectsByGroup.has(tag)) {
           projectsByGroup.set(tag, new Map());
         }
-        const projectsInGroup = projectsByGroup.get(tag)!;
+        const projectsInGroup = projectsByGroup.get(tag);
+        if (!projectsInGroup) {
+          continue;
+        }
         projectsInGroup.set(
           record.project,
           (projectsInGroup.get(record.project) || 0) + record.duration
@@ -574,7 +580,11 @@ export class InsightsEngine {
 
       const init = (map: Map<string, { duration: number; count: number }>, k: string) => {
         if (!map.has(k)) map.set(k, { duration: 0, count: 0 });
-        return map.get(k)!;
+        const entry = map.get(k);
+        if (!entry) {
+          throw new Error(`Failed to initialize insight bucket for key "${k}".`);
+        }
+        return entry;
       };
 
       if (recordDay >= last7DaysStart) {

@@ -18,7 +18,7 @@ export const ICSConfigComponent: React.FC<ICSConfigComponentProps> = ({
   config,
   onConfigChange,
   onSave,
-  onClose
+  onClose: _onClose
 }) => {
   const [mode, setMode] = React.useState<'url' | 'local'>('url');
   const [url, setUrl] = React.useState(config.url || '');
@@ -33,7 +33,7 @@ export const ICSConfigComponent: React.FC<ICSConfigComponentProps> = ({
     // Load local ICS files
     const files = plugin.app.vault.getFiles().filter(f => f.extension === 'ics');
     setLocalFiles(files);
-  }, []);
+  }, [config.url, plugin.app.vault]);
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();

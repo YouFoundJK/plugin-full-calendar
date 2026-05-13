@@ -89,7 +89,7 @@ const generateInlineAttributes = (attrs: Record<string, unknown>): string => {
 const makeListItem = (
   data: OFCEvent,
   whitespacePrefix: string = '',
-  settings: FullCalendarSettings
+  _settings: FullCalendarSettings
 ): string => {
   if (data.type !== 'single') throw new Error('Can only pass in single event.');
   const { completed, title } = data;
@@ -187,7 +187,7 @@ export const getInlineEventFromLine = (
     attrsForValidation['date'] = '1970-01-01';
   }
 
-  return validateEvent(attrsForValidation as OFCEvent);
+  return validateEvent(attrsForValidation);
 };
 
 export function getAllInlineEventsFromFile(
@@ -233,9 +233,8 @@ export const addToHeading = (
     const lineNumber = headingLine + 1;
     lines.splice(lineNumber, 0, listItem);
     return { page: lines.join('\n'), lineNumber };
-  } else {
-    lines.push(`## ${headingText}`);
-    lines.push(listItem);
-    return { page: lines.join('\n'), lineNumber: lines.length - 1 };
   }
+  lines.push(`## ${headingText}`);
+  lines.push(listItem);
+  return { page: lines.join('\n'), lineNumber: lines.length - 1 };
 };

@@ -85,7 +85,7 @@ class ApiAccessModal extends Modal {
       row.createDiv({ cls: 'ofc-auth-scope-desc', text: scope.description });
     });
 
-    const buttonContainer = contentEl.createEl('div', { cls: 'ofc-auth-buttons' });
+    const buttonContainer = contentEl.createDiv({ cls: 'ofc-auth-buttons' });
     const cancelBtn = buttonContainer.createEl('button', { text: t('api.settings.cancel') });
     cancelBtn.onclick = () => this.close();
 

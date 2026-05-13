@@ -1,3 +1,4 @@
+import { showNotice } from '../../utils/showNotice';
 /**
  * @file event_modal.ts
  * @brief Provides functions to launch React-based modals for creating and editing events.
@@ -22,7 +23,6 @@ import { PluginState } from '../../core/PluginState';
 import * as React from 'react';
 import ReactModal from '../ReactModal';
 
-import { Notice } from 'obsidian';
 import { OFCEvent } from '../../types';
 import { EditEvent } from './EditEvent';
 import { EventDetails } from './EventDetails';
@@ -54,7 +54,7 @@ export function launchCreateModal(
     .filter((c): c is NonNullable<typeof c> => !!c);
 
   if (calendars.length === 0) {
-    new Notice(t('modals.editEvent.errors.createNoCalendars'));
+    showNotice(t('modals.editEvent.errors.createNoCalendars'));
     return;
   }
 
@@ -82,7 +82,7 @@ export function launchCreateModal(
             await PluginState.getCache().addEvent(calendarId, data);
           } catch (e) {
             if (e instanceof Error) {
-              new Notice(t('modals.editEvent.errors.createError', { message: e.message }));
+              showNotice(t('modals.editEvent.errors.createError', { message: e.message }));
               console.error(e);
             }
           }
@@ -148,7 +148,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
                 closeModal();
                 launchEditModal(plugin, parentSessionId);
               } else {
-                new Notice(t('modals.editEvent.errors.parentNotFound'));
+                showNotice(t('modals.editEvent.errors.parentNotFound'));
               }
             }
           })();
@@ -181,7 +181,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
             }
           } catch (e) {
             if (e instanceof Error) {
-              new Notice(t('modals.editEvent.errors.updateError', { message: e.message }));
+              showNotice(t('modals.editEvent.errors.updateError', { message: e.message }));
               console.error(e);
             }
           }
@@ -197,7 +197,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
             closeModal();
           } catch (e) {
             if (e instanceof Error) {
-              new Notice(t('modals.editEvent.errors.deleteError', { message: e.message }));
+              showNotice(t('modals.editEvent.errors.deleteError', { message: e.message }));
               console.error(e);
             }
           }
@@ -212,12 +212,12 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
 export function launchEventDetailsModal(plugin: FullCalendarPlugin, eventId: string) {
   const event = PluginState.getCache().getEventById(eventId);
   if (!event) {
-    new Notice(t('modals.editEvent.errors.eventNotFound'));
+    showNotice(t('modals.editEvent.errors.eventNotFound'));
     return;
   }
   const eventDetails = PluginState.getCache().store.getEventDetails(eventId);
   if (!eventDetails) {
-    new Notice(t('modals.editEvent.errors.detailsNotFound'));
+    showNotice(t('modals.editEvent.errors.detailsNotFound'));
     return;
   }
 

@@ -20,7 +20,7 @@ interface ReminderModalProps {
 export const ReminderModal = ({
   event,
   type,
-  defaultReminderMinutes,
+  defaultReminderMinutes: _defaultReminderMinutes,
   onSnooze,
   onDismiss,
   onOpen

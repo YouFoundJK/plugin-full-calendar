@@ -15,7 +15,7 @@ import { fetchCalendarInfo } from './helper_caldav';
 
 // Helper function to ensure URL formatting is consistent.
 function canonCollection(u?: string): string {
-  return u ? (u.endsWith('/') ? u : u + '/') : (u as unknown as string);
+  return u ? (u.endsWith('/') ? u : `${u}/`) : (u as unknown as string);
 }
 
 // Helper to format a Date object into the format CalDAV expects (YYYYMMDDTHHMMSSZ).
@@ -77,7 +77,7 @@ function getSuccessfulPropNode(response: Element): Element | null {
     const propstat = propstats[i];
     const status = propstat.getElementsByTagNameNS('*', 'status')[0]?.textContent || '';
     const statusCode = parseStatusCode(status);
-    if (statusCode == null || statusCode < 200 || statusCode >= 300) continue;
+    if (statusCode === null || statusCode < 200 || statusCode >= 300) continue;
 
     const prop = propstat.getElementsByTagNameNS('*', 'prop')[0];
     if (prop) {
@@ -300,7 +300,7 @@ async function fetchCalendarObjects(
       const propstat = propstats[i];
       const status = propstat.getElementsByTagNameNS('*', 'status')[0]?.textContent || '';
       const statusCode = parseStatusCode(status);
-      if (statusCode == null || statusCode < 200 || statusCode >= 300) continue;
+      if (statusCode === null || statusCode < 200 || statusCode >= 300) continue;
 
       const prop = propstat.getElementsByTagNameNS('*', 'prop')[0];
       if (!prop) continue;
@@ -442,7 +442,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
   readonly isRemote = true;
   readonly loadPriority = 110;
 
-  constructor(source: CalDAVProviderConfig, plugin: FullCalendarPlugin) {
+  constructor(source: CalDAVProviderConfig, _plugin: FullCalendarPlugin) {
     this.source = source;
   }
 
@@ -458,7 +458,10 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
     return event.uid || JSON.stringify(event);
   }
 
-  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(_range?: {
+    start: Date;
+    end: Date;
+  }): Promise<[OFCEvent, EventLocation | null][]> {
     // Validate collection URL using PROPFIND instead of regex
     const { isCalendar: isValid } = await fetchCalendarInfo(this.source.homeUrl, {
       username: this.source.username,
@@ -525,7 +528,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
     // 3. PUT to server
     // URL typically: collectionUrl + uid + ".ics"
     // Helper ensure trailing slash on homeUrl
-    const url = canonCollection(this.source.homeUrl) + `${uid}.ics`;
+    const url = `${canonCollection(this.source.homeUrl)}${uid}.ics`;
 
     await this.doRequest(url, {
       method: 'PUT',
@@ -552,7 +555,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
     // Convert to ICS
     const icsContent = eventToIcs(newEvent);
 
-    const url = canonCollection(this.source.homeUrl) + `${uid}.ics`;
+    const url = `${canonCollection(this.source.homeUrl)}${uid}.ics`;
 
     // PUT to update
     await this.doRequest(url, {
@@ -571,7 +574,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
 
   async deleteEvent(handle: EventHandle): Promise<void> {
     const uid = handle.persistentId;
-    const url = canonCollection(this.source.homeUrl) + `${uid}.ics`;
+    const url = `${canonCollection(this.source.homeUrl)}${uid}.ics`;
 
     await this.doRequest(url, {
       method: 'DELETE'
@@ -588,7 +591,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
       throw new Error('Cannot create override: Master event has no UID.');
     }
     const uid = masterEvent.uid;
-    const url = canonCollection(this.source.homeUrl) + `${uid}.ics`;
+    const url = `${canonCollection(this.source.homeUrl)}${uid}.ics`;
 
     // Fetch existing
     // We need to fetch the raw text of the ICS file.

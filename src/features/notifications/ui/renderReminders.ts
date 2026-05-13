@@ -12,7 +12,7 @@ import { createDescWithDocs, createDocsLinksFragment } from '../../../ui/setting
 
 export function renderRemindersSettings(
   containerEl: HTMLElement,
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   rerender: () => void
 ): void {
   new Setting(containerEl)

@@ -17,7 +17,7 @@ export const BasesConfigComponent: React.FC<BasesConfigComponentProps> = ({
   config,
   onConfigChange,
   onSave,
-  onClose
+  onClose: _onClose
 }) => {
   const [basePath, setBasePath] = React.useState(config.basePath || '');
   const [baseFiles, setBaseFiles] = React.useState<string[]>([]);
@@ -38,7 +38,7 @@ export const BasesConfigComponent: React.FC<BasesConfigComponentProps> = ({
       basePath,
       name: config.name || name,
       color: config.color || '#3788d8'
-    } as BasesProviderConfig);
+    });
   };
 
   return (

@@ -32,7 +32,7 @@ interface GoogleCalendarListResponse {
 }
 
 export async function fetchGoogleCalendarList(
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   account: GoogleAccount
 ): Promise<GoogleCalendarListEntry[]> {
   const allCalendars: GoogleCalendarListEntry[] = [];

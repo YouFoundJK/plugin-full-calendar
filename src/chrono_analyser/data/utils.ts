@@ -28,7 +28,7 @@ export function getMonthStartDate(date: Date): Date | null {
 export function getHourFromTimeStr(
   timeStr: string | number | Date | null | undefined
 ): number | null {
-  if (timeStr == null) return null;
+  if (timeStr === null) return null;
   if (typeof timeStr === 'number') {
     const hour = Math.floor(timeStr);
     return hour >= 0 && hour <= 23 ? hour : null;
@@ -64,7 +64,7 @@ export function calculateDuration(
   const parseTime = (
     timeStr: string | number | Date | null | undefined
   ): { hours: number; minutes: number } | null => {
-    if (timeStr == null) return null;
+    if (timeStr === null) return null;
     if (typeof timeStr === 'number') {
       if (isNaN(timeStr) || !isFinite(timeStr)) return null;
       return {

@@ -1,3 +1,4 @@
+import { showNotice } from '../utils/showNotice';
 /**
  * @file view.ts
  * @brief Defines the `CalendarView`, the main component for displaying the calendar.
@@ -17,7 +18,7 @@
  */
 
 import { PluginState } from '../core/PluginState';
-import { ItemView, Notice, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf } from 'obsidian';
 
 import type { Calendar } from '@fullcalendar/core';
 
@@ -54,7 +55,7 @@ function throttle<TArgs extends unknown[], TReturn>(
   return function (this: ThisParameterType<typeof func>, ...args: TArgs): TReturn {
     if (!inThrottle) {
       inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
+      window.setTimeout(() => (inThrottle = false), limit);
       const result = func.apply(this, args);
       lastResult = result;
       return result;
@@ -118,15 +119,16 @@ export class CalendarView extends ItemView implements ViewContext {
     if (!this.viewEnhancer || !this.fullCalendarView) {
       return;
     }
+    const fullCalendarView = this.fullCalendarView;
 
     this.viewEnhancer.updateSettings(PluginState.getSettings());
     const allCachedSources = PluginState.getCache().getAllEvents();
     const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
 
-    this.fullCalendarView.removeAllEventSources();
-    sources.forEach(source => this.fullCalendarView!.addEventSource(source));
+    fullCalendarView.removeAllEventSources();
+    sources.forEach(source => fullCalendarView.addEventSource(source));
 
-    const viewType = this.fullCalendarView.view?.type;
+    const viewType = fullCalendarView.view?.type;
     if (viewType && viewType.includes('resourceTimeline')) {
       this.timelineHandler.addShadowEventsToView();
     }
@@ -142,7 +144,7 @@ export class CalendarView extends ItemView implements ViewContext {
     return (async () => {
       await PluginState.loadSettings();
       if (!PluginState.getCache()) {
-        new Notice(t('ui.view.errors.cacheNotLoaded'));
+        showNotice(t('ui.view.errors.cacheNotLoaded'));
         return;
       }
       if (!PluginState.getCache().initialized) {
@@ -153,8 +155,8 @@ export class CalendarView extends ItemView implements ViewContext {
 
       const container = this.contentEl;
       container.empty();
-      const calendarShellEl = container.createEl('div', { cls: 'ofc-calendar-shell' });
-      const calendarEl = calendarShellEl.createEl('div');
+      const calendarShellEl = container.createDiv({ cls: 'ofc-calendar-shell' });
+      const calendarEl = calendarShellEl.createDiv();
 
       this.registerDomEvent(
         calendarEl,
@@ -348,15 +350,16 @@ export class CalendarView extends ItemView implements ViewContext {
         const { sources } = this.viewEnhancer.getEnhancedData(allCachedSources);
 
         if (this.fullCalendarView) {
-          requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
             if (this.fullCalendarView) {
+              const fullCalendarView = this.fullCalendarView;
               if (
                 info.type === 'events' &&
                 info.affectedCalendars &&
                 info.affectedCalendars.length > 0
               ) {
                 info.affectedCalendars.forEach(calendarId => {
-                  const oldSource = this.fullCalendarView!.getEventSourceById(calendarId);
+                  const oldSource = fullCalendarView.getEventSourceById(calendarId);
                   if (oldSource) {
                     oldSource.remove();
                   }
@@ -364,12 +367,12 @@ export class CalendarView extends ItemView implements ViewContext {
                     s => typeof s === 'object' && s !== null && 'id' in s && s.id === calendarId
                   );
                   if (newSource) {
-                    this.fullCalendarView!.addEventSource(newSource);
+                    fullCalendarView.addEventSource(newSource);
                   }
                 });
               } else {
-                this.fullCalendarView.removeAllEventSources();
-                sources.forEach(source => this.fullCalendarView!.addEventSource(source));
+                fullCalendarView.removeAllEventSources();
+                sources.forEach(source => fullCalendarView.addEventSource(source));
               }
 
               this.searchHandler.clearCaches();
@@ -390,8 +393,9 @@ export class CalendarView extends ItemView implements ViewContext {
 
   onResize(): void {
     if (this.fullCalendarView) {
-      requestAnimationFrame(() => {
-        this.fullCalendarView!.render();
+      const fullCalendarView = this.fullCalendarView;
+      window.requestAnimationFrame(() => {
+        fullCalendarView.render();
       });
     }
   }

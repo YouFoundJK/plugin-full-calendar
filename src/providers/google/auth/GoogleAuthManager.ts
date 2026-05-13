@@ -1,3 +1,4 @@
+import { showNotice } from '../../../utils/showNotice';
 /**
  * @file GoogleAuthManager.ts
  * @brief Centralized manager for Google account authentication and token handling.
@@ -5,7 +6,7 @@
  */
 
 import { PluginState } from '../../../core/PluginState';
-import { requestUrl, Notice } from 'obsidian';
+import { requestUrl } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { CalendarInfo } from '../../../types';
 import { GoogleAccount } from '../../../types/settings';
@@ -120,7 +121,7 @@ export class GoogleAuthManager {
           }
         }
         await PluginState.saveSettings();
-        new Notice(t('google.auth.expired'));
+        showNotice(t('google.auth.expired'));
       }
       return null;
     } catch (e) {
@@ -144,7 +145,7 @@ export class GoogleAuthManager {
         'Google source is missing a googleAccountId. It may need to be re-added.',
         source
       );
-      new Notice(t('google.auth.authFailed'));
+      showNotice(t('google.auth.authFailed'));
       return null;
     }
 

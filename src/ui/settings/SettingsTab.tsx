@@ -1,3 +1,4 @@
+import { showNotice } from '../../utils/showNotice';
 /**
  * @file SettingsTab.tsx
  * @brief Implements the Full Calendar plugin's settings tab UI for Obsidian.
@@ -19,12 +20,12 @@ import FullCalendarPlugin from '../../main';
 import {
   App,
   DropdownComponent,
-  Notice,
   PluginSettingTab,
   setIcon,
   Setting,
   TFile,
-  TFolder
+  TFolder,
+  activeDocument
 } from 'obsidian';
 
 import ReactModal from '../ReactModal';
@@ -148,7 +149,7 @@ export function addCalendarButton(
           const basesPlugin =
             app.internalPlugins?.getPluginById('bases') || app.plugins?.getPlugin('bases');
           if (!basesPlugin) {
-            new Notice(t('modals.workspace.fields.notices.enableBases'));
+            showNotice(t('modals.workspace.fields.notices.enableBases'));
             return;
           }
         }
@@ -158,7 +159,7 @@ export function addCalendarButton(
         const providerClass =
           await PluginState.getProviderRegistry().getProviderForType(providerType);
         if (!providerClass) {
-          new Notice(t('notices.providerNotRegistered', { providerType }));
+          showNotice(t('notices.providerNotRegistered', { providerType }));
           return;
         }
         // Provider classes expose a static getConfigurationComponent; keep a loose unknown cast locally.
@@ -349,12 +350,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     });
 
     const tabsRowEl = shellEl.createDiv('full-calendar-settings-tabs-row');
-    tabsRowEl.setCssProps({
-      display: 'flex',
-      'align-items': 'center',
-      'justify-content': 'space-between',
-      gap: '12px'
-    });
+    tabsRowEl.addClass('full-calendar-settings-tabs-row');
 
     const tabsEl = tabsRowEl.createDiv('full-calendar-settings-tabs');
     SETTINGS_CATEGORIES.forEach(category => {
@@ -377,24 +373,14 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     const contentEl = shellEl.createDiv('full-calendar-settings-content');
 
     const searchWrapEl = tabsRowEl.createDiv('full-calendar-settings-search-wrap');
-    searchWrapEl.setCssProps({
-      display: 'flex',
-      'align-items': 'center',
-      gap: '6px',
-      position: 'relative'
-    });
+    searchWrapEl.addClass('full-calendar-settings-search-wrap-style');
 
     const searchButtonEl = searchWrapEl.createEl('button', {
       cls: 'clickable-icon full-calendar-settings-search-trigger'
     });
     searchButtonEl.type = 'button';
     searchButtonEl.ariaLabel = 'Search settings';
-    searchButtonEl.setCssProps({
-      border: '1px solid var(--background-modifier-border)',
-      'border-radius': '8px',
-      padding: '4px',
-      'background-color': 'var(--background-secondary-alt)'
-    });
+    searchButtonEl.addClass('full-calendar-settings-search-button-style');
     setIcon(searchButtonEl, 'search');
 
     const inputWrapEl = searchWrapEl.createDiv('full-calendar-settings-search-input-wrap');
@@ -411,12 +397,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     searchInputEl.type = 'text';
     searchInputEl.placeholder = 'Search settings...';
     searchInputEl.value = this.searchQuery;
-    searchInputEl.setCssProps({
-      width: '100%',
-      padding: '6px 28px 6px 10px',
-      'border-radius': '8px',
-      border: '1px solid var(--background-modifier-border)'
-    });
+    searchInputEl.addClass('full-calendar-settings-search-input-style');
 
     const clearButtonEl = inputWrapEl.createEl('button', {
       cls: 'clickable-icon full-calendar-settings-search-clear'
@@ -513,14 +494,14 @@ export class FullCalendarSettingTab extends PluginSettingTab {
 
       const topRow = cardContent.createDiv({ cls: 'full-calendar-whats-new-header' });
       topRow.createDiv({ text: card.title, cls: 'setting-item-name' });
-      topRow.createEl('span', {
+      topRow.createSpan({
         text: card.unlocked
           ? t('settings.appearance.milestones.modal.completed')
           : t('settings.appearance.milestones.modal.inProgress'),
         cls: `ofc-milestone-badge ${card.unlocked ? 'is-unlocked' : 'is-locked'}`
       });
 
-      cardContent.createEl('div', {
+      cardContent.createDiv({
         text: `${card.targetLabel} • ${card.description}`,
         cls: 'change-description'
       });
@@ -531,7 +512,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         attr: { style: `width: ${card.percent.toFixed(1)}%` }
       });
 
-      cardContent.createEl('div', {
+      cardContent.createDiv({
         text: t('settings.appearance.milestones.modal.progress', { current: card.current }),
         cls: 'ofc-milestone-progress-label'
       });
@@ -626,7 +607,8 @@ export class FullCalendarSettingTab extends PluginSettingTab {
     }
 
     const regex = new RegExp(`(${escapedTokens.join('|')})`, 'gi');
-    const fragment = document.createDocumentFragment();
+    const doc: Document = activeDocument;
+    const fragment = doc.createDocumentFragment();
     let lastIndex = 0;
 
     for (const match of rawText.matchAll(regex)) {
@@ -640,7 +622,7 @@ export class FullCalendarSettingTab extends PluginSettingTab {
         fragment.append(rawText.slice(lastIndex, matchIndex));
       }
 
-      const markEl = document.createElement('mark');
+      const markEl = doc.createElement('mark');
       markEl.textContent = matchText;
       fragment.append(markEl);
       lastIndex = matchIndex + matchText.length;

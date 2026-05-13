@@ -1,6 +1,6 @@
 import { PluginState } from '../../core/PluginState';
 import { DateTime } from 'luxon';
-import { OFCEvent, EventLocation, validateEvent, CalendarInfo } from '../../types';
+import { OFCEvent, EventLocation, validateEvent } from '../../types';
 import FullCalendarPlugin from '../../main';
 import { fromGoogleEvent, toGoogleEvent, GoogleEventLike } from './parser/parser_gcal';
 import { makeAuthenticatedRequest, GoogleApiError } from './auth/request';
@@ -48,16 +48,13 @@ const createGoogleConfigWrapper = (
     const plugin =
       pluginFromInstance || (props as GoogleConfigProps & { plugin?: FullCalendarPlugin }).plugin;
 
-    const forwardOnSave = props.onSave as (
-      configs: GoogleProviderConfig | GoogleProviderConfig[],
-      accountId?: string
-    ) => void;
+    const forwardOnSave = props.onSave;
 
     const handleSave = (
-      selectedConfigs: Array<{ id: string; name: string; color: string }>,
-      accountId: string
+      selectedConfigs: { id: string; name: string; color: string }[],
+      _accountId: string
     ) => {
-      forwardOnSave(selectedConfigs as unknown as GoogleProviderConfig[], accountId);
+      forwardOnSave(selectedConfigs as unknown as GoogleProviderConfig[]);
     };
 
     if (!plugin) {
@@ -91,7 +88,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
   readonly isRemote = true;
   readonly loadPriority = 120;
 
-  constructor(source: GoogleProviderConfig, plugin: FullCalendarPlugin, app?: ObsidianInterface) {
+  constructor(source: GoogleProviderConfig, plugin: FullCalendarPlugin, _app?: ObsidianInterface) {
     this.plugin = plugin;
     this.source = source;
     this.authManager = new GoogleAuthManager(plugin);
@@ -112,7 +109,10 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
     return event.uid || JSON.stringify(event);
   }
 
-  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(_range?: {
+    start: Date;
+    end: Date;
+  }): Promise<[OFCEvent, EventLocation | null][]> {
     const token = await this.authManager.getTokenForSource({
       type: 'google',
       id: this.source.id,
@@ -120,7 +120,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
       calendarId: this.source.calendarId,
       googleAccountId: this.source.googleAccountId,
       color: ''
-    } as Extract<CalendarInfo, { type: 'google' }>); // Provide exact subtype
+    }); // Provide exact subtype
     if (!token) return [];
 
     const displayTimezone = PluginState.getSettings().displayTimezone;
@@ -162,7 +162,10 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
             zone: gEvent.originalStartTime.timeZone || 'utc'
           }).toISODate();
           if (cancelledDate) {
-            cancellations.get(parentId)!.add(cancelledDate);
+            const parentCancellations = cancellations.get(parentId);
+            if (parentCancellations) {
+              parentCancellations.add(cancelledDate);
+            }
           }
         }
       }
@@ -178,7 +181,10 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
             rawEvent.uid &&
             cancellations.has(rawEvent.uid)
           ) {
-            const datesToSkip = cancellations.get(rawEvent.uid)!;
+            const datesToSkip = cancellations.get(rawEvent.uid);
+            if (!datesToSkip) {
+              return null;
+            }
             rawEvent.skipDates = [...new Set([...(rawEvent.skipDates || []), ...datesToSkip])];
           }
 
@@ -203,7 +209,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
       calendarId: this.source.calendarId,
       googleAccountId: this.source.googleAccountId,
       color: ''
-    } as Extract<CalendarInfo, { type: 'google' }>);
+    });
     if (!token) throw new GoogleApiError('Cannot create event: not authenticated.');
 
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
@@ -230,7 +236,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
       calendarId: this.source.calendarId,
       googleAccountId: this.source.googleAccountId,
       color: ''
-    } as Extract<CalendarInfo, { type: 'google' }>);
+    });
     if (!token) throw new GoogleApiError('Cannot update event: not authenticated.');
 
     const newSkipDates = new Set(
@@ -274,7 +280,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
       calendarId: this.source.calendarId,
       googleAccountId: this.source.googleAccountId,
       color: ''
-    } as Extract<CalendarInfo, { type: 'google' }>);
+    });
     if (!token) throw new GoogleApiError('Cannot delete event: not authenticated.');
 
     const eventId = handle.persistentId;
@@ -292,7 +298,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
       calendarId: this.source.calendarId,
       googleAccountId: this.source.googleAccountId,
       color: ''
-    } as Extract<CalendarInfo, { type: 'google' }>);
+    });
     if (!token) throw new GoogleApiError('Cannot cancel instance: not authenticated.');
 
     if (!parentEvent.uid) {
@@ -340,7 +346,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
       calendarId: this.source.calendarId,
       googleAccountId: this.source.googleAccountId,
       color: ''
-    } as Extract<CalendarInfo, { type: 'google' }>);
+    });
     if (!token) throw new GoogleApiError('Cannot create instance override: not authenticated.');
 
     if (newEventData.allDay === false && masterEvent.allDay === false) {

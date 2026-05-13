@@ -1,3 +1,4 @@
+import { showNotice } from './utils/showNotice';
 /**
  * @file main.ts
  * @brief Main plugin entry point for Obsidian Full Calendar.
@@ -20,7 +21,7 @@ import { ensureCalendarIds, migrateAndSanitizeSettings } from './ui/settings/uti
 import { PLUGIN_SLUG } from './types';
 import EventCache from './core/EventCache';
 import { manageTimezone } from './features/timezone/Timezone';
-import { Notice, Plugin, TFile, App, EventRef } from 'obsidian';
+import { Plugin, TFile, App, EventRef } from 'obsidian';
 import type { Workspace } from 'obsidian';
 import { initializeI18n, t } from './features/i18n/i18n';
 import './styles.css';
@@ -215,7 +216,7 @@ export default class FullCalendarPlugin extends Plugin {
         })
         .catch(err => {
           console.error('Full Calendar: Failed to load Chrono Analyser view', err);
-          new Notice(t('notices.chronoAnalyserLoadFailed'));
+          showNotice(t('notices.chronoAnalyserLoadFailed'));
         });
     }
 
@@ -247,7 +248,7 @@ export default class FullCalendarPlugin extends Plugin {
         PluginState.getCache().reset();
         this.app.workspace.detachLeavesOfType(FULL_CALENDAR_VIEW_TYPE);
         this.app.workspace.detachLeavesOfType(FULL_CALENDAR_SIDEBAR_VIEW_TYPE);
-        new Notice(t('notices.cacheReset'));
+        showNotice(t('notices.cacheReset'));
       }
     });
     this.addCommand({
@@ -287,7 +288,7 @@ export default class FullCalendarPlugin extends Plugin {
         id: 'full-calendar-open-analysis-mobile-disabled',
         name: t('commands.openChronoAnalyser'),
         callback: () => {
-          new Notice(t('notices.chronoAnalyserMobileDisabled'));
+          showNotice(t('notices.chronoAnalyserMobileDisabled'));
         }
       });
     }
@@ -315,7 +316,7 @@ export default class FullCalendarPlugin extends Plugin {
         await exchangeCodeForToken(params.code, params.state, this);
         this.#settingsTab?.display();
       } else {
-        new Notice(t('notices.googleAuthFailed'));
+        showNotice(t('notices.googleAuthFailed'));
         console.error('Google Auth Callback Error: Missing code or state.', params);
       }
     });
@@ -345,7 +346,8 @@ export default class FullCalendarPlugin extends Plugin {
    * Loads plugin settings from disk, merging them with default values.
    */
   async #loadSettings() {
-    const loadedData = Object.assign({}, DEFAULT_SETTINGS, (await super.loadData()) as unknown);
+    const persisted = (await super.loadData()) as Partial<FullCalendarSettings> | null;
+    const loadedData: FullCalendarSettings = { ...DEFAULT_SETTINGS, ...(persisted ?? {}) };
 
     // All migration and sanitization logic is now encapsulated in this utility function.
     const { settings: migratedSettings, needsSave } = migrateAndSanitizeSettings(loadedData);
@@ -356,7 +358,7 @@ export default class FullCalendarPlugin extends Plugin {
 
     // Save back to disk if any migration or sanitization occurred.
     if (needsSave) {
-      new Notice(t('notices.settingsUpdated'));
+      showNotice(t('notices.settingsUpdated'));
       await super.saveData(PluginState.getSettings());
     }
 
@@ -498,7 +500,7 @@ export default class FullCalendarPlugin extends Plugin {
     return new Promise((resolve, reject) => {
       const BATCH_SIZE = 10;
       let index = 0;
-      const notice = new Notice('', 0); // Indefinite notice
+      const notice = showNotice('', 0); // Indefinite notice
 
       const processBatch = () => {
         // End condition
@@ -516,12 +518,12 @@ export default class FullCalendarPlugin extends Plugin {
           .then(() => {
             index += BATCH_SIZE;
             // Yield to the main thread before processing the next batch
-            setTimeout(processBatch, 20);
+            window.setTimeout(processBatch, 20);
           })
           .catch(err => {
             console.error('Error during bulk processing batch', err);
             notice.hide();
-            new Notice(t('notices.bulkUpdateError'));
+            showNotice(t('notices.bulkUpdateError'));
             reject(err instanceof Error ? err : new Error(String(err)));
           });
       };

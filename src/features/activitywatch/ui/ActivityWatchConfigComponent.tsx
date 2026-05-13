@@ -1,7 +1,8 @@
+import { showNotice } from '../../../utils/showNotice';
 import { PluginState } from '../../../core/PluginState';
 import * as React from 'react';
 import { useState } from 'react';
-import { Notice } from 'obsidian';
+
 import FullCalendarPlugin from '../../../main';
 import { t } from '../../i18n/i18n';
 import { ContextProfile, TriggerRule } from '../../../types/settings';
@@ -13,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose }) => {
+export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin: _plugin, onClose }) => {
   const settings = PluginState.getSettings().activityWatch;
   const normalizedProfiles = (settings.profiles || []).map(profile => ({
     ...profile,
@@ -45,7 +46,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
       });
       return () => picker.destroy();
     }
-  }, [syncStrategy]);
+  }, [syncStrategy, dateRange]);
 
   const handleSave = async () => {
     PluginState.getSettings().activityWatch.apiUrl = apiUrl;
@@ -66,7 +67,7 @@ export const ActivityWatchConfigComponent: React.FC<Props> = ({ plugin, onClose 
     PluginState.getSettings().activityWatch.profiles = profiles;
 
     await PluginState.saveSettings();
-    new Notice(t('modals.activityWatchSetup.saved'));
+    showNotice(t('modals.activityWatchSetup.saved'));
     onClose();
   };
 

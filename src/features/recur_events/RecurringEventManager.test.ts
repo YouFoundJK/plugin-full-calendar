@@ -82,7 +82,7 @@ describe('RecurringEventManager', () => {
         getEventDetails: jest.fn(),
         getAllEvents: jest.fn().mockReturnValue([])
       },
-      calendars: new Map([['test-calendar', mockProvider as CalendarProvider<unknown>]]),
+      calendars: new Map([['test-calendar', mockProvider]]),
       plugin: mockPlugin
     } as unknown as jest.Mocked<EventCache>;
 

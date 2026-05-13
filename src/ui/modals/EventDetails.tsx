@@ -41,7 +41,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           new Date(),
           new Date(Date.now() + 31536000000 * 2),
           true,
-          (date, i) => i < 5
+          (_date, i) => i < 5
         );
         setInstances(nextInstances);
       } catch (e) {

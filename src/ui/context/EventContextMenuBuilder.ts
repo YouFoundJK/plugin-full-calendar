@@ -1,6 +1,7 @@
+import { showNotice } from '../../utils/showNotice';
 import { PluginState } from '../../core/PluginState';
 import { EventApi } from '@fullcalendar/core';
-import { Menu, Notice } from 'obsidian';
+import { Menu } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import {
   CalendarProvider,
@@ -117,7 +118,7 @@ export async function openEventContextMenu(
 }
 
 function buildDisplayActions(
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   eventApi: EventApi,
   menuCapabilities: { allowDisplayActions: boolean }
 ): ActionGroup {
@@ -143,7 +144,7 @@ function buildDisplayActions(
 }
 
 async function buildGenericTaskActions(
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   context: ProviderEventContext,
   menuCapabilities: { allowGenericTaskActions: boolean }
 ): Promise<ActionGroup> {
@@ -208,7 +209,7 @@ function buildNavigationActions(
 }
 
 function buildDeleteActions(
-  plugin: FullCalendarPlugin,
+  _plugin: FullCalendarPlugin,
   context: ProviderEventContext
 ): ActionGroup {
   const capabilities = PluginState.getProviderRegistry().getCapabilities(context.calendarId);
@@ -237,7 +238,7 @@ function buildDeleteActions(
           await PluginState.getCache().deleteEvent(context.eventId);
         }
 
-        new Notice(t('ui.view.success.deletedEvent', { title: context.title }));
+        showNotice(t('ui.view.success.deletedEvent', { title: context.title }));
       }
     }
   ];

@@ -6,39 +6,11 @@
  */
 
 import { initializeI18n, i18n, t } from './i18n';
-
-// Mock localStorage for Jest environment
-beforeAll(() => {
-  const localStorageMock = (function () {
-    let store: Record<string, string> = {};
-    return {
-      getItem(key: string) {
-        return store[key] || null;
-      },
-      setItem(key: string, value: string) {
-        store[key] = value.toString();
-      },
-      clear() {
-        store = {};
-      },
-      removeItem(key: string) {
-        delete store[key];
-      }
-    };
-  })();
-  Object.defineProperty(global, 'localStorage', {
-    value: localStorageMock,
-    writable: true
-  });
-  Object.defineProperty(global, 'window', {
-    value: { localStorage: localStorageMock },
-    writable: true
-  });
-});
+import { getLanguage } from 'obsidian';
 
 // Mock Obsidian App
 const createMockApp = (language: string = 'en') => {
-  window.localStorage.setItem('language', language);
+  (getLanguage as jest.Mock).mockReturnValue(language);
   return {
     vault: {
       getConfig: jest.fn().mockReturnValue(language),
@@ -80,7 +52,7 @@ describe('i18n Module', () => {
     });
 
     it('should fallback to English if language config is unavailable', async () => {
-      window.localStorage.removeItem('language');
+      (getLanguage as jest.Mock).mockReturnValue(undefined);
       const mockApp = {
         vault: {
           getConfig: jest.fn().mockReturnValue(undefined),

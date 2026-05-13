@@ -20,13 +20,13 @@ describe('createBasicAuthHeader', () => {
   });
 
   it('works even when Buffer is unavailable', () => {
-    const originalBuffer = (globalThis as unknown as { Buffer?: unknown }).Buffer;
+    const originalBuffer = (window as unknown as { Buffer?: unknown }).Buffer;
 
-    (globalThis as unknown as { Buffer?: unknown }).Buffer = undefined;
+    (window as unknown as { Buffer?: unknown }).Buffer = undefined;
     try {
       expect(createBasicAuthHeader('user', 'pass')).toBe('Basic dXNlcjpwYXNz');
     } finally {
-      (globalThis as unknown as { Buffer?: unknown }).Buffer = originalBuffer;
+      (window as unknown as { Buffer?: unknown }).Buffer = originalBuffer;
     }
   });
 });

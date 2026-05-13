@@ -16,8 +16,6 @@ import { DEFAULT_SETTINGS } from '../../types/settings';
 import type { OFCEvent } from '../../types';
 import { PluginState } from '../../core/PluginState';
 
-const moment = obsidianMoment as unknown as typeof import('moment');
-
 jest.mock('obsidian', () => {
   const toIsoDate = (input?: string | Date): string => {
     if (!input) return '1970-01-01';
@@ -80,7 +78,7 @@ jest.mock('obsidian-daily-notes-interface', () => ({
 
 const makePlugin = (): FullCalendarPlugin => {
   const mergedSettings = { ...DEFAULT_SETTINGS };
-  PluginState.setSettings(mergedSettings as never);
+  PluginState.setSettings(mergedSettings);
   return {
     settings: mergedSettings
   } as unknown as FullCalendarPlugin;
@@ -108,14 +106,14 @@ describe('DailyNoteProvider workflow', () => {
   const createMockApp = (): ObsidianInterface => ({
     getAbstractFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
     getFileByPath: (path: string) => dailyNotesByPath.get(path) ?? null,
-    getMetadata: (_file: TFile) => ({ headings: [] }) as CachedMetadata,
+    getMetadata: (_file: TFile) => ({ headings: [] }),
     waitForMetadata: (_file: TFile) => Promise.resolve({ headings: [] } as CachedMetadata),
     read: (file: TFile) => Promise.resolve(contentsByPath.get(file.path) ?? ''),
     process: <T>(file: TFile, func: (text: string) => T): Promise<T> =>
       Promise.resolve(func(contentsByPath.get(file.path) ?? '')),
     create: (_path: string, _contents: string) =>
       Promise.reject(new Error('Not used by DailyNoteProvider')),
-    rewrite: (async <T>(file: TFile, rewriteFunc: (contents: string) => unknown) => {
+    rewrite: async <T>(file: TFile, rewriteFunc: (contents: string) => unknown) => {
       const current = contentsByPath.get(file.path) ?? '';
       const result = await rewriteFunc(current);
 
@@ -127,7 +125,7 @@ describe('DailyNoteProvider workflow', () => {
 
       contentsByPath.set(file.path, result as string);
       return undefined;
-    }) as ObsidianInterface['rewrite'],
+    },
     rename: (_file: TFile, _newPath: string) =>
       Promise.reject(new Error('Not used by DailyNoteProvider')),
     delete: (_file: TFile) => Promise.reject(new Error('Not used by DailyNoteProvider'))
@@ -319,7 +317,7 @@ describe('DailyNoteProvider workflow', () => {
         Promise.resolve(func(contentsByPath.get(target.path) ?? '')),
       create: (_path: string, _contents: string) =>
         Promise.reject(new Error('Not used by DailyNoteProvider')),
-      rewrite: (() => Promise.resolve(undefined)) as ObsidianInterface['rewrite'],
+      rewrite: () => Promise.resolve(undefined),
       rename: (_file: TFile, _newPath: string) =>
         Promise.reject(new Error('Not used by DailyNoteProvider')),
       delete: (_file: TFile) => Promise.reject(new Error('Not used by DailyNoteProvider'))
@@ -508,3 +506,5 @@ describe('DailyNoteProvider workflow', () => {
     expect(provider.getCanonicalTitle(first)).toBe('Wellness - Sleep - Night');
   });
 });
+type MomentFactory = typeof import('moment');
+const moment = obsidianMoment as unknown as MomentFactory;

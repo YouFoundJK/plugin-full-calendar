@@ -85,20 +85,19 @@ export function storedEventToTimeRecord(
         project: project,
         subproject: subproject
       };
-    } else {
-      // LEGACY MODE: DERIVE FROM FILE/FOLDER STRUCTURE.
-      const basename = filename.endsWith('.md') ? filename.slice(0, -3) : filename;
-      const prefixRegex = /^(?:\d{4}-\d{2}-\d{2}\s+)?(?:\([^)]+\)\s*)?/;
-      const titleToParse = basename.replace(prefixRegex, '');
-
-      const { project, subproject } = parseTitleForProject(titleToParse);
-
-      return {
-        hierarchy: calendarSource,
-        project: project,
-        subproject: subproject
-      };
     }
+    // LEGACY MODE: DERIVE FROM FILE/FOLDER STRUCTURE.
+    const basename = filename.endsWith('.md') ? filename.slice(0, -3) : filename;
+    const prefixRegex = /^(?:\d{4}-\d{2}-\d{2}\s+)?(?:\([^)]+\)\s*)?/;
+    const titleToParse = basename.replace(prefixRegex, '');
+
+    const { project, subproject } = parseTitleForProject(titleToParse);
+
+    return {
+      hierarchy: calendarSource,
+      project: project,
+      subproject: subproject
+    };
   })();
 
   // If the IIFE returned null, it means the record should be skipped.

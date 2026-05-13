@@ -1,3 +1,4 @@
+import { showNotice } from '../../utils/showNotice';
 /**
  * @file Timezone.ts
  * @brief Provides core utility functions for timezone conversions.
@@ -16,7 +17,7 @@
  */
 
 import { PluginState } from '../../core/PluginState';
-import { Notice } from 'obsidian';
+
 import { DateTime } from 'luxon';
 import ical from 'ical.js';
 
@@ -96,7 +97,7 @@ export async function manageTimezone(_plugin: FullCalendarPlugin): Promise<void>
     settings.lastSystemTimezone = systemTimezone;
     await PluginState.saveSettings();
 
-    new Notice(
+    showNotice(
       t('notices.timezoneChanged', { timezone: systemTimezone }),
       10000 // 10-second notice
     );
@@ -193,7 +194,7 @@ export function normalizeTimezone(zone: string | undefined | null): string {
  * Converts an iCal date string (YYYYMMDD or YYYYMMDDTHHMMSSZ) to ISO extended format.
  * This ensures FullCalendar receives dates in the format it expects.
  */
-export function convertICalDateToISO(dateStr: string, isDateOnly: boolean = false): string | null {
+export function convertICalDateToISO(dateStr: string, _isDateOnly: boolean = false): string | null {
   // Handle YYYYMMDD format (date only)
   if (dateStr.length === 8 && /^\d{8}$/.test(dateStr)) {
     const year = dateStr.substring(0, 4);

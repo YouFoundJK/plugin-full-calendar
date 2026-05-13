@@ -262,18 +262,17 @@ export function toEventInput(
         if (event.allDay) {
           const exDt = DateTime.fromISO(skipDate, { zone: sourceZone }).startOf('day');
           return `EXDATE;TZID=${sourceZone}:${exDt.toFormat("yyyyMMdd'T'HHmmss")}`;
-        } else {
-          const startTimeDt = parseTime(event.startTime);
-          if (!startTimeDt) return null;
-
-          const exDt = DateTime.fromISO(skipDate, { zone: sourceZone }).set({
-            hour: startTimeDt.hours,
-            minute: startTimeDt.minutes,
-            second: 0,
-            millisecond: 0
-          });
-          return `EXDATE;TZID=${sourceZone}:${exDt.toFormat("yyyyMMdd'T'HHmmss")}`;
         }
+        const startTimeDt = parseTime(event.startTime);
+        if (!startTimeDt) return null;
+
+        const exDt = DateTime.fromISO(skipDate, { zone: sourceZone }).set({
+          hour: startTimeDt.hours,
+          minute: startTimeDt.minutes,
+          second: 0,
+          millisecond: 0
+        });
+        return `EXDATE;TZID=${sourceZone}:${exDt.toFormat("yyyyMMdd'T'HHmmss")}`;
       })
       .filter(Boolean) as string[];
 
@@ -286,12 +285,19 @@ export function toEventInput(
       const endTime = parseTime(event.endTime);
       if (startTime && endTime) {
         // Use Luxon to handle date math correctly, accounting for potential day crossing
-        const startDt = DateTime.fromISO(
-          combineDateTimeStrings(event.startRecur || '2025-01-01', event.startTime)!
+        const startDateTime = combineDateTimeStrings(
+          event.startRecur || '2025-01-01',
+          event.startTime
         );
-        let endDt = DateTime.fromISO(
-          combineDateTimeStrings(event.endDate || event.startRecur || '2025-01-01', event.endTime)!
+        const endDateTime = combineDateTimeStrings(
+          event.endDate || event.startRecur || '2025-01-01',
+          event.endTime
         );
+        if (!startDateTime || !endDateTime) {
+          return null;
+        }
+        const startDt = DateTime.fromISO(startDateTime);
+        let endDt = DateTime.fromISO(endDateTime);
 
         // If end time is logically before start time, it means it's on the next day
         if (endDt < startDt) {
@@ -332,7 +338,9 @@ export function toEventInput(
 
     const dtInSource = event.allDay
       ? DateTime.fromISO(fm.startDate, { zone: sourceZone })
-      : DateTime.fromISO(dtstartStr!, { zone: sourceZone });
+      : dtstartStr
+        ? DateTime.fromISO(dtstartStr, { zone: sourceZone })
+        : DateTime.invalid('Missing DTSTART for timed event');
 
     // Validate that the source date is valid
     if (!dtInSource.isValid) {
@@ -400,14 +408,16 @@ export function toEventInput(
         const endTime = parseTime(event.endTime);
         if (endTime) {
           // Parse in source timezone to get correct duration
-          const startDt = DateTime.fromISO(
-            combineDateTimeStrings(event.startDate, event.startTime)!,
-            { zone: sourceZone }
+          const startDateTime = combineDateTimeStrings(event.startDate, event.startTime);
+          const endDateTime = combineDateTimeStrings(
+            event.endDate || event.startDate,
+            event.endTime
           );
-          let endDt = DateTime.fromISO(
-            combineDateTimeStrings(event.endDate || event.startDate, event.endTime)!,
-            { zone: sourceZone }
-          );
+          if (!startDateTime || !endDateTime) {
+            return null;
+          }
+          const startDt = DateTime.fromISO(startDateTime, { zone: sourceZone });
+          let endDt = DateTime.fromISO(endDateTime, { zone: sourceZone });
 
           if (endDt < startDt) {
             endDt = endDt.plus({ days: 1 });

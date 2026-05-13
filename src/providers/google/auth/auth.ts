@@ -1,3 +1,4 @@
+import { showNotice } from '../../../utils/showNotice';
 /**
  * @file auth.ts
  * @brief Handles all OAuth 2.0 logic for Google Calendar integration.
@@ -10,7 +11,7 @@
  * @license See LICENSE.md
  */
 
-import { Platform, requestUrl, Notice } from 'obsidian';
+import { Platform, requestUrl } from 'obsidian';
 import FullCalendarPlugin from '../../../main';
 import { GoogleAuthManager } from './GoogleAuthManager';
 import { t } from '../../../features/i18n/i18n';
@@ -153,7 +154,7 @@ export async function startGoogleLogin(plugin: FullCalendarPlugin): Promise<void
   if (isMobile) {
     mobileWindow = window.open('about:blank', '_blank');
     if (!mobileWindow) {
-      new Notice(t('google.auth.popupBlocked'));
+      showNotice(t('google.auth.popupBlocked'));
       return;
     }
   }
@@ -170,7 +171,7 @@ export async function startGoogleLogin(plugin: FullCalendarPlugin): Promise<void
   const redirectUri = isMobile ? MOBILE_REDIRECT_URI : DESKTOP_REDIRECT_URI;
 
   if (settings.useCustomGoogleClient && (!clientId || !settings.googleClientSecret)) {
-    new Notice(t('google.auth.customCredsMissing'));
+    showNotice(t('google.auth.customCredsMissing'));
     // Close the mobile window if we opened one
     if (mobileWindow) {
       mobileWindow.close();
@@ -205,7 +206,7 @@ export async function exchangeCodeForToken(
   plugin: FullCalendarPlugin
 ): Promise<void> {
   if (!pkce || state !== pkce.state) {
-    new Notice(t('google.auth.stateMismatch'));
+    showNotice(t('google.auth.stateMismatch'));
     console.error('State mismatch during OAuth callback.');
     return;
   }
@@ -280,9 +281,9 @@ export async function exchangeCodeForToken(
     });
     // --- END REPLACEMENT BLOCK ---
 
-    new Notice(t('google.auth.success'));
+    showNotice(t('google.auth.success'));
   } catch (e) {
-    new Notice(t('google.auth.failed'));
+    showNotice(t('google.auth.failed'));
     if (e instanceof Error) {
       console.error('Error during token exchange:', e.message);
     } else {

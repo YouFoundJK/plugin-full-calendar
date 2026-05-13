@@ -1,35 +1,6 @@
 import type { App } from 'obsidian';
+import { getLanguage } from 'obsidian';
 import { clearNLPPayloadCacheForTests, loadNLPPayload } from './loader';
-
-beforeAll(() => {
-  const localStorageMock = (function () {
-    let store: Record<string, string> = {};
-    return {
-      getItem(key: string) {
-        return store[key] || null;
-      },
-      setItem(key: string, value: string) {
-        store[key] = value.toString();
-      },
-      clear() {
-        store = {};
-      },
-      removeItem(key: string) {
-        delete store[key];
-      }
-    };
-  })();
-
-  Object.defineProperty(global, 'localStorage', {
-    value: localStorageMock,
-    writable: true
-  });
-
-  Object.defineProperty(global, 'window', {
-    value: { localStorage: localStorageMock },
-    writable: true
-  });
-});
 
 function createMockApp(exists = true, readPayload = '{"version":1,"locale":"it","rules":[]}') {
   return {
@@ -51,7 +22,7 @@ describe('NLP payload loader', () => {
   });
 
   it('returns bundled English payload for en language', async () => {
-    window.localStorage.setItem('language', 'en');
+    (getLanguage as jest.Mock).mockReturnValue('en');
     const payload = await loadNLPPayload(createMockApp(), 'full-calendar-remastered');
 
     expect(payload.locale).toBe('en');
@@ -59,14 +30,14 @@ describe('NLP payload loader', () => {
   });
 
   it('loads cached payload file for supported non-English language', async () => {
-    window.localStorage.setItem('language', 'it');
+    (getLanguage as jest.Mock).mockReturnValue('it');
     const payload = await loadNLPPayload(createMockApp(true), 'full-calendar-remastered');
 
     expect(payload.locale).toBe('it');
   });
 
   it('falls back to English when payload read fails', async () => {
-    window.localStorage.setItem('language', 'it');
+    (getLanguage as jest.Mock).mockReturnValue('it');
     const app = createMockApp(true) as unknown as {
       vault: { adapter: { read: jest.Mock } };
     } & App;

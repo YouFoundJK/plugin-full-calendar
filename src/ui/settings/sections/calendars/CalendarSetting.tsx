@@ -1,3 +1,4 @@
+import { showNotice } from '../../../../utils/showNotice';
 /**
  * @file CalendarSetting.tsx
  * @brief React component for displaying and managing a list of configured calendars.
@@ -13,7 +14,7 @@
  */
 
 import { PluginState } from '../../../../core/PluginState';
-import { Notice } from 'obsidian';
+
 import * as React from 'react';
 import { CalendarInfo } from '../../../../types/calendar_settings';
 import FullCalendarPlugin from '../../../../main';
@@ -143,7 +144,7 @@ export class CalendarSettings
               className="mod-cta"
               onClick={() => {
                 if (this.state.sources.filter(s => s.type === 'dailynote').length > 1) {
-                  new Notice(t('settings.warnings.oneDailyNote'));
+                  showNotice(t('settings.warnings.oneDailyNote'));
                   return;
                 }
                 this.props.submit(this.state.sources.map(elt => elt));
@@ -173,7 +174,7 @@ export const ProviderAwareCalendarSettingRow = ({
   onColorChange,
   onNameChange,
   deleteCalendar,
-  plugin
+  plugin: _plugin
 }: ProviderAwareCalendarSettingsRowProps) => {
   const registry = PluginState.getProviderRegistry();
   const provider = setting.id ? registry.getInstance(setting.id) : null;

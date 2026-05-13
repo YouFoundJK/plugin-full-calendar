@@ -1,3 +1,4 @@
+import { showNotice } from '../../utils/showNotice';
 /**
  * @file WorkspaceManager.ts
  * @brief Centralizes workspace-related logic for the Full Calendar view.
@@ -18,16 +19,16 @@ import { FullCalendarSettings, WorkspaceSettings } from '../../types/settings';
 import { EventInput, EventSourceInput } from '@fullcalendar/core';
 import { OFCEventSource, CachedEvent } from '../../core/EventCache';
 import { toEventInput } from '../../core/interop';
-import { Notice } from 'obsidian'; // Add this import
+import { activeDocument } from 'obsidian';
 
 // Copied from view.ts to break circular dependency.
 function getCalendarColors(color: string | null | undefined): {
   color: string;
   textColor: string;
 } {
-  let textVar = getComputedStyle(document.body).getPropertyValue('--text-on-accent');
+  let textVar = getComputedStyle(activeDocument.body).getPropertyValue('--text-on-accent');
   if (color) {
-    const m = color.slice(1).match(color.length == 7 ? /(\S{2})/g : /(\S{1})/g);
+    const m = color.slice(1).match(color.length === 7 ? /(\S{2})/g : /(\S{1})/g);
     if (m) {
       const r = parseInt(m[0], 16),
         g = parseInt(m[1], 16),
@@ -40,7 +41,7 @@ function getCalendarColors(color: string | null | undefined): {
   }
 
   return {
-    color: color || getComputedStyle(document.body).getPropertyValue('--interactive-accent'),
+    color: color || getComputedStyle(activeDocument.body).getPropertyValue('--interactive-accent'),
     textColor: textVar
   };
 }
@@ -150,7 +151,7 @@ export class WorkspaceManager {
     const filtered = sources.filter(source => selectedSet.has(String(source.id)));
 
     if (filtered.length === 0 && selected.length > 0) {
-      new Notice(
+      showNotice(
         'The active workspace is filtering for calendars that are not available. Check workspace settings.',
         5000 // 5-second notice
       );
@@ -201,9 +202,8 @@ export class WorkspaceManager {
 
       if (mode === 'show-only') {
         return categories.includes(mainCategory);
-      } else {
-        return !categories.includes(mainCategory);
       }
+      return !categories.includes(mainCategory);
     });
   }
 

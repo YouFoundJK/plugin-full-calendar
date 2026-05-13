@@ -101,12 +101,12 @@ export class InsightsRenderer {
       subItem.classList.add('is-expandable');
     }
 
-    leftGroup.createEl('span', { cls: 'insight-sub-item-project', text: item.project });
+    leftGroup.createSpan({ cls: 'insight-sub-item-project', text: item.project });
 
     // Details text is now a separate flex item, creating the second column
     // --- MODIFIED: Safe rendering of details fragments ---
     if (item.detailsFragments) {
-      const detailsSpan = subItemHeader.createEl('span', { cls: 'insight-sub-item-details' });
+      const detailsSpan = subItemHeader.createSpan({ cls: 'insight-sub-item-details' });
       item.detailsFragments.forEach(fragment => {
         const targetEl = fragment.bold ? detailsSpan.createEl('strong') : detailsSpan;
         targetEl.appendText(fragment.text);
@@ -135,12 +135,12 @@ export class InsightsRenderer {
     const nestedItemEl = parentEl.createDiv({ cls: 'insight-nested-item' });
 
     // Project column
-    nestedItemEl.createEl('span', { cls: 'insight-nested-item-project', text: item.project });
+    nestedItemEl.createSpan({ cls: 'insight-nested-item-project', text: item.project });
 
     // Details column
     // --- MODIFIED: Safe rendering of details fragments ---
     if (item.detailsFragments) {
-      const detailsEl = nestedItemEl.createEl('span', { cls: 'insight-nested-item-details' });
+      const detailsEl = nestedItemEl.createSpan({ cls: 'insight-nested-item-details' });
       item.detailsFragments.forEach(fragment => {
         const targetEl = fragment.bold ? detailsEl.createEl('strong') : detailsEl;
         targetEl.appendText(fragment.text);
@@ -157,7 +157,7 @@ export class InsightsRenderer {
 
   private createGraphButton(action: FilterPayload | null): HTMLButtonElement | null {
     if (!action) return null;
-    const button = document.createElement('button');
+    const button = this.containerEl.ownerDocument.createElement('button');
     button.className = 'insight-action-button clickable-icon';
 
     button.setAttribute('aria-label', 'View in chart');

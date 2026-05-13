@@ -47,11 +47,10 @@ export function parseTitle(
       // Only split if category is defined (or no definedCategories provided for backward compatibility)
       if (!definedCategories || definedCategories.has(category)) {
         return { category, subCategory, title };
-      } else {
-        // Category detected but not defined - log and return full title
-
-        return { category: undefined, subCategory: undefined, title: fullTitle };
       }
+      // Category detected but not defined - log and return full title
+
+      return { category: undefined, subCategory: undefined, title: fullTitle };
     }
   }
 
@@ -65,11 +64,10 @@ export function parseTitle(
       // Only split if category is defined (or no definedCategories provided for backward compatibility)
       if (!definedCategories || definedCategories.has(category)) {
         return { category, subCategory: undefined, title };
-      } else {
-        // Category detected but not defined - log and return full title
-
-        return { category: undefined, subCategory: undefined, title: fullTitle };
       }
+      // Category detected but not defined - log and return full title
+
+      return { category: undefined, subCategory: undefined, title: fullTitle };
     }
   }
 

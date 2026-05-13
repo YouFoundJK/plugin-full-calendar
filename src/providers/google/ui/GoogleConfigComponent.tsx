@@ -6,7 +6,7 @@
 
 import { PluginState } from '../../../core/PluginState';
 import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Setting } from 'obsidian';
 import { GoogleAccount } from '../../../types/settings';
 import { startGoogleLogin } from '../auth/auth';
@@ -48,7 +48,7 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Set<string>>(new Set());
-  const authManager = new GoogleAuthManager(plugin); // Create an instance of the manager
+  const authManager = useMemo(() => new GoogleAuthManager(plugin), [plugin]);
 
   // Refs for imperative Obsidian UI components
   const accountListRef = useRef<HTMLDivElement>(null);
@@ -83,53 +83,60 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
     };
   }, [plugin]);
 
-  const handleSelectAccount = async (account: GoogleAccount) => {
-    setIsLoading(true);
-    setError(null);
-    setSelectedAccount(account);
+  const handleSelectAccount = useCallback(
+    async (account: GoogleAccount) => {
+      setIsLoading(true);
+      setError(null);
+      setSelectedAccount(account);
 
-    try {
-      // Refresh token if it's expired before we use it
-      if (!account.accessToken || !account.expiryDate || Date.now() >= account.expiryDate - 60000) {
-        // Use public API (getTokenForSource) to trigger refresh logic.
-        const token = await authManager.getTokenForSource({
-          type: 'google',
-          id: `temp_${account.id}`,
-          name: account.email,
-          calendarId: 'primary',
-          googleAccountId: account.id,
-          color: ''
-        } as Extract<import('../../../types/calendar_settings').CalendarInfo, { type: 'google' }>);
-        if (!token) {
-          throw new GoogleApiError(
-            `Failed to refresh token for ${account.email}. Please try connecting the account again.`
-          );
+      try {
+        // Refresh token if it's expired before we use it
+        if (
+          !account.accessToken ||
+          !account.expiryDate ||
+          Date.now() >= account.expiryDate - 60000
+        ) {
+          // Use public API (getTokenForSource) to trigger refresh logic.
+          const token = await authManager.getTokenForSource({
+            type: 'google',
+            id: `temp_${account.id}`,
+            name: account.email,
+            calendarId: 'primary',
+            googleAccountId: account.id,
+            color: ''
+          });
+          if (!token) {
+            throw new GoogleApiError(
+              `Failed to refresh token for ${account.email}. Please try connecting the account again.`
+            );
+          }
+          account.accessToken = token;
         }
-        account.accessToken = token;
-      }
 
-      const { fetchGoogleCalendarList } = await import('../auth/api');
-      // REMOVE THE HACK and pass the account object directly.
-      const allCalendars = await fetchGoogleCalendarList(plugin, account);
-      const existingGoogleIds = new Set(
-        PluginState.getSettings()
-          .calendarSources.filter(
-            (s): s is Extract<typeof s, { type: 'google'; calendarId: string }> =>
-              s.type === 'google'
-          )
-          .map(s => s.calendarId)
-      );
-      setAvailableCalendars(allCalendars.filter(cal => !existingGoogleIds.has(cal.id)));
-      setView('calendar-select');
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'An unknown error occurred.';
-      setError(`Failed to fetch calendars for ${account.email}. ${message}`);
-      setView('account-select');
-    } finally {
-      setIsLoading(false);
-      // REMOVE THE HACK CLEANUP
-    }
-  };
+        const { fetchGoogleCalendarList } = await import('../auth/api');
+        // REMOVE THE HACK and pass the account object directly.
+        const allCalendars = await fetchGoogleCalendarList(plugin, account);
+        const existingGoogleIds = new Set(
+          PluginState.getSettings()
+            .calendarSources.filter(
+              (s): s is Extract<typeof s, { type: 'google'; calendarId: string }> =>
+                s.type === 'google'
+            )
+            .map(s => s.calendarId)
+        );
+        setAvailableCalendars(allCalendars.filter(cal => !existingGoogleIds.has(cal.id)));
+        setView('calendar-select');
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'An unknown error occurred.';
+        setError(`Failed to fetch calendars for ${account.email}. ${message}`);
+        setView('account-select');
+      } finally {
+        setIsLoading(false);
+        // REMOVE THE HACK CLEANUP
+      }
+    },
+    [authManager, plugin]
+  );
 
   const handleToggle = (id: string, value: boolean) => {
     setSelection(prev => {
@@ -176,7 +183,7 @@ export const GoogleConfigComponent: React.FC<GoogleConfigComponentProps> = ({
           .onClick(() => startGoogleLogin(plugin))
       );
     }
-  }, [view, accounts, plugin]); // Rerun when view or accounts change
+  }, [view, accounts, plugin, handleSelectAccount]); // Rerun when view or accounts change
 
   // Effect for rendering the calendar list imperatively
   useEffect(() => {

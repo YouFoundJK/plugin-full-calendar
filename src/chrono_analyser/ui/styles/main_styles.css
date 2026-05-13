@@ -139,7 +139,6 @@
     padding: var(--size-4-6);
     margin-bottom: var(--size-4-6);
     border: 1px solid var(--background-modifier-border);
-    backdrop-filter: blur(10px);
     position: relative;
     overflow: hidden;
 }
@@ -390,48 +389,47 @@
 }
 
 .chrono-analyser-view .main-chart-container .plotly .legendtext {
-    fill: var(--text-normal) !important;
-    font-size: var(--font-ui-medium) !important;
-    font-family: var(--font-ui-medium) !important;
+    fill: var(--text-normal);
+    font-size: var(--font-ui-medium);
+    font-family: var(--font-ui-medium);
 }
 
 .chrono-analyser-view .main-chart-container .plotly .slicetext {
-    font-weight: 600 !important;
-    font-size: 13px !important;
-    stroke-width: 1.5px !important; /* Slightly thicker stroke for better readability */
-    paint-order: stroke !important;
+    font-weight: 600;
+    font-size: 13px;
+    stroke-width: 1.5px; /* Slightly thicker stroke for better readability */
 }
 
 /* Light Theme: Dark text with a light outline */
 body.theme-light .chrono-analyser-view .main-chart-container .plotly .slicetext {
-    fill: var(--text-normal) !important;         /* e.g., a dark grey */
-    stroke: var(--background-primary) !important; /* e.g., white */
+    fill: var(--text-normal);         /* e.g., a dark grey */
+    stroke: var(--background-primary); /* e.g., white */
 }
 
 /* Dark Theme: Light text with a dark outline */
 body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
-    fill: var(--text-on-accent) !important;     /* e.g., a light grey or white */
-    stroke: var(--background-primary) !important; /* e.g., a dark grey */
+    fill: var(--text-on-accent);     /* e.g., a light grey or white */
+    stroke: var(--background-primary); /* e.g., a dark grey */
 }
 
 .chrono-analyser-view .main-chart-container .plotly .g-gtitle .titletext {
-    fill: var(--text-normal) !important;
-    font-size: var(--font-ui-large) !important;
-    font-weight: 600 !important;
-    font-family: var(--font-ui-medium) !important;
+    fill: var(--text-normal);
+    font-size: var(--font-ui-large);
+    font-weight: 600;
+    font-family: var(--font-ui-medium);
 }
 
 .chrono-analyser-view .main-chart-container .plotly .xtick text,
 .chrono-analyser-view .main-chart-container .plotly .ytick text {
-    fill: var(--text-muted) !important;
-    font-size: var(--font-ui-small) !important;
-    font-family: var(--font-ui-medium) !important;
+    fill: var(--text-muted);
+    font-size: var(--font-ui-small);
+    font-family: var(--font-ui-medium);
 }
 
 .chrono-analyser-view .main-chart-container .plotly .xaxislayer-above .axistext,
 .chrono-analyser-view .main-chart-container .plotly .yaxislayer-above .axistext {
-    fill: var(--text-normal) !important;
-    font-family: var(--font-ui-medium) !important;
+    fill: var(--text-normal);
+    font-family: var(--font-ui-medium);
 }
 
 /* =================================================================
@@ -545,9 +543,9 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     color: var(--text-muted);
     margin-bottom: var(--size-4-4);
     padding: var(--size-4-3);
-    background: var(--background-primary) !important;
+    background: var(--background-primary);
     border-radius: var(--radius-m);
-    border: 1px solid var(--background-modifier-border) !important;
+    border: 1px solid var(--background-modifier-border);
 }
 
 .chrono-analyser-view .log-entry {
@@ -832,7 +830,7 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     
     .chrono-analyser-view .stats-grid:not([style*="display: none"]) {
         flex: 0 0 280px;
-        display: flex !important;
+        display: flex;
         flex-direction: column;
         gap: var(--size-4-4);
         grid-template-columns: none;
@@ -861,7 +859,7 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
 .chrono-analyser-view #toastContainer { display: none; }
 
 /* Keep utility classes */
-.chrono-analyser-view .hidden-controls { display: none !important; }
+.chrono-analyser-view .hidden-controls { display: none; }
 .chrono-analyser-view .file-input-wrapper .needs-attention { animation: shake 1.5s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes shake {
     10%,90% { transform: translate3d(-1px,0,0); }
@@ -1128,7 +1126,7 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
 }
 
 .chrono-analyser-modal .insight-group-setting .setting-item {
-    border-top-color: var(--background-modifier-border) !important;
+    border-top-color: var(--background-modifier-border);
 }
 
 .chrono-analyser-modal .insight-group-setting:not(.is-expanded) .setting-item-control input,
@@ -1211,13 +1209,13 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
 }
 
 /* Generic visibility utility classes (replaces inline style.display manipulation) */
-.is-hidden { display: none !important; }
-.is-visible { display: block !important; }
+.is-hidden { display: none; }
+.is-visible { display: block; }
 
 /* Opacity transition utility for fade effects (replaces inline style.opacity) */
 .fade-transition { transition: opacity 0.2s ease-in-out; }
-.is-transparent { opacity: 0 !important; }
-.is-opaque { opacity: 1 !important; }
+.is-transparent { opacity: 0; }
+.is-opaque { opacity: 1; }
 
 /* Individual suggestion items. */
 .autocomplete-suggestion-item {
@@ -1255,7 +1253,6 @@ body.theme-dark .chrono-analyser-view .main-chart-container .plotly .slicetext {
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.2s ease;
     position: relative;
-    user-select: none;
 }
 
 .chrono-analyser-view .pro-tips-panel:hover {

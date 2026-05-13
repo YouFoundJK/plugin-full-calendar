@@ -1,5 +1,5 @@
 import { TFile, normalizePath } from 'obsidian';
-import { load } from 'js-yaml'; // Import 'load' from js-yaml
+import { parse } from 'yaml'; // Import 'load' from js-yaml
 import { DateTime } from 'luxon';
 import { EventApi } from '@fullcalendar/core';
 
@@ -75,7 +75,8 @@ jest.mock(
       Plugin: class {},
       App: class {},
       // Use the imported 'load' function as our mock implementation
-      parseYaml: (s: string) => load(s)
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      parseYaml: (s: string) => parse(s)
     };
   },
   { virtual: true }
@@ -119,7 +120,7 @@ const dirName = 'events';
 
 const makePlugin = (settings: Partial<FullCalendarSettings> = {}): FullCalendarPlugin => {
   const mergedSettings = { ...DEFAULT_SETTINGS, ...settings };
-  PluginState.setSettings(mergedSettings as never);
+  PluginState.setSettings(mergedSettings);
   return {
     app: {}, // Mock app if needed, though not used by constructor directly
     settings: mergedSettings,
@@ -669,7 +670,7 @@ text_property: "[[example]]"
     };
 
     const handle = calendar.getEventHandle(parsedEvent);
-    await calendar.updateEvent(handle!, parsedEvent, updatedEvent as OFCEvent);
+    await calendar.updateEvent(handle!, parsedEvent, updatedEvent);
 
     const mockObsidian = obsidian as unknown as MockObsidian;
     const mockRewrite = mockObsidian.rewrite;
