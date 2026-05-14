@@ -58,10 +58,85 @@ export class ProviderRegistry {
   // Tasks backlog manager for lifecycle management
   private tasksBacklogManager: TasksBacklogManager;
 
+  private normalizePersistentId(id: string): string {
+    return id.replace(/\\/g, '/');
+  }
+
+  private resolveSessionIdFromStoreFallback(
+    calendarId: string,
+    persistentId: string,
+    eventHint?: OFCEvent
+  ): string | null {
+    if (!this.cache) {
+      return null;
+    }
+
+    const normalizedPersistentId = this.normalizePersistentId(persistentId);
+    const normalizedEventUid = eventHint?.uid ? this.normalizePersistentId(eventHint.uid) : null;
+
+    const eventsInCalendar = this.cache.store.getEventsInCalendar(calendarId);
+
+    const byPersistentId = eventsInCalendar.find(stored => {
+      const uid = stored.event.uid ? this.normalizePersistentId(stored.event.uid) : null;
+      const locationPath = stored.location?.path
+        ? this.normalizePersistentId(stored.location.path)
+        : null;
+      return uid === normalizedPersistentId || locationPath === normalizedPersistentId;
+    });
+
+    if (byPersistentId) {
+      return byPersistentId.id;
+    }
+
+    if (normalizedEventUid) {
+      const byEventUid = eventsInCalendar.find(stored => {
+        const uid = stored.event.uid ? this.normalizePersistentId(stored.event.uid) : null;
+        return uid === normalizedEventUid;
+      });
+      if (byEventUid) {
+        return byEventUid.id;
+      }
+    }
+
+    return null;
+  }
+
+  private repairMappingFromStore(calendarId: string, sessionId: string): void {
+    if (!this.cache) {
+      return;
+    }
+
+    const details = this.cache.store.getEventDetails(sessionId);
+    if (!details) {
+      return;
+    }
+
+    this.addMapping(details.event, calendarId, sessionId);
+  }
+
   constructor(plugin: FullCalendarPlugin) {
     this.plugin = plugin;
     this.tasksBacklogManager = new TasksBacklogManager(plugin);
     // initializeInstances is now called from main.ts after settings are loaded.
+  }
+
+  private teardownInstance(settingsId: string, instance: CalendarProvider<unknown>): void {
+    const teardownFn = (instance as unknown as { teardown?: () => void }).teardown;
+    if (typeof teardownFn !== 'function') {
+      return;
+    }
+
+    try {
+      teardownFn.call(instance);
+    } catch {
+      // Ignore teardown errors during provider lifecycle transitions.
+    }
+  }
+
+  private teardownAllInstances(): void {
+    for (const [settingsId, instance] of this.instances.entries()) {
+      this.teardownInstance(settingsId, instance);
+    }
   }
 
   // Register all built-in providers in one call
@@ -195,6 +270,7 @@ export class ProviderRegistry {
     }
     this.providerRetryTimers.clear();
     this.providerRetryAttempts.clear();
+    this.teardownAllInstances();
     this.instances.clear();
     const sources = PluginState.getSettings().calendarSources;
 
@@ -619,8 +695,9 @@ export class ProviderRegistry {
     }
 
     if (interestedInstances.length === 0) {
-      // No providers care about this file, so we can stop.
-      await this.cache.syncFile(file, []);
+      // No providers care about this file, so ignore it.
+      // Avoid syncing an empty state here, which can remove events owned by
+      // provider-driven integrations that do not participate in file parsing.
       return;
     }
 
@@ -792,6 +869,9 @@ export class ProviderRegistry {
         off: (name: string, cb: () => void) => void;
       }
     ).off('full-calendar:sources-changed', this.onSourcesChanged);
+
+    this.teardownAllInstances();
+
     for (const timer of this.providerRetryTimers.values()) {
       window.clearTimeout(timer);
     }
@@ -825,7 +905,18 @@ export class ProviderRegistry {
     // Translate Update persistent IDs to session IDs
     for (const update of updateArr) {
       const globalIdentifier = `${calendarId}::${update.persistentId}`;
-      const sessionId = await this.getSessionId(globalIdentifier);
+      let sessionId = await this.getSessionId(globalIdentifier);
+      if (!sessionId) {
+        sessionId = this.resolveSessionIdFromStoreFallback(
+          calendarId,
+          update.persistentId,
+          update.event
+        );
+        if (sessionId) {
+          this.repairMappingFromStore(calendarId, sessionId);
+        }
+      }
+
       if (sessionId) {
         cachePayload.updates.push({
           sessionId: sessionId,
@@ -842,7 +933,14 @@ export class ProviderRegistry {
     // Translate Deletion persistent IDs to session IDs
     for (const persistentId of deletions) {
       const globalIdentifier = `${calendarId}::${persistentId}`;
-      const sessionId = await this.getSessionId(globalIdentifier);
+      let sessionId = await this.getSessionId(globalIdentifier);
+      if (!sessionId) {
+        sessionId = this.resolveSessionIdFromStoreFallback(calendarId, persistentId);
+        if (sessionId) {
+          this.repairMappingFromStore(calendarId, sessionId);
+        }
+      }
+
       if (sessionId) {
         cachePayload.deletions.push(sessionId);
       }

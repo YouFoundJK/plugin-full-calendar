@@ -78,7 +78,7 @@ export class WhatsNewModal extends Modal {
         .setCta()
         .onClick(() => {
           window.open(
-            'https://youfoundjk.github.io/plugin-full-calendar/SustainabilityEthics/',
+            'https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/SustainabilityEthics/',
             '_blank'
           );
         });

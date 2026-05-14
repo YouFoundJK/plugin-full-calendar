@@ -85,6 +85,9 @@ export async function renderCalendar(
   eventSources: EventSourceInput[],
   settings?: ExtraRenderProps & { enableAdvancedCategorization?: boolean }
 ): Promise<Calendar> {
+  const interactionDocument = activeDocument ?? containerEl.ownerDocument;
+  const mirrorParent = (activeDocument ?? containerEl.ownerDocument).body;
+
   // Lazy-load FullCalendar core and plugins only when rendering
   const [core, list, rrule, daygrid, timegrid, interaction, luxon] = await Promise.all([
     import('@fullcalendar/core'),
@@ -623,7 +626,7 @@ export async function renderCalendar(
 
     editable: modifyEvent && true,
     // Keep drag mirror anchored to the viewport, not transformed Obsidian panes.
-    fixedMirrorParent: activeDocument.body,
+    fixedMirrorParent: mirrorParent,
     eventDrop: modifyEventCallback,
     eventResize: modifyEventCallback,
 
@@ -651,7 +654,7 @@ export async function renderCalendar(
       });
       if (toggleTask) {
         if (event.extendedProps.isTask) {
-          const checkbox = activeDocument.createEl('input');
+          const checkbox = containerEl.ownerDocument.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.checked = !!event.extendedProps.taskCompleted;
 
@@ -799,20 +802,20 @@ export async function renderCalendar(
     const inputWrapEl =
       keepWrapEl ||
       (() => {
-        const wrapEl = activeDocument.createDiv();
+        const wrapEl = containerEl.ownerDocument.createElement('div');
         wrapEl.className = 'ofc-toolbar-search-input-wrap';
         wrapEl.setCssProps({
           width: searchExpanded || searchQuery ? '180px' : '0px'
         });
 
-        const inputEl = activeDocument.createEl('input');
+        const inputEl = containerEl.ownerDocument.createElement('input');
         inputEl.className = 'ofc-toolbar-search-input';
         inputEl.type = 'text';
         inputEl.placeholder = 'Search events...';
         inputEl.value = searchQuery;
         inputEl.ariaLabel = 'Search events';
 
-        const clearEl = activeDocument.createEl('button');
+        const clearEl = containerEl.ownerDocument.createElement('button');
         clearEl.className = 'clickable-icon ofc-toolbar-search-clear';
         clearEl.type = 'button';
         clearEl.ariaLabel = 'Clear search';
@@ -915,7 +918,7 @@ export async function renderCalendar(
       return;
     }
 
-    if (isEditableTarget(event.target) || isEditableTarget(activeDocument.activeElement)) {
+    if (isEditableTarget(event.target) || isEditableTarget(interactionDocument.activeElement)) {
       return;
     }
 
@@ -981,11 +984,11 @@ export async function renderCalendar(
   updateCurrentOrNextEventHighlight();
   const activeHighlightInterval = window.setInterval(updateCurrentOrNextEventHighlight, 60_000);
   const onVisibilityChange = () => {
-    if (activeDocument.visibilityState === 'visible') {
+    if (interactionDocument.visibilityState === 'visible') {
       updateCurrentOrNextEventHighlight();
     }
   };
-  activeDocument.addEventListener('visibilitychange', onVisibilityChange);
+  interactionDocument.addEventListener('visibilitychange', onVisibilityChange);
 
   const originalDestroy = cal.destroy.bind(cal);
   cal.destroy = () => {
@@ -995,7 +998,7 @@ export async function renderCalendar(
     containerEl.removeEventListener('touchstart', onTouchStartNavigate);
     containerEl.removeEventListener('touchend', onTouchEndNavigate);
     window.clearInterval(activeHighlightInterval);
-    activeDocument.removeEventListener('visibilitychange', onVisibilityChange);
+    interactionDocument.removeEventListener('visibilitychange', onVisibilityChange);
     originalDestroy();
   };
 

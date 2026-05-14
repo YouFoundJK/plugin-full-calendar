@@ -14,7 +14,6 @@ import { EventHandle, FCReactComponent } from '../typesProvider';
 import { OFCEvent, EventLocation } from '../../types';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
-import { activeDocument } from 'obsidian';
 import { TaskNotesProviderConfig } from './typesTaskNotes';
 import {
   TaskNotesConfigComponent,
@@ -28,6 +27,7 @@ type TaskNotesTask = {
   path: string;
   title: string;
   status: string;
+  dateModified?: string;
   scheduled?: string;
   recurrence?: string;
   recurrence_anchor?: 'scheduled' | 'completion';
@@ -46,11 +46,14 @@ type TaskNotesTaskCreationData = {
   customFrontmatter?: Record<string, unknown>;
 };
 
+const TASK_UPDATE_COALESCE_MS = 80;
+
 type TaskNotesPluginApi = {
   cacheManager: {
     getAllTasks(): Promise<TaskNotesTask[]>;
     getTaskInfo(path: string): Promise<TaskNotesTask | null>;
     on(event: string, cb: (data: unknown) => void): void;
+    off?(event: string, cb: (data: unknown) => void): void;
   };
   taskService: {
     updateProperty(
@@ -102,7 +105,15 @@ export class TaskNotesProvider
   private subscriptionAttempts = 0;
   private reloadTimer: number | null = null;
   private useEmitterEvents = false;
-
+  private lastTaskVersionByPath: Map<string, number> = new Map();
+  private pendingTaskUpdateTimers: Map<string, number> = new Map();
+  private pendingTaskUpdatePayloads: Map<string, TaskNotesTask | undefined> = new Map();
+  private taskUpdatedHandler?: (data: unknown) => void;
+  private taskDeletedHandler?: (data: unknown) => void;
+  private fileUpdatedHandler?: (data: unknown) => void;
+  private fileDeletedHandler?: (data: unknown) => void;
+  private fileRenamedHandler?: (data: unknown) => void;
+  private dataChangedHandler?: () => void;
   readonly type = 'tasknotes';
   readonly displayName = 'TaskNotes';
   readonly isRemote = false;
@@ -125,6 +136,10 @@ export class TaskNotesProvider
     return taskNotes ? (taskNotes as TaskNotesPluginApi) : null;
   }
 
+  private normalizePersistentId(path: string): string {
+    return path.replace(/\\/g, '/');
+  }
+
   private scheduleSubscriptionRetry(): void {
     if (this.subscriptionTimer) return;
 
@@ -140,10 +155,51 @@ export class TaskNotesProvider
       window.clearTimeout(this.reloadTimer);
     }
 
+    try {
+      PluginState.getProviderRegistry();
+    } catch {
+      return;
+    }
+
     this.reloadTimer = window.setTimeout(() => {
       this.reloadTimer = null;
-      PluginState.getProviderRegistry().reloadProviderNow(this.source.id);
+      try {
+        PluginState.getProviderRegistry().reloadProviderNow(this.source.id);
+      } catch {
+        // Provider registry may already be gone during unload/reload.
+      }
     }, delayMs);
+  }
+
+  private getTaskVersion(task: TaskNotesTask | null | undefined): number | null {
+    const raw = task?.dateModified;
+    if (!raw) return null;
+
+    const parsed = DateTime.fromISO(raw);
+    if (!parsed.isValid) return null;
+
+    return parsed.toMillis();
+  }
+
+  private enqueueTaskUpdated(path: string, payloadTask?: TaskNotesTask): void {
+    const normalizedPath = this.normalizePersistentId(path);
+
+    this.pendingTaskUpdatePayloads.set(normalizedPath, payloadTask);
+
+    const existingTimer = this.pendingTaskUpdateTimers.get(normalizedPath);
+    if (existingTimer) {
+      window.clearTimeout(existingTimer);
+    }
+
+    const timer = window.setTimeout(() => {
+      this.pendingTaskUpdateTimers.delete(normalizedPath);
+      const latestPayload = this.pendingTaskUpdatePayloads.get(normalizedPath);
+      this.pendingTaskUpdatePayloads.delete(normalizedPath);
+
+      void this.handleTaskUpdated(normalizedPath, latestPayload);
+    }, TASK_UPDATE_COALESCE_MS);
+
+    this.pendingTaskUpdateTimers.set(normalizedPath, timer);
   }
 
   private getScheduledParts(value: unknown): { date: string; time: string | null } {
@@ -292,7 +348,7 @@ export class TaskNotesProvider
   }
 
   private prefillTaskSelectorInput(text: string, attempt = 0): void {
-    const modal = activeDocument.querySelector('.task-selector-with-create-modal');
+    const modal = window.document.querySelector('.task-selector-with-create-modal');
     const input = modal?.querySelector('input.prompt-input') as HTMLInputElement | null;
 
     if (input) {
@@ -319,7 +375,7 @@ export class TaskNotesProvider
         }
       | undefined;
 
-    const hasCreateModal = !!activeDocument.querySelector('.mod-tasknotes .nl-markdown-editor');
+    const hasCreateModal = !!window.document.querySelector('.mod-tasknotes .nl-markdown-editor');
     if (!hasCreateModal) {
       if (attempt < 20) {
         window.setTimeout(() => this.prefillTaskCreationInput(text, attempt + 1), 50);
@@ -334,7 +390,7 @@ export class TaskNotesProvider
       return;
     }
 
-    const fallbackTextarea: HTMLTextAreaElement | null = activeDocument.querySelector(
+    const fallbackTextarea: HTMLTextAreaElement | null = window.document.querySelector(
       '.mod-tasknotes .nl-input'
     );
     if (fallbackTextarea) {
@@ -462,7 +518,8 @@ export class TaskNotesProvider
       return null;
     }
 
-    const cached = this.tasksById.get(event.uid);
+    const normalizedUid = this.normalizePersistentId(event.uid);
+    const cached = this.tasksById.get(normalizedUid);
     if (cached) {
       return cached;
     }
@@ -472,9 +529,12 @@ export class TaskNotesProvider
       return null;
     }
 
-    const fetched = await taskNotes.cacheManager.getTaskInfo(event.uid);
+    let fetched = await taskNotes.cacheManager.getTaskInfo(normalizedUid);
+    if (!fetched && normalizedUid.includes('/')) {
+      fetched = await taskNotes.cacheManager.getTaskInfo(normalizedUid.replace(/\//g, '\\'));
+    }
     if (fetched) {
-      this.tasksById.set(fetched.path, fetched);
+      this.tasksById.set(this.normalizePersistentId(fetched.path), fetched);
     }
     return fetched;
   }
@@ -509,7 +569,7 @@ export class TaskNotesProvider
         rrule: parsedRecurrence.rrule,
         skipDates: uniqueSkipDates,
         isTask: true,
-        uid: task.path,
+        uid: this.normalizePersistentId(task.path),
         recurringEventId: this.getTaskRecurringParentId(task)
       };
     }
@@ -530,7 +590,7 @@ export class TaskNotesProvider
       rrule: parsedRecurrence.rrule,
       skipDates: uniqueSkipDates,
       isTask: true,
-      uid: task.path,
+      uid: this.normalizePersistentId(task.path),
       recurringEventId: this.getTaskRecurringParentId(task)
     };
   }
@@ -570,7 +630,7 @@ export class TaskNotesProvider
             startTime: safeTime,
             endTime,
             completed: isCompleted ? completedDate : false,
-            uid: task.path,
+            uid: this.normalizePersistentId(task.path),
             recurringEventId: this.getTaskRecurringParentId(task)
           };
         })()
@@ -581,7 +641,7 @@ export class TaskNotesProvider
           date,
           endDate: null,
           completed: isCompleted ? completedDate : false,
-          uid: task.path,
+          uid: this.normalizePersistentId(task.path),
           recurringEventId: this.getTaskRecurringParentId(task)
         };
 
@@ -593,23 +653,43 @@ export class TaskNotesProvider
     updates: { persistentId: string; event: OFCEvent; location: EventLocation | null }[];
     deletions: string[];
   }): Promise<void> {
-    if (!PluginState.getCache()) return;
-    await PluginState.getProviderRegistry().processProviderUpdates(this.source.id, payload);
+    try {
+      if (!PluginState.getCache()) return;
+      await PluginState.getProviderRegistry().processProviderUpdates(this.source.id, payload);
+    } catch {
+      // PluginState may already be torn down while external callbacks are still draining.
+    }
   }
 
   private async handleTaskUpdated(path: string, payloadTask?: TaskNotesTask): Promise<void> {
     try {
+      const normalizedPath = this.normalizePersistentId(path);
       const taskNotes = this.getTaskNotesPlugin();
       if (!taskNotes) return;
 
       let task: TaskNotesTask | null = payloadTask ?? null;
       if (!task || task.scheduled === undefined) {
         task = await taskNotes.cacheManager.getTaskInfo(path);
+        if (!task && normalizedPath !== path) {
+          task = await taskNotes.cacheManager.getTaskInfo(normalizedPath);
+        }
       }
 
-      const globalIdentifier = `${this.source.id}::${path}`;
-      const existingSessionId =
-        await PluginState.getProviderRegistry().getSessionId(globalIdentifier);
+      // Always prefer canonical cache data when available to avoid transient payload regressions.
+      const canonicalTask = await taskNotes.cacheManager.getTaskInfo(path);
+      if (canonicalTask) {
+        task = canonicalTask;
+      }
+
+      let providerRegistry;
+      try {
+        providerRegistry = PluginState.getProviderRegistry();
+      } catch {
+        return;
+      }
+
+      const globalIdentifier = `${this.source.id}::${normalizedPath}`;
+      const existingSessionId = await providerRegistry.getSessionId(globalIdentifier);
       if (!task) {
         if (existingSessionId) {
           this.scheduleReload();
@@ -617,24 +697,46 @@ export class TaskNotesProvider
         return;
       }
 
-      if (!task.scheduled) {
-        if (existingSessionId) {
-          await this.dispatchUpdates({ additions: [], updates: [], deletions: [path] });
-        }
+      const incomingVersion = this.getTaskVersion(task);
+      const lastVersion = this.lastTaskVersionByPath.get(normalizedPath);
+      if (incomingVersion !== null && lastVersion !== undefined && incomingVersion < lastVersion) {
         return;
       }
 
-      // Still keep local map updated for getEvents fallback
-      this.tasksById.set(path, task);
-      const eventEntry = this.taskToEvent(task);
-      if (!eventEntry) return;
+      // Keep local map updated for getEvents fallback.
+      this.tasksById.set(normalizedPath, task);
+
+      // TaskNotes update events may contain partial task payloads during toggle flows.
+      // If mapping fails, refetch canonical task info before deciding to delete.
+      let eventEntry = this.taskToEvent(task);
+      if (!eventEntry) {
+        const canonicalTask = await taskNotes.cacheManager.getTaskInfo(path);
+        if (canonicalTask) {
+          task = canonicalTask;
+          this.tasksById.set(normalizedPath, canonicalTask);
+          eventEntry = this.taskToEvent(canonicalTask);
+        }
+      }
+
+      if (incomingVersion !== null) {
+        this.lastTaskVersionByPath.set(normalizedPath, incomingVersion);
+      }
+
+      if (!eventEntry) {
+        if (existingSessionId) {
+          await this.dispatchUpdates({ additions: [], updates: [], deletions: [normalizedPath] });
+        }
+        return;
+      }
 
       if (!existingSessionId) {
         this.scheduleReload();
       } else {
         await this.dispatchUpdates({
           additions: [],
-          updates: [{ persistentId: path, event: eventEntry[0], location: eventEntry[1] }],
+          updates: [
+            { persistentId: normalizedPath, event: eventEntry[0], location: eventEntry[1] }
+          ],
           deletions: []
         });
       }
@@ -644,15 +746,26 @@ export class TaskNotesProvider
   }
 
   private async handleTaskDeleted(path: string): Promise<void> {
-    if (!PluginState.getCache()) return;
+    const normalizedPath = this.normalizePersistentId(path);
+    try {
+      if (!PluginState.getCache()) return;
+    } catch {
+      return;
+    }
 
-    const globalIdentifier = `${this.source.id}::${path}`;
-    const existingSessionId =
-      await PluginState.getProviderRegistry().getSessionId(globalIdentifier);
+    let providerRegistry;
+    try {
+      providerRegistry = PluginState.getProviderRegistry();
+    } catch {
+      return;
+    }
+
+    const globalIdentifier = `${this.source.id}::${normalizedPath}`;
+    const existingSessionId = await providerRegistry.getSessionId(globalIdentifier);
     if (!existingSessionId) return;
 
-    this.tasksById.delete(path);
-    await this.dispatchUpdates({ additions: [], updates: [], deletions: [path] });
+    this.tasksById.delete(normalizedPath);
+    await this.dispatchUpdates({ additions: [], updates: [], deletions: [normalizedPath] });
   }
 
   private async handleTaskRenamed(oldPath: string, newPath: string): Promise<void> {
@@ -661,7 +774,9 @@ export class TaskNotesProvider
   }
 
   public initialize(): void {
-    if (this.isSubscribed) return;
+    if (this.isSubscribed) {
+      return;
+    }
 
     const taskNotes = this.getTaskNotesPlugin();
     if (!taskNotes) {
@@ -675,64 +790,119 @@ export class TaskNotesProvider
     this.useEmitterEvents = !!taskNotes.emitter;
 
     if (this.useEmitterEvents) {
-      taskNotes.emitter?.on('task-updated', (data: unknown) => {
+      this.taskUpdatedHandler = (data: unknown) => {
         const payload = data as {
           path?: string;
           originalTask?: TaskNotesTask;
           updatedTask?: TaskNotesTask;
         };
         if (payload?.path) {
-          void this.handleTaskUpdated(payload.path, payload.updatedTask).catch(e => {
-            console.error('[TaskNotesProvider] task-updated handler failed:', e);
-          });
+          this.enqueueTaskUpdated(payload.path, payload.updatedTask);
         }
-      });
+      };
+      taskNotes.emitter?.on('task-updated', this.taskUpdatedHandler);
 
-      taskNotes.emitter?.on('task-deleted', (data: unknown) => {
+      this.taskDeletedHandler = (data: unknown) => {
         const payload = data as { path?: string };
         if (payload?.path) {
           void this.handleTaskDeleted(payload.path).catch(e => {
             console.error('[TaskNotesProvider] task-deleted handler failed:', e);
           });
         }
-      });
+      };
+      taskNotes.emitter?.on('task-deleted', this.taskDeletedHandler);
     } else {
-      taskNotes.cacheManager.on('file-updated', (data: unknown) => {
+      this.fileUpdatedHandler = (data: unknown) => {
         const payload = data as { path?: string };
         if (payload?.path) {
-          void this.handleTaskUpdated(payload.path).catch(e => {
-            console.error('[TaskNotesProvider] file-updated handler failed:', e);
-          });
+          this.enqueueTaskUpdated(payload.path);
         }
-      });
+      };
+      taskNotes.cacheManager.on('file-updated', this.fileUpdatedHandler);
     }
 
     // Fallback if emitter is not configured for cache-level events
-    taskNotes.cacheManager.on('file-deleted', (data: unknown) => {
+    this.fileDeletedHandler = (data: unknown) => {
       const payload = data as { path?: string };
       if (payload?.path) {
         void this.handleTaskDeleted(payload.path).catch(e => {
           console.error('[TaskNotesProvider] file-deleted handler failed:', e);
         });
       }
-    });
+    };
+    taskNotes.cacheManager.on('file-deleted', this.fileDeletedHandler);
 
-    taskNotes.cacheManager.on('file-renamed', (data: unknown) => {
+    this.fileRenamedHandler = (data: unknown) => {
       const payload = data as { oldPath?: string; newPath?: string };
       if (payload?.oldPath && payload?.newPath) {
         void this.handleTaskRenamed(payload.oldPath, payload.newPath).catch(e => {
           console.error('[TaskNotesProvider] file-renamed handler failed:', e);
         });
       }
-    });
+    };
+    taskNotes.cacheManager.on('file-renamed', this.fileRenamedHandler);
 
-    taskNotes.cacheManager.on('data-changed', () => {
+    this.dataChangedHandler = () => {
       if (!this.useEmitterEvents) {
         this.scheduleReload();
       }
-    });
+    };
+    taskNotes.cacheManager.on('data-changed', this.dataChangedHandler);
 
     this.scheduleReload(0);
+  }
+
+  public teardown(): void {
+    const taskNotes = this.getTaskNotesPlugin();
+
+    if (this.subscriptionTimer) {
+      window.clearTimeout(this.subscriptionTimer);
+      this.subscriptionTimer = null;
+    }
+
+    if (this.reloadTimer) {
+      window.clearTimeout(this.reloadTimer);
+      this.reloadTimer = null;
+    }
+
+    for (const timer of this.pendingTaskUpdateTimers.values()) {
+      window.clearTimeout(timer);
+    }
+    this.pendingTaskUpdateTimers.clear();
+    this.pendingTaskUpdatePayloads.clear();
+
+    if (taskNotes?.emitter) {
+      if (this.taskUpdatedHandler) {
+        taskNotes.emitter.off('task-updated', this.taskUpdatedHandler);
+      }
+      if (this.taskDeletedHandler) {
+        taskNotes.emitter.off('task-deleted', this.taskDeletedHandler);
+      }
+    }
+
+    if (taskNotes?.cacheManager.off) {
+      if (this.fileUpdatedHandler) {
+        taskNotes.cacheManager.off('file-updated', this.fileUpdatedHandler);
+      }
+      if (this.fileDeletedHandler) {
+        taskNotes.cacheManager.off('file-deleted', this.fileDeletedHandler);
+      }
+      if (this.fileRenamedHandler) {
+        taskNotes.cacheManager.off('file-renamed', this.fileRenamedHandler);
+      }
+      if (this.dataChangedHandler) {
+        taskNotes.cacheManager.off('data-changed', this.dataChangedHandler);
+      }
+    }
+
+    this.taskUpdatedHandler = undefined;
+    this.taskDeletedHandler = undefined;
+    this.fileUpdatedHandler = undefined;
+    this.fileDeletedHandler = undefined;
+    this.fileRenamedHandler = undefined;
+    this.dataChangedHandler = undefined;
+    this.isSubscribed = false;
+    this.useEmitterEvents = false;
   }
 
   public getLoadRetryPolicy(): { retryDelayMs: number } {
@@ -750,7 +920,16 @@ export class TaskNotesProvider
     }
 
     const tasks = await taskNotes.cacheManager.getAllTasks();
-    this.tasksById = new Map(tasks.map(task => [task.path, task]));
+    this.tasksById = new Map(tasks.map(task => [this.normalizePersistentId(task.path), task]));
+    this.lastTaskVersionByPath = new Map(
+      tasks
+        .map(task => {
+          const normalizedPath = this.normalizePersistentId(task.path);
+          const version = this.getTaskVersion(task);
+          return version === null ? null : ([normalizedPath, version] as const);
+        })
+        .filter((entry): entry is readonly [string, number] => entry !== null)
+    );
 
     return tasks
       .map(task => this.taskToEvent(task))
@@ -776,13 +955,14 @@ export class TaskNotesProvider
 
   getEventHandle(event: OFCEvent): EventHandle | null {
     if (event.uid) {
-      return { persistentId: event.uid, location: { path: event.uid } };
+      const persistentId = this.normalizePersistentId(event.uid);
+      return { persistentId, location: { path: persistentId } };
     }
     return null;
   }
 
   computeSyncKey(event: OFCEvent): string {
-    return event.uid || JSON.stringify(event);
+    return event.uid ? this.normalizePersistentId(event.uid) : JSON.stringify(event);
   }
 
   public async getRecurringInstanceState(
@@ -848,7 +1028,7 @@ export class TaskNotesProvider
       task = await taskNotes.taskService.toggleRecurringTaskSkipped(task, instanceDateObj);
     }
 
-    this.tasksById.set(task.path, task);
+    this.tasksById.set(this.normalizePersistentId(task.path), task);
     return true;
   }
 
@@ -962,11 +1142,17 @@ export class TaskNotesProvider
     }
 
     let updatedTask = await taskNotes.taskService.updateProperty(task, 'scheduled', scheduledValue);
-    updatedTask = await taskNotes.taskService.updateProperty(
-      updatedTask,
-      'timeEstimate',
-      timeEstimateValue
-    );
+
+    try {
+      updatedTask = await taskNotes.taskService.updateProperty(
+        updatedTask,
+        'timeEstimate',
+        timeEstimateValue
+      );
+    } catch {
+      // Scheduling is the primary source-of-truth for calendar placement.
+      // Avoid reverting UI position if optional estimate persistence fails.
+    }
 
     this.tasksById.set(updatedTask.path, updatedTask);
 
@@ -1058,10 +1244,36 @@ export class TaskNotesProvider
       }
 
       const updatedTask = await taskNotes.taskService.toggleStatus(task);
-      this.tasksById.set(updatedTask.path, updatedTask);
+      const normalizedPath = this.normalizePersistentId(updatedTask.path || event.uid);
+      this.tasksById.set(normalizedPath, updatedTask);
 
       const currentCompleted =
         taskNotes.statusManager?.isCompletedStatus(updatedTask.status) ?? false;
+
+      const completedValue = currentCompleted
+        ? updatedTask.completedDate || DateTime.now().toFormat('yyyy-MM-dd')
+        : false;
+
+      const optimisticEvent: OFCEvent =
+        event.type === 'single'
+          ? {
+              ...event,
+              completed: completedValue
+            }
+          : event;
+
+      await this.dispatchUpdates({
+        additions: [],
+        updates: [
+          {
+            persistentId: normalizedPath,
+            event: optimisticEvent,
+            location: { file: { path: normalizedPath }, lineNumber: undefined }
+          }
+        ],
+        deletions: []
+      });
+
       return currentCompleted === isDone;
     } catch (e) {
       console.error('TaskNotes toggleComplete failed', e);

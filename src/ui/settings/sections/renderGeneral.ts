@@ -100,7 +100,7 @@ export function renderGeneralSettings(
     .setName(t('settings.general.clickToCreateEvent.label'))
     .setDesc(
       createDescWithDocs(t('settings.general.clickToCreateEvent.description'), [
-        { text: 'Interactions and gestures', path: 'user/guides/interactions' },
+        { text: 'Interactions and gestures', path: 'user/features/interactions' },
         { text: 'Event management', path: 'user/events/manage' }
       ])
     )

@@ -10,6 +10,11 @@ export class CacheSubscriptionManager {
     toAdd: new Map()
   };
 
+  public clearUpdateQueue(): void {
+    this.updateQueue.toRemove.clear();
+    this.updateQueue.toAdd.clear();
+  }
+
   /**
    * Register a callback.
    */
@@ -114,7 +119,7 @@ export class CacheSubscriptionManager {
     if (onFlushStart) {
       onFlushStart();
     }
-    this.updateQueue = { toRemove: new Set(), toAdd: new Map() };
+    this.clearUpdateQueue();
 
     if (combinedToRemove.size > 0 || combinedToAdd.size > 0 || allAffectedCalendars.size > 0) {
       this.updateViews(

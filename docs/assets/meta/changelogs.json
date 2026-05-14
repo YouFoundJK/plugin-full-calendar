@@ -35,7 +35,7 @@
       {
         "type": "new",
         "title": "Obsidian Bases provider",
-        "description": "Add [Bases](https://youfoundjk.github.io/plugin-full-calendar/calendars/bases/) as a calendar source (BETA)."
+        "description": "Add [Bases](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/bases/) as a calendar source (BETA)."
       },
       {
         "type": "improvement",
@@ -45,12 +45,12 @@
       {
         "type": "improvement",
         "title": "ChronoAnalyser data integrity",
-        "description": "[ChronoAnalyser](https://youfoundjk.github.io/plugin-full-calendar/chrono_analyser/introduction/) now pulls from the main EventStore and parses category/project/subproject hierarchies correctly for accurate analysis."
+        "description": "[ChronoAnalyser](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/chrono_analyser/introduction/) now pulls from the main EventStore and parses category/project/subproject hierarchies correctly for accurate analysis."
       },
       {
         "type": "fix",
         "title": "CalDAV validation and parsing",
-        "description": "[CalDAVProvider](https://youfoundjk.github.io/plugin-full-calendar/calendars/caldav/) now validates calendar collections with PROPFIND, parses calendar-data via DOMParser, adds JSDOM-backed tests, and surfaces clearer errors when URLs are invalid. (#193)"
+        "description": "[CalDAVProvider](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/caldav/) now validates calendar collections with PROPFIND, parses calendar-data via DOMParser, adds JSDOM-backed tests, and surfaces clearer errors when URLs are invalid. (#193)"
       },
       {
         "type": "fix",
@@ -65,7 +65,7 @@
       {
         "type": "new",
         "title": "Tasks Provider Rearchitected for Performance and Precision",
-        "description": "The [Tasks provider](https://youfoundjk.github.io/plugin-full-calendar/calendars/tasks-plugin-integration/) now uses the official Tasks plugin's live cache for instant updates and performs surgical edits to preserve user metadata like links and tags. (#151, #155)"
+        "description": "The [Tasks provider](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/tasks-plugin-integration/) now uses the official Tasks plugin's live cache for instant updates and performs surgical edits to preserve user metadata like links and tags. (#151, #155)"
       },
       {
         "type": "improvement",

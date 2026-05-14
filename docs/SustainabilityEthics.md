@@ -18,7 +18,7 @@ This project operates on the core principle of **Open Source Equality**. Unlike 
 See here for the [Developement Timeline](https://github.com/users/YouFoundJK/projects/2).
 
 ## The Economic Reality of Maintenance
-While the software is free, the infrastructure required to build it at a high velocity is increasingly becoming expensive. Over the last year, the [current maintainer](https://github.com/YouFoundJK/) has managed to [push features](https://youfoundjk.github.io/plugin-full-calendar/whats_new/) at break neck speed:
+While the software is free, the infrastructure required to build it at a high velocity is increasingly becoming expensive. Over the last year, the [current maintainer](https://github.com/YouFoundJK/) has managed to [push features](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/whats_new/) at break neck speed:
 
 [![Contribution Graph](https://ghchart.rshah.org/409ba5/YouFoundJK)](https://github.com/YouFoundJK)
 
@@ -34,7 +34,7 @@ With contributions attributed to roughly
 
 ![Activity ChronoAnalyzer](assets/chrono-analyser/2025-26-FCR-development.png){ style="display: block; margin: 0 auto;" }
 
-Spread across a **305.83 Hours** of Developer Time (27 May 2025 to 10 May 2026). Measured via [Activity Watch](https://youfoundjk.github.io/plugin-full-calendar/user/calendars/activitywatch/) + [ChronoAnalyser](https://youfoundjk.github.io/plugin-full-calendar/user/chrono_analyser/) integrations. My [freelancing hourly rate](https://www.upwork.com/freelancers/~010170cbba31f704df) might be able to put a facevalue to what that time is worth in a different universe. 
+Spread across a **305.83 Hours** of Developer Time (27 May 2025 to 10 May 2026). Measured via [Activity Watch](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/activitywatch/) + [ChronoAnalyser](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/chrono_analyser/) integrations. My [freelancing hourly rate](https://www.upwork.com/freelancers/~010170cbba31f704df) might be able to put a facevalue to what that time is worth in a different universe. 
 
 
 ### The Shift in AI Development Tools

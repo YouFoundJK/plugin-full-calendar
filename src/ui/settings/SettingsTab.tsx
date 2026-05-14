@@ -746,8 +746,8 @@ export class FullCalendarSettingTab extends PluginSettingTab {
       const docsPara = notice.createEl('p');
       docsPara.append(
         createDocsLinksFragment([
-          { text: 'Onboarding and daily use', path: 'user/guides/onboarding-and-daily-use' },
-          { text: 'Calendar types', path: 'user/calendars/index' },
+          { text: 'Onboarding and daily use', path: 'user/guides/' },
+          { text: 'Calendar types', path: 'user/calendars/' },
           { text: 'Troubleshooting', path: 'user/guides/troubleshooting' }
         ])
       );

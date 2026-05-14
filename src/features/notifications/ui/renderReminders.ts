@@ -20,7 +20,7 @@ export function renderRemindersSettings(
     .setHeading()
     .setDesc(
       createDocsLinksFragment([
-        { text: 'Reminders and notifications', path: 'user/guides/reminders' },
+        { text: 'Reminders and notifications', path: 'user/features/reminders' },
         { text: 'Troubleshooting', path: 'user/guides/troubleshooting' }
       ])
     );
@@ -29,7 +29,7 @@ export function renderRemindersSettings(
     .setName(t('settings.reminders.enableDefault.label'))
     .setDesc(
       createDescWithDocs(t('settings.reminders.enableDefault.description'), [
-        { text: 'Reminders and notifications', path: 'user/guides/reminders' }
+        { text: 'Reminders and notifications', path: 'user/features/reminders' }
       ])
     )
     .addToggle(toggle => {

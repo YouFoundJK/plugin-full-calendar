@@ -37,6 +37,7 @@ type MockPlugin = {
       plugins?: Record<string, { apiV1?: { editTaskLineModal: jest.Mock } }>;
     };
   };
+  registerEvent: jest.Mock;
   settings: FullCalendarSettings;
   providerRegistry: {
     refreshBacklogViews: jest.Mock;
@@ -69,7 +70,7 @@ describe('TasksPluginProvider', () => {
           getMarkdownFiles: jest.fn().mockReturnValue([])
         },
         workspace: {
-          on: jest.fn(),
+          on: jest.fn().mockReturnValue({}),
           trigger: jest.fn((eventName: string, callback: (data: unknown) => void) => {
             if (eventName === 'obsidian-tasks-plugin:request-cache-update') {
               callback({ state: 'Warm', tasks: [] }); // MODIFIED: resolves cache warm promise
@@ -77,6 +78,7 @@ describe('TasksPluginProvider', () => {
           })
         }
       },
+      registerEvent: jest.fn(),
       settings: {
         ...DEFAULT_SETTINGS,
         timeFormat24h: true,
@@ -172,6 +174,7 @@ describe('TasksPluginProvider', () => {
           if (eventName === 'obsidian-tasks-plugin:cache-update') {
             liveCacheUpdate = callback;
           }
+          return {} as never;
         }
       );
       mockPlugin.app.workspace.trigger.mockImplementation(
@@ -203,6 +206,16 @@ describe('TasksPluginProvider', () => {
 
       await expect(eventsPromise).resolves.toHaveLength(1);
       expect(mockPlugin.providerRegistry.reloadProviderNow).toHaveBeenCalledWith('tasks_1');
+    });
+
+    it('registers the live cache listener through the plugin lifecycle', () => {
+      provider.initialize();
+
+      expect(mockPlugin.app.workspace.on).toHaveBeenCalledWith(
+        'obsidian-tasks-plugin:cache-update',
+        expect.any(Function)
+      );
+      expect(mockPlugin.registerEvent).toHaveBeenCalledTimes(1);
     });
 
     it('gives single-time tasks a visible duration for week/time-grid views', async () => {

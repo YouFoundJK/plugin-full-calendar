@@ -29,7 +29,7 @@ const SCOPES =
   'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
 
 const MOBILE_REDIRECT_URI =
-  'https://youfoundjk.github.io/plugin-full-calendar/google-auth-callback.html';
+  'https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/assets/meta/google-auth-callback.html';
 const DESKTOP_REDIRECT_URI = 'http://127.0.0.1:42813/callback';
 
 const PUBLIC_CLIENT_ID = '272284435724-ltjbog78np5lnbjhgecudaqhsfba9voi.apps.googleusercontent.com';

@@ -133,7 +133,7 @@ export default class EventCache {
     const infos = PluginState.getProviderRegistry().getAllSources();
     this.calendars.clear();
     this._store.clear();
-    this.subscriptionManager.updateQueue = { toRemove: new Set(), toAdd: new Map() };
+    this.subscriptionManager.clearUpdateQueue();
 
     infos.forEach(info => {
       const settingsId = info.id;

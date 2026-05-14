@@ -199,6 +199,76 @@ END:VCALENDAR
     );
   });
 
+  it('should preserve unique sync keys for recurring series and recurrence exceptions', async () => {
+    const mockPropfindResponse = `
+      <d:multistatus xmlns:d="DAV:">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:resourcetype>
+                <d:collection/>
+                <c:calendar xmlns:c="urn:ietf:params:xml:ns:caldav"/>
+              </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    const mockReportResponse = `
+      <d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+        <d:response>
+          <d:href>/caldav/user/calendar/events/event1.ics</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:getetag>"etag-rrule"</d:getetag>
+              <c:calendar-data>BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:series-1
+SUMMARY:Yearly Anniversary
+DTSTART;VALUE=DATE:20200115
+DTEND;VALUE=DATE:20200116
+RRULE:FREQ=YEARLY
+END:VEVENT
+BEGIN:VEVENT
+UID:series-1
+RECURRENCE-ID;VALUE=DATE:20240115
+SUMMARY:Yearly Anniversary (Moved)
+DTSTART;VALUE=DATE:20240116
+DTEND;VALUE=DATE:20240117
+END:VEVENT
+END:VCALENDAR
+</c:calendar-data>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>
+    `;
+
+    mockObsidianFetch
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockPropfindResponse)
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 207,
+        text: () => Promise.resolve(mockReportResponse)
+      } as Response);
+
+    const events = await provider.getEvents();
+    const syncKeys = events.map(([event]) => provider.computeSyncKey(event));
+
+    expect(events).toHaveLength(2);
+    expect(syncKeys).toHaveLength(2);
+    expect(new Set(syncKeys).size).toBe(2);
+    expect(syncKeys).toContain('ics::series-1::2020-01-15::recurring');
+    expect(syncKeys).toContain('series-1');
+  });
+
   it('should keep valid fallback events when some fallback GET requests fail', async () => {
     const mockPropfindResponse = `
       <d:multistatus xmlns:d="DAV:">

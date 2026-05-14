@@ -5,7 +5,7 @@
  */
 
 import { t } from '../../features/i18n/i18n';
-import { activeDocument } from 'obsidian';
+import { activeDocument, activeWindow } from 'obsidian';
 import {
   createLinksFragment,
   createMarkdownLinksFragment,
@@ -18,7 +18,7 @@ export interface DocsLink {
   path: string;
 }
 
-const DOCS_ROOT = 'https://youfoundjk.github.io/plugin-full-calendar/';
+const DOCS_ROOT = 'https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/';
 
 export function toDocsUrl(path: string): string {
   return `${DOCS_ROOT}${path.replace(/^\/+/, '')}`;
@@ -28,7 +28,10 @@ export function createDocsLinksFragment(
   links: DocsLink[],
   prefix = t('global.learnMore')
 ): DocumentFragment {
-  const doc: Document = activeDocument;
+  const doc = activeDocument ?? activeWindow?.document ?? window.document;
+  if (!doc) {
+    return new DocumentFragment();
+  }
   if (links.length === 0) {
     return doc.createDocumentFragment();
   }
@@ -46,7 +49,10 @@ export function createDocsLinksFragment(
 }
 
 export function createDescWithDocs(description: string, links: DocsLink[]): DocumentFragment {
-  const doc: Document = activeDocument;
+  const doc = activeDocument ?? activeWindow?.document ?? window.document;
+  if (!doc) {
+    return createMarkdownLinksFragment(description);
+  }
   const fragment = doc.createDocumentFragment();
   fragment.append(createMarkdownLinksFragment(description));
   if (links.length > 0) {

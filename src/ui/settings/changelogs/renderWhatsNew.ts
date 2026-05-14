@@ -5,7 +5,7 @@
  */
 
 import { PluginState } from '../../../core/PluginState';
-import { Setting, activeDocument } from 'obsidian';
+import { Setting } from 'obsidian';
 import { changelogData } from './changelogData';
 import './changelog.css';
 import { t } from '../../../features/i18n/i18n';
@@ -59,14 +59,14 @@ export function renderWhatsNew(containerEl: HTMLElement, onShowChangelog: () => 
       .setName(change.title)
       .setDesc(createMarkdownLinksFragment(change.description));
 
-    const iconEl = activeDocument.createSpan();
+    const iconEl = containerEl.ownerDocument.createElement('span');
     iconEl.className = `change-icon-settings change-type-${change.type}`;
     if (change.type === 'new') {
-      iconEl.setText('+');
+      iconEl.textContent = '+';
     } else if (change.type === 'improvement') {
-      iconEl.setText('🔧');
+      iconEl.textContent = '🔧';
     } else if (change.type === 'fix') {
-      iconEl.setText('🐛');
+      iconEl.textContent = '🐛';
     }
 
     item.nameEl.prepend(iconEl);

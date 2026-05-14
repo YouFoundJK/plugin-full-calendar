@@ -14,6 +14,41 @@ export interface Version {
 // Add new versions to the TOP of this array.
 export const changelogData: Version[] = [
   {
+    version: '0.13.1',
+    changes: [
+      {
+        type: 'improvement',
+        title: 'Provider Lifecycle & Cleanup',
+        description:
+          'Added optional `teardown` method for CalendarProvider and ensured proper cleanup before registry reinitialization and shutdown to improve lifecycle stability.'
+      },
+      {
+        type: 'improvement',
+        title: 'Obsidian Community Lint & Document Handling',
+        description:
+          'Resolved lint issues and improved document handling in `getCalendarColors` and `renderCalendar` for more robust rendering behavior.'
+      },
+      {
+        type: 'fix',
+        title: 'Cache & Update Queue Stability',
+        description:
+          'Fixed `clearUpdateQueue` and improved update flush logic in CacheSubscriptionManager, ensuring correct handling of recurring child event deletions and burst update consistency.'
+      },
+      {
+        type: 'fix',
+        title: 'CalDAV Recurring Sync Collisions',
+        description:
+          'Resolved recurring sync-key collisions by using recurring event IDs instead of UID for RRULE events, preventing conflicts between series parents and RECURRENCE-ID exceptions. Includes regression test for yearly RRULE + exception scenarios. ([#260](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/260))'
+      },
+      {
+        type: 'fix',
+        title: 'TaskNotes Sync & Stability',
+        description:
+          'Stabilized provider-driven updates and drag/toggle sync. Improvements include: ignoring unclaimed file watcher updates, recovering missing provider-session mappings from cache, normalizing persistent IDs, coalescing burst updates, ignoring stale payloads, preferring canonical cache state, and ensuring scheduled changes remain authoritative even if time estimate persistence fails.'
+      }
+    ]
+  },
+  {
     version: '0.13.0',
     changes: [
       {
@@ -67,7 +102,7 @@ export const changelogData: Version[] = [
         type: 'improvement',
         title: 'Tasks integrations',
         description:
-          'Checkout [Tasks Integration docs](https://youfoundjk.github.io/plugin-full-calendar/user/calendars/tasks-plugin-integration/). Expanded Tasks backlog and display settings, plus payload handling and workflow improvements. ([#142](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/142), [#166](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/166), [#175](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/175))'
+          'Checkout [Tasks Integration docs](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/tasks-plugin-integration/). Expanded Tasks backlog and display settings, plus payload handling and workflow improvements. ([#142](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/142), [#166](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/166), [#175](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar/issues/175))'
       },
       {
         type: 'improvement',
@@ -148,7 +183,7 @@ export const changelogData: Version[] = [
         type: 'improvement',
         title: 'Staged Loading Architecture viz v0.12.7.1',
         description:
-          'Dramatic startup performance improvements (5x in [selective audit](https://youfoundjk.github.io/plugin-full-calendar/changelog/#version-01271)). Providers now quickly load a 3-month window surrounding the current date first, then quietly load your full calendar history in the background.'
+          'Dramatic startup performance improvements (5x in [selective audit](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/changelog/#version-01271)). Providers now quickly load a 3-month window surrounding the current date first, then quietly load your full calendar history in the background.'
       },
       {
         type: 'improvement',

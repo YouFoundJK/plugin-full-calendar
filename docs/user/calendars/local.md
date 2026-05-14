@@ -42,6 +42,25 @@ When creating or editing from the modal, the plugin performs a duplicate check a
 
 ---
 
+## Multiple Full Note Calendars with overlapping folders
+
+When you configure multiple Full Note calendars with nested directory structures (e.g., `Events/` and `Events/Work/`), the plugin uses a **specificity-based ownership model** to prevent duplication:
+
+**Rule**: The calendar with the **most specific (deepest) folder path** claims ownership of events in that folder.
+
+**Example**:
+```
+- Calendar 1: Events/
+- Calendar 2: Events/Work/
+```
+
+- Files in `Events/Work/` → Calendar 2 (more specific)
+- Files in `Events/` (but not in a subdirectory) → Calendar 1
+
+This ensures each event belongs to exactly one calendar, even if multiple calendars could technically "see" the same file.
+
+---
+
 ## Moving events between calendars
 
 - Moving events between calendars is currently supported only between Full Note calendars.

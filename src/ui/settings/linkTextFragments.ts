@@ -4,7 +4,7 @@
  * @license See LICENSE.md
  */
 
-import { activeDocument } from 'obsidian';
+import { activeDocument, activeWindow } from 'obsidian';
 
 export type LinkTextSegment =
   | { kind: 'text'; text: string }
@@ -48,7 +48,10 @@ export function createLinksFragment(
   segments: LinkTextSegment[],
   options?: { betweenLinksText?: string }
 ): DocumentFragment {
-  const doc: Document = activeDocument;
+  const doc = activeDocument ?? activeWindow?.document ?? window.document;
+  if (!doc) {
+    return new DocumentFragment();
+  }
   const fragment = doc.createDocumentFragment();
   const betweenLinksText = options?.betweenLinksText;
   let previousSegmentWasLink = false;

@@ -15,7 +15,7 @@ import { showNotice } from '../../utils/showNotice';
  */
 
 import { PluginState } from '../../core/PluginState';
-import { TFile } from 'obsidian';
+import { EventRef, TFile } from 'obsidian';
 import FullCalendarPlugin from '../../main';
 import { ObsidianInterface } from '../../ObsidianAdapter';
 import { OFCEvent, EventLocation } from '../../types';
@@ -605,13 +605,15 @@ export class TasksPluginProvider implements CalendarProvider<TasksProviderConfig
     };
 
     const workspace = this.plugin.app.workspace as unknown as {
-      on: (event: string, callback: (data: TasksCacheData) => void) => void;
+      on: (event: string, callback: (data: TasksCacheData) => void) => EventRef;
     };
 
-    workspace.on('obsidian-tasks-plugin:cache-update', data => {
-      // this.debugTasksCachePayload('cache-update', data);
-      void handleLiveCacheUpdate(data);
-    });
+    this.plugin.registerEvent(
+      workspace.on('obsidian-tasks-plugin:cache-update', data => {
+        // this.debugTasksCachePayload('cache-update', data);
+        void handleLiveCacheUpdate(data);
+      })
+    );
     this.isSubscribed = true;
   }
 

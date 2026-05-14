@@ -1,6 +1,6 @@
 {
     "name": "full-calendar-remastered",
-    "version": "0.13.0",
+    "version": "0.13.1",
     "description": "Obsidian integration with Full Calendar (fullcalendar.io)",
     "main": "main.js",
     "scripts": {

@@ -2,7 +2,7 @@
 <div align="right">
   <img src="https://img.shields.io/github/downloads/obsidian-full-calendar-remastered/plugin-full-calendar/total?label=Downloads" alt="Downloads" />
   <a href="#contributors-"><img src="https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square" alt="All Contributors" /></a>
-  <a href="https://youfoundjk.github.io/plugin-full-calendar/"><img src="https://img.shields.io/badge/Version-v_0.12.9-blue" alt="Version" /></a>
+  <a href="https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/"><img src="https://img.shields.io/badge/Version-v_0.12.9-blue" alt="Version" /></a>
 </div>
 
 
@@ -10,21 +10,21 @@
 
 # Full Calendar (Remastered) Plugin
 
-> This is the remastered edition of original [Full Calender plugin](https://github.com/obsidian-community/obsidian-full-calendar) by [Davis Haupt](https://davi.sh/), with the [core additions](https://youfoundjk.github.io/plugin-full-calendar/whats_new/).
+> This is the remastered edition of original [Full Calender plugin](https://github.com/obsidian-community/obsidian-full-calendar) by [Davis Haupt](https://davi.sh/), with the [core additions](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/whats_new/).
 
 Keep your calendar in your vault! This plugin integrates the [FullCalendar](https://github.com/fullcalendar/fullcalendar) library into your Obsidian Vault so that you can keep your ever-changing daily schedule and special events and plans alongside your tasks and notes, and link freely between all of them. Each event is stored as a separate note with special frontmatter so you can take notes, form connections and add context to any event on your calendar.
 
-> Checkout the [Documentation](https://youfoundjk.github.io/plugin-full-calendar/); [Development Timeline](https://github.com/users/YouFoundJK/projects/2) for the development timeline.
+> Checkout the [Documentation](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/); [Development Timeline](https://github.com/users/YouFoundJK/projects/2) for the development timeline.
 
 Full Calendar supports multiple calendar sources:
 
-- [**Full Note**](https://youfoundjk.github.io/plugin-full-calendar/calendars/local/): Events from frontmatter on individual notes
-- [**Daily Note**](https://youfoundjk.github.io/plugin-full-calendar/calendars/dailynote/): Events from event lists in daily notes
-- [**ICS**](https://youfoundjk.github.io/plugin-full-calendar/calendars/ics/): Read-only remote or local ICS files
-- [**CalDAV**](https://youfoundjk.github.io/plugin-full-calendar/calendars/caldav/): Two-way sync with CalDAV servers
-- [**Google Calendar**](https://youfoundjk.github.io/plugin-full-calendar/calendars/gcal/): Two-way sync with Google Calendar
-- [**Bases**](https://youfoundjk.github.io/plugin-full-calendar/calendars/bases/): Integrate with the Obsidian Bases plugin
-- [**Tasks Plugin**](https://youfoundjk.github.io/plugin-full-calendar/calendars/tasks-plugin-integration/): Sync with the Obsidian Tasks plugin
+- [**Full Note**](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/local/): Events from frontmatter on individual notes
+- [**Daily Note**](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/dailynote/): Events from event lists in daily notes
+- [**ICS**](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/ics/): Read-only remote or local ICS files
+- [**CalDAV**](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/caldav/): Two-way sync with CalDAV servers
+- [**Google Calendar**](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/gcal/): Two-way sync with Google Calendar
+- [**Bases**](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/bases/): Integrate with the Obsidian Bases plugin
+- [**Tasks Plugin**](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/user/calendars/tasks-plugin-integration/): Sync with the Obsidian Tasks plugin
 
 
 ![Sample Calendar](https://raw.githubusercontent.com/obsidian-full-calendar-remastered/plugin-full-calendar/main/docs/assets/guides/sample-calendar.png)
@@ -32,13 +32,13 @@ Full Calendar supports multiple calendar sources:
 The FullCalendar library is released under the [GPLv3 license](https://fullcalendar.io/license). It's an awesome piece of work, and it would not have been possible to make something like this plugin so easily without it.
 
 ### Your turn to support OpenSource
-> FCR is developed at a [high velocity](https://youfoundjk.github.io/plugin-full-calendar/SustainabilityEthics/#the-economic-reality-of-maintenance) using AI-augmented engineering. To keep up this pace (and avoid reverting to slow, manual coding), the project relies on a small community subsidy to cover AI tools (25 USD / month). 
+> FCR is developed at a [high velocity](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/SustainabilityEthics/#the-economic-reality-of-maintenance) using AI-augmented engineering. To keep up this pace (and avoid reverting to slow, manual coding), the project relies on a small community subsidy to cover AI tools (25 USD / month). 
 
 If this project has helped you consider supporting:
 
 <div align="center">
   <br>
-  <a href="https://youfoundjk.github.io/plugin-full-calendar/SustainabilityEthics/">
+  <a href="https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/SustainabilityEthics/">
     <img src="https://img.shields.io/badge/💖_Sponsor_FCR_%26_View_Transparency_Math-3a7be4?style=for-the-badge" alt="Sponsor FCR" />
   </a>
   <br><br>

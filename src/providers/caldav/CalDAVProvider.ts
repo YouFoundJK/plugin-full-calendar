@@ -455,6 +455,9 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
   }
 
   computeSyncKey(event: OFCEvent): string {
+    if (event.type === 'rrule' && event.id) {
+      return event.id;
+    }
     return event.uid || JSON.stringify(event);
   }
 

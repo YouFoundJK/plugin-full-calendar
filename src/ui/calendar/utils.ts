@@ -4,7 +4,17 @@ export function getCalendarColors(color: string | null | undefined): {
   color: string;
   textColor: string;
 } {
-  let textVar = getComputedStyle(activeDocument.body).getPropertyValue('--text-on-accent');
+  const bodyEl = activeDocument?.body;
+
+  if (!bodyEl) {
+    return {
+      color: color || 'var(--interactive-accent)',
+      textColor: 'var(--text-on-accent)'
+    };
+  }
+
+  const styles = getComputedStyle(bodyEl);
+  let textVar = styles.getPropertyValue('--text-on-accent').trim() || 'var(--text-on-accent)';
   if (color) {
     const m = color.slice(1).match(color.length === 7 ? /(\S{2})/g : /(\S{1})/g);
     if (m) {
@@ -19,7 +29,10 @@ export function getCalendarColors(color: string | null | undefined): {
   }
 
   return {
-    color: color || getComputedStyle(activeDocument.body).getPropertyValue('--interactive-accent'),
+    color:
+      color ||
+      styles.getPropertyValue('--interactive-accent').trim() ||
+      'var(--interactive-accent)',
     textColor: textVar
   };
 }

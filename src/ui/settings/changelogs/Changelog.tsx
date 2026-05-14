@@ -119,7 +119,7 @@ export const Changelog = ({ onBack }: ChangelogProps) => {
     setErrorLoading(false);
     try {
       const response = await requestUrl(
-        'https://youfoundjk.github.io/plugin-full-calendar/changelogs.json'
+        'https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/changelogs.json'
       );
       if (response.status === 200) {
         const olderVersions = response.json as Version[];

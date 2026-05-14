@@ -37,6 +37,14 @@ Note that only one daily note calendar can be active at a time.
 
 ---
 
+## Multiple Daily Note Calendars
+
+Daily Note calendars have a single-instance limitation: only one Daily Note calendar source can be active at a time in settings. This prevents conflicts when parsing and writing to daily notes.
+
+If you need multiple calendar sources from notes, consider using [Full Note calendars](local.md) instead, which support multiple instances with nested folder structures.
+
+---
+
 ## Timezone handling (Daily Notes)
 
 Daily Note calendars support two modes, configurable in Settings → General → Daily note timezone:
