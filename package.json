@@ -1,9 +1,11 @@
 {
     "name": "full-calendar-remastered",
     "version": "0.13.1",
+    "packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499",
     "description": "Obsidian integration with Full Calendar (fullcalendar.io)",
     "main": "main.js",
     "scripts": {
+        "preinstall": "npx only-allow pnpm",
         "dev": "node esbuild.config.mjs",
         "dev:vault": "node esbuild.config.mjs",
         "build": "node esbuild.config.mjs production",
@@ -22,7 +24,7 @@
         "test-update": "jest --silent=false --updateSnapshot",
         "test-dev": "jest --watch",
         "coverage": "jest --coverage",
-        "prod:release": "npm run prod && node -e \"const fs=require('fs');const path=require('path');const root=process.cwd();const outputDir=path.join(root,'release-artifacts');const builtDir=path.join(root,'obsidian-dev-vault','.obsidian','plugins','full-calendar-remastered');fs.rmSync(outputDir,{recursive:true,force:true});fs.mkdirSync(outputDir,{recursive:true});for(const fileName of ['main.js','styles.css']){fs.copyFileSync(path.join(builtDir,fileName),path.join(outputDir,fileName));}fs.copyFileSync(path.join(root,'manifest.json'),path.join(outputDir,'manifest.json'));\"",
+        "prod:release": "pnpm run prod && node -e \"const fs=require('fs');const path=require('path');const root=process.cwd();const outputDir=path.join(root,'release-artifacts');const builtDir=path.join(root,'obsidian-dev-vault','.obsidian','plugins','full-calendar-remastered');fs.rmSync(outputDir,{recursive:true,force:true});fs.mkdirSync(outputDir,{recursive:true});for(const fileName of ['main.js','styles.css']){fs.copyFileSync(path.join(builtDir,fileName),path.join(outputDir,fileName));}fs.copyFileSync(path.join(root,'manifest.json'),path.join(outputDir,'manifest.json'));\"",
         "ra": "prettier --config .prettierrc.json --write src/**/*.ts* && tsc -noEmit --skipLibCheck && eslint src -o lint_report.txt --no-color && eslint -c eslint.css.config.mjs \"src/**/*.css\" -o css_report.txt --no-color && node tools/check-and-prune-i18n.mjs && jest --ci --silent=true"
     },
     "keywords": [],
@@ -56,6 +58,7 @@
         "jest": "^30.0.4",
         "jest-environment-jsdom": "^30.2.0",
         "jest-mock-extended": "^4.0.0",
+        "moment": "^2.30.1",
         "obsidian": "^1.12.3",
         "prettier": "^3.6.2",
         "react": "^18.3.1",
