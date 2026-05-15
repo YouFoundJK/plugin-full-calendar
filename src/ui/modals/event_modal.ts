@@ -48,7 +48,7 @@ export function launchCreateModal(
       return {
         id: info.id,
         type: info.type,
-        name: info.name
+        name: info.name || ''
       };
     })
     .filter((c): c is NonNullable<typeof c> => !!c);
@@ -124,7 +124,7 @@ export function launchEditModal(plugin: FullCalendarPlugin, eventId: string) {
       return {
         id: info.id,
         type: info.type,
-        name: info.name
+        name: info.name || ''
       };
     })
     .filter((c): c is NonNullable<typeof c> => !!c);
