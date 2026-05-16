@@ -109,10 +109,7 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
     return event.uid || JSON.stringify(event);
   }
 
-  async getEvents(_range?: {
-    start: Date;
-    end: Date;
-  }): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
     const token = await this.authManager.getTokenForSource({
       type: 'google',
       id: this.source.id,
@@ -127,10 +124,18 @@ export class GoogleProvider implements CalendarProvider<GoogleProviderConfig>, S
     if (!displayTimezone) return [];
 
     try {
-      const timeMin = new Date();
-      timeMin.setFullYear(timeMin.getFullYear() - 1);
-      const timeMax = new Date();
-      timeMax.setFullYear(timeMax.getFullYear() + 1);
+      let timeMin: Date;
+      let timeMax: Date;
+
+      if (range && range.start && range.end) {
+        timeMin = new Date(range.start);
+        timeMax = new Date(range.end);
+      } else {
+        timeMin = new Date();
+        timeMin.setFullYear(timeMin.getFullYear() - 1);
+        timeMax = new Date();
+        timeMax.setFullYear(timeMax.getFullYear() + 1);
+      }
 
       const url = new URL(
         `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.source.calendarId)}/events`

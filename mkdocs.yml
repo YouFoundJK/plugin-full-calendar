@@ -65,6 +65,7 @@ markdown_extensions:
 extra_javascript:
     - assets/javascripts/nav-section-links.js
     - assets/javascripts/theme-logo.js
+    - assets/javascripts/analytics-events.js
 
 extra_css:
       - assets/stylesheets/site-polish.css
@@ -83,8 +84,7 @@ plugins:
 
 extra:
     analytics:
-        provider: google
-        property: G-X3N9HF1H5Y
+        provider: custom
         feedback:
             title: Was this page helpful?
             ratings:

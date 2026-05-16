@@ -18,7 +18,7 @@ import { TFile, TFolder } from 'obsidian';
 import { getDailyNoteSettings } from 'obsidian-daily-notes-interface';
 
 import FullCalendarPlugin from '../../main';
-import { OFCEvent } from '../../types';
+import { OFCEvent, CalendarInfo } from '../../types';
 import {
   getListsUnderHeading,
   modifyListItem,
@@ -130,7 +130,7 @@ export async function bulkUpdateCategories(
   // Processor for Daily Note calendars
   const dailyNoteProcessor = async (file: TFile) => {
     const dailyNoteSources = PluginState.getSettings().calendarSources.filter(
-      s => s.type === 'dailynote'
+      (s): s is Extract<CalendarInfo, { type: 'dailynote' }> => s.type === 'dailynote'
     );
     await plugin.app.vault.process(file, content => {
       const metadata = plugin.app.metadataCache.getFileCache(file);
@@ -236,7 +236,7 @@ export async function bulkRemoveCategories(plugin: FullCalendarPlugin): Promise<
     if (parentDir) knownCategories.add(parentDir);
 
     const dailyNoteSources = PluginState.getSettings().calendarSources.filter(
-      s => s.type === 'dailynote'
+      (s): s is Extract<CalendarInfo, { type: 'dailynote' }> => s.type === 'dailynote'
     );
     await plugin.app.vault.process(file, content => {
       const metadata = plugin.app.metadataCache.getFileCache(file);

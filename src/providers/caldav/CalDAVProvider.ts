@@ -461,10 +461,7 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
     return event.uid || JSON.stringify(event);
   }
 
-  async getEvents(_range?: {
-    start: Date;
-    end: Date;
-  }): Promise<[OFCEvent, EventLocation | null][]> {
+  async getEvents(range?: { start: Date; end: Date }): Promise<[OFCEvent, EventLocation | null][]> {
     // Validate collection URL using PROPFIND instead of regex
     const { isCalendar: isValid } = await fetchCalendarInfo(this.source.homeUrl, {
       username: this.source.username,
@@ -477,11 +474,19 @@ export class CalDAVProvider implements CalendarProvider<CalDAVProviderConfig>, S
       throw new Error(message);
     }
 
-    const now = new Date();
-    const start = new Date(now);
-    start.setMonth(start.getMonth() - 1);
-    const end = new Date(now);
-    end.setMonth(end.getMonth() + 6);
+    let start: Date;
+    let end: Date;
+
+    if (range && range.start && range.end) {
+      start = new Date(range.start);
+      end = new Date(range.end);
+    } else {
+      const now = new Date();
+      start = new Date(now);
+      start.setFullYear(now.getFullYear() - 1);
+      end = new Date(now);
+      end.setFullYear(now.getFullYear() + 1);
+    }
 
     try {
       const icsList = await fetchCalendarObjects(

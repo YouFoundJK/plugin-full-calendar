@@ -20,14 +20,18 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: 20
-                  cache: npm
+                  node-version: "22.x"
+
+            - uses: pnpm/action-setup@v2
+              with:
+                  version: 11
+                  run_install: false
 
             - name: Install dependencies
-              run: npm install
+              run: pnpm install
 
             - name: Build release artifacts
-              run: npm run prod:release
+              run: pnpm run prod:release
 
             - name: Attest artifacts
               uses: actions/attest-build-provenance@v2

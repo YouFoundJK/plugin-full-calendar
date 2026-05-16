@@ -1,14 +1,18 @@
-
 <div align="right">
   <img src="https://img.shields.io/github/downloads/obsidian-full-calendar-remastered/plugin-full-calendar/total?label=Downloads" alt="Downloads" />
   <a href="#contributors-"><img src="https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square" alt="All Contributors" /></a>
-  <a href="https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/"><img src="https://img.shields.io/badge/Version-v_0.12.9-blue" alt="Version" /></a>
+  <a href="https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/"><img src="https://img.shields.io/badge/Version-v_0.13.1-blue" alt="Version" /></a>
 </div>
 
 
 <!-- ![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22obsidian-full-calendar%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json) -->
 
 # Full Calendar (Remastered) Plugin
+
+<video width="720" controls>
+  <source src="https://raw.githubusercontent.com/obsidian-full-calendar-remastered/plugin-full-calendar/main/docs/assets/guides/0.13.1.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 > This is the remastered edition of original [Full Calender plugin](https://github.com/obsidian-community/obsidian-full-calendar) by [Davis Haupt](https://davi.sh/), with the [core additions](https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar/whats_new/).
 

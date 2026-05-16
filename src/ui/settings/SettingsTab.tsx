@@ -231,6 +231,18 @@ export function addCalendarButton(
             ): void => {
               void (async () => {
                 const configs = Array.isArray(finalConfigs) ? finalConfigs : [finalConfigs];
+
+                // Validate: only one dailynote source allowed
+                if (providerType === 'dailynote') {
+                  const existingDailyNotes = PluginState.getSettings().calendarSources.filter(
+                    s => s.type === 'dailynote'
+                  );
+                  if (existingDailyNotes.length >= 1) {
+                    showNotice(t('settings.warnings.oneDailyNote'));
+                    modal.close();
+                    return;
+                  }
+                }
                 // Collect IDs from both settings and ProviderRegistry to prevent race conditions
                 const settingsIds = PluginState.getSettings().calendarSources.map(s => s.id);
                 const registryIds = PluginState.getProviderRegistry()
