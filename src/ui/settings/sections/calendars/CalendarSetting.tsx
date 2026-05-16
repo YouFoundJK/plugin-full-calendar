@@ -1,4 +1,3 @@
-import { showNotice } from '../../../../utils/showNotice';
 /**
  * @file CalendarSetting.tsx
  * @brief React component for displaying and managing a list of configured calendars.
@@ -7,18 +6,17 @@ import { showNotice } from '../../../../utils/showNotice';
  * This file defines the `CalendarSettings` component, which is embedded in the
  * plugin's settings tab. It is responsible for rendering the list of all
  * currently configured calendar sources, allowing the user to modify their
- * colors or delete them. It maintains its own state and syncs with the
- * plugin settings upon saving.
+ * colors, names, or delete them. It auto-saves changes: structural mutations
+ * (add/delete) persist immediately, while cosmetic edits (name/color) are
+ * debounced to avoid excessive disk writes.
  *
  * @license See LICENSE.md
  */
 
-import { PluginState } from '../../../../core/PluginState';
-
 import * as React from 'react';
+import { PluginState } from '../../../../core/PluginState';
 import { CalendarInfo } from '../../../../types/calendar_settings';
 import FullCalendarPlugin from '../../../../main';
-import { t } from '../../../../features/i18n/i18n';
 
 // Define props for the new stable component
 interface CalendarSettingRowProps {
@@ -75,23 +73,66 @@ export interface CalendarSettingsRef {
 
 type CalendarSettingState = {
   sources: CalendarInfo[];
-  dirty: boolean;
 };
 
 export class CalendarSettings
   extends React.Component<CalendarSettingsProps, CalendarSettingState>
   implements CalendarSettingsRef
 {
+  private debounceTimer: number | null = null;
+  private static readonly DEBOUNCE_MS = 500;
+
   constructor(props: CalendarSettingsProps) {
     super(props);
-    this.state = { sources: props.sources, dirty: false };
+    this.state = { sources: props.sources };
+  }
+
+  componentWillUnmount() {
+    // Flush any pending debounced save before unmount to prevent data loss
+    if (this.debounceTimer !== null) {
+      window.clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+      this.props.submit(this.state.sources);
+    }
+  }
+
+  /**
+   * Immediately persists the given sources to settings.
+   * Used for structural changes (add/delete) where consistency
+   * with PluginState is critical before the next ID generation.
+   */
+  private saveImmediate(sources: CalendarInfo[]) {
+    if (this.debounceTimer !== null) {
+      window.clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+    this.props.submit(sources);
+  }
+
+  /**
+   * Schedules a debounced save for cosmetic changes (name, color).
+   * Coalesces rapid edits into a single persist call.
+   */
+  private saveDebounced(sources: CalendarInfo[]) {
+    if (this.debounceTimer !== null) {
+      window.clearTimeout(this.debounceTimer);
+    }
+    this.debounceTimer = window.setTimeout(() => {
+      this.debounceTimer = null;
+      // Re-read current state at flush time to capture any
+      // additional edits that occurred during the debounce window
+      this.props.submit(this.state.sources);
+    }, CalendarSettings.DEBOUNCE_MS);
   }
 
   addSource = (source: CalendarInfo) => {
-    this.setState(state => ({
-      sources: [...state.sources, source],
-      dirty: true
-    }));
+    this.setState(
+      state => {
+        const newSources = [...state.sources, source];
+        return { sources: newSources };
+      },
+      () => this.saveImmediate(this.state.sources)
+    );
   };
 
   getUsedDirectories = () => {
@@ -101,14 +142,14 @@ export class CalendarSettings
   };
 
   updateSourceName = (index: number, name: string) => {
-    this.setState(state => {
-      const newSources = [...state.sources];
-      newSources[index] = { ...newSources[index], name };
-      return {
-        sources: newSources,
-        dirty: true
-      };
-    });
+    this.setState(
+      state => {
+        const newSources = [...state.sources];
+        newSources[index] = { ...newSources[index], name };
+        return { sources: newSources };
+      },
+      () => this.saveDebounced(this.state.sources)
+    );
   };
 
   render() {
@@ -121,40 +162,28 @@ export class CalendarSettings
             plugin={this.props.plugin}
             onNameChange={(name: string) => this.updateSourceName(idx, name)}
             onColorChange={(color: string) =>
-              this.setState(state => ({
-                sources: [
-                  ...state.sources.slice(0, idx),
-                  { ...state.sources[idx], color },
-                  ...state.sources.slice(idx + 1)
-                ],
-                dirty: true
-              }))
+              this.setState(
+                state => ({
+                  sources: [
+                    ...state.sources.slice(0, idx),
+                    { ...state.sources[idx], color },
+                    ...state.sources.slice(idx + 1)
+                  ]
+                }),
+                () => this.saveDebounced(this.state.sources)
+              )
             }
-            deleteCalendar={() =>
-              this.setState(state => ({
-                sources: [...state.sources.slice(0, idx), ...state.sources.slice(idx + 1)],
-                dirty: true
-              }))
-            }
+            deleteCalendar={() => {
+              // Validate: prevent removing the last dailynote if there's only one
+              this.setState(
+                state => ({
+                  sources: [...state.sources.slice(0, idx), ...state.sources.slice(idx + 1)]
+                }),
+                () => this.saveImmediate(this.state.sources)
+              );
+            }}
           />
         ))}
-        <div className="setting-item-control">
-          {this.state.dirty && (
-            <button
-              className="mod-cta"
-              onClick={() => {
-                if (this.state.sources.filter(s => s.type === 'dailynote').length > 1) {
-                  showNotice(t('settings.warnings.oneDailyNote'));
-                  return;
-                }
-                this.props.submit(this.state.sources.map(elt => elt));
-                this.setState({ dirty: false });
-              }}
-            >
-              Save
-            </button>
-          )}
-        </div>
       </div>
     );
   }

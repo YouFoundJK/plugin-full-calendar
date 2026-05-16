@@ -203,7 +203,7 @@ These classes are specialized services that encapsulate complex business logic, 
         *   Uses the `ViewEnhancer` to get the final, filtered data and configuration for rendering.
         *   Translates user interactions (clicks, drags) into calls to the `EventCache`'s CRUD API.
         *   Uses `core/interop.ts` to convert between the internal `OFCEvent` and FullCalendar.io's `EventInput` formats.
-*   **React Components**: Used for all complex UI, such as the event creation modal (`EditEvent.tsx`) and the entire settings tab (`SettingsTab.tsx`).
+*   **React Components**: Used for all complex UI, such as the event creation modal (`EditEvent.tsx`) and the entire settings tab (`SettingsTab.tsx`). The `CalendarSettings` component uses an auto-save pattern: structural changes (adding/removing calendar sources) are persisted immediately, while cosmetic changes (renaming, recoloring) are debounced (500ms) to reduce disk writes.
 
 ## Data Flow and State Management
 
