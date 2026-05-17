@@ -132,6 +132,11 @@
         "duration": "Duration (hrs)",
         "date": "Date",
         "filePath": "File path"
+      },
+      "demo": {
+        "title": "DEMO MODE",
+        "description": "You are exploring sample ChronoAnalyser data. Configure your own insight groups to switch permanently to live data.",
+        "turnOff": "Turn off demo"
       }
     }
   },
@@ -189,7 +194,10 @@
     "milestones": {
       "unlockedTitle": "成就已达成",
       "unlockedBody": "{{title}} - {{description}}"
-    }
+    },
+    "chronoAnalyserDemoLoaded": "ChronoAnalyser demo loaded.",
+    "chronoAnalyserDemoLoadedFromCache": "ChronoAnalyser demo loaded from cache.",
+    "chronoAnalyserDemoLoadFailed": "Could not load the ChronoAnalyser demo. Falling back to live data."
   },
   "eventCache": {
     "calendarNotFound": "无法添加事件：未找到 ID 为 {{calendarId}} 的日历。",

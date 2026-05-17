@@ -132,6 +132,11 @@
         "duration": "Dauer (Std.)",
         "date": "Datum",
         "filePath": "Dateipfad"
+      },
+      "demo": {
+        "title": "DEMO MODE",
+        "description": "You are exploring sample ChronoAnalyser data. Configure your own insight groups to switch permanently to live data.",
+        "turnOff": "Turn off demo"
       }
     }
   },
@@ -189,7 +194,10 @@
     "milestones": {
       "unlockedTitle": "Meilenstein freigeschaltet",
       "unlockedBody": "{{title}} - {{description}}"
-    }
+    },
+    "chronoAnalyserDemoLoaded": "ChronoAnalyser demo loaded.",
+    "chronoAnalyserDemoLoadedFromCache": "ChronoAnalyser demo loaded from cache.",
+    "chronoAnalyserDemoLoadFailed": "Could not load the ChronoAnalyser demo. Falling back to live data."
   },
   "eventCache": {
     "calendarNotFound": "Ereignis kann nicht hinzugefügt werden: Kalender mit der ID {{calendarId}} nicht gefunden.",

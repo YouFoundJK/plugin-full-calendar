@@ -129,6 +129,44 @@
     transform: translateY(-1px);
 }
 
+.chrono-analyser-view .demo-mode-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--size-4-4);
+    margin: 0 0 var(--size-4-6) 0;
+    padding: var(--size-4-3) var(--size-4-4);
+    border: 1px solid var(--color-accent);
+    border-left-width: 4px;
+    border-radius: var(--radius-s);
+    background-color: var(--background-secondary);
+}
+
+.chrono-analyser-view .demo-mode-banner.hidden-controls {
+    display: none;
+}
+
+.chrono-analyser-view .demo-mode-banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-2-1);
+    min-width: 0;
+}
+
+.chrono-analyser-view .demo-mode-banner-text strong {
+    color: var(--text-normal);
+    font-size: var(--font-ui-medium);
+}
+
+.chrono-analyser-view .demo-mode-banner-text span {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
+.chrono-analyser-view .demo-mode-banner button {
+    flex: 0 0 auto;
+}
+
 /* =================================================================
    CONTROLS SECTION
    ================================================================= */

@@ -6,6 +6,7 @@ import * as Plotter from './ui/plotter';
 import { DataManager } from './data/DataManager';
 import { UIService, ChartType } from './ui/UIService';
 import { DataService } from './data/DataService';
+import { DemoDataService } from './data/DemoDataService';
 import { TimeRecord } from './data/types';
 import { InsightsEngine } from './data/InsightsEngine';
 import { InsightConfigModal, InsightsConfig } from './ui/ui';
@@ -14,12 +15,16 @@ import { t } from '../features/i18n/i18n';
 export class AnalysisController {
   public uiService: UIService;
   public dataService: DataService;
+  public demoDataService: DemoDataService;
   public dataManager: DataManager;
   public insightsEngine: InsightsEngine;
   public rootEl: HTMLElement;
 
   private activeChartType: ChartType | null = null;
   private isChartRendered = false;
+  private liveDataInitialized = false;
+  private demoModeActive = false;
+  private demoModeDisabledForSession = false;
 
   private activePieBreakdown: string | null = null;
   private activeSunburstLevel: string | null = null;
@@ -44,7 +49,10 @@ export class AnalysisController {
       () => {
         void this.handleGenerateInsights();
       },
-      () => this.openInsightsConfigModal()
+      () => this.openInsightsConfigModal(),
+      () => {
+        void this.disableDemoForSession();
+      }
     );
 
     this.dataService = new DataService(
@@ -53,6 +61,7 @@ export class AnalysisController {
       PluginState.getSettings(),
       () => this.handleDataReady()
     );
+    this.demoDataService = new DemoDataService(app, this.dataManager);
   }
 
   private async handleGenerateInsights() {
@@ -88,6 +97,9 @@ export class AnalysisController {
         void PluginState.saveSettings();
         this.uiService.insightsConfig = newConfig;
         showNotice(t('notices.chronoAnalyserInsightsSaved'));
+        if (this.demoModeActive) {
+          void this.disableDemoForSession();
+        }
       }
     ).open();
   }
@@ -95,17 +107,75 @@ export class AnalysisController {
   public async initialize(): Promise<void> {
     await this.uiService.initialize();
 
+    if (this.shouldOpenDemoMode()) {
+      try {
+        await this.initializeDemoData();
+        return;
+      } catch (error) {
+        console.error('[ChronoAnalyzer] Failed to load demo data:', error);
+        showNotice(t('notices.chronoAnalyserDemoLoadFailed'));
+      }
+    }
+
+    await this.initializeLiveData();
+  }
+
+  private shouldOpenDemoMode(): boolean {
+    return (
+      !this.demoModeDisabledForSession &&
+      !DemoDataService.hasConfiguredInsights(PluginState.getSettings().chrono_analyser_config)
+    );
+  }
+
+  private async initializeDemoData(): Promise<void> {
+    if (this.liveDataInitialized) {
+      this.dataService.destroy();
+      this.liveDataInitialized = false;
+    }
+
+    const demoResult = await this.demoDataService.loadDemoData();
+    this.demoModeActive = true;
+    this.uiService.insightsConfig = demoResult.insightsConfig;
+    this.uiService.setDemoMode(true);
+    showNotice(
+      demoResult.fromCache
+        ? t('notices.chronoAnalyserDemoLoadedFromCache')
+        : t('notices.chronoAnalyserDemoLoaded')
+    );
+    this.handleDataReady();
+  }
+
+  private async initializeLiveData(): Promise<void> {
+    this.demoModeActive = false;
+    this.uiService.setDemoMode(false);
+
     if (!PluginState.getCache().initialized) {
       showNotice(t('notices.chronoAnalyserInitializing'), 2000);
       await PluginState.getCache().populate();
     }
 
-    this.dataService.initialize();
+    if (!this.liveDataInitialized) {
+      this.dataService.initialize();
+      this.liveDataInitialized = true;
+    } else {
+      this.handleDataReady();
+    }
   }
 
   public destroy(): void {
     this.uiService.destroy();
-    this.dataService.destroy();
+    if (this.liveDataInitialized) {
+      this.dataService.destroy();
+      this.liveDataInitialized = false;
+    }
+  }
+
+  private async disableDemoForSession(): Promise<void> {
+    this.demoModeDisabledForSession = true;
+    this.demoModeActive = false;
+    this.dataManager.clear();
+    this.uiService.insightsConfig = PluginState.getSettings().chrono_analyser_config || null;
+    await this.initializeLiveData();
   }
 
   private handleDataReady(): void {

@@ -22,6 +22,19 @@ export function createDOMStructure(rootEl: HTMLElement): void {
   header.createEl('h1', { text: t('chrono.analyser.header') });
   header.createEl('p', { text: t('chrono.analyser.subtitle') });
 
+  const demoBanner = container.createDiv({
+    cls: 'demo-mode-banner hidden-controls',
+    attr: { id: 'demoModeBanner' }
+  });
+  const demoText = demoBanner.createDiv({ cls: 'demo-mode-banner-text' });
+  demoText.createEl('strong', { text: t('chrono.analyser.demo.title') });
+  demoText.createEl('span', { text: t('chrono.analyser.demo.description') });
+  demoBanner.createEl('button', {
+    cls: 'mod-cta',
+    attr: { id: 'turnOffDemoBtn' },
+    text: t('chrono.analyser.demo.turnOff')
+  });
+
   const insightsPanel = container.createDiv({
     cls: 'insights-panel',
     attr: { id: 'insightsPanel' }

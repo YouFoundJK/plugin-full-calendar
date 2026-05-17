@@ -118,7 +118,8 @@ export class UIService {
     private plugin: FullCalendarPlugin,
     private onFilterChange: () => void,
     private onGenerateInsights: () => void,
-    private onOpenConfig: () => void
+    private onOpenConfig: () => void,
+    private onDisableDemo: () => void
   ) {
     this.detailPopup = new DetailPopup(this.app, this.rootEl);
   }
@@ -228,6 +229,12 @@ export class UIService {
       this.setControlPanelState(payload);
     });
     renderer.render();
+  }
+
+  public setDemoMode(isDemo: boolean): void {
+    const banner = this.rootEl.querySelector<HTMLElement>('#demoModeBanner');
+    if (!banner) return;
+    banner.classList.toggle('hidden-controls', !isDemo);
   }
 
   // Delegate to the DetailPopup instance
@@ -347,6 +354,9 @@ export class UIService {
     this.rootEl
       .querySelector('#generateInsightsBtn')
       ?.addEventListener('click', () => this.onGenerateInsights());
+    this.rootEl
+      .querySelector('#turnOffDemoBtn')
+      ?.addEventListener('click', () => this.onDisableDemo());
 
     // Date Picker
     const datePickerEl = this.rootEl.querySelector<HTMLInputElement>('#dateRangePicker');
