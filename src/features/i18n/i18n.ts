@@ -16,6 +16,8 @@ import { App, requestUrl, normalizePath, getLanguage } from 'obsidian';
 // Load English as default and fallback statically
 import en from './locales/en.json';
 
+const REMOTE_I18N_ASSET_BASE_URL = 'https://fcr-cdn.plugin-fcr.workers.dev/assets/i18n';
+
 /**
  * Type-safe translation resources container
  */
@@ -66,8 +68,8 @@ export async function initializeI18n(app: App, pluginId: string): Promise<void> 
       if (await app.vault.adapter.exists(localeFile)) {
         localeDataStr = await app.vault.adapter.read(localeFile);
       } else {
-        // If not found, download it once from the stable GitHub main branch
-        const url = `https://raw.githubusercontent.com/obsidian-full-calendar-remastered/plugin-full-calendar/main/src/features/i18n/locales/${detectedLanguage}.json`;
+        // If not found, download it once through the docs asset worker.
+        const url = `${REMOTE_I18N_ASSET_BASE_URL}/${detectedLanguage}.json`;
         const response = await requestUrl(url);
         localeDataStr = response.text;
 

@@ -3,6 +3,7 @@ import baseEnPayload from './payloads/en.json';
 import type { NLPPayload, NLPSupportedLanguage } from './types';
 
 const SUPPORTED_LANGUAGES: NLPSupportedLanguage[] = ['en', 'de', 'fr', 'it', 'es'];
+const REMOTE_NLP_ASSET_BASE_URL = 'https://fcr-cdn.plugin-fcr.workers.dev/assets/nlp';
 
 const inMemoryPayloadCache = new Map<NLPSupportedLanguage, NLPPayload>([
   ['en', baseEnPayload as NLPPayload]
@@ -46,7 +47,7 @@ export async function loadNLPPayload(app: App, pluginId: string): Promise<NLPPay
     if (await app.vault.adapter.exists(payloadFile)) {
       payloadData = await app.vault.adapter.read(payloadFile);
     } else {
-      const url = `https://raw.githubusercontent.com/obsidian-full-calendar-remastered/plugin-full-calendar/main/src/features/nlp/payloads/${resolvedLanguage}.json`;
+      const url = `${REMOTE_NLP_ASSET_BASE_URL}/${resolvedLanguage}.json`;
       const response = await requestUrl(url);
       payloadData = response.text;
 

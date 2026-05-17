@@ -7,6 +7,8 @@ on:
       - feat-GCal
     paths:
       - 'docs/**'
+      - 'src/features/i18n/locales/**'
+      - 'src/features/nlp/payloads/**'
       - 'mkdocs.yml'
 
 permissions:
@@ -47,6 +49,16 @@ jobs:
         env:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
         run: mkdocs build
+
+      - name: Copy i18n locale JSON assets
+        run: |
+          mkdir -p site/assets/i18n
+          cp src/features/i18n/locales/*.json site/assets/i18n/
+
+      - name: Copy NLP payload JSON assets
+        run: |
+          mkdir -p site/assets/nlp
+          cp src/features/nlp/payloads/*.json site/assets/nlp/
 
       - name: Copy static files 1
         run: cp docs/assets/meta/google-auth-callback.html site/
