@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Redirecting…</title>
+  <script>
+    const newBase = "https://obsidian-full-calendar-remastered.github.io/plugin-full-calendar";
+
+    const path = window.location.pathname.replace(/^\/plugin-full-calendar/, "");
+    const query = window.location.search;
+    const hash = window.location.hash;
+
+    const target = newBase + path + query + hash;
+
+    window.location.replace(target);
+  </script>
+</head>
+<body>
+  <p>Page moved. Redirecting...</p>
+</body>
+</html>
